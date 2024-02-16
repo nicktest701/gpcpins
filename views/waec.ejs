@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;400;700&display=swap" rel="stylesheet">
+    <title>Waec vouchers</title>
+
+    <style>
+        *,
+        *::after,
+        *::before {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: "Poppins", "Roboto", "Radio Canada", -apple-system,
+                BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell",
+                "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            font-size: 14px !important;
+            font-weight: 500 !important;
+            width: 210mm;
+            height: 297mm;
+            page-break-after: always;
+            page-break-before: always;
+            page-break-inside: auto;
+
+
+
+        }
+
+        @page {
+            size: 210mm 297mm;
+            page-break-after: always;
+            page-break-before: always;
+            page-break-inside: auto;
+
+        }
+
+        @media print {
+
+            body {
+                padding: 4px;
+                width: 210mm;
+                height: 297mm;
+                page-break-after: always;
+                page-break-before: always;
+                page-break-inside: avoid;
+            }
+        }
+
+
+        small,
+        a {
+            font-size: 9px;
+        }
+
+        .wrapper {
+            padding: 4px;
+            display: flex;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 300px;
+        }
+
+        .voucher-cover {
+            display: flex;
+            gap: 10px;
+            padding-bottom: 4px;
+        }
+
+        .voucher-cover p:first-child {
+            font-size: 10px;
+            width: 22%;
+            text-transform: uppercase;
+
+        }
+
+        .voucher-cover p:last-child {
+            font-size: 10px;
+            font-weight: bold;
+
+        }
+    </style>
+</head>
+
+
+<body>
+    <div class="wrapper">
+        <% vouchers.forEach(function(voucher){%>
+            <div
+                style="width: 180px;border:solid 1px black;padding:8px; background:linear-gradient(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.92)), url('<%=voucher?.logo %>') no-repeat; background-position: center center; background-size: 100px 100px;">
+                <p style="text-align:center">
+                    <%= voucher?.voucherType %>
+                </p>
+                <hr color="#000" />
+                <div class="voucher-cover">
+
+                    <p>Serial</p>
+                    <p>
+                        <%= voucher?.serial %>
+                    </p>
+                </div>
+                <div class="voucher-cover">
+                    <p>Pin</p>
+                    <p>
+                        <%= voucher?.pin %>
+                    </p>
+                </div>
+                <!-- <div class="voucher-cover">
+                    <p>Price</p>
+                    <p>
+                        <%= voucher?.price %>
+                    </p>
+                </div> -->
+                <div class="voucher-cover">
+                    <p>URL</p><a href=<%=`${voucher?.dataURL}` %>
+                        rel="noreferrer"
+                        target="_blank"><%= voucher?.dataURL %></a>
+                </div>
+                <div class="voucher-cover">
+                    <p>Agent</p>
+                    <p>
+                        <%= voucher?.agentName %>
+                    </p>
+                </div>
+                <div class="voucher-cover">
+                    <p>Phone</p>
+                    <p>
+                        <%= voucher?.agentPhoneNumber %>
+                    </p>
+                </div>
+                <hr color="#000" />
+                <!-- <small style="font-size: 9px;">Powered by</small>
+                <small style="font-size: 9px;">Gab Powerful Consult</small> -->
+                <div style="display:flex;flex-direction:column;row-gap:3px">
+                    <!-- <a href="mailto:info@gpcpins.com">info@gpcpins.com</a>
+                    <a href="tel:+233244012766">+233244012766</a> -->
+                    <small>
+                        Note: Vouchers sold are not returnable!
+                    </small>
+                </div>
+            </div>
+
+            <% }) %>
+
+    </div>
+ 
+</body>
+
+</html>

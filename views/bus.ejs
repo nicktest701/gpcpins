@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;400;700&display=swap" rel="stylesheet">
+    <title>Document</title>
+
+    <style>
+        *,
+        *::after,
+        *::before {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: "Poppins", "Roboto", "Radio Canada", -apple-system,
+                BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell",
+                "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            font-size: 14px !important;
+            font-weight: 500 !important;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        .wrapper {
+            padding: 8px;
+            display: flex;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 300px;
+        }
+
+        .bus-container {
+            position: relative;
+            min-width: 180mm;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            border: 1px lightgray solid;
+            margin-top: 4px;
+
+
+
+        }
+
+        .content {
+
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+
+        }
+
+        .company {
+            position: absolute;
+            bottom: 8px;
+            right: 16px;
+            font-style: italic;
+            font-size: 10px;
+        }
+
+        .company2 {
+            position: absolute;
+            bottom: 2px;
+            left: 16px;
+            font-style: italic;
+            font-size: 10px;
+        }
+
+
+        .qrbox {
+
+            width: 150px;
+            height: 150px;
+            border: 1px solid lightgray;
+        }
+
+        .title {
+            color: #007acc;
+            font-size: 12px;
+        }
+
+        .value {
+            font-size: 14px;
+        }
+
+        .flex-wrapper {
+            width: 100mm;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+
+        }
+
+
+        img {
+            width: 100%;
+        }
+    </style>
+</head>
+
+
+<body>
+
+
+    <div class="wrapper">
+
+        <% vouchers.forEach(voucher=> { %>
+
+            <!-- bus align-items   -->
+            <div class="bus-container">
+                <!-- style=" background:
+            linear-gradient(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.92)), url('<%=voucher?.logo %>') no-repeat; background-position: center center; background-size: contain;"> -->
+                <div class="bus-main">
+                    <h2>Bus Ticket</h2>
+                    <div
+                        style="display: flex; align-items: center; justify-content: flex-start; gap: 8px; padding-block: 8px;">
+                        <img src=<%=voucher?.logo %>
+                        alt="" style="width: 20px; height: 20px;">
+
+                        <p style="font-size: 1rem;">
+                            <%= voucher?.companyName %>
+                        </p>
+                    </div>
+
+
+
+                    <div style="display: flex;align-items:center;gap: 16px;padding-block: 16px;">
+                        <p style="font-size: 2rem;">
+                            <%= voucher?.origin %>
+                        </p>
+                        <svg viewBox="0 0 48 48" height="48" width="48">
+                            <path
+                                d="M26.484375 8.984375 A 1.50015 1.50015 0 0 0 25.439453 11.560547L36.878906 23L7.5 23 A 1.50015 1.50015 0 1 0 7.5 26L36.878906 26L25.439453 37.439453 A 1.50015 1.50015 0 1 0 27.560547 39.560547L41.560547 25.560547 A 1.50015 1.50015 0 0 0 41.560547 23.439453L27.560547 9.4394531 A 1.50015 1.50015 0 0 0 26.484375 8.984375 z" />
+                        </svg>
+                        <p style="font-size: 2rem;">
+                            <%= voucher?.destination %>
+                        </p>
+                    </div>
+
+
+                    <div class="content">
+
+                        <!-- id  -->
+                        <div class="flex-wrapper">
+                            <div>
+
+
+                                <small class="title">Ticket No.</small>
+                                <p class="value">
+                                    <%= voucher?._id %>
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- vehicle no  -->
+                        <div class="flex-wrapper">
+                            <div>
+                                <small class="title">Vehicle No.</small>
+                                <p class="value">
+                                    <%= voucher?.vehicleNo %>
+
+                                </p>
+                            </div>
+                            <div style="margin-right: 48px;">
+
+                                <small class="title">Seat No.</small>
+                                <p class="value">
+                                    <%= voucher?.seatNo %>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex-wrapper">
+
+                            <div> <small class="title">Departure Date</small>
+                                <p class="value">
+                                    <%= voucher?.departureDate %>
+                                </p>
+                            </div>
+
+                            <div> <small class="title">Arrival Time</small>
+                                <p class="value">
+                                    <%= voucher?.arrivalTime %>
+                                </p>
+                            </div>
+                            <div> <small class="title">Departure Time</small>
+                                <p class="value">
+                                    <%= voucher?.departureTime %>
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- <p class="company2">Powered by Gab Powerful Consult</p> -->
+                        <p class="company">Powered by Gab Powerful Consult</p>
+
+                    </div>
+
+                </div>
+
+
+
+
+                <div class="qrbox">
+                    <img src=<%=voucher?.qrCode %>
+                    alt="code">
+                    <p style="font-style: italic; text-align: center;">scan here</p>
+                </div>
+
+            </div>
+
+            <% }) %>
+
+
+</body>
+
+</html>

@@ -1,0 +1,255 @@
+const axios = require('axios');
+const { randomUUID } = require('crypto');
+
+async function sendMoney(info, type) {
+  try {
+    const res = await axios({
+      method: 'POST',
+      url: process.env.MSDID_URL,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Basic ${process.env.MSDID_K}`,
+        'Cache-Control': 'no-cache',
+      },
+      data: {
+        CustomerName: info?.name,
+        CustomerMsisdn: info?.phonenumber,
+        CustomerEmail: info?.email,
+        Channel: info?.provider,
+        Amount: info?.amount,
+        PrimaryCallbackUrl: `${
+          process.env.CALLBACK_URL
+        }/${type}/${randomUUID()}`,
+        Description: 'Vouchers',
+        ClientReference: info?.transaction_reference,
+      },
+    });
+
+    return res.data;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function moneyStatus(referenceId) {
+  try {
+    const res = await axios({
+      method: 'GET',
+      url: process.env.MSDID_STATUS_URL,
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Basic ${process.env.MSDID_K}`,
+        'Cache-Control': 'no-cache',
+      },
+      params: {
+        clientReference: referenceId,
+      },
+    });
+
+    return res.data;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function topUpStatus(referenceId) {
+  try {
+    const res = await axios({
+      method: 'GET',
+      url: `${process.env.MSDID_TOP_UP_URL}/transactionStatus`,
+      headers: {
+        accept: 'application/json',
+        ApiKey: process.env.MSDID_TOP_UP_KEY,
+        ApiSecret: process.env.MSDID_TOP_UP_PIN,
+      },
+      params: {
+        trxn: referenceId,
+      },
+    });
+
+    return res.data;
+
+    // {
+    //   "status": "OK",
+    //   "message": "Transaction state is COMPLETED",
+    //   "trxn": "4cc825c0c87511ee805699cce7947402",
+    //   "status-code": "00",
+    //   "local-trxn-code": "73fa4584-66fc-421c-a482-4e7c00aa6a8b",
+    //   "transaction-state": "COMPLETED"
+    // }
+    
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function accountBalance() {
+  try {
+    const res = await axios({
+      method: 'GET',
+      url: `${process.env.MSDID_TOP_UP_URL}/balance`,
+      headers: {
+        accept: 'application/json',
+        ApiKey: process.env.MSDID_TOP_UP_KEY,
+        ApiSecret: process.env.MSDID_TOP_UP_PIN,
+      },
+    });
+
+    return res.data;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function sendAirtime(info) {
+  try {
+    const res = await axios({
+      method: 'GET',
+      url: `${process.env.MSDID_TOP_UP_URL}/airtime`,
+      headers: {
+        accept: 'application/json',
+        ApiKey: process.env.MSDID_TOP_UP_KEY,
+        ApiSecret: process.env.MSDID_TOP_UP_PIN,
+      },
+      params: {
+        retailer: process.env.MSDID_TOP_UP_RETAILER,
+        recipient: info?.recipient,
+        amount: info?.amount,
+        network: info.network || 0,
+        trxn: info?.transaction_reference,
+      },
+    });
+
+    return res.data;
+
+    // {
+    //   "status": "OK",
+    //   "message": "You have successfully recharged 233543772591 with GHS 5.00, you were charged GHS 5.00 and your current balance is GHS 295.00",
+    //   "trxn": "f917f1a0c87311ee86e5890f3267d17b",
+    //   "status-code": "00",
+    //   "local-trxn-code": "73fa4584-66fc-421c-a472-4e7c00aa6a8b",
+    //   "balance_before": "300.0000",
+    //   "balance_after": 295,
+    //   "network": "MTN"
+    // }
+  } catch (error) {
+    throw error;
+  }
+}
+async function sendBundle(info) {
+  try {
+    const res = await axios({
+      method: 'GET',
+      url: `${process.env.MSDID_TOP_UP_URL}/dataBundle`,
+      headers: {
+        accept: 'application/json',
+        ApiKey: process.env.MSDID_TOP_UP_KEY,
+        ApiSecret: process.env.MSDID_TOP_UP_PIN,
+      },
+      params: {
+        retailer: process.env.MSDID_TOP_UP_RETAILER,
+        recipient: info?.recipient,
+        data_code: info.data_code,
+        network: info.network || 0,
+        trxn: info?.transaction_reference,
+      },
+    });
+
+    return res.data;
+
+    // {
+    //   "status": "OK",
+    //   "message": "You have successfully recharged 233543772591 with 7.27GB, you were charged GHS 3.00 and your current balance is GHS 292.00",
+    //   "trxn": "4cc825c0c87511ee805699cce7947402",
+    //   "status-code": "00",
+    //   "local-trxn-code": "73fa4584-66fc-421c-a482-4e7c00aa6a8b",
+    //   "balance_before": "295.0000",
+    //   "balance_after": 292
+    // }
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function getBundleList(network) {
+  try {
+    const res = await axios({
+      method: 'GET',
+      url: `${process.env.MSDID_TOP_UP_URL}/dataBundleList`,
+      headers: {
+        accept: 'application/json',
+        ApiKey: process.env.MSDID_TOP_UP_KEY,
+        ApiSecret: process.env.MSDID_TOP_UP_PIN,
+      },
+      params: {
+        network,
+      },
+    });
+
+    return res.data;
+  } catch (error) {
+    throw error;
+  }
+}
+
+module.exports = {
+  sendMoney,
+  moneyStatus,
+
+  //Bundle
+  getBundleList,
+  sendBundle,
+
+  topUpStatus,
+  accountBalance,
+  sendAirtime,
+};
+
+// async function sendMoney(info, type) {
+//   try {
+//     const res = await axios({
+//       method: 'POST',
+//       url: `${process.env.CALLBACK_URL}/${randomUUID()}/${type}`,
+//       headers: {
+//         'Content-Type': 'application/json',
+//         Authorization: `Basic ${process.env.MSDID_K}`,
+//       },
+//       data: {
+//         ResponseCode: '0001',
+//         Message: 'pending',
+//         Data: {
+//           Amount: 20,
+//           Charges: 0.39,
+//           AmountAfterCharges: 19.61,
+//           Description: 'Pending',
+//           ClientReference: info?.transaction_reference,
+//           TransactionId: '6255042a9e534c1a8b2bcf6953d783be',
+//           ExternalTransactionId: '33557862699',
+//           AmountCharged: 20,
+//           OrderId: '6255042a9e534c1a8b2bcf6953d783be',
+//         },
+//       },
+//     });
+//     if (res.data) {
+//       return {
+//         ResponseCode: '2001',
+//         Message: 'failed',
+//         Data: {
+//           Amount: 20,
+//           Charges: 0.39,
+//           AmountAfterCharges: 19.61,
+//           Description: 'Transaction Failed',
+//           ClientReference: info?.transaction_reference,
+//           TransactionId: '6255042a9e534c1a8b2bcf6953d783be',
+//           ExternalTransactionId: '33557862699',
+//           AmountCharged: 20,
+//           OrderId: '6255042a9e534c1a8b2bcf6953d783be',
+//         },
+//       };
+//     }
+//   } catch (error) {
+//     throw error;
+//   }
+// }
+// module.exports = sendMoney;

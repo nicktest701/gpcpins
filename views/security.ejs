@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;400;500;700&display=swap" rel="stylesheet">
+	<title>Security Sevice Forms Voucher</title>
+
+	<style>
+		*,
+		*::after,
+		*::before {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		body {
+			font-family: 'Poppins', Verdana, Geneva, Tahoma, sans-serif;
+
+			-webkit-font-smoothing: antialiased;
+			-moz-osx-font-smoothing: grayscale;
+			font-size: 12px !important;
+			font-weight: 400;
+			width: 100%;
+			min-height: 100vh;
+		}
+
+		h1 {
+			font-size: 1.3rem;
+			padding-bottom: 4px;
+			color: #083d77;
+		}
+
+		small {
+			letter-spacing: 1.1;
+		}
+
+		/* @page {
+            size: landscape;
+        } */
+		img {
+			object-fit: contain;
+			width: 100%;
+			width: 35px;
+			height: 35px;
+		}
+
+
+
+		.container {
+			max-width: 8.5in;
+			margin-inline: auto;
+			padding: 16px;
+			margin-bottom: 300px;
+
+
+		}
+
+		.table-container {
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			row-gap: 4px;
+			padding: 8px;
+		}
+
+		.title-container {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			gap: 16px;
+			padding-bottom: 4px;
+		}
+
+		.school {
+			font-weight: bold;
+			font-size: 1.1rem;
+			text-transform: uppercase;
+		}
+
+		.voucher {
+			color: #868585;
+			text-transform: capitalize;
+			font-size: 1rem;
+			font-weight: bold;
+		}
+
+		.content {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: space-between;
+			row-gap: 8px;
+			padding-top: 4px;
+			padding-bottom: 4px;
+
+		}
+
+		svg {
+			width: 35px;
+			height: 35px;
+		}
+	</style>
+</head>
+
+
+<body style='padding:8px;color:#333;'>
+
+	<!-- Print Template -->
+	<div class="container">
+		<% vouchers.forEach(voucher=> { %>
+
+			<div class="template">
+				<small>Receipt</small>
+				<div class="title-container">
+					<img  src=<%=voucher?.logo %>  alt="logo.png" style='width:30px;height:30px;' >
+
+					<h1>Gab Powerful Consult</h1>
+				</div>
+
+				<div class="table-container">
+
+					<div style="text-align: center;">
+						<p class="school">
+							<%=voucher?.voucherType %>
+						</p>
+						<p class="voucher">Application Voucher</p>
+					</div>
+
+					<div class="content">
+						<div style="width: 45%; display: flex; ">
+							<small style="font-weight: bold;margin-right: 8px;white-space: nowrap;">Date:</small>
+							<small>
+								<%= formattedDate %>
+							</small>
+						</div>
+						<div style="width: 45%; display: flex;justify-content: flex-end;">
+							<small style="font-weight: bold;white-space:nowrap; margin-right: 8px;">Transaction
+								No</small>
+							<small>
+								<%= _id %>
+							</small>
+						</div>
+						<div style=" display: flex; ">
+							<small style="font-weight: bold;white-space:nowrap; margin-right: 8px;">Name :</small>
+							<small>
+								<%= voucher?.agentName %>
+							</small>
+						</div>
+						<div style="display: flex;justify-content: space-between;align-items: center;width: 100%;">
+							<div style=" display: flex; ">
+								<small style="font-weight: bold;white-space:nowrap; margin-right: 8px;">Phone
+									No.:</small>
+								<small>
+									<%= voucher?.agentPhoneNumber %>
+								</small>
+							</div>
+							<div style="display: flex; ">
+								<small style="font-weight: bold;white-space:nowrap; margin-right: 8px;">Email :</small>
+								<small>
+									<%= voucher?.agentEmail %>
+								</small>
+							</div>
+						</div>
+						<div style="width: 100%;  display: flex; ">
+							<small style="font-weight: bold;white-space:nowrap; margin-right: 8px;">Particulars:
+							</small>
+							<small>This is a <b>DIRECT APPLICATIONS FORMS</b>.Its is not
+								transferable once it is registered to an applicant on the application system.</small>
+						</div>
+
+						<div style="width: 30%;  display: flex; ">
+							<small style="font-weight: bold;white-space:nowrap; margin-right: 8px; ">Serial No.
+								:</small>
+							<small>
+								<%= voucher?.serial %>
+							</small>
+						</div>
+						<div style="width: 35%;  display: flex; ">
+							<small style="font-weight: bold;white-space:nowrap; margin-right: 8px; ">PIN :</small>
+							<small>
+								<%= voucher?.pin %>
+							</small>
+						</div>
+						<div style="width:30%;  display: flex; ">
+							<small style="font-weight: bold;white-space:nowrap; margin-right: 8px; ">Amount Paid
+								:</small>
+							<small>
+								<%= voucher?.price %>
+							</small>
+						</div>
+					</div>
+
+					<small style="font-weight: bold; text-transform: uppercase;"><i>Important Information</i></small>
+
+					<small style="border-bottom: #333 1px solid;">Go to
+						<a href=<%=info?.dataURL %>>
+							<%= voucher?.dataURL ?? "the website of University of Education" %>
+						</a> to read
+						Application instructions.Enter your <b>Serial Number</b>
+						and
+						your <b>PIN</b> to complete the admission application form.</small>
+
+					<p style="border: 1px #000 dashed;"></p>
+				</div>
+			</div>
+
+			<% }) %>
+
+
+
+
+	</div>
+</body>
+
+</html>

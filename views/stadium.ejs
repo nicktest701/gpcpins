@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <style>
+        *,
+        *::after,
+        *::before {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: "Poppins", "Roboto", "Radio Canada", -apple-system,
+                BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell",
+                "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            font-size: 14px !important;
+            font-weight: 500 !important;
+            width: 210mm;
+            height: 297mm;
+            page-break-after: always;
+            page-break-before: always;
+            page-break-inside: auto;
+
+
+
+        }
+
+        @page {
+            size: 210mm 297mm;
+            page-break-after: always;
+            page-break-before: always;
+            page-break-inside: auto;
+
+        }
+
+        @media print {
+
+            body {
+                padding: 4px;
+                width: 210mm;
+                height: 297mm;
+                page-break-after: always;
+                page-break-before: always;
+                page-break-inside: avoid;
+            }
+        }
+
+
+        h3 {
+            color: #083d77;
+        }
+
+        .wrapper {
+            padding: 4px;
+            display: flex;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+            gap: 8px;
+            text-transform: uppercase;
+            font-size: 14px;
+            margin-bottom: 300px;
+
+        }
+
+
+        .template {
+            width: 230mm;
+            position: relative;
+            color: #333;
+            border: 2px dashed lightgray;
+            padding: 8px;
+            gap: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+        }
+
+        .content {
+            flex-grow: 1;
+        }
+
+        .company {
+            position: absolute;
+            bottom: 8px;
+            right: 16px;
+            font-style: italic;
+            font-size: 10px;
+        }
+
+
+
+        .team {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            padding-block: 20px;
+            padding-left: 16px;
+
+        }
+
+        .team p {
+            font-size: 1.6rem;
+            color: #333;
+          
+
+        }
+
+        .home,
+        .away {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stadium_name {
+            font-style: italic;
+            text-align: center;
+            padding-left: 8px;
+        }
+
+        .details {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+        }
+
+        .stand span {
+            padding-inline: 8px;
+            border-right: solid 2px #083d77;
+            font-size: 1rem;
+        }
+
+        .qrbox {
+            width: 150px;
+            height: 150px;
+            border: 1px solid lightgray;
+        }
+
+        .qrbox img {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <% vouchers.forEach(voucher=> { %>
+            <div class="template">
+                <div class="content">
+                    <h3>FOOTBALL TICKET</h3>
+                    <p style="font-size: 1rem;">
+                        <%= voucher?.companyName %>
+                    </p>
+                    <div class="main">
+                        <p>
+                            <%= voucher?.matchType %>
+                        </p>
+                        <p>
+                            <%= voucher?.date %>
+                        </p>
+                        <div><span>Kick Off:</span>
+                            <%= voucher?.time %>
+                        </div>
+                        <div class="team">
+                            <div class="home">
+
+                                <img src=<%=voucher?.homeImage %> alt="code" style='width:50px;height:50px;' />
+                                <p>
+                                    <%= voucher?.home %>
+                                </p>
+                            </div>
+
+                            <h1>VS</h1>
+                            <div class="away">
+                                <img src=<%=voucher?.awayImage %> alt="code" style='width:50px;height: 50px;' />
+                                <p>
+                                    <%= voucher?.away %>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="details">
+
+                            <div class="stand">
+                                <span style=" border-left: solid 2px #083d77;">
+                                    <%= voucher?.venue %>
+                                </span>
+                                <span>
+                                    <%= voucher?.type %>
+                                </span>
+                                <span>
+                                    <%= voucher?.price %>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qrbox">
+                    <img src=<%=voucher?.qrCode %> alt="code" />
+                    <p style="font-style: italic; text-align: center;">scan here</p>
+                </div>
+
+                <div class="company">
+                    <small>powered by frebbytech consults</small>
+                </div>
+            </div>
+
+            <% }) %>
+    </div>
+</body>
+
+</html>

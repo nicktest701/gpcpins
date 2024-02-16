@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;400;700&display=swap" rel="stylesheet">
+    <title>Document</title>
+
+    <style>
+        *,
+        *::after,
+        *::before {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+
+        body {
+            font-family: "Poppins", "Roboto", "Radio Canada", -apple-system,
+                BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell",
+                "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            font-size: 12px !important;
+            font-weight: 500 !important;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        .wrapper {
+            padding: 4px;
+            display: flex;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 300px;
+        }
+
+        .cover {
+            position: relative;
+            width: 220mm;
+            height: 85mm;
+            display: flex;
+            justify-content: space-between;
+            align-self: center;
+            border: 1px solid lightgray;
+            text-transform: uppercase;
+        }
+
+        .image-container {
+            position: relative;
+            width: 300px;
+            object-fit: contain;
+            object-position: center center;
+        }
+
+        .image-container>img {
+            width: 100%;
+            height: 100%;
+        }
+
+        .image-fade-container {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to right, transparent, rgba(255, 255, 255, 1));
+        }
+
+        .main-container {
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+
+        }
+
+        .title {
+            color: #bbb;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .main-title {
+            font-size: 1.2rem;
+            white-space: nowrap;
+        }
+
+        .value {
+            font-weight: bold;
+        }
+
+        .price-container {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .price-container p {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .qrbox {
+            width: 200px;
+            height: 200px;
+            border: 1px solid #eee;
+            margin-right: 8px;
+            margin-top: 8px;
+        }
+
+        .qrbox>img {
+            width: 100%;
+            height: 100%;
+        }
+
+        .company {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            text-align: center;
+            font-style: italic;
+            font-size: 10px;
+        }
+    </style>
+</head>
+
+
+<body>
+
+    <div class="wrapper">
+        <% vouchers.forEach(voucher=> { %>
+
+            <div class="cover">
+                <!-- image container  -->
+                <div class="image-container">
+                    <img src=<%=voucher?.poster %> alt="">
+                    <div class="image-fade-container"></div>
+                </div>
+                <!-- main container  -->
+                <div class="main-container">
+
+                    <div style="display: flex; justify-content: flex-start;align-items: center;gap: 4px;">
+                        <img src=<%=voucher?.poster %> alt="poster" style="width: 20px;height: 20px;">
+                        <p>
+                            <%= voucher?.companyName %>
+
+                        </p>
+                    </div>
+
+                    <!-- title container -->
+                    <div class="title-container">
+                        <p class="title">Movie</p>
+                        <p class="main-title">
+                            <%= voucher?.movie %>
+                        </p>
+                    </div>
+
+                    <!-- date and time  container  -->
+                    <div class="date-time-container">
+                        <p class="title">date & time</p>
+                        <p><span>
+                                <%= voucher?.date %>
+                            </span> <span>
+                                <%= voucher?.time %>
+                            </span></p>
+                    </div>
+
+                    <!-- location container -->
+                    <div class="location-container">
+                        <p class="title">Location</p>
+                        <p>
+                            <%= voucher?.theatre %> , <%= voucher?.location %>
+                        </p>
+                    </div>
+
+                    <!-- type/price container -->
+                    <div class="price-container">
+                        <p>
+                            <span class="title">Price</span>
+                            <span>
+                                <%= voucher?.price %>
+                            </span>
+                        </p>
+                        <p>
+                            <span class="title">Type</span>
+                            <span>
+                                <%= voucher?.type %>
+                            </span>
+                        </p>
+
+                    </div>
+                    <p style="font-size: 10px; font-style: italic;">Grab your ticket now!!!</p>
+                </div>
+                <!-- qr-container  -->
+                <div class="qrbox">
+                    <img src=<%=voucher?.qrCode %> alt="">
+
+                    <p style="text-align: center;font-style: italic;">scan here</p>
+                </div>
+                <p class="company">Powered by Gab Powerful Consult</p>
+            </div>
+
+            <% }) %>
+    </div>
+
+</body>
+
+</html>
