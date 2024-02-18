@@ -550,6 +550,7 @@ router.get(
           "type",
           "recipient",
           "phonenumber",
+          "amount",
           "provider as network",
           "createdAt",
           "status"
@@ -587,7 +588,11 @@ router.get(
     }
 
     const info = transaction[0]?.info ? JSON.parse(transaction[0]?.info) : "";
-    if (["airtime", "bundle"].includes(type) && confirm) {
+    if (
+      ["airtime"].includes(type) &&
+      transaction[0].type === "bulk" &&
+      confirm
+    ) {
       await sendSMS(
         `${_.capitalize(type)}
       Your request to buy ${type} has been received.
@@ -596,9 +601,10 @@ router.get(
         transaction[0]?.phonenumber
       );
     }
-    if (transaction[0].status === "completed" && type === "bundle") {
+
+    if (transaction[0].status === "completed" && type === "bundle" && confirm) {
       const transaction_reference = randomBytes(24).toString("hex");
-      const bundleInfo = {
+      const airtimeInfo = {
         recipient: transaction[0]?.recipient,
         data_code: transaction[0]?.data_code,
         network:
@@ -614,8 +620,9 @@ router.get(
       try {
         const response = await sendBundle(bundleInfo);
         // res.status(200).json(response);
+        console.log(response);
       } catch (error) {
-        return res.status(401).json(error?.response?.data);
+        return res.status(401).json("An error has occured");
       }
     }
 
@@ -623,7 +630,8 @@ router.get(
     if (
       transaction[0].status === "completed" &&
       type === "airtime" &&
-      transaction[0].type === "single"
+      transaction[0].type === "single" &&
+      confirm
     ) {
       const transaction_reference = randomBytes(24).toString("hex");
       const airtimeInfo = {
@@ -642,8 +650,9 @@ router.get(
       try {
         const response = await sendAirtime(airtimeInfo);
         // res.status(200).json(response);
+        console.log(response);
       } catch (error) {
-        return res.status(401).json(error?.response?.data);
+        return res.status(401).json("An error has occured");
       }
     }
 
@@ -939,13 +948,7 @@ router.post(
         transaction_reference,
       };
 
-      // const sendMoneyReponse = {
-      //   ResponseCode: "0000",
-      //   Data: {
-      //     ref: transaction_reference,
-      //   },
-      // };
-
+      // Check if the user has a wallet account
       const sendMoneyReponse = await sendMoney(payment, "a");
 
       const status =
@@ -1072,13 +1075,6 @@ router.post(
         transaction_reference,
       };
 
-      // const sendMoneyReponse = {
-      //   ResponseCode: "0000",
-      //   Data: {
-      //     ref: transaction_reference,
-      //   },
-      // };
-
       const sendMoneyReponse = await sendMoney(payment, "b");
 
       const status =
@@ -1165,20 +1161,21 @@ router.get(
   verifyToken,
   asyncHandler(async (req, res) => {
     const network = req.query?.network;
-
+    let response = [];
     try {
-      const response = await getBundleList(network);
-
-      // let response = MTN;
-      // if (network === "4") {
-      //   response = MTN;
-      // }
-      // if (network === "6") {
-      //   response = VODAFONE;
-      // }
-      // if (network === "1") {
-      //   response = AIRTELTIGO;
-      // }
+      if (process.env.NODE_ENV === "production") {
+        response = await getBundleList(network);
+      } else {
+        if (network === "4") {
+          response = MTN;
+        }
+        if (network === "6") {
+          response = VODAFONE;
+        }
+        if (network === "1") {
+          response = AIRTELTIGO;
+        }
+      }
 
       const bundles = response?.bundles?.map((bundle) => {
         const { meta, network, ...rest } = bundle;

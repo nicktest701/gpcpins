@@ -1,34 +1,43 @@
 const axios = require("axios");
-const { randomUUID } = require("crypto");
+const { randomUUID, randomBytes } = require("crypto");
 
 async function sendMoney(info, type) {
-  try {
-    const res = await axios({
-      method: "POST",
-      url: process.env.MSDID_URL,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Basic ${process.env.MSDID_K}`,
-        "Cache-Control": "no-cache",
-      },
-      data: {
-        CustomerName: info?.name,
-        CustomerMsisdn: info?.phonenumber,
-        CustomerEmail: info?.email,
-        Channel: info?.provider,
-        Amount: 0.1,
-        // Amount: info?.amount,
-        PrimaryCallbackUrl: `${
-          process.env.CALLBACK_URL
-        }/${type}/${randomUUID()}`,
-        Description: "Vouchers",
-        ClientReference: info?.transaction_reference,
-      },
-    });
+  if (process.env.NODE_ENV === "production") {
+    try {
+      const res = await axios({
+        method: "POST",
+        url: process.env.MSDID_URL,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${process.env.MSDID_K}`,
+          "Cache-Control": "no-cache",
+        },
+        data: {
+          CustomerName: info?.name,
+          CustomerMsisdn: info?.phonenumber,
+          CustomerEmail: info?.email,
+          Channel: info?.provider,
+          Amount: 0.1,
+          // Amount: info?.amount,
+          PrimaryCallbackUrl: `${
+            process.env.CALLBACK_URL
+          }/${type}/${randomUUID()}`,
+          Description: "Vouchers",
+          ClientReference: info?.transaction_reference,
+        },
+      });
 
-    return res.data;
-  } catch (error) {
-    throw error;
+      return res.data;
+    } catch (error) {
+      throw error;
+    }
+  } else {
+    return {
+      ResponseCode: "0000",
+      Data: {
+        ref: (transaction_reference = randomBytes(24).toString("hex")),
+      },
+    };
   }
 }
 
