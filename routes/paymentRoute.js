@@ -545,7 +545,15 @@ router.get(
 
     if (type === "airtime") {
       transaction = await knex("airtime_transactions")
-        .select("_id", "recipient", "phonenumber", "createdAt", "status")
+        .select(
+          "_id",
+          "type",
+          "recipient",
+          "phonenumber",
+          "provider as network",
+          "createdAt",
+          "status"
+        )
         .where("_id", id)
         .limit(1);
     }
@@ -578,6 +586,16 @@ router.get(
       return res.status(402).json("Payment not completed!");
     }
 
+    const info = transaction[0]?.info ? JSON.parse(transaction[0]?.info) : "";
+    if (["airtime", "bundle"].includes(type) && confirm) {
+      await sendSMS(
+        `${_.capitalize(type)}
+      Your request to buy ${type} has been received.
+      Thank you for purchasing from us!
+      Your transaction id is ${transaction[0]?._id}`,
+        transaction[0]?.phonenumber
+      );
+    }
     if (transaction[0].status === "completed" && type === "bundle") {
       const transaction_reference = randomBytes(24).toString("hex");
       const bundleInfo = {
@@ -595,21 +613,38 @@ router.get(
       };
       try {
         const response = await sendBundle(bundleInfo);
-        res.status(200).json(response);
+        // res.status(200).json(response);
       } catch (error) {
         return res.status(401).json(error?.response?.data);
       }
     }
 
-    const info = transaction[0]?.info ? JSON.parse(transaction[0]?.info) : "";
-    if (["airtime", "bundle"].includes(type) && confirm) {
-      await sendSMS(
-        `${_.capitalize(type)}
-      Your request to buy ${type} has been received.
-      Thank you for purchasing from us!
-      Your transaction id is ${transaction[0]?._id}`,
-        transaction[0]?.phonenumber
-      );
+    //Send airtime to customer if transaction is completed!
+    if (
+      transaction[0].status === "completed" &&
+      type === "airtime" &&
+      transaction[0].type === "single"
+    ) {
+      const transaction_reference = randomBytes(24).toString("hex");
+      const airtimeInfo = {
+        recipient: transaction[0]?.recipient,
+        amount: transaction[0]?.amount,
+        network:
+          transaction[0]?.network === "mtn-gh"
+            ? 4
+            : transaction[0]?.network === "vodafone-gh"
+            ? 6
+            : transaction[0]?.network === "tigo-gh"
+            ? 1
+            : 0,
+        transaction_reference,
+      };
+      try {
+        const response = await sendAirtime(airtimeInfo);
+        // res.status(200).json(response);
+      } catch (error) {
+        return res.status(401).json(error?.response?.data);
+      }
     }
 
     if (type === "prepaid" && confirm) {
