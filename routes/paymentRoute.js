@@ -604,7 +604,7 @@ router.get(
 
     if (transaction[0].status === "completed" && type === "bundle" && confirm) {
       const transaction_reference = randomBytes(24).toString("hex");
-      const airtimeInfo = {
+      const bundleInfo = {
         recipient: transaction[0]?.recipient,
         data_code: transaction[0]?.data_code,
         network:
@@ -622,6 +622,7 @@ router.get(
         // res.status(200).json(response);
         console.log(response);
       } catch (error) {
+        console.log(error?.response?.data);
         return res.status(401).json("An error has occured");
       }
     }
