@@ -553,6 +553,7 @@ router.get(
           "amount",
           "provider as network",
           "createdAt",
+          "isProcessed",
           "status"
         )
         .where("_id", id)
@@ -568,6 +569,7 @@ router.get(
           "bundle_id as data_code",
           "provider as network",
           "createdAt",
+          "isProcessed",
           "status"
         )
         .where("_id", id)
@@ -591,6 +593,7 @@ router.get(
     if (
       ["airtime"].includes(type) &&
       transaction[0].type === "bulk" &&
+      Boolean(transaction[0].isProcessed) === false &&
       confirm
     ) {
       await sendSMS(
@@ -602,7 +605,12 @@ router.get(
       );
     }
 
-    if (transaction[0].status === "completed" && type === "bundle" && confirm) {
+    if (
+      transaction[0].status === "completed" &&
+      type === "bundle" &&
+      Boolean(transaction[0].isProcessed) === false &&
+      confirm
+    ) {
       const transaction_reference = randomBytes(24).toString("hex");
       const bundleInfo = {
         recipient: transaction[0]?.recipient,
@@ -617,10 +625,15 @@ router.get(
             : 0,
         transaction_reference,
       };
+
       try {
         const response = await sendBundle(bundleInfo);
-        // res.status(200).json(response);
-        console.log(response);
+
+        if (response['status-code'] === "00") {
+          await knex("bundle_transactions").where("_id", id).update({
+            isProcessed: 1,
+          });
+        }
       } catch (error) {
         console.log(error?.response?.data);
         return res.status(401).json("An error has occured");
@@ -651,9 +664,14 @@ router.get(
       try {
         const response = await sendAirtime(airtimeInfo);
         // res.status(200).json(response);
-        console.log(response);
+        // console.log(response);
+        if (response['status-code'] === "00") {
+          await knex("airtime_transactions").where("_id", id).update({
+            isProcessed: 1,
+          });
+        }
       } catch (error) {
-        return res.status(401).json("An error has occured");
+        return res.status(401).json("An error has occurred");
       }
     }
 
