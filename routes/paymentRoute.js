@@ -552,7 +552,15 @@ router.get(
 
     if (type === "bundle") {
       transaction = await knex("bundle_transactions")
-        .select("_id", "recipient", "phonenumber", "createdAt", "status")
+        .select(
+          "_id",
+          "recipient",
+          "phonenumber",
+          "bundle_id as data_code",
+          "provider as network",
+          "createdAt",
+          "status"
+        )
         .where("_id", id)
         .limit(1);
     }
@@ -571,24 +579,37 @@ router.get(
     }
 
     if (transaction[0].status === "completed" && type === "bundle") {
+      const transaction_reference = randomBytes(24).toString("hex");
+      const bundleInfo = {
+        recipient: transaction[0]?.recipient,
+        data_code: transaction[0]?.data_code,
+        network:
+          transaction[0]?.network === "mtn-gh"
+            ? 4
+            : transaction[0]?.network === "vodafone-gh"
+            ? 6
+            : transaction[0]?.network === "tigo-gh"
+            ? 1
+            : 0,
+        transaction_reference,
+      };
       try {
-        // const response = await sendBundle(info);
-        // res.status(200).json(response);
+        const response = await sendBundle(bundleInfo);
+        res.status(200).json(response);
       } catch (error) {
         return res.status(401).json(error?.response?.data);
       }
     }
 
     const info = transaction[0]?.info ? JSON.parse(transaction[0]?.info) : "";
-
     if (["airtime", "bundle"].includes(type) && confirm) {
-      //       await sendSMS(
-      //         `${_.capitalize(type)}
-      // Your request to buy ${type} has been received.
-      // Thank you for purchasing from us!
-      // Your transaction id is ${transaction[0]?._id}`,
-      //         transaction[0]?.phonenumber
-      //       );
+      await sendSMS(
+        `${_.capitalize(type)}
+      Your request to buy ${type} has been received.
+      Thank you for purchasing from us!
+      Your transaction id is ${transaction[0]?._id}`,
+        transaction[0]?.phonenumber
+      );
     }
 
     if (type === "prepaid" && confirm) {
@@ -748,7 +769,7 @@ router.post(
       //     ref: transaction_reference,
       //   },
       // };
-      // console.log('Hello');
+
       const sendMoneyReponse = await sendMoney(payment, "v");
 
       const status =
@@ -794,7 +815,6 @@ router.post(
 
       res.status(200).json({ _id: transaction_id });
     } catch (error) {
-      // console.log(error);
       return res.status(500).json("Transaction Failed!");
     }
   })
@@ -931,39 +951,38 @@ router.post(
 
       res.status(200).json({ _id: transaction_id });
     } catch (error) {
-      console.log(error);
       return res.status(500).json("Transaction Failed!");
     }
   })
 );
 router.put(
   "/airtime",
-  // verifyToken,
-  // verifyAdmin,
+  verifyToken,
+  verifyAdmin,
   asyncHandler(async (req, res) => {
-    const recipient = req.body;
-    // const id = req.query.id;
+    // const recipient = req.body;
+    const id = req.query.id;
 
-    // if (_.isEmpty(id) || !isValidUUID2(id)) {
-    //   return res.status(401).json("Error Processing your request!");
-    // }
+    if (_.isEmpty(id) || !isValidUUID2(id)) {
+      return res.status(401).json("Error Processing your request!");
+    }
 
-    // const transaction = await knex("airtime_transactions")
-    //   .select("recipient")
-    //   .where("_id", id)
-    //   .limit(1);
+    const transaction = await knex("airtime_transactions")
+      .select("recipient")
+      .where("_id", id)
+      .limit(1);
 
-    // if (_.isEmpty(transaction)) {
-    //   return res.status(401).json("Error Processing your request!");
-    // }
+    if (_.isEmpty(transaction)) {
+      return res.status(401).json("Error Processing your request!");
+    }
 
-    // const recipient = JSON.parse(transaction[0].recipient);
+    const recipient = JSON.parse(transaction[0].recipient);
 
     const list = recipient.map(async (item) => {
       const transaction_reference = randomBytes(24).toString("hex");
       const info = {
         recipient: item?.recipient,
-        amount: item?.amount,
+        amount: item?.price,
         network:
           item?.type === "MTN"
             ? 4
@@ -978,23 +997,20 @@ router.put(
       return sendAirtime(info);
     });
 
-    const completedTransactions = Promise.all(list)
+    Promise.all(list)
       .then(async (data) => {
-        // console.log(data);
-        // const updatedTransaction = await knex("airtime_transactions")
-        //   .where("_id", id)
-        //   .update({
-        //     isProcessed: 1,
-        //   });
+        await knex("airtime_transactions").where("_id", id).update({
+          isProcessed: 1,
+        });
 
         res.status(200).json(data);
       })
       .catch((error) => {
-        console.log(error);
         return res.status(500).json("Transaction Failed!");
       });
   })
 );
+
 router.post(
   "/bundle",
   verifyToken,
@@ -1068,7 +1084,6 @@ router.post(
 
       res.status(200).json({ _id: transaction_id });
     } catch (error) {
-      // console.log(error);
       return res.status(500).json("Transaction Failed!");
     }
   })
@@ -1083,9 +1098,9 @@ router.get(
     try {
       const response = await accountBalance();
 
-      res.status(200).json(response);
+      res.status(200).json(response?.balance);
     } catch (error) {
-      res.status(401).json(error?.response?.data);
+      res.status(401).json("Am unknown error has occurred!");
     }
   })
 );
@@ -1111,24 +1126,23 @@ router.post(
 //Get List of all bundles
 router.get(
   "/top-up/bundlelist",
-  // verifyToken,
-  // verifyAdmin,
+  verifyToken,
   asyncHandler(async (req, res) => {
     const network = req.query?.network;
 
     try {
-      // const response = await getBundleList(network);
+      const response = await getBundleList(network);
 
-      let response = MTN;
-      if (network === "4") {
-        response = MTN;
-      }
-      if (network === "6") {
-        response = VODAFONE;
-      }
-      if (network === "1") {
-        response = AIRTELTIGO;
-      }
+      // let response = MTN;
+      // if (network === "4") {
+      //   response = MTN;
+      // }
+      // if (network === "6") {
+      //   response = VODAFONE;
+      // }
+      // if (network === "1") {
+      //   response = AIRTELTIGO;
+      // }
 
       const bundles = response?.bundles?.map((bundle) => {
         const { meta, network, ...rest } = bundle;
@@ -1138,7 +1152,7 @@ router.get(
 
       res.status(200).json(_.compact(bundles));
     } catch (error) {
-      res.status(401).json(error?.response?.data);
+      res.status(401).json("An unkonwn error has occurred");
     }
   })
 );
@@ -1156,7 +1170,7 @@ router.post(
 
       res.status(200).json(response);
     } catch (error) {
-      res.status(401).json(error?.response?.data);
+      res.status(401).json("An unkonwn error has occurred");
     }
   })
 );
@@ -1174,7 +1188,7 @@ router.post(
 
       res.status(200).json(response);
     } catch (error) {
-      res.status(401).json(error?.response?.data);
+      res.status(401).json("An unkonwn error has occurred");
     }
   })
 );
