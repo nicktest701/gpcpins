@@ -224,6 +224,7 @@ router.get(
         );
       }
     } catch (error) {
+      console.log(error);
       return res.status(500).json("Error processing your vouchers!");
     }
   })
