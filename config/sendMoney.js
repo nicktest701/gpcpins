@@ -1,26 +1,27 @@
-const axios = require('axios');
-const { randomUUID } = require('crypto');
+const axios = require("axios");
+const { randomUUID } = require("crypto");
 
 async function sendMoney(info, type) {
   try {
     const res = await axios({
-      method: 'POST',
+      method: "POST",
       url: process.env.MSDID_URL,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Basic ${process.env.MSDID_K}`,
-        'Cache-Control': 'no-cache',
+        "Cache-Control": "no-cache",
       },
       data: {
         CustomerName: info?.name,
         CustomerMsisdn: info?.phonenumber,
         CustomerEmail: info?.email,
         Channel: info?.provider,
-        Amount: info?.amount,
+        Amount: 0.1,
+        // Amount: info?.amount,
         PrimaryCallbackUrl: `${
           process.env.CALLBACK_URL
         }/${type}/${randomUUID()}`,
-        Description: 'Vouchers',
+        Description: "Vouchers",
         ClientReference: info?.transaction_reference,
       },
     });
@@ -34,13 +35,13 @@ async function sendMoney(info, type) {
 async function moneyStatus(referenceId) {
   try {
     const res = await axios({
-      method: 'GET',
+      method: "GET",
       url: process.env.MSDID_STATUS_URL,
       headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
+        "Content-Type": "application/json",
+        Accept: "application/json",
         Authorization: `Basic ${process.env.MSDID_K}`,
-        'Cache-Control': 'no-cache',
+        "Cache-Control": "no-cache",
       },
       params: {
         clientReference: referenceId,
@@ -56,10 +57,10 @@ async function moneyStatus(referenceId) {
 async function topUpStatus(referenceId) {
   try {
     const res = await axios({
-      method: 'GET',
+      method: "GET",
       url: `${process.env.MSDID_TOP_UP_URL}/transactionStatus`,
       headers: {
-        accept: 'application/json',
+        accept: "application/json",
         ApiKey: process.env.MSDID_TOP_UP_KEY,
         ApiSecret: process.env.MSDID_TOP_UP_PIN,
       },
@@ -78,7 +79,6 @@ async function topUpStatus(referenceId) {
     //   "local-trxn-code": "73fa4584-66fc-421c-a482-4e7c00aa6a8b",
     //   "transaction-state": "COMPLETED"
     // }
-    
   } catch (error) {
     throw error;
   }
@@ -87,10 +87,10 @@ async function topUpStatus(referenceId) {
 async function accountBalance() {
   try {
     const res = await axios({
-      method: 'GET',
+      method: "GET",
       url: `${process.env.MSDID_TOP_UP_URL}/balance`,
       headers: {
-        accept: 'application/json',
+        accept: "application/json",
         ApiKey: process.env.MSDID_TOP_UP_KEY,
         ApiSecret: process.env.MSDID_TOP_UP_PIN,
       },
@@ -105,10 +105,10 @@ async function accountBalance() {
 async function sendAirtime(info) {
   try {
     const res = await axios({
-      method: 'GET',
+      method: "GET",
       url: `${process.env.MSDID_TOP_UP_URL}/airtime`,
       headers: {
-        accept: 'application/json',
+        accept: "application/json",
         ApiKey: process.env.MSDID_TOP_UP_KEY,
         ApiSecret: process.env.MSDID_TOP_UP_PIN,
       },
@@ -140,10 +140,10 @@ async function sendAirtime(info) {
 async function sendBundle(info) {
   try {
     const res = await axios({
-      method: 'GET',
+      method: "GET",
       url: `${process.env.MSDID_TOP_UP_URL}/dataBundle`,
       headers: {
-        accept: 'application/json',
+        accept: "application/json",
         ApiKey: process.env.MSDID_TOP_UP_KEY,
         ApiSecret: process.env.MSDID_TOP_UP_PIN,
       },
@@ -175,10 +175,10 @@ async function sendBundle(info) {
 async function getBundleList(network) {
   try {
     const res = await axios({
-      method: 'GET',
+      method: "GET",
       url: `${process.env.MSDID_TOP_UP_URL}/dataBundleList`,
       headers: {
-        accept: 'application/json',
+        accept: "application/json",
         ApiKey: process.env.MSDID_TOP_UP_KEY,
         ApiSecret: process.env.MSDID_TOP_UP_PIN,
       },
