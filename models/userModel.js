@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const db = require('../db/dbConnection');
+const mongoose = require("mongoose");
+const db = require("../db/dbConnection");
 
 const UserSchema = new mongoose.Schema(
   {
@@ -7,6 +7,10 @@ const UserSchema = new mongoose.Schema(
     name: {
       type: String,
     },
+    dob: {
+      type: String,
+    },
+
     email: {
       type: String,
       lowercase: true,
@@ -15,10 +19,14 @@ const UserSchema = new mongoose.Schema(
       type: String,
       // required: true,
     },
+
     role: {
       type: String,
       enum: [process.env.USER_ID],
       default: process.env.USER_ID,
+    },
+    nid: {
+      type: String,
     },
     token: String,
     active: {
@@ -36,4 +44,4 @@ UserSchema.statics.findByEmail = function (email) {
   return this.find({ email });
 };
 
-module.exports = db.model('User', UserSchema);
+module.exports = db.model("User", UserSchema);

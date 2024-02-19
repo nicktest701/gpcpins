@@ -17,8 +17,8 @@ async function sendMoney(info, type) {
           CustomerMsisdn: info?.phonenumber,
           CustomerEmail: info?.email,
           Channel: info?.provider,
-          Amount: 0.1,
-          // Amount: info?.amount,
+          // Amount: 0.1,
+          Amount: info?.amount,
           PrimaryCallbackUrl: `${
             process.env.CALLBACK_URL
           }/${type}/${randomUUID()}`,
