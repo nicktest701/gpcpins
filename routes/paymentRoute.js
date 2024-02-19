@@ -224,7 +224,6 @@ router.get(
         );
       }
     } catch (error) {
-      console.log(error);
       return res.status(500).json("Error processing your vouchers!");
     }
   })
@@ -630,7 +629,7 @@ router.get(
       try {
         const response = await sendBundle(bundleInfo);
 
-        if (response['status-code'] === "00") {
+        if (response["status-code"] === "00") {
           await knex("bundle_transactions").where("_id", id).update({
             isProcessed: 1,
           });
@@ -666,7 +665,7 @@ router.get(
         const response = await sendAirtime(airtimeInfo);
         // res.status(200).json(response);
         // console.log(response);
-        if (response['status-code'] === "00") {
+        if (response["status-code"] === "00") {
           await knex("airtime_transactions").where("_id", id).update({
             isProcessed: 1,
           });

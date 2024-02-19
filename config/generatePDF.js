@@ -81,7 +81,7 @@ const generateArrayVoucher = async (htmltextArray, transaction_id) => {
     await browser.close();
     return 'done';
   } catch (error) {
-   
+  
     throw 'An error has occured.Couldnt generate vouchers';
   }
 };

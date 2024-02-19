@@ -1,21 +1,21 @@
-const pLimit = require('p-limit');
-const fs = require('fs');
-const path = require('path');
-const _ = require('lodash');
+const pLimit = require("p-limit");
+const fs = require("fs");
+const path = require("path");
+const _ = require("lodash");
 
-const { sendTicketMail } = require('./mail');
-const { generateArrayVoucher } = require('./generatePDF');
-const {generateVoucherTemplate} = require('./generateVoucherTemplate');
+const { sendTicketMail } = require("./mail");
+const { generateArrayVoucher } = require("./generatePDF");
+const { generateVoucherTemplate } = require("./generateVoucherTemplate");
 
 const limit = pLimit(5);
 const processVouchers = async (transaction) => {
   let chunkSize = 4;
 
-  if (transaction?.info?.type === 'waec') {
+  if (transaction?.info?.type === "waec") {
     chunkSize = 20;
   }
 
-  if (['cinema', 'bus'].includes(transaction?.info?.type)) {
+  if (["cinema", "bus"].includes(transaction?.info?.type)) {
     chunkSize = 3;
   }
 
@@ -38,12 +38,10 @@ const processVouchers = async (transaction) => {
 
     const result = await generateArrayVoucher(template, transaction?._id);
     if (result) {
-      return 'done';
+      return "done";
     }
   } catch (error) {
-    console.log(error)
-  
-    throw 'An error has occured.Please try again';
+    throw "An error has occured.Please try again";
   }
 };
 
