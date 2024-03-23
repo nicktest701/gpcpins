@@ -2,7 +2,9 @@ const router = require("express").Router();
 const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
 const moment = require("moment");
-
+const { randomUUID } = require("crypto");
+const multer = require("multer");
+const pLimit = require("p-limit");
 //model
 
 const currencyFormatter = require("../config/currencyFormatter");
@@ -23,6 +25,7 @@ const {
   getTransactionsArrayByMonth,
   getThisYearTransactionArray,
   getLastYearTransactionArray,
+  getRangeTransactions,
 } = require("../config/transactionSummary");
 
 const verifyAdmin = require("../middlewares/verifyAdmin");
@@ -33,6 +36,12 @@ const { isValidUUID2 } = require("../config/validation");
 
 const knex = require("../db/knex");
 const { moneyStatus } = require("../config/sendMoney");
+const verifyAgent = require("../middlewares/verifyAgent");
+const { uploadAttachment, uploadFiles } = require("../config/uploadFile");
+const { generateHTMLTemplate } = require("../config/generateVoucherTemplate");
+const { generateTransactionReport } = require("../config/generatePDF");
+const { sendReportMail } = require("../config/mail");
+const { mailTextShell } = require("../config/mailText");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
@@ -40,16 +49,61 @@ const limit = rateLimit({
   message: "Too many requests!. please try again later.",
 });
 
+const plimit = pLimit(3);
+
+const Storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "./images/attachments/");
+  },
+  filename: function (req, file, cb) {
+    const ext = file?.mimetype?.split("/")[1];
+
+    cb(null, `${randomUUID()}.${ext}`);
+  },
+});
+
+const Upload = multer({ storage: Storage });
+
 router.get(
   "/",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const { sort } = req.query;
+    const { sort, startDate, endDate } = req.query;
+
     let modifiedTransaction = [];
     let modifiedECGTransaction = [];
     let modifiedAirtimeTransaction = [];
+    let modifiedBundleTransaction = [];
 
+    const bundle_transactions = await knex("bundle_transactions")
+      .select(
+        "_id",
+        "bundle_name as kind",
+        "bundle_volume as volume",
+        "reference",
+        "recipient",
+        "phonenumber",
+        "info",
+        "mode",
+        "amount",
+        "domain",
+        "domain as type",
+        "isProcessed",
+        "status",
+        "createdAt",
+        knex.raw("DATE_FORMAT(createdAt,'%D %M,%Y %r') as modifiedAt")
+      )
+      .where({
+        status: "completed",
+      });
+
+    const bundleTransactions = bundle_transactions.map(({ info, ...rest }) => {
+      return {
+        ...rest,
+        info: JSON.parse(info),
+      };
+    });
     const airtime_transactions = await knex("airtime_transactions")
       .select(
         "_id",
@@ -59,11 +113,13 @@ router.get(
         "phonenumber",
         "info",
         "amount",
+        "mode",
         "domain",
         "domain as type",
         "isProcessed",
         "status",
-        "createdAt"
+        "createdAt",
+        knex.raw("DATE_FORMAT(createdAt,'%D %M,%Y %r') as modifiedAt")
       )
       .where({
         status: "completed",
@@ -79,7 +135,14 @@ router.get(
     );
 
     const voucher_transactions = await knex("voucher_transactions")
-      .select("_id", "info", "reference", "createdAt")
+      .select(
+        "_id",
+        "info",
+        "mode",
+        "reference",
+        "createdAt",
+        knex.raw("DATE_FORMAT(createdAt,'%D %M,%Y %r') as modifiedAt")
+      )
       .where({
         status: "completed",
       });
@@ -100,8 +163,12 @@ router.get(
         "prepaid_transactions._id as _id",
         "prepaid_transactions.reference as reference",
         "prepaid_transactions.info as info",
+        "prepaid_transactions.mode as mode",
         "prepaid_transactions.status as status",
         "prepaid_transactions.createdAt as createdAt",
+        knex.raw(
+          "DATE_FORMAT(prepaid_transactions.createdAt,'%D %M,%Y %r') as modifiedAt"
+        ),
         "meters._id as meterId",
         "meters.number as number"
       )
@@ -114,7 +181,9 @@ router.get(
         _id: transaction?._id,
         reference: transaction?.reference,
         info: JSON.parse(transaction?.info),
+        mode: transaction?.mode,
         status: transaction?.status,
+        modifiedAt: transaction?.modifiedAt,
         createdAt: transaction?.createdAt,
         meter: {
           _id: transaction?.meterId,
@@ -123,58 +192,139 @@ router.get(
       };
     });
 
+    const modifiedTransactionWithRange = getRangeTransactions(
+      startDate,
+      endDate,
+      transactions
+    );
+
+    const modifiedECGTransactionWithRange = getRangeTransactions(
+      startDate,
+      endDate,
+      ecgTransaction
+    );
+
+    const modifiedAirtimeTransactionWithRange = getRangeTransactions(
+      startDate,
+      endDate,
+      airtimeTransactions
+    );
+
+    const modifiedBundleTransactionWithRange = getRangeTransactions(
+      startDate,
+      endDate,
+      bundleTransactions
+    );
+
     switch (sort) {
       case "today":
-        modifiedTransaction = getTodayTransactionArray(transactions);
-        modifiedECGTransaction = getTodayTransactionArray(ecgTransaction);
-        modifiedAirtimeTransaction =
-          getTodayTransactionArray(airtimeTransactions);
+        modifiedTransaction = getTodayTransactionArray(
+          modifiedTransactionWithRange
+        );
+        modifiedECGTransaction = getTodayTransactionArray(
+          modifiedECGTransactionWithRange
+        );
+        modifiedAirtimeTransaction = getTodayTransactionArray(
+          modifiedAirtimeTransactionWithRange
+        );
+        modifiedBundleTransaction = getTodayTransactionArray(
+          modifiedBundleTransactionWithRange
+        );
 
         break;
       case "yesterday":
-        modifiedTransaction = getYesterdayTransactionArray(transactions);
-        modifiedECGTransaction = getYesterdayTransactionArray(ecgTransaction);
-        modifiedAirtimeTransaction =
-          getYesterdayTransactionArray(airtimeTransactions);
+        modifiedTransaction = getYesterdayTransactionArray(
+          modifiedTransactionWithRange
+        );
+        modifiedECGTransaction = getYesterdayTransactionArray(
+          modifiedECGTransactionWithRange
+        );
+        modifiedAirtimeTransaction = getYesterdayTransactionArray(
+          modifiedAirtimeTransactionWithRange
+        );
+        modifiedBundleTransaction = getYesterdayTransactionArray(
+          modifiedBundleTransactionWithRange
+        );
         break;
 
       case "week":
-        modifiedTransaction = getLastSevenDaysTransactionsArray(transactions);
-        modifiedECGTransaction =
-          getLastSevenDaysTransactionsArray(ecgTransaction);
-        modifiedAirtimeTransaction =
-          getLastSevenDaysTransactionsArray(airtimeTransactions);
+        modifiedTransaction = getLastSevenDaysTransactionsArray(
+          modifiedTransactionWithRange
+        );
+        modifiedECGTransaction = getLastSevenDaysTransactionsArray(
+          modifiedECGTransactionWithRange
+        );
+        modifiedAirtimeTransaction = getLastSevenDaysTransactionsArray(
+          modifiedAirtimeTransactionWithRange
+        );
+        modifiedBundleTransaction = getLastSevenDaysTransactionsArray(
+          modifiedBundleTransactionWithRange
+        );
 
         break;
       case "month":
-        modifiedTransaction = getThisMonthTransactionArray(transactions);
-        modifiedECGTransaction = getThisMonthTransactionArray(ecgTransaction);
-        modifiedAirtimeTransaction =
-          getThisMonthTransactionArray(airtimeTransactions);
+        modifiedTransaction = getThisMonthTransactionArray(
+          modifiedTransactionWithRange
+        );
+        modifiedECGTransaction = getThisMonthTransactionArray(
+          modifiedECGTransactionWithRange
+        );
+        modifiedAirtimeTransaction = getThisMonthTransactionArray(
+          modifiedAirtimeTransactionWithRange
+        );
+        modifiedBundleTransaction = getThisMonthTransactionArray(
+          modifiedBundleTransactionWithRange
+        );
         break;
       case "lmonth":
-        modifiedTransaction = getLastMonthTransactionArray(transactions);
-        modifiedECGTransaction = getLastMonthTransactionArray(ecgTransaction);
-        modifiedAirtimeTransaction =
-          getLastMonthTransactionArray(airtimeTransactions);
+        modifiedTransaction = getLastMonthTransactionArray(
+          modifiedTransactionWithRange
+        );
+        modifiedECGTransaction = getLastMonthTransactionArray(
+          modifiedECGTransactionWithRange
+        );
+        modifiedAirtimeTransaction = getLastMonthTransactionArray(
+          modifiedAirtimeTransactionWithRange
+        );
+        modifiedBundleTransaction = getLastMonthTransactionArray(
+          modifiedBundleTransactionWithRange
+        );
 
         break;
       case "year":
-        modifiedTransaction = getThisYearTransactionArray(transactions);
-        modifiedECGTransaction = getThisYearTransactionArray(ecgTransaction);
-        modifiedAirtimeTransaction =
-          getThisYearTransactionArray(airtimeTransactions);
+        modifiedTransaction = getThisYearTransactionArray(
+          modifiedTransactionWithRange
+        );
+        modifiedECGTransaction = getThisYearTransactionArray(
+          modifiedECGTransactionWithRange
+        );
+        modifiedAirtimeTransaction = getThisYearTransactionArray(
+          modifiedAirtimeTransactionWithRange
+        );
+        modifiedBundleTransaction = getThisYearTransactionArray(
+          modifiedBundleTransactionWithRange
+        );
         break;
       case "lyear":
-        modifiedTransaction = getLastYearTransactionArray(transactions);
-        modifiedECGTransaction = getLastYearTransactionArray(ecgTransaction);
-        modifiedAirtimeTransaction =
-          getLastYearTransactionArray(airtimeTransactions);
+        modifiedTransaction = getLastYearTransactionArray(
+          modifiedTransactionWithRange
+        );
+        modifiedECGTransaction = getLastYearTransactionArray(
+          modifiedECGTransactionWithRange
+        );
+        modifiedAirtimeTransaction = getLastYearTransactionArray(
+          modifiedAirtimeTransactionWithRange
+        );
+        modifiedBundleTransaction = getLastYearTransactionArray(
+          modifiedBundleTransactionWithRange
+        );
         break;
+
       default:
-        modifiedTransaction = [...transactions];
-        modifiedECGTransaction = [...ecgTransaction];
-        modifiedAirtimeTransaction = [...airtimeTransactions];
+        modifiedTransaction = [...modifiedTransactionWithRange];
+        modifiedECGTransaction = [...modifiedECGTransactionWithRange];
+        modifiedAirtimeTransaction = [...modifiedAirtimeTransactionWithRange];
+        modifiedBundleTransaction = [...modifiedBundleTransactionWithRange];
     }
 
     const VoucherTransactions = modifiedTransaction.map(async (transaction) => {
@@ -201,6 +351,8 @@ router.get(
           transaction?.info?.amount ||
           transaction?.info?.paymentDetails?.totalAmount,
         createdAt: transaction?.createdAt,
+        modifiedAt: transaction?.modifiedAt,
+        mode: transaction?.mode,
         status: "completed",
       };
     });
@@ -218,13 +370,20 @@ router.get(
         downloadLink: transaction?.info?.downloadLink,
         amount: transaction?.info?.amount,
         createdAt: transaction?.createdAt,
+        modifiedAt: transaction?.modifiedAt,
+        mode: transaction?.mode,
         status: transaction?.status,
       };
     });
 
     res
       .status(200)
-      .json([...vouchers, ...prepaids, ...modifiedAirtimeTransaction]);
+      .json([
+        ...vouchers,
+        ...prepaids,
+        ...modifiedAirtimeTransaction,
+        ...modifiedBundleTransaction,
+      ]);
   })
 );
 
@@ -236,6 +395,22 @@ router.get(
   asyncHandler(async (req, res) => {
     const { year, type } = req.query;
 
+    //Bundle
+    const bundle_transactions = await knex("bundle_transactions")
+      .select("_id", "info", "amount", "createdAt", "year")
+      .where({
+        year: year,
+        status: "completed",
+      });
+
+    const modifiedBundleTransaction = bundle_transactions.map(
+      ({ info, ...rest }) => {
+        return {
+          ...rest,
+          info: JSON.parse(info),
+        };
+      }
+    );
     //Airtime
     const airtime_transactions = await knex("airtime_transactions")
       .select("_id", "info", "amount", "createdAt", "year")
@@ -311,6 +486,9 @@ router.get(
       const airtimeByMonth = getTransactionsArrayByMonth(
         modifiedAirtimeTransaction
       );
+      const bundleByMonth = getTransactionsArrayByMonth(
+        modifiedBundleTransaction
+      );
 
       const voucherByMonth = getTransactionsArrayByMonth(
         groupedVoucherTransactions?.Voucher
@@ -323,6 +501,7 @@ router.get(
         voucher: voucherByMonth,
         ticket: ticketByMonth,
         airtime: airtimeByMonth,
+        bundle: bundleByMonth,
       });
     }
 
@@ -359,6 +538,90 @@ router.get(
       return res.status(200).json({
         report: airtimeByMonth,
       });
+    }
+    if (type === "Bundle") {
+      const bundleByMonth = getTransactionsArrayByMonth(
+        modifiedBundleTransaction
+      );
+      return res.status(200).json({
+        report: bundleByMonth,
+      });
+    }
+  })
+);
+router.post(
+  "/report/history",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { startDate, endDate, transactions, type } = req.body;
+
+    let template = "";
+    switch (type) {
+      case "All":
+        template = await generateHTMLTemplate(transactions, "transactions.ejs");
+        break;
+      case "Voucher":
+        template = await generateHTMLTemplate(
+          transactions,
+          "voucher_transactions.ejs"
+        );
+        break;
+      case "Ticket":
+        template = await generateHTMLTemplate(
+          transactions,
+          "voucher_transactions.ejs"
+        );
+        break;
+      case "Prepaid":
+        template = await generateHTMLTemplate(
+          transactions,
+          "prepaid_transactions.ejs"
+        );
+        break;
+      case "Airtime":
+        template = await generateHTMLTemplate(
+          transactions,
+          "airtime_transactions.ejs"
+        );
+        break;
+      case "Bundle":
+        template = await generateHTMLTemplate(
+          transactions,
+          "bundle_transactions.ejs"
+        );
+        break;
+      default:
+        template = await generateHTMLTemplate(transactions, "transactions.ejs");
+    }
+
+    const id = randomUUID();
+
+    const result = await generateTransactionReport(
+      template,
+      id,
+      `${type}-report`
+    );
+    if (result) {
+      const body = ` <div class="container">
+  <h1>Transactional Report</h1>
+  <p>Dear Customer,</p>
+  <p>Attached is your wallet transactional report from the period ${sDate} to ${endDate}. Please review the details below:</p>
+  <p>If you have any questions or concerns regarding this report, please feel free to contact us.</p>
+  <p>Thank you for your business!</p>
+  <p>Sincerely,<br>Gab Powerful Consults</p>
+  </div>`;
+
+      const downloadLink = await uploadFiles(result, "reports");
+
+      await sendReportMail(
+        process.env.MAIL_CLIENT_USER,
+        mailTextShell(body),
+        result,
+        "Transaction Report"
+      );
+
+      return res.status(200).json(downloadLink);
     }
   })
 );
@@ -452,6 +715,27 @@ router.get(
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const year = moment().year();
+    //Bundle
+    const bundle_transactions = await knex("bundle_transactions")
+      .select(
+        "_id",
+        "info",
+        "phonenumber",
+        "domain",
+        "amount",
+        "createdAt",
+        "year"
+      )
+      .where({ year: year, status: "completed" })
+      .orderBy("createdAt", "desc");
+
+    const bundleTransaction = bundle_transactions.map(({ info, ...rest }) => {
+      return {
+        ...rest,
+        info: JSON.parse(info),
+      };
+    });
+
     //Airtime
     const airtime_transactions = await knex("airtime_transactions")
       .select(
@@ -508,10 +792,16 @@ router.get(
     const voucherCount = transaction?.length;
     const ecgCount = ecgTransaction?.length;
     const airtimeCount = airtimeTransaction?.length;
+    const bundleCount = bundleTransaction?.length;
 
     const count = {
-      labels: ["Vouchers & Tickets", "Prepaid Units", "Airtime Transfer"],
-      data: [voucherCount, ecgCount, airtimeCount],
+      labels: [
+        "Vouchers & Tickets",
+        "Prepaid Units",
+        "Airtime Transfer",
+        "Data Bundle",
+      ],
+      data: [voucherCount, ecgCount, airtimeCount, bundleCount],
     };
 
     const recents = _.orderBy(
@@ -519,6 +809,7 @@ router.get(
         ...getRecentTransaction(transaction, 3),
         ...getRecentTransaction(ecgTransaction, 3),
         ...getRecentTransaction(airtimeTransaction, 3),
+        ...getRecentTransaction(bundleTransaction, 3),
       ],
       "createdAt",
       "desc"
@@ -534,16 +825,21 @@ router.get(
       _.map(transaction, (item) => Number(item?.info?.amount))
     );
 
-    //Get Voucher & Ticket Total Amount
+    //Get Airtime Total Amount
     const airtimeTotal = _.sum(
       _.map(airtimeTransaction, (item) => Number(item?.amount))
+    );
+    //Get Bundlet Total Amount
+    const bundleTotal = _.sum(
+      _.map(bundleTransaction, (item) => Number(item?.amount))
     );
 
     const grandTotal = {
       ecg: ecgTotal,
       voucher: voucherTotal,
       airtime: airtimeTotal,
-      total: Number(ecgTotal + voucherTotal + airtimeTotal),
+      bundle: bundleTotal,
+      total: Number(ecgTotal + voucherTotal + airtimeTotal + bundleTotal),
     };
 
     //GET Total Sales today
@@ -552,14 +848,16 @@ router.get(
       voucher: getTodayTransaction(transaction),
       ecg: getTodayTransaction(ecgTransaction),
       airtime: getTodayTransaction(airtimeTransaction),
+      bundle: getTodayTransaction(bundleTransaction),
     };
 
     //GROUP transactions by Week
     const sevenDays = getLastSevenDaysTransactions(transaction, ecgTransaction);
     const airtimeSevenDays = getLastSevenDaysTransactions(
-      [],
+      bundleTransaction,
       airtimeTransaction
     );
+    sevenDays.bundle = airtimeSevenDays.voucher;
     sevenDays.airtime = airtimeSevenDays.ecg;
 
     //GROUP transactions by month
@@ -567,7 +865,11 @@ router.get(
       transaction,
       ecgTransaction
     );
-    const airtimeByMonth = getTransactionsByMonth([], airtimeTransaction);
+    const airtimeByMonth = getTransactionsByMonth(
+      bundleTransaction,
+      airtimeTransaction
+    );
+    transactionByMonth.bundle = airtimeByMonth.voucher;
     transactionByMonth.airtime = airtimeByMonth.ecg;
 
     res.status(200).json({
@@ -812,7 +1114,6 @@ router.get(
   "/airtime",
   verifyToken,
   verifyAdmin,
-
   asyncHandler(async (req, res) => {
     const airtime_transactions = await knex("airtime_transactions")
       .where({ year: moment().year(), status: "completed" })
@@ -870,33 +1171,100 @@ router.get(
 );
 
 router.get(
-  "/email",
+  "/bundle",
   verifyToken,
+  verifyAdmin,
   asyncHandler(async (req, res) => {
-    const { email, mobileNo } = req.query;
-
-    if (!email || !mobileNo) {
-      return res.status(401).json("Inavalid Request!");
-    }
-
-    const voucher_transactions = await knex("voucher_transactions")
-      .select("_id", "info", "createdAt", "year", "active")
-      .where({
-        email,
-        phonenumber: mobileNo,
-        active: 1,
-        status: "completed",
-      })
+    const bundle_transactions = await knex("bundle_transactions")
+      .where({ year: moment().year(), status: "completed" })
+      .select(
+        "_id",
+        "amount",
+        "phonenumber",
+        "domain",
+        "info",
+        "status",
+        "year",
+        "createdAt"
+      )
       .orderBy("createdAt", "desc");
 
-    const transactions = voucher_transactions.map(({ info, ...rest }) => {
+    const transaction = bundle_transactions.map(({ info, ...rest }) => {
       return {
         ...rest,
         info: JSON.parse(info),
       };
     });
 
+    //Get Recent Transactions
+    const recent = getRecentTransaction(transaction, 3);
+    //Get Today Transactions
+    const today = currencyFormatter(getTodayTransaction(transaction));
+    const yesterday = currencyFormatter(getYesterdayTransaction(transaction));
+    const lastSevenDaysData = getLastSevenDaysTransactions([], transaction);
+
+    const lastSevenDaysTotal = currencyFormatter(
+      _.sum(lastSevenDaysData?.ecg?.data)
+    );
+    const thisMonth = currencyFormatter(getThisMonthTransaction(transaction));
+    const thisYear = getTransactionsByMonth([], transaction);
+
+    const topCustomers = getTopCustomers(transaction);
+
+    res.status(200).json({
+      recent,
+      today,
+      yesterday,
+      lastSevenDaysTotal,
+      lastSevenDays: {
+        labels: lastSevenDaysData.labels,
+        data: lastSevenDaysData.ecg?.data,
+      },
+      thisMonth,
+      thisYear: {
+        labels: thisYear?.labels,
+        data: thisYear?.ecg?.data,
+      },
+      topCustomers,
+    });
+  })
+);
+
+router.get(
+  "/email",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+    const { email, mobileNo, startDate, endDate } = req.query;
+
+    if (!email || !mobileNo) {
+      return res.status(401).json("Invalid Request!");
+    }
+
+    const sDate = moment(startDate).format("MMMM DD YYYY");
+    const eDate = moment(endDate).format("MMMM DD YYYY");
+
+    const voucher_transactions = await knex.raw(
+      `SELECT *
+      FROM (
+          SELECT _id,user,email,phonenumber,info,createdAt,year,active,status,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+          FROM voucher_transactions
+      ) AS voucher_transactions_ 
+      WHERE user=? AND active=1 and status='completed' AND purchaseDate BETWEEN ? AND ?;`,
+      [id, sDate, eDate]
+    );
+
+    const transactions = voucher_transactions[0]?.map(({ info, ...rest }) => {
+      return {
+        ...rest,
+        info: info ? JSON.parse(info) : {},
+      };
+    });
+
     const modifiedTransaction = transactions.map(async (transaction) => {
+      // if (_.isEmpty(transaction?.info)) {
+      //   return null;
+      // }
       const category = await knex("categories")
         .select("voucherType")
         .where("_id", transaction?.info?.categoryId)
@@ -925,63 +1293,72 @@ router.get(
 
     const vouchers = await Promise.all(modifiedTransaction);
 
-    const prepaid_transactions = await knex("prepaid_transactions")
-      .join("meters", "prepaid_transactions.meter", "=", "meters._id")
-      .where({
-        "prepaid_transactions.email": email,
-        "prepaid_transactions.mobileNo": mobileNo,
-        "prepaid_transactions.active": 1,
-        "prepaid_transactions.status": "completed",
-      })
-      .select(
-        "prepaid_transactions._id as _id",
-        "prepaid_transactions.info as info",
-        "prepaid_transactions.processed as processed",
-        "prepaid_transactions.createdAt as createdAt",
-        "meters._id as meterId",
-        "meters.number as number"
-      );
+    const prepaid_transactions = await knex.raw(
+      `SELECT *
+        FROM (
+            SELECT _id,user,email,mobileNo,info,createdAt,year,active,processed,meterId,number,status,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+            FROM meter_prepaid_transaction_view
+        ) AS meter_prepaid_transaction_view_ 
+        WHERE user=? AND active=1 and status='completed' AND purchaseDate BETWEEN ? AND ?;`,
+      [id, sDate, eDate]
+    );
 
-    const modifiedECGTransaction = prepaid_transactions.map((transaction) => {
-      const transInfo = JSON.parse(transaction?.info);
-      return {
-        _id: transaction?._id,
-        meter: transaction?.number,
-        type: `${transInfo?.domain} Units`,
-        domain: transInfo?.domain,
-        phonenumber: transInfo?.mobileNo,
-        email: transInfo?.email,
-        downloadLink: transInfo?.downloadLink,
-        amount: transInfo?.amount,
-        createdAt: transaction?.createdAt,
-        status: Boolean(transaction?.processed) ? "compeleted" : "pending",
-      };
-    });
+    const modifiedECGTransaction = prepaid_transactions[0].map(
+      (transaction) => {
+        const transInfo = JSON.parse(transaction?.info);
+        return {
+          _id: transaction?._id,
+          meter: transaction?.number,
+          type: `${transInfo?.domain} Units`,
+          domain: transInfo?.domain,
+          phonenumber: transInfo?.mobileNo,
+          email: transInfo?.email,
+          downloadLink: transInfo?.downloadLink,
+          amount: transInfo?.amount,
+          createdAt: transaction?.createdAt,
+          status: Boolean(transaction?.processed) ? "compeleted" : "pending",
+        };
+      }
+    );
 
     //Airtime
 
-    const airtime_transactions = await knex("airtime_transactions")
-      .where({
-        phonenumber: mobileNo,
-        active: 1,
-        status: "completed",
-      })
-      .select(
-        "_id",
-        "type as kind",
-        "recipient",
-        "phonenumber",
-        "amount",
-        "domain",
-        "domain as type",
-        "status",
-        "isProcessed",
-        "createdAt"
-      );
+    const airtime_transactions = await knex.raw(
+      `SELECT *
+        FROM (
+            SELECT _id,user,type as kind,recipient,amount,domain,domain as type,email,phonenumber,status,isProcessed,createdAt,active,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+            FROM airtime_transactions
+        ) AS airtime_transactions_ 
+        WHERE user=? AND active=1 and status='completed' AND purchaseDate BETWEEN ? AND ?;`,
+      [id, sDate, eDate]
+    );
+
+    //Bundle
+
+    const bundle_transactions = await knex.raw(
+      `SELECT *
+        FROM (
+            SELECT _id,user,bundle_name as kind,bundle_volume as volume,recipient,amount,domain,domain as type,email,phonenumber,status,isProcessed,createdAt,active,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+            FROM bundle_transactions
+        ) AS bundle_transactions_ 
+        WHERE user=? AND active=1 and status='completed' AND purchaseDate BETWEEN ? AND ?;`,
+      [id, sDate, eDate]
+    );
 
     res
       .status(200)
-      .json([...vouchers, ...modifiedECGTransaction, ...airtime_transactions]);
+      .json(
+        _.orderBy(
+          [
+            ...vouchers,
+            ...modifiedECGTransaction,
+            ...airtime_transactions[0],
+            ...bundle_transactions[0],
+          ],
+          "createdAt",
+          "desc"
+        )
+      );
   })
 );
 
@@ -1080,8 +1457,718 @@ router.put(
     await knex("airtime_transactions").where("_id", "IN", ids).update({
       active: 0,
     });
+    await knex("bundle_transactions").where("_id", "IN", ids).update({
+      active: 0,
+    });
 
     res.sendStatus(204);
+  })
+);
+
+/////////////.......................Agent transaction summary.............//////////////////
+router.get(
+  "/agents/wallet/transactions",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { id } = req.query;
+    const transactions = await knex("agent_wallet_transactions_view")
+      .where("agentID", id)
+      .select("_id", "createdAt", "amount", "status", "issuerName")
+      .orderBy("createdAt", "desc");
+
+    res.status(200).json(transactions);
+  })
+);
+
+router.get(
+  "/agent/transaction",
+  verifyToken,
+  verifyAgent,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+    const { sort, startDate, endDate } = req.query;
+
+    const sDate = moment(startDate).format("MMMM DD YYYY");
+    const eDate = moment(endDate).format("MMMM DD YYYY");
+
+    let modifiedAirtimeTransaction = [];
+    let modifiedBundleTransaction = [];
+
+    const transactions = await knex.raw(
+      `SELECT *
+        FROM (
+            SELECT *,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+            FROM agent_transactions
+        ) AS agent_transactions_ 
+        WHERE agent_id=? and status='completed' AND purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,
+      [id, sDate, eDate]
+    );
+
+    const modifiedTransactions = transactions[0].map(({ info, ...rest }) => {
+      return {
+        ...rest,
+        info: JSON.parse(info),
+      };
+    });
+    const groupedTransactions = _.groupBy(modifiedTransactions, "type");
+    const airtimeTransactions = groupedTransactions?.airtime ?? [];
+    const bundleTransactions = groupedTransactions?.bundle ?? [];
+
+    switch (sort) {
+      case "today":
+        modifiedAirtimeTransaction =
+          getTodayTransactionArray(airtimeTransactions);
+        modifiedBundleTransaction =
+          getTodayTransactionArray(bundleTransactions);
+
+        break;
+      case "yesterday":
+        modifiedAirtimeTransaction =
+          getYesterdayTransactionArray(airtimeTransactions);
+        modifiedBundleTransaction =
+          getYesterdayTransactionArray(bundleTransactions);
+        break;
+
+      case "week":
+        modifiedAirtimeTransaction =
+          getLastSevenDaysTransactionsArray(airtimeTransactions);
+        modifiedBundleTransaction =
+          getLastSevenDaysTransactionsArray(bundleTransactions);
+
+        break;
+      case "month":
+        modifiedAirtimeTransaction =
+          getThisMonthTransactionArray(airtimeTransactions);
+        modifiedBundleTransaction =
+          getThisMonthTransactionArray(bundleTransactions);
+        break;
+      case "lmonth":
+        modifiedAirtimeTransaction =
+          getLastMonthTransactionArray(airtimeTransactions);
+        modifiedBundleTransaction =
+          getLastMonthTransactionArray(bundleTransactions);
+
+        break;
+      case "year":
+        modifiedAirtimeTransaction =
+          getThisYearTransactionArray(airtimeTransactions);
+        modifiedBundleTransaction =
+          getThisYearTransactionArray(bundleTransactions);
+        break;
+      case "lyear":
+        modifiedAirtimeTransaction =
+          getLastYearTransactionArray(airtimeTransactions);
+        modifiedBundleTransaction =
+          getLastYearTransactionArray(bundleTransactions);
+        break;
+      default:
+        modifiedAirtimeTransaction = [...airtimeTransactions];
+        modifiedBundleTransaction = [...bundleTransactions];
+    }
+
+    res
+      .status(200)
+      .json([...modifiedAirtimeTransaction, ...modifiedBundleTransaction]);
+  })
+);
+
+// Generate transactional report
+router.post(
+  "/agent/transactions/report",
+  verifyToken,
+  verifyAgent,
+  asyncHandler(async (req, res) => {
+    const { email } = req.user;
+    const { startDate, endDate, transactions, type } = req.body;
+    const sDate = moment(startDate).format("MMMM DD YYYY");
+    const eDate = moment(endDate).format("MMMM DD YYYY");
+
+    const id = randomUUID();
+    const template = await generateHTMLTemplate(
+      transactions,
+      "agent_transactions.ejs"
+    );
+
+    const result = await generateTransactionReport(
+      template,
+      id,
+      `${type}-report`
+    );
+    if (result) {
+      const body = ` <div class="container">
+  <h1>Transactional Report</h1>
+  <p>Dear Customer,</p>
+  <p>Attached is your transactional report from the period ${sDate} to ${eDate}. Please review the details below:</p>
+  <p>If you have any questions or concerns regarding this report, please feel free to contact us.</p>
+  <p>Thank you for your business!</p>
+  <p>Sincerely,<br>Gab Powerful Consults</p>
+  </div>`;
+      // console.log(result);
+      const downloadLink = await uploadFiles(result, "reports");
+
+      await sendReportMail(
+        email,
+        mailTextShell(body),
+        result,
+        " Transaction Report"
+      );
+
+      return res.status(200).json(downloadLink);
+    }
+  })
+);
+router.get(
+  "/agent/airtime",
+  verifyToken,
+  verifyAgent,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+    const { type } = req.query;
+
+    const transactions = await knex("agent_transactions")
+      .select(
+        "_id",
+        "info",
+        "type",
+        "recipient as phonenumber",
+        "type as domain",
+        "amount",
+        "createdAt",
+        "year"
+      )
+      .where({ agent_id: id, type, status: "completed" })
+      .orderBy("createdAt", "desc");
+
+    const transaction = transactions.map(({ info, ...rest }) => {
+      return {
+        ...rest,
+        info: JSON.parse(info),
+      };
+    });
+
+    //Get Recent Transactions
+    const recent = getRecentTransaction(transaction, 3);
+    //Get Today Transactions
+    const today = currencyFormatter(getTodayTransaction(transaction));
+    const yesterday = currencyFormatter(getYesterdayTransaction(transaction));
+    const lastSevenDaysData = getLastSevenDaysTransactions([], transaction);
+
+    const lastSevenDaysTotal = currencyFormatter(
+      _.sum(lastSevenDaysData?.ecg?.data)
+    );
+    const thisMonth = currencyFormatter(getThisMonthTransaction(transaction));
+    const thisYear = getTransactionsByMonth([], transaction);
+
+    const topCustomers = getTopCustomers(transaction);
+
+    res.status(200).json({
+      recent,
+      today,
+      yesterday,
+      lastSevenDaysTotal,
+      lastSevenDays: {
+        labels: lastSevenDaysData.labels,
+        data: lastSevenDaysData.ecg?.data,
+      },
+      thisMonth,
+      thisYear: {
+        labels: thisYear?.labels,
+        data: thisYear?.ecg?.data,
+      },
+      topCustomers,
+    });
+  })
+);
+
+router.get(
+  "/agent/total-sales",
+  verifyToken,
+  verifyAgent,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+    const year = moment().year();
+    const transactions = await knex("agent_transactions")
+      .select(
+        "_id",
+        "info",
+        "type",
+        "recipient as phonenumber",
+        "type as domain",
+        "amount",
+        "createdAt",
+        "year"
+      )
+      .where({ agent_id: id, year: year, status: "completed" })
+      .orderBy("createdAt", "desc");
+
+    const modifiedTransactions = transactions.map(({ info, ...rest }) => {
+      return {
+        ...rest,
+        info: JSON.parse(info),
+      };
+    });
+    const groupedTransactions = _.groupBy(modifiedTransactions, "type");
+    const airtimeTransaction = groupedTransactions?.airtime;
+    const bundleTransaction = groupedTransactions?.bundle;
+
+    //GET Total numbers of transactions
+    const airtimeCount = airtimeTransaction?.length;
+    const bundleCount = bundleTransaction?.length;
+
+    const count = {
+      labels: ["Airtime Transfer", "Data Bundle"],
+      data: [airtimeCount, bundleCount],
+    };
+
+    const recents = _.orderBy(
+      [
+        ...getRecentTransaction(airtimeTransaction, 3),
+        ...getRecentTransaction(bundleTransaction, 3),
+      ],
+      "createdAt",
+      "desc"
+    );
+
+    //Get Airtime Total Amount
+    const airtimeTotal = _.sum(
+      _.map(airtimeTransaction, (item) => Number(item?.amount))
+    );
+    //Get Bundlet Total Amount
+    const bundleTotal = _.sum(
+      _.map(bundleTransaction, (item) => Number(item?.amount))
+    );
+
+    const grandTotal = {
+      airtime: airtimeTotal,
+      bundle: bundleTotal,
+      total: Number(airtimeTotal + bundleTotal),
+    };
+
+    //GET Total Sales today
+
+    const today = {
+      airtime: getTodayTransaction(airtimeTransaction),
+      bundle: getTodayTransaction(bundleTransaction),
+    };
+
+    //GROUP transactions by Week
+    const airtimeSevenDays = getLastSevenDaysTransactions(
+      bundleTransaction,
+      airtimeTransaction
+    );
+    airtimeSevenDays.bundle = airtimeSevenDays.voucher;
+    airtimeSevenDays.airtime = airtimeSevenDays.ecg;
+
+    //GROUP transactions by month
+    const airtimeByMonth = getTransactionsByMonth(
+      bundleTransaction,
+      airtimeTransaction
+    );
+    airtimeByMonth.bundle = airtimeByMonth.voucher;
+    airtimeByMonth.airtime = airtimeByMonth.ecg;
+
+    res.status(200).json({
+      totalSales: grandTotal,
+      totalCount: count,
+      recents,
+      today,
+      sevenDays: airtimeSevenDays,
+      transactionByMonth: airtimeByMonth,
+    });
+  })
+);
+
+router.get(
+  "/agent/report",
+  verifyToken,
+  verifyAgent,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+    const { year, type } = req.query;
+
+    const transactions = await knex("agent_transactions")
+      .select(
+        "_id",
+        "info",
+        "amount",
+        "type",
+        "provider",
+        "year",
+        "status",
+        "agent_id",
+        "createdAt"
+      )
+      .where({
+        year,
+        status: "completed",
+        agent_id: id,
+      });
+
+    const modifiedTransactions = transactions.map(({ info, ...rest }) => {
+      return {
+        ...rest,
+        info: JSON.parse(info),
+      };
+    });
+    const groupedTransactions = _.groupBy(modifiedTransactions, "type");
+    const modifiedAirtimeTransaction = groupedTransactions?.airtime ?? [];
+    const modifiedBundleTransaction = groupedTransactions?.bundle ?? [];
+
+    if (type === "All") {
+      const airtimeByMonth = getTransactionsArrayByMonth(
+        modifiedAirtimeTransaction
+      );
+      const bundleByMonth = getTransactionsArrayByMonth(
+        modifiedBundleTransaction
+      );
+      return res.status(200).json({
+        airtime: airtimeByMonth,
+        bundle: bundleByMonth,
+      });
+    }
+
+    if (type === "Airtime") {
+      const airtimeByMonth = getTransactionsArrayByMonth(
+        modifiedAirtimeTransaction
+      );
+      return res.status(200).json({
+        report: airtimeByMonth,
+      });
+    }
+    if (type === "Bundle") {
+      const bundleByMonth = getTransactionsArrayByMonth(
+        modifiedBundleTransaction
+      );
+      return res.status(200).json({
+        report: bundleByMonth,
+      });
+    }
+  })
+);
+router.get(
+  "/agents/wallet",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const agentsWallets = await knex("agent_wallets")
+      .join("agents", "agent_wallets.agent_id", "=", "agents._id")
+      .select(
+        "agents._id as _id",
+        "agent_wallets.amount as amount",
+        "agent_wallets.agent_key as clientID",
+        "agents.email as email",
+        "agents.phonenumber as phonenumber",
+        knex.raw("CONCAT(firstname,' ',lastname) as name"),
+        knex.raw(
+          "DATE_FORMAT(agent_wallets.updatedAt,'%D %M %Y ,%r' ) as updatedAt"
+        )
+      );
+
+    return res.status(200).json(agentsWallets);
+  })
+);
+
+router.post(
+  "/agents/wallet",
+  verifyToken,
+  verifyAdmin,
+  Upload.single("attachment"),
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+    const { id: agent_id, comment, amount } = req.body;
+
+    const transaction = await knex.transaction();
+    let url = req.file?.filename;
+
+    try {
+      if (req.file) {
+        url = await uploadAttachment(req.file);
+      }
+
+      await transaction("agent_wallet_transactions").insert({
+        _id: randomUUID(),
+        agent_id,
+        issuer: id,
+        amount,
+        comment,
+        attachment: url,
+      });
+
+      await transaction("agent_wallets").where("agent_id", agent_id).increment({
+        amount,
+      });
+
+      await transaction.commit();
+
+      return res.status(200).json("Wallet top up successful");
+    } catch (error) {
+      await transaction.rollback();
+      return res.status(500).json("Top up failed");
+    }
+  })
+);
+router.get(
+  "/agents/wallet/transaction",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { startDate, endDate, report } = req.query;
+
+    const sDate = moment(startDate).format("MMMM DD YYYY");
+    const eDate = moment(endDate).format("MMMM DD YYYY");
+
+    const transactions = await knex.raw(
+      `SELECT *
+        FROM (
+            SELECT *,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+            FROM agent_wallet_transactions_view
+        ) AS agent_wallet_transactions_view_  WHERE purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,
+      [sDate, eDate]
+    );
+    // console.log(_transactions[0]);
+    if (report && report === "true") {
+      if (transactions[0].length === 0) {
+        return res.status(200).json("No data found");
+      }
+
+      const data = {
+        person: {
+          name: transactions[0][0]?.userName,
+          startDate: sDate,
+          endDate: eDate,
+        },
+        transactions: transactions[0],
+      };
+
+      const walletTemplate = await generateHTMLTemplate(
+        data,
+        "wallet_report.ejs"
+      );
+      const id = randomUUID();
+
+      const result = await generateTransactionReport(
+        walletTemplate,
+        id,
+        "wallet-report"
+      );
+
+      // const result = plimit(() =>
+      //   generateTransactionReport(walletTemplate, id, "wallet-report")
+      // );
+
+      if (result) {
+        const body = ` <div class="container">
+    <h1>Transactional Report</h1>
+    <p>Dear Customer,</p>
+    <p>Attached is your wallet transactional report from ${sDate} to ${eDate}. Please review the details below:</p>
+    <p>If you have any questions or concerns regarding this report, please feel free to contact us.</p>
+    <p>Thank you for your business!</p>
+    <p>Sincerely,<br>Gab Powerful Consults</p>
+    </div>`;
+        const downloadLink = await uploadFiles(result, "reports");
+
+        await sendReportMail(
+          process.env.MAIL_CLIENT_USER,
+          mailTextShell(body),
+          result,
+          "Wallet Transaction Report"
+        );
+
+        return res.status(200).json(downloadLink);
+      }
+    }
+
+    res.status(200).json(transactions[0]);
+  })
+);
+//....................users..................//
+
+router.get(
+  "/users/wallet",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const usersWallets = await knex("user_wallets")
+      .join("users", "user_wallets.user_id", "=", "users._id")
+      .select(
+        "users._id as _id",
+        "user_wallets.amount as amount",
+        "user_wallets.user_key as clientID",
+        "users.email as email",
+        "users.phonenumber as phonenumber",
+        knex.raw("CONCAT(firstname,' ',lastname) as name"),
+        knex.raw(
+          "DATE_FORMAT(user_wallets.updatedAt,'%D %M %Y ,%r' ) as updatedAt"
+        )
+      );
+
+    return res.status(200).json(usersWallets);
+  })
+);
+
+router.post(
+  "/users/wallet",
+  verifyToken,
+  verifyAdmin,
+  Upload.single("attachment"),
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+    const { id: user_id, type, amount, comment } = req.body;
+
+    const transaction = await knex.transaction();
+    let url = req.file?.filename;
+
+    try {
+      if (req.file) {
+        url = await uploadAttachment(req.file);
+      
+      }
+      if (type === "user") {
+        await transaction("user_wallet_transactions").insert({
+          _id: randomUUID(),
+          user_id,
+          issuer: id,
+          amount,
+          comment,
+          attachment: url,
+        });
+
+        await transaction("user_wallets").where("user_id", user_id).increment({
+          amount,
+        });
+      }
+      if (type === "agent") {
+        await transaction("agent_wallet_transactions").insert({
+          _id: randomUUID(),
+          agent_id: user_id,
+          issuer: id,
+          amount,
+          comment,
+          attachment: url,
+        });
+
+        await transaction("agent_wallets")
+          .where("agent_id", user_id)
+          .increment({
+            amount,
+          });
+      }
+
+      if (type === "user") {
+        await transaction("user_notifications").insert({
+          _id: randomUUID(),
+          user_id: user_id,
+          type: "wallet",
+          title: "Wallet",
+          message: `Your wallet account has been credited with an amount of GHS ${amount}.`,
+        });
+      }
+      if (type === "agent") {
+        await transaction("agent_notifications").insert({
+          _id: randomUUID(),
+          agent_id: user_id,
+          type: "wallet",
+          title: "Wallet",
+          message: `Your wallet account has been created with GHS ${amount}.`,
+        });
+      }
+      await transaction.commit();
+      return res.status(200).json("Wallet top up successful");
+    } catch (error) {
+      await transaction.rollback();
+      return res.status(500).json("Top up failed");
+    }
+  })
+);
+
+router.get(
+  "/users/wallet/transactions",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { startDate, endDate, report } = req.query;
+
+    const sDate = moment(startDate).format("MMMM DD YYYY");
+    const eDate = moment(endDate).format("MMMM DD YYYY");
+
+    const transactions = await knex.raw(
+      `SELECT *
+        FROM (
+            SELECT *,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+            FROM user_wallet_transactions_view
+        ) AS user_wallet_transactions_view_  WHERE purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,
+      [sDate, eDate]
+    );
+    // console.log(_transactions[0]);
+    if (report && report === "true") {
+      if (transactions[0].length === 0) {
+        return res.status(200).json("No data found");
+      }
+
+      const data = {
+        person: {
+          name: transactions[0][0]?.userName,
+          startDate: sDate,
+          endDate: eDate,
+        },
+        transactions: transactions[0],
+      };
+
+      const walletTemplate = await generateHTMLTemplate(
+        data,
+        "wallet_report.ejs"
+      );
+      const id = randomUUID();
+
+      const result = await generateTransactionReport(
+        walletTemplate,
+        id,
+        "wallet-report"
+      );
+
+      // const result = plimit(() =>
+      //   generateTransactionReport(walletTemplate, id, "wallet-report")
+      // );
+
+      if (result) {
+        const body = ` <div class="container">
+    <h1>Transactional Report</h1>
+    <p>Dear [Customer Name],</p>
+    <p>Attached is your wallet transactional report for the period [Period]. Please review the details below:</p>
+    <p>If you have any questions or concerns regarding this report, please feel free to contact us.</p>
+    <p>Thank you for your business!</p>
+    <p>Sincerely,<br>Gab Powerful Consults</p>
+    </div>`;
+
+        const downloadLink = await uploadFiles(result, "reports");
+
+        await sendReportMail(
+          process.env.MAIL_CLIENT_USER,
+          mailTextShell(body),
+          result,
+          "Wallet Transaction Report"
+        );
+
+        return res.status(200).json(downloadLink);
+      }
+    }
+
+    res.status(200).json(transactions[0]);
+  })
+);
+router.get(
+  "/users/wallet/transactions/:id",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const transactions = await knex("user_wallet_transactions_view")
+      .where("userID", id)
+      .select("_id", "createdAt", "amount", "status", "issuerName")
+      .orderBy("createdAt", "desc");
+
+    res.status(200).json(transactions);
   })
 );
 

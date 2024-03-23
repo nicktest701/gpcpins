@@ -18,7 +18,7 @@ const sendElectricityMail = async (transaction_id, email_address, status) => {
     });
 
     const pendingMailOptions = {
-      from: `GPCPINS ${process.env.MAIL_CLIENT_USER}`,
+      from: `GPC ${process.env.MAIL_CLIENT_USER}`,
       sender: process.env.MAIL_CLIENT_USER,
       to: [email_address],
       subject: 'Prepaid Units',
@@ -30,7 +30,7 @@ const sendElectricityMail = async (transaction_id, email_address, status) => {
     };
 
     const successMailOptions = {
-      from: `GPC PINS ${process.env.MAIL_CLIENT_USER}`,
+      from: `GPC ${process.env.MAIL_CLIENT_USER}`,
       sender: process.env.MAIL_CLIENT_USER,
       to: [email_address],
       subject: 'Prepaid Units',

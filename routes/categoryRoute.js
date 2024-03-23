@@ -145,7 +145,6 @@ router.get(
     const modifiedCategories = categories.map((category) => {
       const details = JSON.parse(category?.details);
       const date = moment(details?.date).add(12, "hours");
-      console.log(date);
 
       if (
         ["cinema", "stadium", "bus"].includes(category?.category) &&
@@ -263,7 +262,7 @@ router.get(
       return {
         ...item,
         details: JSON.parse(item?.details),
-        activeVouchers,
+        activeVouchers: activeVouchers[0]?.count,
       };
     });
 

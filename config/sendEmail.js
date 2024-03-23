@@ -29,7 +29,7 @@ const sendEMail = async (email_address, message, subject) => {
     }
 
     const mailOptions = {
-      from: `GPCPINS ${process.env.MAIL_CLIENT_USER}`,
+      from: `GPC ${process.env.MAIL_CLIENT_USER}`,
       sender: process.env.MAIL_CLIENT_USER,
       to: [email_address],
       subject: subject || 'Gab Powerful Consult',

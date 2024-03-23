@@ -1,28 +1,28 @@
-const router = require('express').Router();
-const asyncHandler = require('express-async-handler');
-const { randomUUID, randomBytes } = require('crypto');
-const _ = require('lodash');
-const multer = require('multer');
+const router = require("express").Router();
+const asyncHandler = require("express-async-handler");
+const { randomUUID, randomBytes } = require("crypto");
+const _ = require("lodash");
+const multer = require("multer");
 
-const sendMail = require('../config/sendEmail');
-const verifyAdmin = require('../middlewares/verifyAdmin');
-const { verifyToken } = require('../middlewares/verifyToken');
+const sendMail = require("../config/sendEmail");
+const verifyAdmin = require("../middlewares/verifyAdmin");
+const { verifyToken } = require("../middlewares/verifyToken");
 
 //model
 
-const { mailTextShell } = require('../config/mailText');
-const { uploadPhoto } = require('../config/uploadFile');
+const { mailTextShell } = require("../config/mailText");
+const { uploadPhoto } = require("../config/uploadFile");
 
 //db
-const knex = require('../db/knex');
-const { isValidUUID2, isValidEmail } = require('../config/validation');
+const knex = require("../db/knex");
+const { isValidUUID2, isValidEmail } = require("../config/validation");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, './images/');
+    cb(null, "./images/");
   },
   filename: function (req, file, cb) {
-    const ext = file?.originalname?.split('.')[1];
+    const ext = file?.originalname?.split(".")[1];
 
     cb(null, `${randomUUID()}.${ext}`);
   },
@@ -31,32 +31,32 @@ const Storage = multer.diskStorage({
 const Upload = multer({ storage: Storage });
 
 router.get(
-  '/',
+  "/",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
     //  const employees=await knex('employees').select('*');
 
-    const employees = await knex('employees').select(
-      '_id',
-      'firstname',
-      'lastname',
-      'username',
-      'email',
-      'phonenumber',
-      'role',
-      'profile',
-      'active'
+    const employees = await knex("employees").select(
+      "_id",
+      "firstname",
+      "lastname",
+      "username",
+      knex.raw("CONCAT(firstname,' ',lastname) as name"),
+      "email",
+      "permissions",
+      "phonenumber",
+      "role",
+      "profile",
+      "active"
     );
 
     const modifiedEmployees = employees.map(
-      ({ lastname, firstname, role, ...rest }) => {
+      ({ role, permissions, ...rest }) => {
         return {
           ...rest,
-          lastname,
-          firstname,
-          name: `${firstname} ${lastname}`,
-          role: role === process.env.ADMIN_ID ? 'Administrator' : 'Employee',
+          permissions: JSON.parse(permissions),
+          role: role === process.env.ADMIN_ID ? "Administrator" : "Employee",
         };
       }
     );
@@ -66,42 +66,46 @@ router.get(
 );
 
 router.get(
-  '/:id',
+  "/:id",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     if (!isValidUUID2(id)) {
-      return res.status(400).json('Invalid ID!');
+      return res.status(400).json("Invalid ID!");
     }
 
-    const employee = await knex('employees')
+    const employee = await knex("employees")
       .select(
-        '_id',
-        'firstname',
-        'lastname',
-        'username',
-        'email',
-        'phonenumber',
-        'role',
-        'profile',
-        'active'
+        "_id",
+        "firstname",
+        "lastname",
+        "username",
+        knex.raw("CONCAT(firstname,' ',lastname) as name"),
+        "email",
+        "permissions",
+        "phonenumber",
+        "role",
+        "profile",
+        "active"
       )
+      .where({
+        _id: id,
+      })
       .limit(1);
 
     if (_.isEmpty(employee)) {
       return res.status(400).json({});
     }
 
-    const { lastname, firstname, role, ...rest } = employee[0];
+    const { permissions, role, ...rest } = employee[0];
 
     const modifiedEmployee = {
       ...rest,
-      lastname,
-      firstname,
-      name: `${firstname} ${lastname}`,
-      role: role === process.env.ADMIN_ID ? 'Administrator' : 'Employee',
+      permissions: JSON.parse(permissions),
+
+      role: role === process.env.ADMIN_ID ? "Administrator" : "Employee",
     };
 
     res.status(200).json(modifiedEmployee);
@@ -109,27 +113,27 @@ router.get(
 );
 
 router.post(
-  '/',
+  "/",
   verifyToken,
   verifyAdmin,
-  Upload.single('profile'),
+  Upload.single("profile"),
   asyncHandler(async (req, res) => {
     const newEmployee = req.body;
 
-    const doesEmployeeExists = await knex('employees')
-      .select('email')
-      .where('email', newEmployee.email)
+    const doesEmployeeExists = await knex("employees")
+      .select("email")
+      .where("email", newEmployee.email)
       .limit(1);
 
     if (!_.isEmpty(doesEmployeeExists[0])) {
       return res
         .status(400)
-        .json('An employee with this account already exists!');
+        .json("An employee with this account already exists!");
     }
 
-    const doesUserNameExists = await knex('employees')
-      .select('username')
-      .where('username', newEmployee?.username)
+    const doesUserNameExists = await knex("employees")
+      .select("username")
+      .where("username", newEmployee?.username)
       .limit(1);
 
     if (!_.isEmpty(doesUserNameExists)) {
@@ -138,11 +142,11 @@ router.post(
         .json(`Username, '${newEmployee?.username}' is not available!`);
     }
 
-    if (req.body?.role === 'Employee') {
+    if (req.body?.role === "Employee") {
       newEmployee.role = process.env.EMPLOYEE_ID;
     }
 
-    if (req.body?.role === 'Administrator') {
+    if (req.body?.role === "Administrator") {
       newEmployee.role = process.env.ADMIN_ID;
     }
 
@@ -154,28 +158,30 @@ router.post(
     }
 
     const _id = randomUUID();
-    const employee = await knex('employees').insert({
+    const employee = await knex("employees").insert({
       _id,
       ...newEmployee,
+      permissions: JSON.stringify([]),
     });
 
     if (_.isEmpty(employee)) {
-      res.status(400).json('Error saving employee information!');
+      res.status(400).json("Error saving employee information!");
     }
 
-    const token = randomBytes(32).toString('hex');
+    const token = randomBytes(32).toString("hex");
 
     const codeInfo = {
       _id: randomUUID(),
       token,
       email: newEmployee?.email,
     };
-    await knex('tokens').insert(codeInfo);
+    await knex("tokens").insert(codeInfo);
 
-    const message_url = `https://admin.gpcpins/auth/verify?id=${codeInfo?._id}&token=${codeInfo?.token}`;
-    // console.log(
-    //   `http://localhost:5000/auth/verify?id=${codeInfo?._id}&token=${codeInfo?.token}`
-    // );
+    let message_url = `http://localhost:5003/auth/verify?id=${codeInfo?._id}&token=${codeInfo?.token}`;
+    if (process.env.NODE_ENV === "production") {
+      message_url = `https://admin.gpcpins/auth/verify?id=${codeInfo?._id}&token=${codeInfo?.token}`;
+    }
+    console.log(message_url);
 
     const message = `
         <div style="width:500px;">
@@ -200,91 +206,90 @@ router.post(
     try {
       await sendMail(newEmployee?.email, mailTextShell(message));
     } catch (error) {
-      await knex('employees').where('_id', _id).del();
-      await knex('tokens').where('_id', codeInfo?._id).del();
+      await knex("employees").where("_id", _id).del();
+      await knex("tokens").where("_id", codeInfo?._id).del();
 
-      return res.status(400).json('An error has occurred.Try again later');
+      return res.status(400).json("An error has occurred.Try again later");
     }
 
-    res.status(201).json('Employee saved successfully!!!');
+    res.status(201).json("Employee saved successfully!!!");
   })
 );
 
 router.put(
-  '/',
+  "/",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-  
     const { _id, ...rest } = req.body;
 
     rest.role =
-      req.body?.role === 'Employee'
+      req.body?.role === "Employee"
         ? process.env.EMPLOYEE_ID
         : process.env.ADMIN_ID;
 
-    const employee = await knex('employees').where('_id', _id).update(rest);
+    const employee = await knex("employees").where("_id", _id).update(rest);
 
     if (employee !== 1) {
-      res.status(404).json('Error updating employee information.');
+      res.status(404).json("Error updating employee information.");
     }
-    res.status(201).json('Changes saved successfully!!!');
+    res.status(201).json("Changes saved successfully!!!");
   })
 );
 
 //Enable or Disable Employee Account
 router.put(
-  '/status',
+  "/status",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const { id, active } = req.body;
 
-    const updatedEmployee = await knex('employees')
-      .where('_id', id)
+    const updatedEmployee = await knex("employees")
+      .where("_id", id)
       .update({ active: active });
 
     if (updatedEmployee !== 1) {
-      return res.status(400).json('Error updating employee info');
+      return res.status(400).json("Error updating employee info");
     }
 
     res
       .status(201)
       .json(
-        Boolean(active) === true ? 'Account enabled!' : 'Account disabled!'
+        Boolean(active) === true ? "Account enabled!" : "Account disabled!"
       );
   })
 );
 
 //Reset Password
 router.put(
-  '/reset',
+  "/reset",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const { email } = req.body;
 
     if (!isValidEmail(email)) {
-      return res.status(400).json('Invalid Request.Email not available!');
+      return res.status(400).json("Invalid Request.Email not available!");
     }
 
-    const doesEmployeeExists = await knex('employees')
-      .select('email')
-      .where('email', email)
+    const doesEmployeeExists = await knex("employees")
+      .select("email")
+      .where("email", email)
       .limit(1);
 
     if (_.isEmpty(doesEmployeeExists)) {
-      return res.status(400).json('Invalid Request.Email not available!');
+      return res.status(400).json("Invalid Request.Email not available!");
     }
 
-    const token = randomBytes(32).toString('hex');
+    const token = randomBytes(32).toString("hex");
 
     const codeInfo = {
       _id: randomUUID(),
       token,
       email,
     };
-    await knex('tokens').insert(codeInfo);
+    await knex("tokens").insert(codeInfo);
 
     const message_url = `https://www.gpcpins/auth/verify?id=${codeInfo?._id}&token=${codeInfo?.token}`;
 
@@ -308,31 +313,31 @@ router.put(
     try {
       await sendMail(email, mailTextShell(message));
     } catch (error) {
-      return res.status(500).json('An error has occurred!');
+      return res.status(500).json("An error has occurred!");
     }
 
-    res.status(201).json('Password Reset link sent!!!');
+    res.status(201).json("Password Reset link sent!!!");
   })
 );
 
 //@DELETE student
 router.delete(
-  '/:id',
+  "/:id",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     if (!isValidUUID2(id)) {
-      return res.status(401).json('Invalid Request!');
+      return res.status(401).json("Invalid Request!");
     }
 
-    const employee = await knex('employees').where('_id', id).del();
+    const employee = await knex("employees").where("_id", id).del();
 
     if (employee !== 1) {
-      return res.status(500).json('Invalid Request!');
+      return res.status(500).json("Invalid Request!");
     }
-    res.status(200).json('Employee Removed!');
+    res.status(200).json("Employee Removed!");
   })
 );
 

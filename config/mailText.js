@@ -779,11 +779,11 @@ ${style}
                                                                           of Service</a>
 
 
-                                                                      <br><br>Manhyia-Opposite St.
-                                                                      Anne"s International School,
-                                                                      Ashtown, Kumasi, Ghana, 0322936582
+                                                                      <br><br>Menhyia-Opposite St.
+                                                                      Anne's International School,
+                                                                      Ashtown, Kumasi, Ghana, 0322036582
                                                                       <br><br>©
-                                                                      2023&nbsp;Gab Powerful Consult<br><br><a
+                                                                      ${new Date().getFullYear()}&nbsp;Gab Powerful Consult<br><br><a
                                                                           href="https://www.gpcpins.com"
                                                                           target="_blank"
                                                                           style="-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;text-decoration:underline;color:#022B3A;font-size:14px">View
@@ -1312,11 +1312,11 @@ ${style}
                                                                           of Service</a>
 
 
-                                                                      <br><br>Manhyia-Opposite St.
-                                                                      Anne"s International School,
-                                                                      Ashtown, Kumasi, Ghana, 0322936582
+                                                                      <br><br>Menhyia-Opposite St.
+                                                                      Anne's International School,
+                                                                      Ashtown, Kumasi, Ghana, 0322036582
                                                                       <br><br>©
-                                                                      2023&nbsp;Gab Powerful Consult<br><br><a
+                                                                      ${new Date().getFullYear()}&nbsp;Gab Powerful Consult<br><br><a
                                                                           href="https://www.gpcpins.com"
                                                                           target="_blank"
                                                                           style="-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;text-decoration:underline;color:#022B3A;font-size:14px">View
@@ -1831,11 +1831,11 @@ ${style}
                                                                           of Service</a>
 
 
-                                                                      <br><br>Manhyia-Opposite St.
-                                                                      Anne"s International School,
-                                                                      Ashtown, Kumasi, Ghana, 0322936582
+                                                                      <br><br>Menhyia-Opposite St.
+                                                                      Anne's International School,
+                                                                      Ashtown, Kumasi, Ghana, 0322036582
                                                                       <br><br>©
-                                                                      2023&nbsp;Gab Powerful Consult<br><br><a
+                                                                      ${new Date().getFullYear()}&nbsp;Gab Powerful Consult<br><br><a
                                                                           href="https://www.gpcpins.com"
                                                                           target="_blank"
                                                                           style="-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;text-decoration:underline;color:#022B3A;font-size:14px">View
@@ -2332,11 +2332,11 @@ ${style}
                                                                             of Service</a>
 
 
-                                                                        <br><br>Manhyia-Opposite St.
-                                                                        Anne"s International School,
-                                                                        Ashtown, Kumasi, Ghana, 0322936582
+                                                                        <br><br>Menhyia-Opposite St.
+                                                                        Anne's International School,
+                                                                        Ashtown, Kumasi, Ghana, 0322036582
                                                                         <br><br>©
-                                                                        2023&nbsp;Gab Powerful Consult<br><br><a
+                                                                        ${new Date().getFullYear()}&nbsp;Gab Powerful Consult<br><br><a
                                                                             href="https://www.gpcpins.com"
                                                                             target="_blank"
                                                                             style="-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;text-decoration:underline;color:#022B3A;font-size:14px">View

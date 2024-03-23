@@ -6,7 +6,7 @@ const sendSMS = async (message, telephoneNumber) => {
     // SEND SMS
 
     const data = {
-      From: 'GPC PINS',
+      From: 'GPC',
       To: telephoneNumber,
       Content: message,
     };
@@ -31,7 +31,7 @@ const sendBatchSMS = async (message, telephoneNumbers) => {
     // SEND SMS
 
     const data = {
-      From: 'GPC PINS',
+      From: 'GPC',
       Recipients: [...telephoneNumbers],
       Content: message,
     };

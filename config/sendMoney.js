@@ -113,24 +113,37 @@ async function accountBalance() {
 
 async function sendAirtime(info) {
   try {
-    const res = await axios({
-      method: "GET",
-      url: `${process.env.MSDID_TOP_UP_URL}/airtime`,
-      headers: {
-        accept: "application/json",
-        ApiKey: process.env.MSDID_TOP_UP_KEY,
-        ApiSecret: process.env.MSDID_TOP_UP_PIN,
-      },
-      params: {
-        retailer: process.env.MSDID_TOP_UP_RETAILER,
-        recipient: info?.recipient,
-        amount: info?.amount,
-        network: info.network || 0,
-        trxn: info?.transaction_reference,
-      },
-    });
+    if (process.env.NODE_ENV === "production") {
+      const res = await axios({
+        method: "GET",
+        url: `${process.env.MSDID_TOP_UP_URL}/airtime`,
+        headers: {
+          accept: "application/json",
+          ApiKey: process.env.MSDID_TOP_UP_KEY,
+          ApiSecret: process.env.MSDID_TOP_UP_PIN,
+        },
+        params: {
+          retailer: process.env.MSDID_TOP_UP_RETAILER,
+          recipient: info?.recipient,
+          amount: info?.amount,
+          network: info.network || 0,
+          trxn: info?.transaction_reference,
+        },
+      });
 
-    return res.data;
+      return res.data;
+    } else {
+      return {
+        status: "OK",
+        message: `You have successfully recharged 233543772591 with GHS ${info?.amount}, you were charged GHS ${info?.amount} and your current balance is GHS 295.00`,
+        trxn: "f917f1a0c87311ee86e5890f3267d17b",
+        "status-code": "00",
+        "local-trxn-code": info?.transaction_reference,
+        balance_before: "300.0000",
+        balance_after: 295,
+        network: "MTN",
+      };
+    }
 
     // {
     //   "status": "OK",
@@ -146,36 +159,46 @@ async function sendAirtime(info) {
     throw error;
   }
 }
+// try {
+//   if(process.env.NODE_ENV==='production'){
+
+//   }else{
+
+//   }
+
 async function sendBundle(info) {
   try {
-    const res = await axios({
-      method: "GET",
-      url: `${process.env.MSDID_TOP_UP_URL}/dataBundle`,
-      headers: {
-        accept: "application/json",
-        ApiKey: process.env.MSDID_TOP_UP_KEY,
-        ApiSecret: process.env.MSDID_TOP_UP_PIN,
-      },
-      params: {
-        retailer: process.env.MSDID_TOP_UP_RETAILER,
-        recipient: info?.recipient,
-        data_code: info.data_code,
-        network: info.network || 0,
-        trxn: info?.transaction_reference,
-      },
-    });
+    if (process.env.NODE_ENV === "production") {
+      const res = await axios({
+        method: "GET",
+        url: `${process.env.MSDID_TOP_UP_URL}/dataBundle`,
+        headers: {
+          accept: "application/json",
+          ApiKey: process.env.MSDID_TOP_UP_KEY,
+          ApiSecret: process.env.MSDID_TOP_UP_PIN,
+        },
+        params: {
+          retailer: process.env.MSDID_TOP_UP_RETAILER,
+          recipient: info?.recipient,
+          data_code: info.data_code,
+          network: info.network || 0,
+          trxn: info?.transaction_reference,
+        },
+      });
 
-    return res.data;
-
-    // {
-    //   "status": "OK",
-    //   "message": "You have successfully recharged 233543772591 with 7.27GB, you were charged GHS 3.00 and your current balance is GHS 292.00",
-    //   "trxn": "4cc825c0c87511ee805699cce7947402",
-    //   "status-code": "00",
-    //   "local-trxn-code": "73fa4584-66fc-421c-a482-4e7c00aa6a8b",
-    //   "balance_before": "295.0000",
-    //   "balance_after": 292
-    // }
+      return res.data;
+    } else {
+      return {
+        status: "OK",
+        message:
+          "You have successfully recharged 233543772591 with 7.27GB, you were charged GHS 3.00 and your current balance is GHS 292.00",
+        trxn: "4cc825c0c87511ee805699cce7947402",
+        "status-code": "00",
+        "local-trxn-code": "73fa4584-66fc-421c-a482-4e7c00aa6a8b",
+        balance_before: "295.0000",
+        balance_after: 292,
+      };
+    }
   } catch (error) {
     throw error;
   }

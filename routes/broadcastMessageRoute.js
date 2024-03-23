@@ -76,7 +76,7 @@ router.post(
     <div style='text-align:left;'>
     <p>Dear ${newBroadcastMessage.recipient},</p>
     
-    <p>${newBroadcastMessage.body}</p>
+    <p>${newBroadcastMessage.message}</p>
     
     <p>-- Gab Powerful Team --</p>
     </div>
@@ -84,7 +84,7 @@ router.post(
      </div>`;
 
     const MESSAGE_TEXT = `Dear ${newBroadcastMessage.recipient},
-     ${newBroadcastMessage.body}`;
+     ${newBroadcastMessage.message}`;
 
     let info = [];
 
@@ -137,14 +137,14 @@ router.put(
   verifyAdmin,
 
   asyncHandler(async (req, res) => {
-    const newBroadcastMessage = req.body;
+    const newBroadcastMessage = req.message;
 
     const MAIL_TEXT = `<div>
     <h2>${newBroadcastMessage?.title}</h2>
     <div style='text-align:left;'>
     <p>Dear ${newBroadcastMessage.recipient},</p>
     
-    <p>${newBroadcastMessage.body}</p>
+    <p>${newBroadcastMessage.message}</p>
     
     <p>-- Gab Powerful Team --</p>
     </div>
@@ -152,7 +152,7 @@ router.put(
      </div>`;
 
     const MESSAGE_TEXT = `Dear ${newBroadcastMessage.recipient},
-     ${newBroadcastMessage.body}`;
+     ${newBroadcastMessage.message}`;
 
     let info = [];
 

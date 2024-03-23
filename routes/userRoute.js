@@ -4,12 +4,18 @@ const _ = require("lodash");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { randomUUID } = require("crypto");
-const { otpGen } = require("otp-gen-agent");
+const { otpGen, customOtpGen } = require("otp-gen-agent");
 const multer = require("multer");
+const moment = require("moment");
 const { rateLimit } = require("express-rate-limit");
 const axios = require("axios");
-
-const { signAccessToken, signRefreshToken } = require("../config/token");
+const cron = require("node-cron");
+const {
+  signAccessToken,
+  signRefreshToken,
+  signSampleRefreshToken,
+  signSampleToken,
+} = require("../config/token");
 const {
   verifyToken,
   verifyRefreshToken,
@@ -27,11 +33,13 @@ const limit = rateLimit({
 //model
 const { mailTextShell } = require("../config/mailText");
 const { hasTokenExpired } = require("../config/dateConfigs");
-const isMobile = require("../config/isMobile");
+// const isMobile = require("../config/isMobile");
 
 //db
 const knex = require("../db/knex");
 const { isValidUUID2, isValidEmail } = require("../config/validation");
+const sendEMail = require("../config/sendEmail");
+const { sendBirthdayWishes } = require("../config/cronMessages");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -49,21 +57,29 @@ const Upload = multer({ storage: Storage });
 const ACCESS_EXPIRATION = new Date(Date.now() + 3600000);
 const REFRESH_EXPIRATION = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
 
+cron.schedule("0 0 * * *", async () => {
+  await sendBirthdayWishes();
+});
+
 router.get(
   "/",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const users = await knex("users").select(
-      "_id",
-      "profile",
-      "name",
-      "nid",
-      "dob",
-      "email",
-      "phonenumber",
-      "active"
-    );
+    const users = await knex("users")
+      .select(
+        "_id",
+        "profile",
+        knex.raw("CONCAT(firstname,' ',lastname) as name"),
+        "nid",
+        knex.raw("DATE_FORMAT(dob,'%D %M, %Y') as dobb"),
+        "dob",
+        "email",
+        "phonenumber",
+        "active",
+        "createdAt"
+      )
+      .whereNot("email", "test@test.com");
 
     res.status(200).json(users);
   })
@@ -83,7 +99,9 @@ router.get(
       .select(
         "_id",
         "profile",
-        "name",
+        "firstname",
+        "lastname",
+        knex.raw("CONCAT(firstname,' ',lastname) as name"),
         "email",
         "nid",
         "dob",
@@ -94,13 +112,19 @@ router.get(
       .where("_id", id)
       .limit(1);
 
-    if (_.isEmpty(user) || user[0]?.active === 0) {
+    if (
+      _.isEmpty(user) ||
+      user[0]?.active === 0 ||
+      user[0]?.email === "test@test.com"
+    ) {
       return res.sendStatus(204);
     }
 
     res.status(200).json({
       user: {
         id: user[0]?._id,
+        firstname: user[0]?.firstname,
+        lastname: user[0]?.lastname,
         name: user[0]?.name,
         email: user[0]?.email,
         role: user[0]?.role,
@@ -110,6 +134,17 @@ router.get(
         profile: user[0]?.profile,
       },
     });
+  })
+);
+
+router.get(
+  "/:id",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const users = await knex("user_business_view").where("_id", id).limit(1);
+    res.status(200).json(users[0]);
   })
 );
 
@@ -130,40 +165,42 @@ router.get(
     const accessToken = signAccessToken(updatedUser);
     const refreshToken = signRefreshToken(updatedUser);
 
-    res.cookie("_SSUID_kyfc", accessToken, {
-      maxAge: 1 * 60 * 60 * 1000,
-      expires: ACCESS_EXPIRATION,
-      httpOnly: true,
-      path: "/",
-      secure: true,
-      // domain:
-      // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-      sameSite: "none",
-    });
+    // res.cookie("_SSUID_kyfc", accessToken, {
+    //   maxAge: 1 * 60 * 60 * 1000,
+    //   expires: ACCESS_EXPIRATION,
+    //   httpOnly: true,
+    //   path: "/",
+    //   secure: true,
 
-    res.cookie("_SSUID_X_ayd", refreshToken, {
-      maxAge: 90 * 24 * 60 * 60 * 1000,
-      expires: REFRESH_EXPIRATION,
-      httpOnly: true,
-      path: "/",
-      secure: true,
-      // domain:
-      // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-      sameSite: "none",
-    });
+    //   // domain:
+    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
+    //   sameSite: "none",
+    // });
+
+    // res.cookie("_SSUID_X_ayd", refreshToken, {
+    //   maxAge: 90 * 24 * 60 * 60 * 1000,
+    //   expires: REFRESH_EXPIRATION,
+    //   httpOnly: true,
+    //   path: "/",
+    //   secure: true,
+    //   // domain:
+    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
+    //   sameSite: "none",
+    // });
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
     await knex("users").where("_id", id).update({
       token: hashedToken,
     });
 
-    if (isMobile(req)) {
-      return res.status(200).json({
-        refreshToken,
-      });
-    }
+    // if (isMobile(req)) {
+    res.status(200).json({
+      refreshToken,
+      accessToken,
+    });
+    // }
 
-    res.sendStatus(200);
+    // res.sendStatus(200);
   })
 );
 
@@ -172,7 +209,7 @@ router.post(
   "/sample",
   limit,
   asyncHandler(async (req, res) => {
-    const email = req.body.email || "test@test.com";
+    const email = "test@test.com";
 
     let user = await knex("users").select("*").where("email", email).limit(1);
 
@@ -182,7 +219,7 @@ router.post(
       req.body.email = email;
 
       await knex("users").insert(req.body);
-      console.log(req.body);
+     
       user = await knex("users").select("*").where("email", email).limit(1);
     }
 
@@ -193,41 +230,42 @@ router.post(
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signAccessToken(updatedUser);
-    const refreshToken = signRefreshToken(updatedUser);
+    const accessToken = signSampleToken(updatedUser);
+    const refreshToken = signSampleRefreshToken(updatedUser);
 
-    res.cookie("_SSUID_kyfc", accessToken, {
-      maxAge: 30 * 60 * 1000,
-      httpOnly: true,
-      path: "/",
-      secure: true,
-      // domain:
-      // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-      sameSite: "none",
-    });
+    // res.cookie("_SSUID_kyfc", accessToken, {
+    //   maxAge: 10 * 60 * 1000,
+    //   httpOnly: true,
+    //   path: "/",
+    //   secure: true,
+    //   // domain:
+    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
+    //   sameSite: "none",
+    // });
 
-    res.cookie("_SSUID_X_ayd", refreshToken, {
-      maxAge: 30 * 60 * 1000,
-      httpOnly: true,
-      path: "/",
-      secure: true,
-      // domain:
-      // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-      sameSite: "none",
-    });
+    // res.cookie("_SSUID_X_ayd", refreshToken, {
+    //   maxAge: 10 * 60 * 1000,
+    //   httpOnly: true,
+    //   path: "/",
+    //   secure: true,
+    //   // domain:
+    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
+    //   sameSite: "none",
+    // });
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
     await knex("users").where("_id", user[0]?._id).update({
       token: hashedToken,
     });
 
-    if (isMobile(req)) {
-      return res.status(200).json({
-        refreshToken,
-      });
-    }
+    // if (isMobile(req)) {
+    res.status(200).json({
+      refreshToken,
+      accessToken,
+    });
+    // }
 
-    res.sendStatus(201);
+    // res.sendStatus(201);
   })
 );
 
@@ -248,7 +286,7 @@ router.post(
       .limit(1);
 
     if (_.isEmpty(user)) {
-      return res.status(404).json("Invalid Email Address!");
+      return res.status(404).json("We could not find your Email Address!");
     }
 
     const token = await otpGen();
@@ -295,7 +333,7 @@ router.post(
     const decodedUser = jwt.decode(credential);
 
     let user = await knex("users")
-      .select("*")
+      .select("*", knex.raw("CONCAT(firstname,'',lastname) as name"))
       .where("email", decodedUser?.email)
       .limit(1);
 
@@ -303,6 +341,8 @@ router.post(
       const info = {
         _id: randomUUID(),
         name: decodedUser?.name,
+        firstname: user[0]?.firstname,
+        lastname: user[0]?.lastname,
         email: decodedUser?.email,
         phonenumber: decodedUser?.phoneNumber,
         profile: decodedUser?.picture,
@@ -311,6 +351,13 @@ router.post(
       };
 
       await knex("users").insert(info);
+
+      const user_key = await customOtpGen({ length: 4 });
+      await knex("user_wallets").insert({
+        _id: randomUUID(),
+        user_id: info?._id,
+        user_key,
+      });
     } else {
       await knex("users").where("email", decodedUser?.email).update({
         name: decodedUser?.name,
@@ -319,7 +366,7 @@ router.post(
       });
     }
     user = await knex("users")
-      .select("*")
+      .select("*", knex.raw("CONCAT(firstname,'',lastname) as name"))
       .where("email", decodedUser?.email)
       .limit(1);
 
@@ -333,27 +380,27 @@ router.post(
     const accessToken = signAccessToken(updatedUser);
     const refreshToken = signRefreshToken(updatedUser);
 
-    res.cookie("_SSUID_kyfc", accessToken, {
-      maxAge: 1 * 60 * 60 * 1000,
-      expires: ACCESS_EXPIRATION,
-      httpOnly: true,
-      path: "/",
-      secure: true,
-      // domain:
-      // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-      sameSite: "none",
-    });
+    // res.cookie("_SSUID_kyfc", accessToken, {
+    //   maxAge: 1 * 60 * 60 * 1000,
+    //   expires: ACCESS_EXPIRATION,
+    //   httpOnly: true,
+    //   path: "/",
+    //   secure: true,
+    //   // domain:
+    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
+    //   sameSite: "none",
+    // });
 
-    res.cookie("_SSUID_X_ayd", refreshToken, {
-      maxAge: 90 * 24 * 60 * 60 * 1000,
-      expires: REFRESH_EXPIRATION,
-      httpOnly: true,
-      path: "/",
-      secure: true,
-      // domain:
-      // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-      sameSite: "none",
-    });
+    // res.cookie("_SSUID_X_ayd", refreshToken, {
+    //   maxAge: 90 * 24 * 60 * 60 * 1000,
+    //   expires: REFRESH_EXPIRATION,
+    //   httpOnly: true,
+    //   path: "/",
+    //   secure: true,
+    //   // domain:
+    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
+    //   sameSite: "none",
+    // });
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
 
@@ -361,34 +408,39 @@ router.post(
       token: hashedToken,
     });
 
-    if (isMobile(req)) {
-      return res.status(201).json({
-        user: {
-          id: user[0]?._id,
-          name: user[0]?.name,
-          email: user[0]?.email,
-          phonenumber: user[0]?.phonenumber,
-          dob: user[0]?.dob,
-          nid: user[0]?.nid,
-          role: user[0]?.role,
-          profile: user[0]?.profile,
-        },
-        refreshToken,
-      });
-    }
-
+    // if (isMobile(req)) {
     res.status(201).json({
       user: {
         id: user[0]?._id,
+        firstname: user[0]?.firstname,
+        lastname: user[0]?.lastname,
         name: user[0]?.name,
         email: user[0]?.email,
+        phonenumber: user[0]?.phonenumber,
         dob: user[0]?.dob,
         nid: user[0]?.nid,
-        phonenumber: user[0]?.phonenumber,
         role: user[0]?.role,
         profile: user[0]?.profile,
       },
+      refreshToken,
+      accessToken,
     });
+    // }
+
+    // res.status(201).json({
+    //   user: {
+    //     id: user[0]?._id,
+    //     name: user[0]?.name,
+    //     firstname: user[0]?.firstname,
+    //     lastname: user[0]?.lastname,
+    //     email: user[0]?.email,
+    //     dob: user[0]?.dob,
+    //     nid: user[0]?.nid,
+    //     phonenumber: user[0]?.phonenumber,
+    //     role: user[0]?.role,
+    //     profile: user[0]?.profile,
+    //   },
+    // });
   })
 );
 
@@ -399,7 +451,10 @@ router.post(
     const email = req.body.email;
 
     // let user = await User.findByEmail(email);
-    let user = await knex("users").select("*").where("email", email).limit(1);
+    let user = await knex("users")
+      .select("*", knex.raw("CONCAT(firstname,'',lastname) as name"))
+      .where("email", email)
+      .limit(1);
 
     if (_.isEmpty(user)) {
       req.body._id = randomUUID();
@@ -407,6 +462,13 @@ router.post(
       req.body.active = true;
 
       await knex("users").insert(req.body);
+
+      const user_key = await customOtpGen({ length: 4 });
+      await knex("user_wallets").insert({
+        _id: randomUUID(),
+        user_id: req.body?._id,
+        user_key,
+      });
     } else {
       await knex("users").where("email", email).update({
         name: req.body.name,
@@ -414,7 +476,10 @@ router.post(
         active: 1,
       });
     }
-    user = await knex("users").select("*").where("email", email).limit(1);
+    user = await knex("users")
+      .select("*", knex.raw("CONCAT(firstname,'',lastname) as name"))
+      .where("email", email)
+      .limit(1);
 
     const updatedUser = {
       id: user[0]?._id,
@@ -426,26 +491,26 @@ router.post(
     const accessToken = signAccessToken(updatedUser);
     const refreshToken = signRefreshToken(updatedUser);
 
-    res.cookie("_SSUID_kyfc", accessToken, {
-      maxAge: 1 * 60 * 60 * 1000,
-      httpOnly: true,
-      path: "/",
-      secure: true,
-      // domain:
-      // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-      sameSite: "none",
-    });
+    // res.cookie("_SSUID_kyfc", accessToken, {
+    //   maxAge: 1 * 60 * 60 * 1000,
+    //   httpOnly: true,
+    //   path: "/",
+    //   secure: true,
+    //   // domain:
+    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
+    //   sameSite: "none",
+    // });
 
-    res.cookie("_SSUID_X_ayd", refreshToken, {
-      maxAge: 90 * 24 * 60 * 60 * 1000,
-      expires: REFRESH_EXPIRATION,
-      httpOnly: true,
-      path: "/",
-      secure: true,
-      // domain:
-      // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-      sameSite: "none",
-    });
+    // res.cookie("_SSUID_X_ayd", refreshToken, {
+    //   maxAge: 90 * 24 * 60 * 60 * 1000,
+    //   expires: REFRESH_EXPIRATION,
+    //   httpOnly: true,
+    //   path: "/",
+    //   secure: true,
+    //   // domain:
+    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
+    //   sameSite: "none",
+    // });
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
 
@@ -453,27 +518,13 @@ router.post(
       token: hashedToken,
     });
 
-    if (isMobile(req)) {
-      return res.status(201).json({
-        user: {
-          id: user[0]?._id,
-          name: user[0]?.name,
-          email: user[0]?.email,
-          dob: user[0]?.dob,
-          nid: user[0]?.nid,
-          phonenumber: user[0]?.phonenumber,
-          role: user[0]?.role,
-          profile: user[0]?.profile,
-        },
-
-        refreshToken,
-      });
-    }
-
+    // if (isMobile(req)) {
     res.status(201).json({
       user: {
         id: user[0]?._id,
         name: user[0]?.name,
+        firstname: user[0]?.firstname,
+        lastname: user[0]?.lastname,
         email: user[0]?.email,
         dob: user[0]?.dob,
         nid: user[0]?.nid,
@@ -481,7 +532,26 @@ router.post(
         role: user[0]?.role,
         profile: user[0]?.profile,
       },
+
+      refreshToken,
+      accessToken,
     });
+    // }
+
+    // res.status(201).json({
+    //   user: {
+    //     id: user[0]?._id,
+    //     firstname: user[0]?.firstname,
+    //     lastname: user[0]?.lastname,
+    //     name: user[0]?.name,
+    //     email: user[0]?.email,
+    //     dob: user[0]?.dob,
+    //     nid: user[0]?.nid,
+    //     phonenumber: user[0]?.phonenumber,
+    //     role: user[0]?.role,
+    //     profile: user[0]?.profile,
+    //   },
+    // });
   })
 );
 
@@ -492,7 +562,7 @@ router.post(
     const newUser = req.body;
 
     const doesUserExists = await knex("users")
-      .select("*")
+      .select("*", knex.raw("CONCAT(firstname,'',lastname) as name"))
       .where("email", newUser.email)
       .limit(1);
 
@@ -507,7 +577,16 @@ router.post(
     if (_.isEmpty(user)) {
       return res.status(400).json("Error occurred.Could not create user.");
     }
-    const userData = await knex("users").select("*").where("_id", newUser._id);
+    const userData = await knex("users")
+      .select("*", knex.raw("CONCAT(firstname,'',lastname) as name"))
+      .where("_id", newUser._id);
+
+    const user_key = await customOtpGen({ length: 4 });
+    await knex("user_wallets").insert({
+      _id: randomUUID(),
+      user_id: newUser._id,
+      user_key,
+    });
 
     const token = await otpGen();
     console.log(token);
@@ -571,7 +650,7 @@ router.post(
       .update({ active: 1 });
 
     const user = await knex("users")
-      .select("*")
+      .select("*", knex.raw("CONCAT(firstname,'',lastname) as name"))
       .where("email", userToken[0]?.email);
 
     if (_.isEmpty(user)) {
@@ -588,54 +667,40 @@ router.post(
     const accessToken = signAccessToken(updatedUser);
     const refreshToken = signRefreshToken(updatedUser);
 
-    res.cookie("_SSUID_kyfc", accessToken, {
-      maxAge: 1 * 60 * 60 * 1000,
-      expires: ACCESS_EXPIRATION,
-      httpOnly: true,
-      path: "/",
-      secure: true,
-      // domain:
-      // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-      sameSite: "none",
-    });
+    // res.cookie("_SSUID_kyfc", accessToken, {
+    //   maxAge: 1 * 60 * 60 * 1000,
+    //   expires: ACCESS_EXPIRATION,
+    //   httpOnly: true,
+    //   path: "/",
+    //   secure: true,
+    //   // domain:
+    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
+    //   sameSite: "none",
+    // });
 
-    res.cookie("_SSUID_X_ayd", refreshToken, {
-      maxAge: 90 * 24 * 60 * 60 * 1000,
-      expires: REFRESH_EXPIRATION,
-      httpOnly: true,
-      path: "/",
-      secure: true,
-      // domain:
-      // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-      sameSite: "none",
-    });
+    // res.cookie("_SSUID_X_ayd", refreshToken, {
+    //   maxAge: 90 * 24 * 60 * 60 * 1000,
+    //   expires: REFRESH_EXPIRATION,
+    //   httpOnly: true,
+    //   path: "/",
+    //   secure: true,
+    //   // domain:
+    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
+    //   sameSite: "none",
+    // });
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
     await knex("users").where("_id", user[0]?._id).update({
       token: hashedToken,
     });
 
-    if (isMobile(req)) {
-      return res.status(201).json({
-        user: {
-          id: user[0]?._id,
-          name: user[0]?.name,
-          email: user[0]?.email,
-          dob: user[0]?.dob,
-          nid: user[0]?.nid,
-          phonenumber: user[0]?.phonenumber,
-          role: user[0]?.role,
-          profile: user[0]?.profile,
-        },
-
-        refreshToken,
-      });
-    }
-
+    // if (isMobile(req)) {
     res.status(201).json({
       user: {
         id: user[0]?._id,
         name: user[0]?.name,
+        firstname: user[0]?.firstname,
+        lastname: user[0]?.lastname,
         email: user[0]?.email,
         dob: user[0]?.dob,
         nid: user[0]?.nid,
@@ -643,8 +708,27 @@ router.post(
         role: user[0]?.role,
         profile: user[0]?.profile,
       },
-      // token: accessToken,
+
+      refreshToken,
+      accessToken,
     });
+    // }
+
+    // res.status(201).json({
+    //   user: {
+    //     id: user[0]?._id,
+    //     firstname: user[0]?.firstname,
+    //     lastname: user[0]?.lastname,
+    //     name: user[0]?.name,
+    //     email: user[0]?.email,
+    //     dob: user[0]?.dob,
+    //     nid: user[0]?.nid,
+    //     phonenumber: user[0]?.phonenumber,
+    //     role: user[0]?.role,
+    //     profile: user[0]?.profile,
+    //   },
+    //   // token: accessToken,
+    // });
   })
 );
 
@@ -681,17 +765,23 @@ router.put(
   "/",
   verifyToken,
   asyncHandler(async (req, res) => {
-    const { id, ...rest } = req.body;
+    const { id, admin, ...rest } = req.body;
+    
 
     const updatedUser = await knex("users").where("_id", id).update(rest);
 
     if (updatedUser !== 1) {
       return res.status(400).json("Error updating user information.");
     }
+    if (admin) {
+      return res.status(201).json("Changes Saved!");
+    }
 
     const user = await knex("users")
       .select(
         "_id",
+        "firstname",
+        "lastname",
         "name",
         "email",
         "role",
@@ -705,6 +795,8 @@ router.put(
     res.status(201).json({
       user: {
         id: user[0]?._id,
+        firstname: user[0]?.firstname,
+        lastname: user[0]?.lastname,
         name: user[0]?.name,
         email: user[0]?.email,
         dob: user[0]?.dob,
@@ -737,7 +829,7 @@ router.put(
       return res.status(404).json("An unknown error has occurred!");
     }
 
-    res.status(201).json("Profile Updated!");
+    res.status(201).json(url);
   })
 );
 
@@ -783,6 +875,97 @@ router.delete(
       return res.status(500).json("Invalid Request!");
     }
     res.status(200).json("User Removed!");
+  })
+);
+
+////////////////.............Wallet..................///////////
+
+//Get Wallet Balance
+router.get(
+  "/wallet/balance",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+
+    const wallet = await knex("user_wallets")
+      .where("user_id", id)
+      .select("amount")
+      .limit(1);
+
+    if (_.isEmpty(wallet)) {
+      return res.status(200).json(0);
+    }
+
+    res.status(200).json(wallet[0]?.amount);
+  })
+);
+
+//Get all wallet top up trnsactions
+router.get(
+  "/wallet/transactions",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+    const { startDate, endDate } = req.query;
+
+    const sDate = moment(startDate).format("MMMM DD YYYY");
+    const eDate = moment(endDate).format("MMMM DD YYYY");
+
+    const transactions = await knex.raw(
+      `SELECT *
+        FROM (
+            SELECT _id,user_id,amount,status,createdAt,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+            FROM user_wallet_transactions
+        ) AS user_wallet_transactions_ 
+        WHERE user_id=? AND purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,
+      [id, sDate, eDate]
+    );
+
+    res.status(200).json(transactions[0]);
+  })
+);
+
+//Send wallet top up request
+router.post(
+  "/wallet/request",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+
+    const user = await knex("users")
+      .where("_id", id)
+      .select(
+        "name",
+        "phonenumber",
+        "email"
+        // knex.raw("CONCAT(firstname,'',lastname) as name")
+      )
+      .limit(1);
+
+    try {
+      const body = `<div>
+      <h1 style='text-transform:uppercase;'>Wallet Top Up Request</h1><br/>
+      <div style='text-align:left;'>
+
+      <p>A request has been placed by <strong>${user[0]?.name}</strong> to top up wallet balance.
+      <p><strong>Name:</strong> ${user[0]?.name}</p>
+      <p><strong>Email:</strong> ${user[0]?.email}</p><br/>
+      <p><strong>Telephone Number:</strong> ${user[0]?.phonenumber}</p><br/>
+      <p><strong>Top Up Amount:</strong> ${req?.body?.amount}</p><br/>
+       
+      </div>
+      </div>`;
+
+      await sendEMail(
+        process.env.MAIL_CLIENT_USER,
+        mailTextShell(body),
+        "Wallet Top Up Request"
+      );
+
+      res.status(200).json("Request Sent!");
+    } catch (error) {
+      res.status(500).json("An unkonwn error has occurred");
+    }
   })
 );
 
