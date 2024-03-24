@@ -114,7 +114,7 @@ router.get(
 
     if (
       _.isEmpty(user) ||
-      user[0]?.active === 0 ||
+      Boolean(user[0]?.active) === false ||
       user[0]?.email === "test@test.com"
     ) {
       return res.sendStatus(204);
@@ -132,6 +132,7 @@ router.get(
         dob: user[0]?.dob,
         phonenumber: user[0]?.phonenumber,
         profile: user[0]?.profile,
+        active: Boolean(user[0]?.active),
       },
     });
   })
@@ -150,10 +151,27 @@ router.get(
 
 router.get(
   "/auth/token",
-  // limit,
+  limit,
   verifyRefreshToken,
   asyncHandler(async (req, res) => {
     const { id, active, role, createdAt } = req.user;
+
+    const user = await knex("users")
+      .select(
+        "_id as id",
+        "profile",
+        "firstname",
+        "lastname",
+        knex.raw("CONCAT(firstname,' ',lastname) as name"),
+        "email",
+        "nid",
+        "dob",
+        "phonenumber",
+        "role",
+        "active"
+      )
+      .where("_id", id)
+      .limit(1);
 
     const updatedUser = {
       id,
@@ -162,7 +180,7 @@ router.get(
       createdAt,
     };
 
-    const accessToken = signAccessToken(updatedUser);
+    const accessToken = signAccessToken(user[0]);
     const refreshToken = signRefreshToken(updatedUser);
 
     // res.cookie("_SSUID_kyfc", accessToken, {
@@ -219,14 +237,14 @@ router.post(
       req.body.email = email;
 
       await knex("users").insert(req.body);
-     
+
       user = await knex("users").select("*").where("email", email).limit(1);
     }
 
     const updatedUser = {
       id: user[0]?._id,
       role: user[0]?.role,
-      active: user[0]?.active,
+      active: false,
       createdAt: user[0]?.createdAt,
     };
 
@@ -370,6 +388,20 @@ router.post(
       .where("email", decodedUser?.email)
       .limit(1);
 
+    const accessData = {
+      id: user[0]?._id,
+      firstname: user[0]?.firstname,
+      lastname: user[0]?.lastname,
+      name: user[0]?.name,
+      email: user[0]?.email,
+      phonenumber: user[0]?.phonenumber,
+      dob: user[0]?.dob,
+      nid: user[0]?.nid,
+      role: user[0]?.role,
+      profile: user[0]?.profile,
+      active: Boolean(user[0]?.active),
+    };
+
     const updatedUser = {
       id: user[0]?._id,
       role: user[0]?.role,
@@ -377,7 +409,7 @@ router.post(
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signAccessToken(updatedUser);
+    const accessToken = signAccessToken(accessData);
     const refreshToken = signRefreshToken(updatedUser);
 
     // res.cookie("_SSUID_kyfc", accessToken, {
@@ -410,18 +442,6 @@ router.post(
 
     // if (isMobile(req)) {
     res.status(201).json({
-      user: {
-        id: user[0]?._id,
-        firstname: user[0]?.firstname,
-        lastname: user[0]?.lastname,
-        name: user[0]?.name,
-        email: user[0]?.email,
-        phonenumber: user[0]?.phonenumber,
-        dob: user[0]?.dob,
-        nid: user[0]?.nid,
-        role: user[0]?.role,
-        profile: user[0]?.profile,
-      },
       refreshToken,
       accessToken,
     });
@@ -481,6 +501,20 @@ router.post(
       .where("email", email)
       .limit(1);
 
+    const accessData = {
+      id: user[0]?._id,
+      name: user[0]?.name,
+      firstname: user[0]?.firstname,
+      lastname: user[0]?.lastname,
+      email: user[0]?.email,
+      dob: user[0]?.dob,
+      nid: user[0]?.nid,
+      phonenumber: user[0]?.phonenumber,
+      role: user[0]?.role,
+      profile: user[0]?.profile,
+      active: Boolean(user[0]?.active),
+    };
+
     const updatedUser = {
       id: user[0]?._id,
       role: user[0]?.role,
@@ -488,7 +522,7 @@ router.post(
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signAccessToken(updatedUser);
+    const accessToken = signAccessToken(accessData);
     const refreshToken = signRefreshToken(updatedUser);
 
     // res.cookie("_SSUID_kyfc", accessToken, {
@@ -520,19 +554,6 @@ router.post(
 
     // if (isMobile(req)) {
     res.status(201).json({
-      user: {
-        id: user[0]?._id,
-        name: user[0]?.name,
-        firstname: user[0]?.firstname,
-        lastname: user[0]?.lastname,
-        email: user[0]?.email,
-        dob: user[0]?.dob,
-        nid: user[0]?.nid,
-        phonenumber: user[0]?.phonenumber,
-        role: user[0]?.role,
-        profile: user[0]?.profile,
-      },
-
       refreshToken,
       accessToken,
     });
@@ -656,15 +677,28 @@ router.post(
     if (_.isEmpty(user)) {
       return res.status(401).json("Authentication Failed!");
     }
+    const accessData = {
+      id: user[0]?._id,
+      name: user[0]?.name,
+      firstname: user[0]?.firstname,
+      lastname: user[0]?.lastname,
+      email: user[0]?.email,
+      dob: user[0]?.dob,
+      nid: user[0]?.nid,
+      phonenumber: user[0]?.phonenumber,
+      role: user[0]?.role,
+      profile: user[0]?.profile,
+      active: Boolean(user[0]?.active),
+    };
 
     const updatedUser = {
       id: user[0]?._id,
       role: user[0]?.role,
-      active: user[0]?.active,
+      active: Boolean(user[0]?.active),
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signAccessToken(updatedUser);
+    const accessToken = signAccessToken(accessData);
     const refreshToken = signRefreshToken(updatedUser);
 
     // res.cookie("_SSUID_kyfc", accessToken, {
@@ -696,19 +730,6 @@ router.post(
 
     // if (isMobile(req)) {
     res.status(201).json({
-      user: {
-        id: user[0]?._id,
-        name: user[0]?.name,
-        firstname: user[0]?.firstname,
-        lastname: user[0]?.lastname,
-        email: user[0]?.email,
-        dob: user[0]?.dob,
-        nid: user[0]?.nid,
-        phonenumber: user[0]?.phonenumber,
-        role: user[0]?.role,
-        profile: user[0]?.profile,
-      },
-
       refreshToken,
       accessToken,
     });
@@ -765,8 +786,7 @@ router.put(
   "/",
   verifyToken,
   asyncHandler(async (req, res) => {
-    const { id, admin, ...rest } = req.body;
-    
+    const { id, admin, iat, exp, ...rest } = req.body;
 
     const updatedUser = await knex("users").where("_id", id).update(rest);
 
@@ -779,32 +799,24 @@ router.put(
 
     const user = await knex("users")
       .select(
-        "_id",
+        "_id as id",
         "firstname",
         "lastname",
-        "name",
+        knex.raw("CONCAT(firstname,'',lastname) as name"),
         "email",
         "role",
         "nid",
         "dob",
         "phonenumber",
-        "profile"
+        "profile",
+        "active"
       )
-      .where("_id", id);
+      .where("_id", id)
+      .limit(1);
+    const accessToken = signAccessToken(user[0]);
 
     res.status(201).json({
-      user: {
-        id: user[0]?._id,
-        firstname: user[0]?.firstname,
-        lastname: user[0]?.lastname,
-        name: user[0]?.name,
-        email: user[0]?.email,
-        dob: user[0]?.dob,
-        nid: user[0]?.nid,
-        phonenumber: user[0]?.phonenumber,
-        role: user[0]?.role,
-        profile: user[0]?.profile,
-      },
+      accessToken,
     });
   })
 );
