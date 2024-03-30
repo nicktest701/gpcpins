@@ -1,31 +1,32 @@
-const router = require('express').Router();
-const asyncHandler = require('express-async-handler');
-const _ = require('lodash');
-const sendEMail = require('../config/sendEmail');
-const { randomUUID } = require('crypto');
-const { mailTextShell } = require('../config/mailText');
+const router = require("express").Router();
+const asyncHandler = require("express-async-handler");
+const _ = require("lodash");
+const crypto = require('crypto');
+const sendEMail = require("../config/sendEmail");
+const { randomUUID } = require("crypto");
+const { mailTextShell } = require("../config/mailText");
 
 //model
-const verifyAdmin = require('../middlewares/verifyAdmin');
-const { verifyToken } = require('../middlewares/verifyToken');
-const { rateLimit } = require('express-rate-limit');
+const verifyAdmin = require("../middlewares/verifyAdmin");
+const { verifyToken } = require("../middlewares/verifyToken");
+const { rateLimit } = require("express-rate-limit");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
   max: 5, // 5 requests per windowMs
-  message: 'Too many requests!. please try again later.',
+  message: "Too many requests!. please try again later.",
 });
 
-const knex = require('../db/knex');
+const knex = require("../db/knex");
 
 router.get(
-  '/',
+  "/",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const messages = await knex('messages')
-      .select('_id', 'body as message', 'email as title', 'createdAt')
-      .orderBy('createdAt', 'desc');
+    const messages = await knex("messages")
+      .select("_id", "body as message", "email as title", "createdAt")
+      .orderBy("createdAt", "desc");
     // .limit(15);
 
     res.status(200).json(messages);
@@ -33,14 +34,14 @@ router.get(
 );
 
 router.get(
-  '/:id',
+  "/:id",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const message = await knex('messages')
-      .select('_id', 'body as message', 'email as title', 'createdAt')
-      .where('_id', id)
+    const message = await knex("messages")
+      .select("_id", "body as message", "email as title", "createdAt")
+      .where("_id", id)
       .limit(1);
 
     if (_.isEmpty(message)) res.status(200).json({});
@@ -50,18 +51,18 @@ router.get(
 );
 
 router.post(
-  '/',
+  "/",
   limit,
   asyncHandler(async (req, res) => {
     const newMessage = req.body;
 
-    const message = await knex('messages').insert({
+    const message = await knex("messages").insert({
       _id: randomUUID(),
       ...newMessage,
     });
 
     if (_.isEmpty(message)) {
-      return res.status(404).json('Message Failed');
+      return res.status(404).json("Message Failed");
     }
 
     const body = `<div>
@@ -77,15 +78,15 @@ router.post(
     await sendEMail(
       process.env.MAIL_CLIENT_USER,
       mailTextShell(body),
-      'Customer Care & Support'
+      "Customer Care & Support"
     );
 
-    res.status(201).json('Message sent!!!');
+    res.status(201).json("Message sent!!!");
   })
 );
 
 router.post(
-  '/hosting',
+  "/hosting",
   limit,
   asyncHandler(async (req, res) => {
     const { name, email, phonenumber, description } = req.body;
@@ -105,15 +106,15 @@ router.post(
     await sendEMail(
       process.env.MAIL_CLIENT_USER,
       mailTextShell(body),
-      'Request for hosting services'
+      "Request for hosting services"
     );
 
-    res.status(201).json('Request received.We will contact you shortly!!!');
+    res.status(201).json("Request received.We will contact you shortly!!!");
   })
 );
 
 router.post(
-  '/organization',
+  "/organization",
   limit,
   asyncHandler(async (req, res) => {
     const {
@@ -149,11 +150,33 @@ router.post(
     await sendEMail(
       process.env.MAIL_CLIENT_USER,
       mailTextShell(body),
-      'Request for Services'
+      "Request for Services"
     );
 
-    res.status(201).json('Request received.We will contact you shortly!!!');
+    res.status(201).json("Request received.We will contact you shortly!!!");
+  })
+);
+router.post(
+  "/tawk",
+  limit,
+  asyncHandler(async (req, res) => {
+
+    if (!verifySignature(req.rawBody, req.headers['x-tawk-signature'])) {
+      // verification failed
+  }
+  // verification successfull
+   
+
+    res.status(201).json("Request received.We will contact you shortly!!!");
   })
 );
 
+
+function verifySignature (body, signature) {
+  const digest = crypto
+      .createHmac('sha1', WEBHOOK_SECRET)
+      .update(body)
+      .digest('hex');
+  return signature === digest;
+};
 module.exports = router;

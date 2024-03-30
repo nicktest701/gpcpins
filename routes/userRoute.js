@@ -40,6 +40,8 @@ const knex = require("../db/knex");
 const { isValidUUID2, isValidEmail } = require("../config/validation");
 const sendEMail = require("../config/sendEmail");
 const { sendBirthdayWishes } = require("../config/cronMessages");
+const currencyFormatter = require("../config/currencyFormatter");
+const { sendSMS, sendOTPSMS } = require("../config/sms");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -54,8 +56,8 @@ const Storage = multer.diskStorage({
 
 const Upload = multer({ storage: Storage });
 
-const ACCESS_EXPIRATION = new Date(Date.now() + 3600000);
-const REFRESH_EXPIRATION = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+// const ACCESS_EXPIRATION = new Date(Date.now() + 3600000);
+// const REFRESH_EXPIRATION = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
 
 cron.schedule("0 0 * * *", async () => {
   await sendBirthdayWishes();
@@ -351,7 +353,7 @@ router.post(
     const decodedUser = jwt.decode(credential);
 
     let user = await knex("users")
-      .select("*", knex.raw("CONCAT(firstname,'',lastname) as name"))
+      .select("email")
       .where("email", decodedUser?.email)
       .limit(1);
 
@@ -359,8 +361,8 @@ router.post(
       const info = {
         _id: randomUUID(),
         name: decodedUser?.name,
-        firstname: user[0]?.firstname,
-        lastname: user[0]?.lastname,
+        firstname: decodedUser?.given_name,
+        lastname: decodedUser?.family_name,
         email: decodedUser?.email,
         phonenumber: decodedUser?.phoneNumber,
         profile: decodedUser?.picture,
@@ -378,8 +380,10 @@ router.post(
       });
     } else {
       await knex("users").where("email", decodedUser?.email).update({
-        name: decodedUser?.name,
+        firstname: decodedUser?.given_name,
+        lastname: decodedUser?.family_name,
         phonenumber: decodedUser?.phoneNumber,
+        profile: decodedUser?.picture,
         active: 1,
       });
     }
@@ -472,7 +476,7 @@ router.post(
 
     // let user = await User.findByEmail(email);
     let user = await knex("users")
-      .select("*", knex.raw("CONCAT(firstname,'',lastname) as name"))
+      .select("email")
       .where("email", email)
       .limit(1);
 
@@ -491,7 +495,8 @@ router.post(
       });
     } else {
       await knex("users").where("email", email).update({
-        name: req.body.name,
+        firstname: req.body.firstname,
+        lastname: req.body.lastname,
         phonenumber: req.body.phonenumber,
         active: 1,
       });
@@ -582,43 +587,46 @@ router.post(
   asyncHandler(async (req, res) => {
     const newUser = req.body;
 
-    const doesUserExists = await knex("users")
-      .select("*", knex.raw("CONCAT(firstname,'',lastname) as name"))
-      .where("email", newUser.email)
-      .limit(1);
+    const transx = await knex.transaction();
 
-    if (!_.isEmpty(doesUserExists[0])) {
-      return res.status(400).json("Email address already taken!");
-    }
-    newUser._id = randomUUID();
-    newUser.role = process.env.USER_ID;
+    try {
+      const doesUserExists = await transx("users")
+        .select("email")
+        .where("email", newUser.email)
+        .limit(1);
 
-    const user = await knex("users").insert(newUser);
+      if (!_.isEmpty(doesUserExists[0])) {
+        return res.status(400).json("Email address already taken!");
+      }
+      newUser._id = randomUUID();
+      newUser.role = process.env.USER_ID;
 
-    if (_.isEmpty(user)) {
-      return res.status(400).json("Error occurred.Could not create user.");
-    }
-    const userData = await knex("users")
-      .select("*", knex.raw("CONCAT(firstname,'',lastname) as name"))
-      .where("_id", newUser._id);
+      const user = await transx("users").insert(newUser);
 
-    const user_key = await customOtpGen({ length: 4 });
-    await knex("user_wallets").insert({
-      _id: randomUUID(),
-      user_id: newUser._id,
-      user_key,
-    });
+      if (_.isEmpty(user)) {
+        return res.status(400).json("Error occurred.Could not create user.");
+      }
+      const userData = await transx("users")
+        .select("*", knex.raw("CONCAT(firstname,'',lastname) as name"))
+        .where("_id", newUser._id);
 
-    const token = await otpGen();
-    console.log(token);
+      const user_key = await customOtpGen({ length: 4 });
+      await transx("user_wallets").insert({
+        _id: randomUUID(),
+        user_id: newUser._id,
+        user_key,
+      });
 
-    await knex("tokens").insert({
-      _id: randomUUID(),
-      token,
-      email: userData[0]?.email,
-    });
+      const token = await otpGen();
+      console.log(token);
 
-    const message = `
+      await transx("tokens").insert({
+        _id: randomUUID(),
+        token,
+        email: userData[0]?.email,
+      });
+
+      const message = `
         <div style="width:100%;max-width:500px;margin-inline:auto;">
         
         <p>Your verification code is</p>
@@ -627,12 +635,19 @@ router.post(
         <p>-- Gab Powerful Team --</p>
     </div>
         `;
+      //   Send SMS to the User with Verification Code
+      if (newUser?.phonenumber) {
+        await sendOTPSMS(
+          `Your verification code is ${token}`,
+          newUser?.phonenumber
+        );
+      }
 
-    try {
+      //   Send Email to the User with Verification Code
       await sendMail(userData[0]?.email, mailTextShell(message));
+      await transx.commit();
     } catch (error) {
-      await knex("tokens").where("email", userData[0]?.email).del();
-
+      await transx.rollback();
       return res.status(500).json("An error has occurred");
     }
 
@@ -763,19 +778,19 @@ router.post(
       active: false,
     });
 
-    res.cookie("_SSUID_kyfc", "", {
-      httpOnly: true,
-      path: "/",
-      expires: new Date(0),
-    });
+    // res.cookie("_SSUID_kyfc", "", {
+    //   httpOnly: true,
+    //   path: "/",
+    //   expires: new Date(0),
+    // });
 
-    res.cookie("_SSUID_X_ayd", "", {
-      httpOnly: true,
-      path: "/",
-      expires: new Date(0),
-    });
-    res.clearCookie("_SSUID_kyfc");
-    res.clearCookie("_SSUID_X_ayd");
+    // res.cookie("_SSUID_X_ayd", "", {
+    //   httpOnly: true,
+    //   path: "/",
+    //   expires: new Date(0),
+    // });
+    // res.clearCookie("_SSUID_kyfc");
+    // res.clearCookie("_SSUID_X_ayd");
     req.user = null;
 
     res.sendStatus(204);
@@ -788,9 +803,9 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id, admin, iat, exp, ...rest } = req.body;
 
-    const updatedUser = await knex("users").where("_id", id).update(rest);
+    const modifiedUser = await knex("users").where("_id", id).update(rest);
 
-    if (updatedUser !== 1) {
+    if (modifiedUser !== 1) {
       return res.status(400).json("Error updating user information.");
     }
     if (admin) {
@@ -813,9 +828,42 @@ router.put(
       )
       .where("_id", id)
       .limit(1);
-    const accessToken = signAccessToken(user[0]);
+    if (!user[0]) {
+      return res.status(400).json("Error updating user information.");
+    }
+
+    // set the user object on the request so it can be accessed in other routes
+    const accessData = {
+      id: user[0]?.id,
+      firstname: user[0]?.firstname,
+      lastname: user[0]?.lastname,
+      name: user[0]?.name,
+      email: user[0]?.email,
+      role: user[0]?.role,
+      nid: user[0]?.nid,
+      dob: user[0]?.dob,
+      phonenumber: user[0]?.phonenumber,
+      profile: user[0]?.profile,
+      active: Boolean(user[0]?.active),
+    };
+
+    const updatedUser = {
+      id: user[0]?.id,
+      role: user[0]?.role,
+      active: Boolean(user[0]?.active),
+      createdAt: user[0]?.createdAt,
+    };
+
+    const accessToken = signAccessToken(accessData);
+    const refreshToken = signRefreshToken(updatedUser);
+
+    const hashedToken = await bcrypt.hash(refreshToken, 10);
+    await knex("users").where("_id", user[0]?.id).update({
+      token: hashedToken,
+    });
 
     res.status(201).json({
+      refreshToken,
       accessToken,
     });
   })
@@ -851,6 +899,7 @@ router.put(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id: _id } = req.user;
     const { id, active } = req.body;
 
     const updatedUser = await knex("users")
@@ -860,6 +909,17 @@ router.put(
     if (updatedUser !== 1) {
       return res.status(400).json("Error updating user info");
     }
+
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: _id,
+      title: `${
+        Boolean(active) === true
+          ? "Activated a user account!"
+          : "Disabled a user account!"
+      }`,
+      severity: "warning",
+    });
 
     res
       .status(201)
@@ -875,6 +935,7 @@ router.delete(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id: _id } = req.user;
     const { id } = req.params;
 
     if (!isValidUUID2(id)) {
@@ -886,6 +947,13 @@ router.delete(
     if (user !== 1) {
       return res.status(500).json("Invalid Request!");
     }
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: _id,
+      title: "Deleted a user account!",
+      severity: "error",
+    });
+
     res.status(200).json("User Removed!");
   })
 );
@@ -959,14 +1027,33 @@ router.post(
       <h1 style='text-transform:uppercase;'>Wallet Top Up Request</h1><br/>
       <div style='text-align:left;'>
 
-      <p>A request has been placed by <strong>${user[0]?.name}</strong> to top up wallet balance.
+      <p>A request has been placed by <strong>${
+        user[0]?.name
+      }</strong> to top up wallet balance.
       <p><strong>Name:</strong> ${user[0]?.name}</p>
       <p><strong>Email:</strong> ${user[0]?.email}</p><br/>
       <p><strong>Telephone Number:</strong> ${user[0]?.phonenumber}</p><br/>
-      <p><strong>Top Up Amount:</strong> ${req?.body?.amount}</p><br/>
+      <p><strong>Top Up Amount:</strong> ${currencyFormatter(
+        req?.body?.amount
+      )}</p><br/>
        
       </div>
       </div>`;
+
+      const message = `A request has been placed by '${
+        user[0]?.name
+      }' to top up wallet balance.
+      Name: ${user[0]?.name}
+      Email: ${user[0]?.email}
+      Telephone Number: ${user[0]?.phonenumber} 
+      Top Up Amount: ${currencyFormatter(req?.body?.amount)}
+      `;
+
+      await knex("notifications").insert({
+        _id: randomUUID(),
+        title: "Wallet top up request",
+        message,
+      });
 
       await sendEMail(
         process.env.MAIL_CLIENT_USER,

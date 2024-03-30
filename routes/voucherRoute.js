@@ -1,51 +1,51 @@
-const router = require('express').Router();
-const asyncHandler = require('express-async-handler');
-const _ = require('lodash');
-const moment = require('moment');
+const router = require("express").Router();
+const asyncHandler = require("express-async-handler");
+const _ = require("lodash");
+const moment = require("moment");
 
-const { randomUUID } = require('crypto');
-const findDuplicates = require('../config/findDuplicates');
+const { randomUUID } = require("crypto");
+const findDuplicates = require("../config/findDuplicates");
 //model
 
-const { verifyToken } = require('../middlewares/verifyToken');
-const verifyAdmin = require('../middlewares/verifyAdmin');
-const { isValidUUID2 } = require('../config/validation');
+const { verifyToken } = require("../middlewares/verifyToken");
+const verifyAdmin = require("../middlewares/verifyAdmin");
+const { isValidUUID2 } = require("../config/validation");
 
-const knex = require('../db/knex');
+const knex = require("../db/knex");
 
 const ALLOWED_CATEGORIES = [
-  'waec',
-  'stadium',
-  'university',
-  'cinema',
-  'security',
-  'bus',
+  "waec",
+  "stadium",
+  "university",
+  "cinema",
+  "security",
+  "bus",
 ];
 
 router.get(
-  '/category',
+  "/category",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const { type, id } = req.query;
 
     if (!isValidUUID2(id)) {
-      return res.status(400).json('Invalid ID!');
+      return res.status(400).json("Invalid ID!");
     }
 
     if (!ALLOWED_CATEGORIES.includes(type)) {
-      return res.status(400).json('Unknown Category');
+      return res.status(400).json("Unknown Category");
     }
 
     if (id && type) {
-      const vouchers = await knex('vouchers')
-        .orderBy('createdAt', 'desc')
-        .join('categories', 'vouchers.category', 'categories._id')
-        .where('vouchers.category', id)
+      const vouchers = await knex("vouchers")
+        .orderBy("createdAt", "desc")
+        .join("categories", "vouchers.category", "categories._id")
+        .where("vouchers.category", id)
         .select(
-          'vouchers.*',
-          'categories.voucherType as voucher',
-          'categories.category as category'
+          "vouchers.*",
+          "categories.voucherType as voucher",
+          "categories.category as category"
         );
 
       const modifiedVouchers = vouchers.map(({ details, ...rest }) => {
@@ -63,24 +63,24 @@ router.get(
 );
 
 router.get(
-  '/details',
+  "/details",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const { id } = req.query;
-    const isTicket = ['cinema', 'stadium', 'bus'];
+    const isTicket = ["cinema", "stadium", "bus"];
 
     if (!isValidUUID2(id)) {
-      return res.status(400).json('Invalid ID!');
+      return res.status(400).json("Invalid ID!");
     }
 
-    const vouchers = await knex('vouchers')
-      .join('categories', 'vouchers.category', 'categories._id')
-      .where('vouchers.category', id)
+    const vouchers = await knex("vouchers")
+      .join("categories", "vouchers.category", "categories._id")
+      .where("vouchers.category", id)
       .select(
-        'vouchers.status',
-        'vouchers.createdAt',
-        'categories.category as category'
+        "vouchers.status",
+        "vouchers.createdAt",
+        "categories.category as category"
       );
 
     if (_.isEmpty(vouchers)) {
@@ -93,13 +93,13 @@ router.get(
       });
     }
 
-    const groupedStatus = _.groupBy(vouchers, 'status');
+    const groupedStatus = _.groupBy(vouchers, "status");
 
     let expired = 0;
     if (isTicket.includes(vouchers[0]?.category)) {
       expired = vouchers?.filter(
         (voucher) =>
-          voucher?.status === 'new' &&
+          voucher?.status === "new" &&
           moment().isAfter(moment(voucher?.createdAt))
       );
     }
@@ -115,32 +115,32 @@ router.get(
 );
 
 router.get(
-  '/available',
+  "/available",
   verifyToken,
   asyncHandler(async (req, res) => {
     const { id, type } = req.query;
 
     if (!isValidUUID2(id)) {
-      return res.status(400).json('Invalid ID!');
+      return res.status(400).json("Invalid ID!");
     }
 
     let count;
     if (!_.isNull(type)) {
-      count = await knex('vouchers')
-        .count('_id as total')
+      count = await knex("vouchers")
+        .count("_id as total")
         .where({
           category: id,
           type,
-          status: 'new',
+          status: "new",
           active: 1,
         })
         .first();
     } else {
-      count = await knex('vouchers')
-        .count('_id as total')
+      count = await knex("vouchers")
+        .count("_id as total")
         .where({
           category: id,
-          status: 'new',
+          status: "new",
           active: 1,
         })
         .first();
@@ -153,17 +153,17 @@ router.get(
 );
 
 router.get(
-  '/count',
+  "/count",
   asyncHandler(async (req, res) => {
     const { id } = req.query;
 
     if (!isValidUUID2(id)) {
-      return res.status(400).json('Invalid ID!');
+      return res.status(400).json("Invalid ID!");
     }
 
-    const count = await knex('vouchers')
-      .count('_id as total')
-      .where('category', id)
+    const count = await knex("vouchers")
+      .count("_id as total")
+      .where("category", id)
       .first();
     const totalCount = count.total;
 
@@ -172,15 +172,15 @@ router.get(
 );
 
 router.get(
-  '/bus/available/:id',
+  "/bus/available/:id",
   asyncHandler(async (req, res) => {
     const id = req.params.id;
 
     if (!isValidUUID2(id)) {
-      return res.status(400).json('Invalid ID!');
+      return res.status(400).json("Invalid ID!");
     }
 
-    const vouchers = await knex('vouchers').select('details', 'active').where({
+    const vouchers = await knex("vouchers").select("details", "active").where({
       category: id,
       active: true,
     });
@@ -192,19 +192,20 @@ router.get(
       };
     });
 
-    res.status(200).json(_.orderBy(modifiedVouchers, 'seatNo', 'asc'));
+    res.status(200).json(_.orderBy(modifiedVouchers, "seatNo", "asc"));
   })
 );
 
 router.post(
-  '/',
+  "/",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id } = req.user;
     const newVouchers = req.body;
 
     if (_.isEmpty(newVouchers)) {
-      return res.status(400).json('Invalid Input Request!');
+      return res.status(400).json("Invalid Input Request!");
     }
 
     const modifiedVouchers = newVouchers.map((voucher) => {
@@ -218,7 +219,7 @@ router.post(
       };
     });
 
-    const savedVoucher = await knex('vouchers').select('pin', 'serial').where({
+    const savedVoucher = await knex("vouchers").select("pin", "serial").where({
       category: modifiedVouchers[0]?.category,
     });
 
@@ -240,44 +241,55 @@ router.post(
       if (!_.isEmpty(duplicates)) {
         return res
           .status(400)
-          .json('Error! Matching Pins and Serials already loaded.');
+          .json("Error! Matching Pins and Serials already loaded.");
       }
     }
 
-    const vouchers = await knex('vouchers').insert(modifiedVouchers);
+    const vouchers = await knex("vouchers").insert(modifiedVouchers);
     // const vouchers = await Voucher.insertMany(modifiedVouchers);
 
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: id,
+      title: "Loaded serials and pins.",
+      severity: "info",
+    });
+
     if (!vouchers) {
-      res.status(400).json('Error saving pins!');
+      res.status(400).json("Error saving pins!");
     }
 
-    res.status(200).json('Pins and Serials Saved!');
+    res.status(200).json("Pins and Serials Saved!");
   })
 );
 
 router.put(
-  '/remove',
+  "/remove",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id: _id } = req.user;
+
     if (_.isEmpty(req.body)) {
-      return res.status(400).json('Invalid Input Request!');
+      return res.status(400).json("Invalid Input Request!");
     }
 
     const { id } = req.body;
 
-    const deletedVouchers = await knex('vouchers').whereIn('_id', id).del();
-
-    // const deletedVouchers = await Voucher.deleteMany({
-    //   _id: { $in: id },
-    // });
-   
+    const deletedVouchers = await knex("vouchers").whereIn("_id", id).del();
 
     if (deletedVouchers !== 1) {
-      return res.status(404).json('Error removing vouchers!');
+      return res.status(404).json("Error removing vouchers!");
     }
 
-    res.status(200).json('Vouchers removed!');
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: _id,
+      title: "Deleted multiple serials and pins.",
+      severity: "error",
+    });
+
+    res.status(200).json("Vouchers removed!");
   })
 );
 

@@ -549,7 +549,7 @@ router.get(
   })
 );
 
-// Confirm Payment @route   GET api/transaction/:id
+// @route   GET api/payment/confirm/:id/:type - Confirm Payment
 router.get(
   "/confirm/:id/:type",
   verifyToken,
@@ -695,7 +695,7 @@ router.get(
           if (balance < 1000) {
             const body = `
       Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.
-      Please recharge to avoid any incoveniences.
+      Please recharge to avoid any inconveniences.
       Thank you.
             `;
             await sendEMail(
@@ -754,7 +754,7 @@ router.get(
           if (balance < 1000) {
             const body = `
       Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.
-      Please recharge to avoid any incoveniences.
+      Please recharge to avoid any inconveniences.
       Thank you.
             `;
             await sendEMail(
@@ -785,26 +785,25 @@ router.get(
         message,
       });
 
-      await sendElectricityMail(
+      const userMail = await sendElectricityMail(
         transaction[0]?._id,
         transaction[0]?.email,
         "pending"
       );
 
-      await sendEMail(
+      const userSMS = await sendSMS(
+        `Prepaid Units
+        
+        Thank you for your purchase!
+        You will be notified shortly after your transaction is complete.
+        
+        Your transaction id is ${transaction[0]?._id}`,
+        transaction[0]?.mobileNo
+      );
+      const agentMail = await sendEMail(
         process.env.MAIL_CLIENT_USER,
         mailTextShell(message),
         "Prepaid Units"
-      );
-
-      await sendSMS(
-        `Prepaid Units
-
-Thank you for your purchase!
-You will be notified shortly after your transaction is complete.
-
-Your transaction id is ${transaction[0]?._id}`,
-        transaction[0]?.mobileNo
       );
 
       // await sendWhatsappMessage({
@@ -812,6 +811,7 @@ Your transaction id is ${transaction[0]?._id}`,
       //   message:
       //     "Thank you for your purchase!You will be notified shortly after your transaction is complete",
       // });
+      limit(() => Promise.all([userMail, userSMS, agentMail]));
     }
 
     const successfulTransaction = {
@@ -877,7 +877,7 @@ router.post(
   rlimit,
   asyncHandler(async (req, res) => {
     const { id } = req.user;
-   
+
     const {
       category,
       categoryId,
@@ -970,7 +970,6 @@ router.post(
           .decrement({
             amount: totalAmount,
           });
-     
 
         transactionInfo = {
           _id: transaction_id,
@@ -1081,6 +1080,7 @@ router.post(
 );
 
 /**.................Airtime....................... */
+
 router.get(
   "/airtime",
   verifyToken,
@@ -1129,7 +1129,6 @@ router.get(
 );
 
 // Make Airtime Payment @route   POST payment/airtime
-
 router.post(
   "/airtime",
   verifyToken,
@@ -1273,6 +1272,7 @@ router.put(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id: _id } = req.user;
     // const recipient = req.body;
     const id = req.query.id;
 
@@ -1324,13 +1324,20 @@ router.put(
         //   message: `You have successfully recharged ${airtimeInfo.recipient} with GHS ${airtimeInfo.amount} of airtime, you were charged GHS ${airtimeInfo.amount}`,
         // });
 
+        //logs
+        await knex("activity_logs").insert({
+          employee_id: _id,
+          title: "Processed bulk airtime transaction!",
+          severity: "info",
+        });
+
         res.status(200).json(data);
 
         const balance = await accountBalance();
         if (Number(balance) < 1000) {
           const body = `
 Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.
-Please recharge to avoid any incoveniences.
+Please recharge to avoid any inconveniences.
 Thank you.
           `;
           await sendEMail(
@@ -1598,30 +1605,10 @@ router.get(
   asyncHandler(async (req, res) => {
     const { startDate, endDate } = req.query;
 
-    const transactions = await knex("prepaid_transactions")
-      .join("meters", "prepaid_transactions.meter", "=", "meters._id")
-      .select(
-        "prepaid_transactions._id as _id",
-        "prepaid_transactions.email as email",
-        "prepaid_transactions.mobileNo as mobileNo",
-        "prepaid_transactions.info as info",
-        "prepaid_transactions.year as year",
-        "prepaid_transactions.status as status",
-        "prepaid_transactions.district as district",
-        "prepaid_transactions.processed as processed",
-        "prepaid_transactions.active as active",
-        "prepaid_transactions.createdAt as createdAt",
-        "prepaid_transactions.updatedAt as updatedAt",
-        "meters._id as meterId",
-        "meters.number as number",
-        "meters.name as name",
-        "meters.type as type",
-        "meters.district as district",
-        "meters.address as address",
-        "meters.geoCode as geoCode",
-        "meters.accountNumber as accountNumber"
-      )
-      .where("prepaid_transactions.status", "completed");
+    const transactions = await knex("meter_prepaid_transaction_view").where(
+      "status",
+      "completed"
+    );
 
     const modifiedTransactions = transactions.map((transaction) => {
       return {
@@ -1631,6 +1618,8 @@ router.get(
         mobileNo: transaction?.mobileNo,
         year: transaction?.year,
         status: transaction?.status,
+        topup: transaction?.topup,
+        charges: transaction?.charges,
         isProcessed: Boolean(transaction?.processed),
         createdAt: transaction?.createdAt,
         updatedAt: transaction?.updatedAt,
@@ -1672,7 +1661,7 @@ router.get(
       return res.status(400).json("Invalid Request!");
     }
 
-    const transaction = await knex("prepaid_transactions")
+    const transaction = await knex("meter_prepaid_transaction_view")
       .select("*")
       .where("_id", id)
       .limit(1);
@@ -1693,33 +1682,12 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    const transactions = await knex("prepaid_transactions")
-      .join("meters", "prepaid_transactions.meter", "=", "meters._id")
+    const transactions = await knex("meter_prepaid_transaction_view")
       .where({
-        "prepaid_transactions.meter": id,
-        "prepaid_transactions.status": "completed",
+        meter: id,
+        status: "completed",
       })
-      .select(
-        "prepaid_transactions._id as _id",
-        "prepaid_transactions.email as email",
-        "prepaid_transactions.mobileNo as mobileNo",
-        "prepaid_transactions.info as info",
-        "prepaid_transactions.year as year",
-        "prepaid_transactions.status as status",
-        "prepaid_transactions.processed as processed",
-        "prepaid_transactions.district as district",
-        "prepaid_transactions.active as active",
-        "prepaid_transactions.createdAt as createdAt",
-        "prepaid_transactions.updatedAt as updatedAt",
-        "meters._id as meterId",
-        "meters.number as number",
-        "meters.name as name",
-        "meters.type as type",
-        "meters.district as district",
-        "meters.address as address",
-        "meters.geoCode as geoCode",
-        "meters.accountNumber as accountNumber"
-      )
+      .select("*")
       .orderBy("createdAt", "desc");
 
     const modifiedTransactions = transactions.map((transaction) => {
@@ -1729,6 +1697,8 @@ router.get(
         email: transaction?.email,
         mobileNo: transaction?.mobileNo,
         year: transaction?.year,
+        topup: transaction?.topup,
+        charges: transaction?.charges,
         status: transaction?.status,
         isProcessed: Boolean(transaction?.processed),
         createdAt: transaction?.createdAt,
@@ -1757,34 +1727,13 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    const transactions = await knex("prepaid_transactions")
-      .join("meters", "prepaid_transactions.meter", "=", "meters._id")
+    const transactions = await knex("meter_prepaid_transaction_view")
       .where({
-        "prepaid_transactions.user": id,
-        "prepaid_transactions.active": 1,
-        "prepaid_transactions.status": "completed",
+        user: id,
+        active: 1,
+        status: "completed",
       })
-      .select(
-        "prepaid_transactions._id as _id",
-        "prepaid_transactions.email as email",
-        "prepaid_transactions.mobileNo as mobileNo",
-        "prepaid_transactions.info as info",
-        "prepaid_transactions.year as year",
-        "prepaid_transactions.status as status",
-        "prepaid_transactions.district as district",
-        "prepaid_transactions.processed as processed",
-        "prepaid_transactions.active as active",
-        "prepaid_transactions.createdAt as createdAt",
-        "prepaid_transactions.updatedAt as updatedAt",
-        "meters._id as meterId",
-        "meters.number as number",
-        "meters.name as name",
-        "meters.type as type",
-        "meters.district as district",
-        "meters.address as address",
-        "meters.geoCode as geoCode",
-        "meters.accountNumber as accountNumber"
-      )
+      .select("*")
       .orderBy("createdAt", "desc");
 
     const modifiedTransactions = transactions.map((transaction) => {
@@ -1794,6 +1743,9 @@ router.get(
         email: transaction?.email,
         mobileNo: transaction?.mobileNo,
         year: transaction?.year,
+        mode: transaction?.mode,
+        charges: transaction?.charges,
+        topup: transaction?.topup,
         status: transaction?.status,
         isProcessed: Boolean(transaction?.processed),
         createdAt: transaction?.createdAt,
@@ -1822,7 +1774,7 @@ router.post(
   rlimit,
   asyncHandler(async (req, res) => {
     const { id } = req.user;
-    const { meter, info, amount, isWallet } = req.body;
+    const { meter, info, charges, topup, amount, isWallet } = req.body;
 
     const transx = await knex.transaction();
 
@@ -1877,6 +1829,8 @@ router.post(
             provider: "wallet",
           }),
           amount,
+          charges,
+          topup,
           provider: "wallet",
           mode: "Wallet",
           status: user_deduction === 1 ? "completed" : "failed",
@@ -1918,6 +1872,8 @@ router.post(
             ...info,
             domain: "Prepaid",
           }),
+          charges,
+          topup,
           amount,
           partner: JSON.stringify(sendMoneyReponse?.Data),
           mode: "Mobile Money",
@@ -2006,61 +1962,56 @@ router.post(
   })
 );
 
+//Process prepaid transaction
 router.put(
   "/electricity",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id } = req.user;
     const { _id, meter, meterId, info } = req.body;
 
-    info.domain = "Prepaid";
+    const transx = await knex.transaction();
 
-    await knex("meters")
+    await transx("meters")
       .where("_id", meterId)
       .update({
         ...meter,
       });
 
-    const updateTransactionDetails = await knex("prepaid_transactions")
+    const updateTransactionDetails = await transx("prepaid_transactions")
       .where("_id", _id)
       .update({
-        info: JSON.stringify(info),
+        info: JSON.stringify({
+          ...info,
+          domain: "Prepaid",
+        }),
         processed: 1,
+        issuer: id,
       });
 
     if (updateTransactionDetails !== 1) {
       return res.status(404).json("Error updating request");
     }
 
-    const transactions = await knex("prepaid_transactions")
-      .join("meters", "prepaid_transactions.meter", "=", "meters._id")
+    const transactions = await transx("meter_prepaid_transaction_view")
       .where({
-        "prepaid_transactions._id": _id,
-        "prepaid_transactions.status": "completed",
+        _id: _id,
+        status: "completed",
       })
-      .select(
-        "prepaid_transactions._id as _id",
-        "prepaid_transactions.user as userID",
-        "prepaid_transactions.email as email",
-        "prepaid_transactions.mobileNo as mobileNo",
-        "prepaid_transactions.info as info",
-        "prepaid_transactions.mode as mode",
-        "prepaid_transactions.year as year",
-        "prepaid_transactions.status as status",
-        "prepaid_transactions.district as district",
-        "prepaid_transactions.active as active",
-        "prepaid_transactions.createdAt as createdAt",
-        "prepaid_transactions.updatedAt as updatedAt",
-        "meters._id as meterId",
-        "meters.number as number",
-        "meters.name as name",
-        "meters.type as type",
-        "meters.district as district",
-        "meters.address as address",
-        "meters.geoCode as geoCode",
-        "meters.accountNumber as accountNumber"
-      )
       .limit(1);
+
+    if (!transactions[0]) {
+      return res.status(404).json("Error updating request");
+    }
+
+    const issuer = await transx("employees")
+      .where("_id", id)
+      .select("_id", knex.raw("CONCAT(firstname,' ',lastname) as name"));
+
+    res
+      .status(201)
+      .json("Your request is being processed.You will be notified shortly!!");
 
     const paymentInfo = JSON.parse(transactions[0]?.info);
     const meterInfo = {
@@ -2069,6 +2020,8 @@ router.put(
       name: transactions[0]?.name,
       district: transactions[0]?.district,
       address: transactions[0]?.address,
+      topup: currencyFormatter(transactions[0]?.topup),
+      charges: currencyFormatter(transactions[0]?.charges),
       amount: currencyFormatter(paymentInfo?.amount),
       paymentMethod: transactions[0]?.mode,
       orderNo: paymentInfo?.orderNo,
@@ -2077,30 +2030,18 @@ router.put(
       lastCharge: paymentInfo?.lastCharge,
       lastMonthConsumption: paymentInfo?.lastMonthConsumption,
       createdAt: moment(transactions[0].createdAt).format("lll"),
+      issuer: issuer[0]?.name || "N/A",
     };
 
     const template = await generatePrepaidTemplate(meterInfo);
-
     const result = limit(() => generatePrepaidReceipt(template, _id));
 
     result
       .then(async (data) => {
         if (data === "done") {
-          limit(() =>
-            sendElectricityMail(_id, paymentInfo.email, transactions[0]?.status)
-          );
-
-          await sendSMS(
-            `Prepaid Units
-      
-You request to buy prepaid units has being completed.
-Thank you for your purchase!`,
-            paymentInfo?.mobileNo
-          );
-
           const downloadLink = await uploadReceiptFile(`${_id}-prepaid.pdf`);
 
-          await knex("prepaid_transactions")
+          await transx("prepaid_transactions")
             .where("_id", _id)
             .update({
               info: JSON.stringify({
@@ -2109,7 +2050,7 @@ Thank you for your purchase!`,
               }),
             });
 
-          await knex("user_notifications").insert({
+          await transx("user_notifications").insert({
             _id: randomUUID(),
             user_id: transactions[0]?.userID,
             type: "prepaid",
@@ -2118,11 +2059,34 @@ Thank you for your purchase!`,
             link: downloadLink,
           });
 
+          await transx.commit();
+
+          //logs
+          await knex("activity_logs").insert({
+            employee_id: id,
+            title: "Processed prepaid transaction!",
+            severity: "info",
+          });
+
           // await sendWhatsappMessage({
           //   user: getInternationalMobileFormat(paymentInfo?.mobileNo),
           //   message: "Thank you for your purchase!",
           //   media: downloadLink,
           // });
+
+          limit(() =>
+            sendElectricityMail(_id, paymentInfo.email, transactions[0]?.status)
+          );
+
+          await sendSMS(
+            `Prepaid Units
+
+You request to buy prepaid units has being completed.Thank you for your purchase!
+Click on the link below to download your receipt:
+${downloadLink}
+`,
+            paymentInfo?.mobileNo
+          );
         }
       })
       .catch((error) => {
@@ -2135,10 +2099,6 @@ Thank you for your purchase!`,
     //   `,
     //   updateTransactionDetails?.info?.mobileNo
     // );
-
-    res
-      .status(201)
-      .json("Your request is being processed.You will be notified shortly!!");
   })
 );
 
@@ -2194,7 +2154,7 @@ router.get(
 
     const transactions = await knex("agent_transactions")
       .where("agent_id", "d9bc3351-d703-45a5-9b8b-b9ec5d74268c")
-      .select("*", knex.raw("DATE_FORMAT(createdAt,'%M %d %Y %r') AS date"))
+      .select("*", knex.raw("DATE_FORMAT(createdAt,'%M %d %Y 🔸 %r') AS date"))
       .orderBy("createdAt", "desc");
 
     const template = await generateAgentTransactionTemplate({ transactions });

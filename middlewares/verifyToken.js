@@ -9,7 +9,6 @@ const verifyToken = (req, res, next) => {
 
   const authHeader =
     req.headers["authorization"] || req.headers["Authorization"];
- 
 
   if (!authHeader) {
     return res.status(401).json("Unauthorized Access");
@@ -25,7 +24,6 @@ const verifyToken = (req, res, next) => {
     if (err) {
       return res.status(403).json("Session has expired.");
     }
-  
 
     let authUser = {};
     if (
@@ -42,14 +40,13 @@ const verifyToken = (req, res, next) => {
         .where("_id", user?.id)
         .limit(1);
     } else {
-     
       authUser = await knex("users")
         .select("*")
         .where("_id", user?.id)
         .limit(1);
     }
 
-    const isTrue = bcrypt.compare(token, authUser[0]?.token);
+    const isTrue = bcrypt.compare(token, authUser[0]?.token || "");
     if (!isTrue) {
       return res.status(403).json("Session has expired.");
     }
@@ -130,7 +127,7 @@ const verifyRefreshToken = (req, res, next) => {
         .limit(1);
     }
 
-    const isTrue = bcrypt.compare(token, authUser[0]?.token);
+    const isTrue = bcrypt.compare(token, authUser[0]?.token || "");
     if (!isTrue) {
       return res.status(403).json("Session has expired.");
     }

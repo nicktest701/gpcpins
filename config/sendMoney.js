@@ -95,17 +95,21 @@ async function topUpStatus(referenceId) {
 
 async function accountBalance() {
   try {
-    const res = await axios({
-      method: "GET",
-      url: `${process.env.MSDID_TOP_UP_URL}/balance`,
-      headers: {
-        accept: "application/json",
-        ApiKey: process.env.MSDID_TOP_UP_KEY,
-        ApiSecret: process.env.MSDID_TOP_UP_PIN,
-      },
-    });
+    if (process.env.NODE_ENV === "production") {
+      const res = await axios({
+        method: "GET",
+        url: `${process.env.MSDID_TOP_UP_URL}/balance`,
+        headers: {
+          accept: "application/json",
+          ApiKey: process.env.MSDID_TOP_UP_KEY,
+          ApiSecret: process.env.MSDID_TOP_UP_PIN,
+        },
+      });
 
-    return res.data;
+      return res.data;
+    } else {
+      return 0.0;
+    }
   } catch (error) {
     throw error;
   }

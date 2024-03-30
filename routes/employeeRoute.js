@@ -118,9 +118,12 @@ router.post(
   verifyAdmin,
   Upload.single("profile"),
   asyncHandler(async (req, res) => {
+    const { id } = req.user;
     const newEmployee = req.body;
 
-    const doesEmployeeExists = await knex("employees")
+    const transx = await knex.transaction();
+
+    const doesEmployeeExists = await transx("employees")
       .select("email")
       .where("email", newEmployee.email)
       .limit(1);
@@ -131,7 +134,7 @@ router.post(
         .json("An employee with this account already exists!");
     }
 
-    const doesUserNameExists = await knex("employees")
+    const doesUserNameExists = await transx("employees")
       .select("username")
       .where("username", newEmployee?.username)
       .limit(1);
@@ -158,7 +161,7 @@ router.post(
     }
 
     const _id = randomUUID();
-    const employee = await knex("employees").insert({
+    const employee = await transx("employees").insert({
       _id,
       ...newEmployee,
       permissions: JSON.stringify([]),
@@ -175,7 +178,7 @@ router.post(
       token,
       email: newEmployee?.email,
     };
-    await knex("tokens").insert(codeInfo);
+    await transx("tokens").insert(codeInfo);
 
     let message_url = `http://localhost:5003/auth/verify?id=${codeInfo?._id}&token=${codeInfo?.token}`;
     if (process.env.NODE_ENV === "production") {
@@ -203,11 +206,19 @@ router.post(
     </div>
         `;
 
+    //logs
+    await transx("activity_logs").insert({
+      employee_id: id,
+      title: "Created new employee account.",
+      severity: "info",
+    });
+
+    await transx.commit();
+
     try {
       await sendMail(newEmployee?.email, mailTextShell(message));
     } catch (error) {
-      await knex("employees").where("_id", _id).del();
-      await knex("tokens").where("_id", codeInfo?._id).del();
+      await transx.rollback();
 
       return res.status(400).json("An error has occurred.Try again later");
     }
@@ -221,18 +232,33 @@ router.put(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const { _id, ...rest } = req.body;
+    const { id } = req.user;
+    const { _id, permissions, name, ...rest } = req.body;
+    // console.log(req.body);
 
     rest.role =
       req.body?.role === "Employee"
         ? process.env.EMPLOYEE_ID
         : process.env.ADMIN_ID;
 
-    const employee = await knex("employees").where("_id", _id).update(rest);
+    const employee = await knex("employees")
+      .where("_id", _id)
+      .update({
+        permissions: JSON.stringify(permissions),
+        ...rest,
+      });
 
     if (employee !== 1) {
       res.status(404).json("Error updating employee information.");
     }
+
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: id,
+      title: "Modified employee account details.",
+      severity: "info",
+    });
+
     res.status(201).json("Changes saved successfully!!!");
   })
 );
@@ -243,6 +269,7 @@ router.put(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id: _id } = req.user;
     const { id, active } = req.body;
 
     const updatedEmployee = await knex("employees")
@@ -252,6 +279,17 @@ router.put(
     if (updatedEmployee !== 1) {
       return res.status(400).json("Error updating employee info");
     }
+
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: _id,
+      title: `${
+        Boolean(active) === true
+          ? "Activated an employee account!"
+          : "Disabled an employee account!"
+      }`,
+      severity: "warning",
+    });
 
     res
       .status(201)
@@ -291,7 +329,7 @@ router.put(
     };
     await knex("tokens").insert(codeInfo);
 
-    const message_url = `https://www.gpcpins/auth/verify?id=${codeInfo?._id}&token=${codeInfo?.token}`;
+    const message_url = `https://admin.gpcpins/auth/verify?id=${codeInfo?._id}&token=${codeInfo?.token}`;
 
     const message = `
         <div style="width:500px;">
@@ -326,6 +364,7 @@ router.delete(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id: _id } = req.user;
     const { id } = req.params;
 
     if (!isValidUUID2(id)) {
@@ -337,6 +376,13 @@ router.delete(
     if (employee !== 1) {
       return res.status(500).json("Invalid Request!");
     }
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: _id,
+      title: "Deleted an employee account!",
+      severity: "error",
+    });
+
     res.status(200).json("Employee Removed!");
   })
 );

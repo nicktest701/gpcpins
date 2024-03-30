@@ -2,19 +2,19 @@ const jwt = require("jsonwebtoken");
 
 function signAccessToken(data) {
   return jwt.sign(data, process.env.TOKEN, {
-    expiresIn: "30m",
+    expiresIn: "180d",
   });
 }
 
 function signRefreshToken(data) {
   return jwt.sign(data, process.env.TOKEN_REFRESH, {
-    expiresIn: "90d",
+    expiresIn: "365d",
   });
 }
 
 function signSampleToken(data) {
   return jwt.sign(data, process.env.TOKEN, {
-    expiresIn: "30m",
+    expiresIn: "1h",
   });
 }
 function signSampleRefreshToken(data) {

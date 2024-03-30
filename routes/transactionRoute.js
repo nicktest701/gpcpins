@@ -714,7 +714,9 @@ router.get(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id, isAdmin } = req.user;
     const year = moment().year();
+    let logs = [];
     //Bundle
     const bundle_transactions = await knex("bundle_transactions")
       .select(
@@ -872,6 +874,19 @@ router.get(
     transactionByMonth.bundle = airtimeByMonth.voucher;
     transactionByMonth.airtime = airtimeByMonth.ecg;
 
+    if (isAdmin) {
+      logs = await knex("activity_logs_view")
+        .select("*")
+        .limit(3)
+        .orderBy("createdAt", "desc");
+    } else {
+      logs = await knex("activity_logs_view")
+        .where({ employeeId: id })
+        .select("title", "createdAt")
+        .limit(3)
+        .orderBy("createdAt", "desc");
+    }
+
     res.status(200).json({
       totalSales: grandTotal,
       totalCount: count,
@@ -879,6 +894,7 @@ router.get(
       today,
       sevenDays,
       transactionByMonth,
+      logs,
     });
   })
 );
@@ -1051,6 +1067,8 @@ router.get(
   verifyAdmin,
 
   asyncHandler(async (req, res) => {
+    const meters = await knex("meters").select("*").count({ count: "*" });
+
     const prepaid_transactions = await knex("prepaid_transactions")
       .where({ year: moment().year(), status: "completed" })
       .select("_id", "info", "status", "processed", "year", "createdAt")
@@ -1106,6 +1124,7 @@ router.get(
         groupedTransactions["1"]?.length ?? 0,
       ],
       topCustomers,
+      meters: meters[0].count,
     });
   })
 );
@@ -1235,11 +1254,7 @@ router.get(
   verifyToken,
   asyncHandler(async (req, res) => {
     const { id } = req.user;
-    const { email, mobileNo, startDate, endDate } = req.query;
-
-    if (!email || !mobileNo) {
-      return res.status(401).json("Invalid Request!");
-    }
+    const { startDate, endDate } = req.query;
 
     const sDate = moment(startDate).format("MMMM DD YYYY");
     const eDate = moment(endDate).format("MMMM DD YYYY");
@@ -1407,6 +1422,43 @@ router.get(
   })
 );
 router.get(
+  "/logs",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { id, isAdmin } = req.user;
+    const { startDate, endDate } = req.query;
+
+    const sDate = moment(startDate).format("MMMM DD YYYY");
+    const eDate = moment(endDate).format("MMMM DD YYYY");
+
+    let logs = [];
+
+    if (isAdmin) {
+      logs = await knex.raw(
+        `SELECT *
+          FROM (
+              SELECT *,DATE_FORMAT(createdAt,'%M %d %Y') AS created_date
+              FROM activity_logs_view
+          ) AS activity_logs_view_  WHERE created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
+        [sDate, eDate]
+      );
+    } else {
+      logs = await knex.raw(
+        `SELECT *
+          FROM (
+              SELECT *,DATE_FORMAT(createdAt,'%M %d %Y') AS created_date
+              FROM activity_logs_view
+          ) AS activity_logs_view_  WHERE employeeId=? AND created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
+        [id, sDate, eDate]
+      );
+    }
+
+    return res.status(200).json(logs[0]);
+  })
+);
+
+router.get(
   "/:transactionId",
   limit,
   asyncHandler(async (req, res) => {
@@ -1459,6 +1511,13 @@ router.put(
     });
     await knex("bundle_transactions").where("_id", "IN", ids).update({
       active: 0,
+    });
+
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: _id,
+      title: "Deleted multiple transactions!",
+      severity: "error",
     });
 
     res.sendStatus(204);
@@ -1618,6 +1677,8 @@ router.post(
     }
   })
 );
+
+// @route GET api/agent airtime
 router.get(
   "/agent/airtime",
   verifyToken,
@@ -1650,14 +1711,13 @@ router.get(
     //Get Recent Transactions
     const recent = getRecentTransaction(transaction, 3);
     //Get Today Transactions
-    const today = currencyFormatter(getTodayTransaction(transaction));
-    const yesterday = currencyFormatter(getYesterdayTransaction(transaction));
+    const today = getTodayTransaction(transaction);
+    const yesterday = getYesterdayTransaction(transaction);
     const lastSevenDaysData = getLastSevenDaysTransactions([], transaction);
 
-    const lastSevenDaysTotal = currencyFormatter(
-      _.sum(lastSevenDaysData?.ecg?.data)
-    );
-    const thisMonth = currencyFormatter(getThisMonthTransaction(transaction));
+    const lastSevenDaysTotal = _.sum(lastSevenDaysData?.ecg?.data);
+
+    const thisMonth = getThisMonthTransaction(transaction);
     const thisYear = getTransactionsByMonth([], transaction);
 
     const topCustomers = getTopCustomers(transaction);
@@ -1861,7 +1921,7 @@ router.get(
         "agents.phonenumber as phonenumber",
         knex.raw("CONCAT(firstname,' ',lastname) as name"),
         knex.raw(
-          "DATE_FORMAT(agent_wallets.updatedAt,'%D %M %Y ,%r' ) as updatedAt"
+          "DATE_FORMAT(agent_wallets.updatedAt,'%D %M %Y 🔸 %r' ) as updatedAt"
         )
       );
 
@@ -1900,6 +1960,13 @@ router.post(
       });
 
       await transaction.commit();
+
+      //logs
+      await knex("activity_logs").insert({
+        employee_id: id,
+        title: "Topped up agent wallet",
+        severity: "info",
+      });
 
       return res.status(200).json("Wallet top up successful");
     } catch (error) {
@@ -1999,7 +2066,7 @@ router.get(
         "users.phonenumber as phonenumber",
         knex.raw("CONCAT(firstname,' ',lastname) as name"),
         knex.raw(
-          "DATE_FORMAT(user_wallets.updatedAt,'%D %M %Y ,%r' ) as updatedAt"
+          "DATE_FORMAT(user_wallets.updatedAt,'%D %M %Y 🔸 %r' ) as updatedAt"
         )
       );
 
@@ -2022,7 +2089,6 @@ router.post(
     try {
       if (req.file) {
         url = await uploadAttachment(req.file);
-      
       }
       if (type === "user") {
         await transaction("user_wallet_transactions").insert({
@@ -2074,6 +2140,14 @@ router.post(
         });
       }
       await transaction.commit();
+
+      //logs
+      await knex("activity_logs").insert({
+        employee_id: id,
+        title: `Topped up ${type} wallet`,
+        severity: "info",
+      });
+
       return res.status(200).json("Wallet top up successful");
     } catch (error) {
       await transaction.rollback();

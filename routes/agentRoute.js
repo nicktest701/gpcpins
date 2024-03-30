@@ -22,7 +22,7 @@ const { mailTextShell } = require("../config/mailText");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 50, // 5 requests per windowMs
+  max: 15, // 5 requests per windowMs
   message: "Too many requests!. please try again later.",
 });
 
@@ -255,10 +255,10 @@ router.get(
 // @POST Agent
 router.post(
   "/",
-  // verifyToken,
-  // verifyAdmin,
+  verifyToken,
+  verifyAdmin,
   asyncHandler(async (req, res) => {
-    // const { id } = req.user;
+    const { id } = req.user;
 
     const transaction = await knex.transaction();
     try {
@@ -325,7 +325,7 @@ router.post(
       await transaction.commit();
 
       const admin = await knex("employees")
-        .where("_id", "5651d403-1239-411c-b2fe-c16f4155915d")
+        .where("_id", id)
         .select("email", knex.raw("CONCAT(firstname,'',lastname) as name"))
         .limit(1);
 
@@ -335,16 +335,16 @@ router.post(
 
       <p><strong>Dear ${rest?.firstname} ${rest?.lastname},</strong></p>
 
-      <p>We are delighted to inform you that your application to become an agent at GABP POWERFUL CONSULT has been accepted! Congratulations and welcome aboard!</p>
+      <p>We are delighted to inform you that your application to become an agent at GAB POWERFUL CONSULT has been accepted! Congratulations and welcome aboard!</p>
       <p>As an agent at GAB POWERFUL CONSULT, you will have access to a wide range of resources, support, and opportunities for growth and success. We are committed to providing you with the tools and assistance you need to thrive in your new role.</p>
       <p>Please let us know if you have any questions or if there is anything we can do to assist you as you get started. We are here to help every step of the way.</p>
       <p>Once again, welcome to the team! We look forward to working with you and witnessing your contributions to our company's success.</p>
       
 
       <p><strong>Details:</strong></p>
-      <p><strong>Login URL:</strong> <a href='https://admin.gpcpins.com'>https://agent.gpcpins.com</a></p>
+      <p><strong>Login URL:</strong> <a href='https://accounts.gpcpins.com'>https://accounts.gpcpins.com</a></p>
       <p><strong>Username:</strong> ${rest?.username}</p>
-      <p><strong>Password:</strong> ${password}</p>
+      <p><strong>Default Password:</strong> ${password}</p>
       <p><strong>Client ID:</strong> ${agent_key}</p>
 
       <p>Best regards,</p>
@@ -357,6 +357,13 @@ router.post(
 
       </div>`;
 
+      //logs
+      await knex("activity_logs").insert({
+        employee_id: id,
+        title: "Created new agent account!",
+        severity: "info",
+      });
+
       await sendEMail(
         rest?.email,
         mailTextShell(message),
@@ -366,7 +373,7 @@ router.post(
       res.sendStatus(201);
     } catch (error) {
       await transaction.rollback();
-     
+
       res.status(500).json("An unknown error has occurred!");
     }
   })
@@ -479,6 +486,7 @@ router.post(
     res.status(200).json("Commission Updated");
   })
 );
+
 //@GET agent by email
 router.post(
   "/login",
@@ -724,7 +732,7 @@ router.put(
   verifyToken,
   verifyAdminORAgent,
   asyncHandler(async (req, res) => {
-    const { role } = req.user;
+    const { id, role } = req.user;
     const { _id, agent_id, ...rest } = req.body;
 
     if (agent_id) {
@@ -752,6 +760,13 @@ router.put(
     }
 
     if (role === process.env.ADMIN_ID) {
+      //logs
+      await knex("activity_logs").insert({
+        employee_id: id,
+        title: "Modified an agent account.",
+        severity: "info",
+      });
+
       return res.status(201).json("Changes Saved!");
     }
 
@@ -813,6 +828,13 @@ router.put(
     }
 
     if (role === process.env.ADMIN_ID) {
+      //logs
+      await knex("activity_logs").insert({
+        employee_id: id,
+        title: "Modified an agent password.",
+        severity: "info",
+      });
+
       return res.status(200).json("Changes Saved");
     }
 
@@ -927,6 +949,7 @@ router.put(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id: _id } = req.user;
     const { id, active } = req.body;
 
     const updatedAgent = await knex("agents")
@@ -936,6 +959,17 @@ router.put(
     if (updatedAgent !== 1) {
       return res.status(400).json("Error updating agent info");
     }
+
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: _id,
+      title: `${
+        Boolean(active) === true
+          ? "Activated an agent account!"
+          : "Disabled an agent account!"
+      }`,
+      severity: "warning",
+    });
 
     res
       .status(201)
@@ -951,6 +985,7 @@ router.delete(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id: _id } = req.user;
     const { id } = req.params;
 
     if (!isValidUUID2(id)) {
@@ -962,6 +997,14 @@ router.delete(
     if (!agent) {
       return res.status(500).json("Invalid Request!");
     }
+
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: _id,
+      title: "Deleted an agent account!",
+      severity: "error",
+    });
+
     res.status(200).json("Agent Account Removed!");
   })
 );
@@ -1039,11 +1082,6 @@ router.get(
     const sDate = moment(startDate).format("MMMM DD YYYY");
     const eDate = moment(endDate).format("MMMM DD YYYY");
 
-    // const transactions = await knex("agent_wallet_transactions")
-    //   .where("agent_id", id)
-    //   .select("_id", "createdAt", "amount", "status")
-    //   .orderBy("createdAt", "desc");
-
     const transactions = await knex.raw(
       `SELECT *
           FROM (
@@ -1058,7 +1096,7 @@ router.get(
   })
 );
 
-//Send bundle to recipient
+//Top up wallet request
 router.post(
   "/top-up/request",
   verifyToken,
@@ -1295,10 +1333,10 @@ router.post(
         const balance = Number(response?.balance_after);
         if (balance < 1000) {
           const body = `
-    Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.
-    Please recharge to avoid any incoveniences.
-    Thank you.
-          `;
+        Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.
+        Please recharge to avoid any inconveniences.
+        Thank you.
+              `;
           await sendEMail(
             process.env.MAIL_CLIENT_USER,
             mailTextShell(`<p>${body}</p>`),
@@ -1306,13 +1344,24 @@ router.post(
           );
           await sendSMS(body, process.env.CLIENT_PHONENUMBER);
         }
+
+        //send notiication to agent about the transaction
+        await transx("agent_notifications").insert({
+          _id: randomUUID(),
+          agent_id: id,
+          type: "airtime",
+          title: "Airtime Transfer",
+          message: `You have successfully recharged ${airtimeInfo.recipient} with GHS ${airtimeInfo.amount} of airtime, you were charged GHS ${airtimeInfo.amount} with a commission of GHS ${transactionInfo?.commission}`,
+        });
       } else {
         await transx("agent_transactions").insert({
           ...transactionInfo,
           status: "failed",
         });
       }
+
       await transx.commit();
+
       return res.status(200).json("Airtime transfer was successful!");
     } catch (error) {
       await transx.rollback();
@@ -1395,6 +1444,15 @@ router.post(
             await transx("agent_wallets").where("agent_id", id).decrement({
               amount: transactionInfo?.amount,
             });
+
+            //send notiication to agent about the transaction
+            await transx("agent_notifications").insert({
+              _id: randomUUID(),
+              agent_id: id,
+              type: "airtime",
+              title: "Airtime Transfer",
+              message: `You have successfully recharged ${airtimeInfo?.recipient} with GHS ${airtimeInfo.amount} of airtime, you were charged GHS ${airtimeInfo?.amount} with a commission of GHS ${transactionInfo?.commission}`,
+            });
             await transx.commit();
 
             return {
@@ -1422,7 +1480,7 @@ router.post(
       } catch (error) {
         return res
           .status(401)
-          .json("Transaction failed! An error has occurred.");
+          .json("Transaction failed! An error has occurreds.");
       }
     });
 
@@ -1432,7 +1490,7 @@ router.post(
         if (balance < 1000) {
           const body = `
     Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.
-    Please recharge to avoid any incoveniences.
+    Please recharge to avoid any inconveniences.
     Thank you.
           `;
           await sendEMail(
@@ -1505,11 +1563,19 @@ router.post(
           amount: transactionInfo?.amount,
         });
 
+        await transx("agent_notifications").insert({
+          _id: randomUUID(),
+          agent_id: id,
+          type: "bundle",
+          title: "Data Bundle Transfer",
+          message: `You have successfully recharged ${bundleInfo.recipient} with ${bundleInfo.data_code}, you were charged GHS ${transactionInfo?.amount}`,
+        });
+
         const balance = Number(response?.balance_after);
         if (balance < 1000) {
           const body = `
     Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.
-    Please recharge to avoid any incoveniences.
+    Please recharge to avoid any inconveniences.
     Thank you.
           `;
           await sendEMail(

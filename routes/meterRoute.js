@@ -1,125 +1,140 @@
-const router = require('express').Router();
-const asyncHandler = require('express-async-handler');
-const _ = require('lodash');
-const { randomUUID } = require('crypto');
+const router = require("express").Router();
+const asyncHandler = require("express-async-handler");
+const _ = require("lodash");
+const { randomUUID } = require("crypto");
 
 //model
 
-const { isValidUUID2 } = require('../config/validation');
+const { isValidUUID2 } = require("../config/validation");
 
-const knex = require('../db/knex');
+const knex = require("../db/knex");
+const { verifyToken } = require("../middlewares/verifyToken");
+const verifyAdmin = require("../middlewares/verifyAdmin");
 
 router.get(
-  '/',
+  "/",
   asyncHandler(async (req, res) => {
     const meterNo = req.query?.meterNo;
 
     if (meterNo) {
-      const meter = await knex('meters')
-        .select('*')
-        .where('number', meterNo)
+      const meter = await knex("meters")
+        .select("*")
+        .where("number", meterNo)
         .limit(1);
 
       return res.status(200).json(meter[0]);
     }
 
     // const meters = await Meter.find({});
-    const meters = await knex('meters').select('*');
+    const meters = await knex("meters").select(
+      "*",
+      knex.raw("DATE_FORMAT(createdAt,'%D %M %Y 🔸 %r') as modifiedAt")
+    ).orderBy('createdAt','desc')
     res.status(200).json(meters);
   })
 );
 
 router.get(
-  '/:id',
+  "/all",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const meters = await knex("meters").select("*");
+    res.status(200).json(meters);
+  })
+);
+
+router.get(
+  "/:id",
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     if (!isValidUUID2(id)) {
-      return res.status(400).json('Invalid Request ID!');
+      return res.status(400).json("Invalid Request ID!");
     }
 
-    const meter = await knex('meters').select('*').where('_id', id).limit(1);
+    const meter = await knex("meters").select("*").where("_id", id).limit(1);
 
     res.status(200).json(meter[0]);
   })
 );
 router.get(
-  '/user/:id',
+  "/user/:id",
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     if (!isValidUUID2(id)) {
-      return res.status(400).json('Invalid Request ID!');
+      return res.status(400).json("Invalid Request ID!");
     }
 
-    const meters = await knex('meters')
-      .select('*')
-      .where('user', id)
-      .orderBy('createdAt', 'desc');
+    const meters = await knex("meters")
+      .select("*")
+      .where("user", id)
+      .orderBy("createdAt", "desc");
 
     res.status(200).json(meters);
   })
 );
 
 router.post(
-  '/',
+  "/",
   asyncHandler(async (req, res) => {
     const newMeter = req.body;
 
-    const ifMeterExists = await knex('meters').where({
+    const ifMeterExists = await knex("meters").where({
       number: newMeter?.number,
       user: newMeter.user,
     });
 
     if (!_.isEmpty(ifMeterExists)) {
-      return res.status(404).json('Meter already exist!.');
+      return res.status(404).json("Meter already exist!.");
     }
 
-    const meter = await knex('meters').insert({
+    const meter = await knex("meters").insert({
       _id: randomUUID(),
       ...newMeter,
     });
 
     if (_.isEmpty(meter)) {
-      return res.status(400).json('Error saving meter information!');
+      return res.status(400).json("Error saving meter information!");
     }
 
-    res.status(201).json('Meter saved!');
+    res.status(201).json("Meter saved!");
   })
 );
 
 router.put(
-  '/',
+  "/",
   asyncHandler(async (req, res) => {
     const { _id, ...rest } = req.body;
 
     if (!isValidUUID2(_id)) {
-      return res.status(400).json('Invalid Request!');
+      return res.status(400).json("Invalid Request!");
     }
 
-    const meter = await knex('meters').where('_id', _id).update(rest);
+    const meter = await knex("meters").where("_id", _id).update(rest);
 
     if (meter !== 1) {
-      return res.status(404).json('Error updating meter information!');
+      return res.status(404).json("Error updating meter information!");
     }
-    res.status(201).json('Meter info updated successfully!!!');
+    res.status(201).json("Meter info updated successfully!!!");
   })
 );
 
 router.delete(
-  '/',
+  "/",
   asyncHandler(async (req, res) => {
     const { id } = req.query;
 
     if (!isValidUUID2(id)) {
-      return res.status(400).json('Invalid Request!');
+      return res.status(400).json("Invalid Request!");
     }
 
-    const meter = await knex('meters').where('_id', id).del();
+    const meter = await knex("meters").where("_id", id).del();
 
     if (meter !== 1) {
-      return res.status(404).json('Error removing meter!');
+      return res.status(404).json("Error removing meter!");
     }
-    res.status(200).json('Meter removed!');
+    res.status(200).json("Meter removed!");
   })
 );
 

@@ -6,6 +6,11 @@
     <title>Gab Powerful Consults</title>
 
     <style>
+      *{
+        padding: 0;
+        margin: 0;
+        box-sizing: border-box;
+      }
       body {
         font-family: "Poppins", "Roboto", "Radio Canada", -apple-system,
           BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
@@ -14,12 +19,12 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         font-size: 14px !important;
-        font-weight: 500 !important;
+        font-weight: 400 !important;
         width: 100%;
         min-height: 100vh;
         display: flex;
         justify-content: center;
-        align-items: center;
+        align-items: start;
       }
 
       .content {
@@ -44,17 +49,17 @@
         display: block;
         margin-inline: auto;
         align-self: center;
-        width: 40px;
-        height: 40px;
-        margin-bottom: 16px;
+        width: 60px;
+        height: 60px;
+        margin-bottom: 12px;
       }
 
       small {
         text-transform: capitalize;
       }
       .image-container {
-        width: 120px;
-        height: 120px;
+        width: 60px;
+        height: 60px;
       }
     </style>
   </head>
@@ -66,7 +71,7 @@
           display: flex;
           flex-direction: column;
           align-items: center;
-          justify-content: center;
+          justify-content: flex-start;
           padding-bottom: 16px;
         "
       >
@@ -78,7 +83,7 @@
         </div>
         <h1 style="text-align: center">Gab Powerful Consult</h1>
         <small style="text-transform: lowercase">info@gpcpins.com</small>
-        <small>Ash-Town Kumasi</small>
+        <small>Ash-Town - Kumasi</small>
         <small>+233244012766</small>
       </div>
       <div class="item">
@@ -111,7 +116,15 @@
       </div>
 
       <div class="item">
-        <small>Received Amount</small>
+        <small>Top Up Amount</small>
+        <small> <%= topup%> </small>
+      </div>
+      <div class="item">
+        <small>Charges </small>
+        <small> <%= charges%> </small>
+      </div>
+      <div class="item">
+        <small>Total Amount</small>
         <small> <%= amount%> </small>
       </div>
 
@@ -126,11 +139,11 @@
 
       <div class="item">
         <small>Issuer</small>
-        <small>Gab Powerful Consult</small>
+        <small><%= issuer%></small>
       </div>
 
-      <h3 style="text-align: center"><%= amount%></h3>
-      <h3 style="text-align: center"><%= orderNo%></h3>
+      <h3 style="text-align: center;"><%= amount%></h3>
+      <h3 style="text-align: center;"><%= orderNo%></h3>
     </div>
   </body>
 </html>

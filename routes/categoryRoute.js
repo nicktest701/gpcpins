@@ -302,6 +302,7 @@ router.post(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id } = req.user;
     const newCategory = req.body;
 
     if (_.isEmpty(newCategory)) {
@@ -314,6 +315,8 @@ router.post(
       details: JSON.stringify(newCategory?.details),
     };
 
+    // console.log(modifiedCategory)
+
     const category = await knex("categories").insert(modifiedCategory);
 
     if (_.isEmpty(category)) {
@@ -321,6 +324,13 @@ router.post(
         .status(200)
         .json(`Error occured! Failed to add ${newCategory.category}`);
     }
+
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: id,
+      title: `Created a new ${modifiedCategory?.category} category`,
+      severity: "info",
+    });
 
     res.status(201).send(`Category Saved!`);
   })
@@ -331,6 +341,8 @@ router.put(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id: _id } = req.user;
+
     if (_.isEmpty(req.body)) {
       return res.status(400).json("Invalid Input Request!");
     }
@@ -355,6 +367,13 @@ router.put(
       return res.status(404).json("Error Updating Category!");
     }
 
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: _id,
+      title: `Modified ${newUpdatedCategory?.voucherType} category.`,
+      severity: "info",
+    });
+
     res.status(200).json("Changes saved!");
   })
 );
@@ -364,6 +383,7 @@ router.put(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id: _id } = req.user;
     if (_.isEmpty(req.body)) {
       return res.status(400).json("Invalid Input Request!");
     }
@@ -377,6 +397,13 @@ router.put(
       return res.status(404).json("Error Updating Category!");
     }
 
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: _id,
+      title: `Deleted multiple categories.`,
+      severity: "info",
+    });
+
     res.status(200).json("Vouchers removed!");
   })
 );
@@ -386,6 +413,7 @@ router.patch(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id: _id } = req.user;
     const { id, active } = req.body;
 
     if (!isValidUUID2(id)) {
@@ -400,6 +428,17 @@ router.patch(
       return res.status(404).json("Error Updating Category!");
     }
 
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: _id,
+      title: `${
+        Boolean(active) === true
+          ? "Activated a category!"
+          : "Disabled a category!"
+      }`,
+      severity: "warning",
+    });
+
     res
       .status(201)
       .json(
@@ -413,6 +452,8 @@ router.delete(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id: _id } = req.user;
+
     const id = req.query.id;
 
     if (!isValidUUID2(id)) {
@@ -424,6 +465,13 @@ router.delete(
     if (deletedCategory !== 1) {
       return res.status(404).json("Error Uemoving Category!");
     }
+
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: _id,
+      title: "Deleted a category!",
+      severity: "error",
+    });
 
     res.status(200).json("Category Removed!");
   })

@@ -20,7 +20,7 @@ const { mailTextShell } = require("../config/mailText");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 50, // 5 requests per windowMs
+  max: 20, // 5 requests per windowMs
   message: "Too many requests!. please try again later.",
 });
 
@@ -64,7 +64,7 @@ router.get(
 
 router.get(
   "/auth",
-  // limit,
+  limit,
   verifyToken,
   asyncHandler(async (req, res) => {
     const { id } = req.user;
@@ -109,13 +109,14 @@ router.get(
   limit,
   verifyRefreshToken,
   asyncHandler(async (req, res) => {
-    const { id, active, role ,createdAt} = req.user;
+    const { id, isAdmin, active, role, createdAt } = req.user;
 
     const updatedEmployee = {
       id,
       active,
       role,
-      createdAt
+      isAdmin,
+      createdAt,
     };
 
     const accessToken = signMainToken(updatedEmployee, "30m");
@@ -337,6 +338,13 @@ router.post(
       token: hashedToken,
     });
 
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: employee[0]?._id,
+      title: "Logged into account",
+      severity: "info",
+    });
+
     // if (isMobile(req)) {
     res.status(201).json({
       user: {
@@ -372,6 +380,15 @@ router.post(
   "/logout",
   verifyToken,
   asyncHandler(async (req, res) => {
+    const { id } = req.user;
+
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: id,
+      title: "Logged out of account.",
+      severity: "info",
+    });
+
     // res.cookie("_SSUID_kyfc", "", {
     //   httpOnly: true,
     //   path: "/",
@@ -396,6 +413,7 @@ router.put(
   "/",
   verifyToken,
   asyncHandler(async (req, res) => {
+    const { id } = req.user;
     const { _id, ...rest } = req.body;
 
     const updatedEmployee = await knex("employees")
@@ -419,6 +437,13 @@ router.put(
         "profile"
       )
       .where("_id", _id);
+
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: id,
+      title: "Updated account details",
+      severity: "info",
+    });
 
     res.status(201).json({
       user: {
@@ -504,6 +529,13 @@ router.put(
       .where("_id", id)
       .update({ token: hashedToken, active: 1 });
 
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: id,
+      title: "Updated account password!",
+      severity: "info",
+    });
+
     // if (isMobile(req)) {
     res.status(201).json({
       user: {
@@ -560,6 +592,13 @@ router.put(
       return res.status(404).json("An unknown error has occurred!");
     }
 
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: id,
+      title: "Updated account profile!",
+      severity: "info",
+    });
+
     res.status(201).json(url);
   })
 );
@@ -570,6 +609,7 @@ router.put(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id: _id } = req.user;
     const { id, active } = req.body;
 
     const updatedEmployee = await knex("employees")
@@ -579,6 +619,17 @@ router.put(
     if (updatedEmployee !== 1) {
       return res.status(400).json("Error updating employee info");
     }
+
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: _id,
+      title: `${
+        Boolean(active) === true
+          ? "Activated an employee account!"
+          : "Disabled an employee account!"
+      }`,
+      severity: "warning",
+    });
 
     res
       .status(201)
@@ -594,6 +645,7 @@ router.delete(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { id: _id } = req.user;
     const { id } = req.params;
 
     if (!isValidUUID2(id)) {
@@ -605,6 +657,14 @@ router.delete(
     if (!employee) {
       return res.status(500).json("Invalid Request!");
     }
+
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: _id,
+      title: "Deleted an employee account!",
+      severity: "error",
+    });
+
     res.status(200).json("Employee Removed!");
   })
 );
