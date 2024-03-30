@@ -311,7 +311,9 @@ router.post(
 
     const token = await otpGen();
 
-    console.log(token);
+    if (process.env !== "production") {
+      console.log(token);
+    }
 
     await knex("tokens").insert({
       _id: randomUUID(),
@@ -618,7 +620,9 @@ router.post(
       });
 
       const token = await otpGen();
-      console.log(token);
+      if (process.env !== "production") {
+        console.log(token);
+      }
 
       await transx("tokens").insert({
         _id: randomUUID(),

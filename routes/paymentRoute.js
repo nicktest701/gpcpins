@@ -631,7 +631,7 @@ router.get(
     }
 
     if (transaction[0].status === "failed") {
-      return res.status(402).json("Payment has been cancelled!");
+      return res.status(402).json("Payment Cancelled!");
     }
 
     if (transaction[0].status !== "completed") {
@@ -1056,16 +1056,20 @@ router.post(
       // //if creating new transaction fails
       if (_.isEmpty(transaction)) {
         await transx.rollback();
-        return res.status(404).json("Error Processing your request!");
+        return res
+          .status(404)
+          .json("Error Processing your request!Please try again later.");
       }
 
       await transx.commit();
 
       res.status(200).json({ _id: transaction_id });
     } catch (error) {
-      console.log(error);
+      if (process.env !== "production") {
+        console.log(error);
+      }
       await transx.rollback();
-      return res.status(500).json("Transaction Failed!");
+      return res.status(500).json("Transaction Failed!Please try again later.");
     }
   })
 );

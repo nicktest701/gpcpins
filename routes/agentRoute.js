@@ -531,7 +531,9 @@ router.post(
     </div>
         `;
 
-    console.log(token);
+        if (process.env !== "production") {
+          console.log(token);
+        }
 
     try {
       await sendMail(agent[0]?.email, mailTextShell(message));

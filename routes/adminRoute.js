@@ -205,7 +205,9 @@ router.post(
     </div>
         `;
 
-    console.log(token);
+        if (process.env !== "production") {
+          console.log(token);
+        }
 
     try {
       await sendMail(employee[0]?.email, mailTextShell(message));
