@@ -1063,6 +1063,7 @@ router.post(
 
       res.status(200).json({ _id: transaction_id });
     } catch (error) {
+      console.log(error);
       await transx.rollback();
       return res.status(500).json("Transaction Failed!");
     }
