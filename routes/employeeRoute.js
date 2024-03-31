@@ -308,8 +308,8 @@ router.put(
 //Reset Password
 router.put(
   "/reset",
-  verifyToken,
-  verifyAdmin,
+  // verifyToken,
+  // verifyAdmin,
   asyncHandler(async (req, res) => {
     const { email } = req.body;
 

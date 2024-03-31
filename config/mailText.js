@@ -1465,6 +1465,7 @@ ${style}
                                                                       style="Margin:0;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;font-family:Poppins, sans-serif;line-height:21px;color:#022B3A;font-size:14px">
                                                                       We look forward to serving you in the future..
                                                                   </p>
+                                                                  <p> Attached to this a copy of your voucher.👇🏾 </p>
 
                                                               </td>
                                                           </tr>
@@ -1971,6 +1972,7 @@ ${style}
                                                                 <td align="center"
                                                                     style="Margin:0;padding-top:10px;padding-bottom:20px;padding-left:20px;padding-right:20px">
                                                                     <p> ${message} </p>
+                                                                    <p> Attached to this a copy of your receipt. </p>
 
                                                                 </td>
                                                             </tr>

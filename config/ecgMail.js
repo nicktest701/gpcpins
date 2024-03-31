@@ -37,7 +37,9 @@ const sendElectricityMail = async (transaction_id, email_address, status) => {
       text: 'Prepaid units',
       html: ecgText(
         transaction_id,
-        `Thank you for choosing our service! Your transaction is complete, and we appreciate your trust in us. If you have any questions or need further assistance, please don't hesitate to reach out. Wishing you a fantastic day ahead!`
+        `Thank you for choosing our service! Your transaction is complete, and we appreciate your trust in us. If you have any questions or need further assistance, please don't hesitate to reach out. Wishing you a fantastic day ahead!.
+        Attached to this message,is a copy of your receipt. Please keep it for your records.
+        `
       ),
       attachments: [
         {

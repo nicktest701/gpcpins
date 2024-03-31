@@ -102,7 +102,7 @@ router.get(
 
     //Check if voucher pdf already exists
     if (fs.existsSync(path.join(process.cwd(), "/vouchers/", `${id}.pdf`))) {
-      await sendTicketMail(id, email);
+      await sendTicketMail(id, email,'GPC Vouchers');
 
       return res.status(200).json({ id: id });
     }
@@ -222,7 +222,11 @@ router.get(
           link: downloadLink,
         });
 
-        await sendTicketMail(_id, userInfo?.agentEmail);
+        await sendTicketMail(
+          _id,
+          userInfo?.agentEmail,
+          modifiedVoucher[0]?.voucherType
+        );
         const smsData = modifiedVoucher.map((voucher) => {
           return `[${voucher?.pin}---${voucher?.serial}]`;
         });
@@ -282,7 +286,7 @@ router.get(
 
     //Check if voucher pdf already exists
     if (fs.existsSync(path.join(process.cwd(), "/vouchers/", `${id}.pdf`))) {
-      await sendTicketMail(id, email);
+      await sendTicketMail(id, email, "GPC Tickets");
 
       return res.status(200).json({ id });
     }
@@ -529,9 +533,16 @@ router.get(
           link: downloadLink,
         });
 
-        await sendTicketMail(_id, userInfo?.agentEmail);
+        await sendTicketMail(_id, userInfo?.agentEmail,'GPC Tickets');
+
         await sendSMS(
-          `Thank you for your purchase!`,
+          `Thank you for your purchase! 
+    
+${userInfo?.agentEmail}
+${userInfo?.agentPhoneNumber}
+
+Download Ticket here: ${downloadLink}
+          `,
           userInfo?.agentPhoneNumber
         );
 
@@ -790,16 +801,13 @@ router.get(
         transaction[0]?.email,
         "pending"
       );
-
+      // Send Mail and SMS to the User
       const userSMS = await sendSMS(
         `Prepaid Units
-        
-        Thank you for your purchase!
-        You will be notified shortly after your transaction is complete.
-        
-        Your transaction id is ${transaction[0]?._id}`,
+Thank you for your purchase! You will be notified shortly after your transaction is complete.Your transaction id is ${transaction[0]?._id}`,
         transaction[0]?.mobileNo
       );
+
       const agentMail = await sendEMail(
         process.env.MAIL_CLIENT_USER,
         mailTextShell(message),

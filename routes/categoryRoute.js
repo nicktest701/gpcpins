@@ -241,8 +241,8 @@ router.get(
         .where({ category: "bus", active: 1 });
     } else {
       bus = await knex("categories")
-        .where({ active: 1, category: "bus" })
-        .andWhere("voucherType", "LIKE", `%${voucherType}%`)
+      .where("voucherType", "LIKE", `%${voucherType}%`)
+        .andWhere({ active: 1, category: "bus" })
         .select("*");
     }
 
