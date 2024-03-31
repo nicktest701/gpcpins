@@ -51,13 +51,19 @@ const verifyToken = (req, res, next) => {
       return res.status(403).json("Session has expired.");
     }
 
-    req.user = {
+    let newUser = {
       id: authUser[0]?._id,
       email: authUser[0]?.email,
       role: authUser[0]?.role,
       active: authUser[0]?.active,
       createdAt: authUser[0]?.createdAt,
     };
+
+    if (user?.role === process.env.ADMIN_ID) {
+      newUser.isAdmin = Boolean(authUser[0]?.isAdmin);
+    }
+
+    req.user = newUser;
 
     next();
   });

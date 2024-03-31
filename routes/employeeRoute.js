@@ -35,21 +35,24 @@ router.get(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    //  const employees=await knex('employees').select('*');
-
-    const employees = await knex("employees").select(
-      "_id",
-      "firstname",
-      "lastname",
-      "username",
-      knex.raw("CONCAT(firstname,' ',lastname) as name"),
-      "email",
-      "permissions",
-      "phonenumber",
-      "role",
-      "profile",
-      "active"
-    );
+    const employees = await knex("employees")
+      .select(
+        "_id",
+        "firstname",
+        "lastname",
+        "username",
+        knex.raw("CONCAT(firstname,' ',lastname) as name"),
+        "email",
+        "permissions",
+        "phonenumber",
+        "nid",
+        "dob",
+        "residence",
+        "role",
+        "profile",
+        "active"
+      )
+      .where("isAdmin", 0);
 
     const modifiedEmployees = employees.map(
       ({ role, permissions, ...rest }) => {
@@ -84,6 +87,9 @@ router.get(
         "username",
         knex.raw("CONCAT(firstname,' ',lastname) as name"),
         "email",
+        "nid",
+        "dob",
+        "residence",
         "permissions",
         "phonenumber",
         "role",
@@ -358,7 +364,7 @@ router.put(
   })
 );
 
-//@DELETE student
+//@DELETE employees
 router.delete(
   "/:id",
   verifyToken,

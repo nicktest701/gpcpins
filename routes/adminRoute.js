@@ -47,7 +47,7 @@ router.get(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const employees = await knex("employees").select("*");
+    const employees = await knex("employees").select("*").where("isAdmin", 0);
 
     const modifiedEmployees = employees.map(
       ({ permissions, password, ...rest }) => {
@@ -75,6 +75,9 @@ router.get(
         "firstname",
         "lastname",
         knex.raw("CONCAT(firstname,' ',lastname) as name"),
+        "nid",
+        "dob",
+        "residence",
         "permissions",
         "email",
         "role",
@@ -205,9 +208,9 @@ router.post(
     </div>
         `;
 
-        if (process.env.NODE_ENV !== "production") {
-          console.log(token);
-        }
+    if (process.env.NODE_ENV !== "production") {
+      console.log(token);
+    }
 
     try {
       await sendMail(employee[0]?.email, mailTextShell(message));
@@ -309,6 +312,7 @@ router.post(
       role: employee[0]?.role,
       active: employee[0]?.active,
       createdAt: employee[0]?.createdAt,
+      isAdmin: Boolean(employee[0]?.isAdmin),
     };
 
     const accessToken = signMainToken(updatedEmployee, "30m");
@@ -433,6 +437,9 @@ router.put(
         "lastname",
         knex.raw("CONCAT(firstname,' ',lastname) as name"),
         "email",
+        "nid",
+        "dob",
+        "residence",
         "role",
         "permissions",
         "phonenumber",
@@ -486,9 +493,13 @@ router.put(
         knex.raw("CONCAT(firstname,' ',lastname) as name"),
         "email",
         "role",
+        "nid",
+        "dob",
+        "residence",
         "permissions",
         "phonenumber",
-        "profile"
+        "profile",
+        "isAdmin"
       )
       .where("_id", id);
 
@@ -500,6 +511,7 @@ router.put(
       id: employee[0]?._id,
       role: employee[0]?.role,
       active: employee[0]?.active,
+      isAdmin: Boolean(employee[0]?.isAdmin),
     };
 
     const accessToken = signMainToken(updatedEmployee, "30m");
