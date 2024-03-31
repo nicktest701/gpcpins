@@ -647,7 +647,9 @@ router.get(
     ) {
       await sendSMS(
         `${_.capitalize(type)}
-      Your request to buy ${type} has been received.Thank you for purchasing from us!Your transaction id is ${transaction[0]?._id}`,
+      Your request to buy ${type} has been received.Thank you for purchasing from us!Your transaction id is ${
+          transaction[0]?._id
+        }`,
         transaction[0]?.phonenumber
       );
     }
@@ -938,7 +940,9 @@ router.post(
     }
 
     if (_.isEmpty(selectedVouchers) || selectedVouchers.length < quantity) {
-      return res.status(404).json("Requested Item not available!.Try again later.");
+      return res
+        .status(404)
+        .json("Requested Item not available!.Try again later.");
     }
 
     const transx = await knex.transaction();
@@ -2012,10 +2016,6 @@ router.put(
       .where("_id", id)
       .select("_id", knex.raw("CONCAT(firstname,' ',lastname) as name"));
 
-    res
-      .status(201)
-      .json("Your request is being processed.You will be notified shortly!!");
-
     const paymentInfo = JSON.parse(transactions[0]?.info);
     const meterInfo = {
       id: transactions[0]?._id,
@@ -2090,6 +2090,12 @@ ${downloadLink}
 `,
             paymentInfo?.mobileNo
           );
+
+          return res
+            .status(201)
+            .json(
+              "Your request is being processed.You will be notified shortly!!"
+            );
         }
       })
       .catch((error) => {
