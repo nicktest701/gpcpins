@@ -311,7 +311,7 @@ router.post(
 
     const token = await otpGen();
 
-    if (process.env !== "production") {
+    if (process.env.NODE_ENV !== "production") {
       console.log(token);
     }
 
@@ -385,7 +385,7 @@ router.post(
         firstname: decodedUser?.given_name,
         lastname: decodedUser?.family_name,
         phonenumber: decodedUser?.phoneNumber,
-        profile: decodedUser?.picture,
+        // profile: decodedUser?.picture,
         active: 1,
       });
     }
@@ -499,7 +499,7 @@ router.post(
       await knex("users").where("email", email).update({
         firstname: req.body.firstname,
         lastname: req.body.lastname,
-        phonenumber: req.body.phonenumber,
+        // phonenumber: req.body.phonenumber,
         active: 1,
       });
     }
@@ -620,7 +620,7 @@ router.post(
       });
 
       const token = await otpGen();
-      if (process.env !== "production") {
+      if (process.env.NODE_ENV !== "production") {
         console.log(token);
       }
 

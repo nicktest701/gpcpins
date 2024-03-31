@@ -2,6 +2,7 @@ const axios = require("axios");
 const { randomUUID, randomBytes } = require("crypto");
 
 async function sendMoney(info, type) {
+ 
   if (process.env.NODE_ENV === "production") {
     try {
       const res = await axios({
@@ -17,8 +18,8 @@ async function sendMoney(info, type) {
           CustomerMsisdn: info?.phonenumber,
           CustomerEmail: info?.email,
           Channel: info?.provider,
-          // Amount: 0.1,
-          Amount: info?.amount,
+          Amount: 0.1,
+          // Amount: info?.amount,
           PrimaryCallbackUrl: `${
             process.env.CALLBACK_URL
           }/${type}/${randomUUID()}`,
@@ -149,26 +150,11 @@ async function sendAirtime(info) {
       };
     }
 
-    // {
-    //   "status": "OK",
-    //   "message": "You have successfully recharged 233543772591 with GHS 5.00, you were charged GHS 5.00 and your current balance is GHS 295.00",
-    //   "trxn": "f917f1a0c87311ee86e5890f3267d17b",
-    //   "status-code": "00",
-    //   "local-trxn-code": "73fa4584-66fc-421c-a472-4e7c00aa6a8b",
-    //   "balance_before": "300.0000",
-    //   "balance_after": 295,
-    //   "network": "MTN"
-    // }
   } catch (error) {
     throw error;
   }
 }
-// try {
-//   if(process.env.NODE_ENV==='production'){
 
-//   }else{
-
-//   }
 
 async function sendBundle(info) {
   try {
@@ -242,50 +228,4 @@ module.exports = {
   sendAirtime,
 };
 
-// async function sendMoney(info, type) {
-//   try {
-//     const res = await axios({
-//       method: 'POST',
-//       url: `${process.env.CALLBACK_URL}/${randomUUID()}/${type}`,
-//       headers: {
-//         'Content-Type': 'application/json',
-//         Authorization: `Basic ${process.env.MSDID_K}`,
-//       },
-//       data: {
-//         ResponseCode: '0001',
-//         Message: 'pending',
-//         Data: {
-//           Amount: 20,
-//           Charges: 0.39,
-//           AmountAfterCharges: 19.61,
-//           Description: 'Pending',
-//           ClientReference: info?.transaction_reference,
-//           TransactionId: '6255042a9e534c1a8b2bcf6953d783be',
-//           ExternalTransactionId: '33557862699',
-//           AmountCharged: 20,
-//           OrderId: '6255042a9e534c1a8b2bcf6953d783be',
-//         },
-//       },
-//     });
-//     if (res.data) {
-//       return {
-//         ResponseCode: '2001',
-//         Message: 'failed',
-//         Data: {
-//           Amount: 20,
-//           Charges: 0.39,
-//           AmountAfterCharges: 19.61,
-//           Description: 'Transaction Failed',
-//           ClientReference: info?.transaction_reference,
-//           TransactionId: '6255042a9e534c1a8b2bcf6953d783be',
-//           ExternalTransactionId: '33557862699',
-//           AmountCharged: 20,
-//           OrderId: '6255042a9e534c1a8b2bcf6953d783be',
-//         },
-//       };
-//     }
-//   } catch (error) {
-//     throw error;
-//   }
-// }
-// module.exports = sendMoney;
+

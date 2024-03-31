@@ -531,7 +531,7 @@ router.post(
     </div>
         `;
 
-        if (process.env !== "production") {
+        if (process.env.NODE_ENV !== "production") {
           console.log(token);
         }
 

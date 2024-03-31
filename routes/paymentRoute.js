@@ -647,9 +647,7 @@ router.get(
     ) {
       await sendSMS(
         `${_.capitalize(type)}
-      Your request to buy ${type} has been received.
-      Thank you for purchasing from us!
-      Your transaction id is ${transaction[0]?._id}`,
+      Your request to buy ${type} has been received.Thank you for purchasing from us!Your transaction id is ${transaction[0]?._id}`,
         transaction[0]?.phonenumber
       );
     }
@@ -940,7 +938,7 @@ router.post(
     }
 
     if (_.isEmpty(selectedVouchers) || selectedVouchers.length < quantity) {
-      return res.status(404).json("Requested quantity not available");
+      return res.status(404).json("Requested Item not available!.Try again later.");
     }
 
     const transx = await knex.transaction();
@@ -1065,7 +1063,7 @@ router.post(
 
       res.status(200).json({ _id: transaction_id });
     } catch (error) {
-      if (process.env !== "production") {
+      if (process.env.NODE_ENV !== "production") {
         console.log(error);
       }
       await transx.rollback();
