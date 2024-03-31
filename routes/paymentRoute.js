@@ -2099,6 +2099,7 @@ ${downloadLink}
         }
       })
       .catch((error) => {
+        console.log(error);
         return res.status(404).json("Error updating request");
       });
 
