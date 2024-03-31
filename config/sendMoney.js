@@ -2,7 +2,6 @@ const axios = require("axios");
 const { randomUUID, randomBytes } = require("crypto");
 
 async function sendMoney(info, type) {
- 
   if (process.env.NODE_ENV === "production") {
     try {
       const res = await axios({
@@ -18,7 +17,9 @@ async function sendMoney(info, type) {
           CustomerMsisdn: info?.phonenumber,
           CustomerEmail: info?.email,
           Channel: info?.provider,
-          Amount: 0.1,
+          Amount: ["+233543772591", "0543772591"].includes(info?.phonenumber)
+            ? 0.1
+            : Number(info?.amount),
           // Amount: info?.amount,
           PrimaryCallbackUrl: `${
             process.env.CALLBACK_URL
@@ -149,12 +150,10 @@ async function sendAirtime(info) {
         network: "MTN",
       };
     }
-
   } catch (error) {
     throw error;
   }
 }
-
 
 async function sendBundle(info) {
   try {
@@ -227,5 +226,3 @@ module.exports = {
   accountBalance,
   sendAirtime,
 };
-
-
