@@ -191,8 +191,6 @@ router.get(
     } else {
       res.sendStatus(400);
     }
-
-    res.status(200).json("Done");
   })
 );
 
