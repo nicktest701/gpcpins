@@ -1570,7 +1570,7 @@ router.get(
 
       res.status(200).json(_.compact(bundles));
     } catch (error) {
-      res.status(401).json("An unkonwn error has occurred");
+      res.status(401).json("An unknown error has occurred");
     }
   })
 );
@@ -1588,7 +1588,7 @@ router.post(
 
       res.status(200).json(response);
     } catch (error) {
-      res.status(401).json("An unkonwn error has occurred");
+      res.status(401).json("An unknown error has occurred");
     }
   })
 );
@@ -1606,7 +1606,7 @@ router.post(
 
       res.status(200).json(response);
     } catch (error) {
-      res.status(401).json("An unkonwn error has occurred");
+      res.status(401).json("An unknown error has occurred");
     }
   })
 );

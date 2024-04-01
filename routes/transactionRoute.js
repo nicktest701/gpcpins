@@ -1341,7 +1341,7 @@ router.get(
     const airtime_transactions = await knex.raw(
       `SELECT *
         FROM (
-            SELECT _id,user,type as kind,recipient,amount,domain,domain as type,email,phonenumber,status,isProcessed,createdAt,active,DATE(createdAt,'%M %d %Y') AS purchaseDate
+            SELECT _id,user,type as kind,recipient,amount,domain,domain as type,email,phonenumber,status,isProcessed,createdAt,active,DATE(createdAt) AS purchaseDate
             FROM airtime_transactions
         ) AS airtime_transactions_ 
         WHERE user=? AND active=1 and status='completed' AND purchaseDate BETWEEN ? AND ?;`,

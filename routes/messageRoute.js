@@ -1,7 +1,7 @@
 const router = require("express").Router();
 const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
-const crypto = require('crypto');
+const crypto = require("crypto");
 const sendEMail = require("../config/sendEmail");
 const { randomUUID } = require("crypto");
 const { mailTextShell } = require("../config/mailText");
@@ -160,23 +160,30 @@ router.post(
   "/tawk",
   limit,
   asyncHandler(async (req, res) => {
-
-    if (!verifySignature(req.rawBody, req.headers['x-tawk-signature'])) {
+    if (!verifySignature(req.rawBody, req.headers["x-tawk-signature"])) {
       // verification failed
-  }
-  // verification successfull
-   
+    }
+    // verification successfull
 
     res.status(201).json("Request received.We will contact you shortly!!!");
   })
 );
 
-
-function verifySignature (body, signature) {
+function verifySignature(body, signature) {
   const digest = crypto
-      .createHmac('sha1', WEBHOOK_SECRET)
-      .update(body)
-      .digest('hex');
+    .createHmac("sha1", WEBHOOK_SECRET)
+    .update(body)
+    .digest("hex");
   return signature === digest;
-};
+}
+
+router.post(
+  "/whatsapp/callback/471045af9f65250818faa85d8d24912d7501d47114ff1841568267fed07f68dd",
+  asyncHandler(async (req, res) => {
+    console.log(req.body);
+
+    res.status(200).json("Done");
+  })
+);
+
 module.exports = router;
