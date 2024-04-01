@@ -150,6 +150,32 @@ router.get(
 );
 
 router.get(
+  "/logs",
+  verifyToken,
+  verifyAgent,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+    const { startDate, endDate } = req.query;
+
+    const sDate = moment(startDate).format("MMMM DD YYYY");
+    const eDate = moment(endDate).format("MMMM DD YYYY");
+
+    const logs = await knex.raw(
+        `SELECT *
+          FROM (
+              SELECT *,DATE_FORMAT(createdAt,'%M %d %Y') AS created_date
+              FROM agent_activity_logs_view
+          ) AS agent_activity_logs_view_  WHERE agentId=? AND created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
+        [id, sDate, eDate]
+      );
+  
+
+    return res.status(200).json(logs[0]);
+  })
+);
+
+
+router.get(
   "/:id",
   verifyToken,
   verifyAdmin,
@@ -531,9 +557,9 @@ router.post(
     </div>
         `;
 
-        if (process.env.NODE_ENV !== "production") {
-          console.log(token);
-        }
+    if (process.env.NODE_ENV !== "production") {
+      console.log(token);
+    }
 
     try {
       await sendMail(agent[0]?.email, mailTextShell(message));
@@ -681,6 +707,13 @@ router.post(
       token: hashedToken,
     });
 
+    //logs
+    await knex("agent_activity_logs").insert({
+      agent_id: agent[0]?._id,
+      title: "Logged into account.",
+      severity: "info",
+    });
+
     // if (isMobile(req)) {
     return res.status(201).json({
       refreshToken,
@@ -709,6 +742,7 @@ router.post(
   "/logout",
   verifyToken,
   asyncHandler(async (req, res) => {
+    const { id } = req.user;
     // res.cookie("_SSUID_kyfc", "", {
     //   httpOnly: true,
     //   path: "/",
@@ -724,6 +758,13 @@ router.post(
     // res.clearCookie("_SSUID_kyfc");
     // res.clearCookie("_SSUID_X_ayd");
     req.user = null;
+
+    //logs
+    await knex("agent_activity_logs").insert({
+      agent_id: id,
+      title: "Logged out of account.",
+      severity: "info",
+    });
 
     res.sendStatus(204);
   })
@@ -803,6 +844,13 @@ router.put(
     };
 
     const accessToken = signMainToken(accessData, "30m");
+
+    //logs
+    await knex("agent_activity_logs").insert({
+      agent_id: agent[0]?._id,
+      title: "Modified your account details.",
+      severity: "info",
+    });
 
     res.status(201).json({
       user: accessToken,
@@ -910,6 +958,13 @@ router.put(
       .where("_id", id)
       .update({ token: hashedToken, active: 1 });
 
+    //logs
+    await knex("agent_activity_logs").insert({
+      agent_id: agent[0]?._id,
+      title: "Modified your account password.",
+      severity: "info",
+    });
+
     // if (isMobile(req)) {
     res.status(201).json({
       refreshToken,
@@ -940,6 +995,12 @@ router.put(
     if (agent !== 1) {
       return res.status(404).json("An unknown error has occurred!");
     }
+    //logs
+    await knex("agent_activity_logs").insert({
+      agent_id: id,
+      title: "Modified your account details.",
+      severity: "info",
+    });
 
     res.status(201).json(url);
   })
@@ -1035,6 +1096,7 @@ router.put(
   verifyToken,
   verifyAgent,
   asyncHandler(async (req, res) => {
+    const { id } = req.user;
     const { _id, ...newBusiness } = req.body;
 
     const business = await knex("agent_businesses")
@@ -1046,6 +1108,13 @@ router.put(
     if (business !== 1) {
       return res.status(404).json("Changes Failed");
     }
+
+    //logs
+    await knex("agent_activity_logs").insert({
+      agent_id: id,
+      title: "Modified your account details.",
+      severity: "info",
+    });
 
     res.status(201).json("Changes Saved!!!");
   })
@@ -1134,6 +1203,13 @@ router.post(
         mailTextShell(body),
         "Wallet Top Up Request"
       );
+
+      //logs
+      await knex("agent_activity_logs").insert({
+        agent_id: id,
+        title: "Requested Wallet Top Up.",
+        severity: "info",
+      });
 
       res.status(200).json("Request Sent!");
     } catch (error) {
@@ -1364,6 +1440,13 @@ router.post(
 
       await transx.commit();
 
+      //logs
+      await knex("agent_activity_logs").insert({
+        agent_id: id,
+        title: "Transferred airtime to Customers.",
+        severity: "info",
+      });
+
       return res.status(200).json("Airtime transfer was successful!");
     } catch (error) {
       await transx.rollback();
@@ -1502,6 +1585,13 @@ router.post(
           );
           await sendSMS(body, process.env.CLIENT_PHONENUMBER);
         }
+        //logs
+        await knex("agent_activity_logs").insert({
+          agent_id: id,
+          title: "Transferred bulk airtime to Customers.",
+          severity: "info",
+        });
+
         return res.status(200).json("Airtime transfer was successful!");
       })
       .catch((error) => {
@@ -1512,7 +1602,7 @@ router.post(
   })
 );
 
-//Send airtime to recipient
+//Send bundle to recipient
 router.post(
   "/top-up/bundle",
   verifyToken,
@@ -1524,7 +1614,7 @@ router.post(
     //transaction reference
     const transaction_reference = randomBytes(24).toString("hex");
 
-    //set airtime info
+    //set bundle info
     const bundleInfo = {
       recipient: info?.recipient,
       data_code: info?.bundle?.plan_id,
@@ -1593,7 +1683,15 @@ router.post(
           status: "failed",
         });
       }
+
       await transx.commit();
+
+         //logs
+         await knex("agent_activity_logs").insert({
+          agent_id: id,
+          title: "Transferred data bundle to Customers.",
+          severity: "info",
+        });
       return res.status(200).json("Bundle transfer was successful!");
     } catch (error) {
       await transx.rollback();

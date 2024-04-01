@@ -1421,6 +1421,7 @@ router.get(
     }
   })
 );
+
 router.get(
   "/logs",
   verifyToken,
