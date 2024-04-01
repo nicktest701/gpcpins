@@ -992,13 +992,13 @@ router.get(
     const { id } = req.user;
     const { startDate, endDate } = req.query;
 
-    const sDate = moment(startDate).format("MMMM DD YYYY");
-    const eDate = moment(endDate).format("MMMM DD YYYY");
+    const sDate = moment(startDate).format("YYYY-MM-DD");
+    const eDate = moment(endDate).format("YYYY-MM-DD");
 
     const transactions = await knex.raw(
       `SELECT *
         FROM (
-            SELECT _id,user_id,amount,status,createdAt,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+            SELECT _id,user_id,amount,status,createdAt,DATE(createdAt) AS purchaseDate
             FROM user_wallet_transactions
         ) AS user_wallet_transactions_ 
         WHERE user_id=? AND purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,

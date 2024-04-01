@@ -157,13 +157,13 @@ router.get(
     const { id } = req.user;
     const { startDate, endDate } = req.query;
 
-    const sDate = moment(startDate).format("MMMM DD YYYY");
-    const eDate = moment(endDate).format("MMMM DD YYYY");
+    const sDate = moment(startDate).format("YYYY-MM-DD");
+    const eDate = moment(endDate).format("YYYY-MM-DD");
 
     const logs = await knex.raw(
       `SELECT *
           FROM (
-              SELECT *,DATE_FORMAT(createdAt,'%M %d %Y') AS created_date
+              SELECT *,DATE(createdAt) AS created_date
               FROM agent_activity_logs_view
           ) AS agent_activity_logs_view_  WHERE agentId=? AND created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
       [id, sDate, eDate]
@@ -1147,14 +1147,14 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = req.user;
     const { startDate, endDate } = req.query;
-
-    const sDate = moment(startDate).format("MMMM DD YYYY");
-    const eDate = moment(endDate).format("MMMM DD YYYY");
+    
+    const sDate = moment(startDate).format("YYYY-MM-DD");
+    const eDate = moment(endDate).format("YYYY-MM-DD");
 
     const transactions = await knex.raw(
       `SELECT *
           FROM (
-              SELECT _id,agent_id,amount,status,createdAt,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+              SELECT _id,agent_id,amount,status,createdAt,DATE(createdAt) AS purchaseDate
               FROM agent_wallet_transactions
           ) AS agent_wallet_transactions_ 
           WHERE agent_id=? AND purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,
@@ -1223,14 +1223,16 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = req.user;
     const { startDate, endDate, type } = req.query;
-
-    const sDate = moment(startDate).format("MMMM DD YYYY");
-    const eDate = moment(endDate).format("MMMM DD YYYY");
-
+    console.log(id);
+    console.log(type);
+    
+    const sDate = moment(startDate).format("YYYY-MM-DD");
+    const eDate = moment(endDate).format("YYYY-MM-DD");
+    
     const transactions = await knex.raw(
       `SELECT *
             FROM (
-                SELECT *,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+                SELECT *,DATE(createdAt) AS purchaseDate
                 FROM agent_transactions
             ) AS agent_transactions_ 
             WHERE agent_id=? AND type=? AND purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,
@@ -1243,6 +1245,7 @@ router.get(
         info: JSON.parse(info),
       };
     });
+   
 
     res.status(200).json(transaction);
   })

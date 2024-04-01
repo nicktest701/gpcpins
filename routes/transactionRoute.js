@@ -1256,13 +1256,13 @@ router.get(
     const { id } = req.user;
     const { startDate, endDate } = req.query;
 
-    const sDate = moment(startDate).format("MMMM DD YYYY");
-    const eDate = moment(endDate).format("MMMM DD YYYY");
+    const sDate = moment(startDate).format("YYYY-MM-DD");
+    const eDate = moment(endDate).format("YYYY-MM-DD");
 
     const voucher_transactions = await knex.raw(
       `SELECT *
       FROM (
-          SELECT _id,user,email,phonenumber,info,createdAt,year,active,status,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+          SELECT _id,user,email,phonenumber,info,createdAt,year,active,status,DATE(createdAt) AS purchaseDate
           FROM voucher_transactions
       ) AS voucher_transactions_ 
       WHERE user=? AND active=1 and status='completed' AND purchaseDate BETWEEN ? AND ?;`,
@@ -1311,7 +1311,7 @@ router.get(
     const prepaid_transactions = await knex.raw(
       `SELECT *
         FROM (
-            SELECT _id,user,email,mobileNo,info,createdAt,year,active,processed,meterId,number,status,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+            SELECT _id,user,email,mobileNo,info,createdAt,year,active,processed,meterId,number,status,DATE(createdAt) AS purchaseDate
             FROM meter_prepaid_transaction_view
         ) AS meter_prepaid_transaction_view_ 
         WHERE user=? AND active=1 and status='completed' AND purchaseDate BETWEEN ? AND ?;`,
@@ -1341,7 +1341,7 @@ router.get(
     const airtime_transactions = await knex.raw(
       `SELECT *
         FROM (
-            SELECT _id,user,type as kind,recipient,amount,domain,domain as type,email,phonenumber,status,isProcessed,createdAt,active,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+            SELECT _id,user,type as kind,recipient,amount,domain,domain as type,email,phonenumber,status,isProcessed,createdAt,active,DATE(createdAt,'%M %d %Y') AS purchaseDate
             FROM airtime_transactions
         ) AS airtime_transactions_ 
         WHERE user=? AND active=1 and status='completed' AND purchaseDate BETWEEN ? AND ?;`,
@@ -1353,7 +1353,7 @@ router.get(
     const bundle_transactions = await knex.raw(
       `SELECT *
         FROM (
-            SELECT _id,user,bundle_name as kind,bundle_volume as volume,recipient,amount,domain,domain as type,email,phonenumber,status,isProcessed,createdAt,active,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+            SELECT _id,user,bundle_name as kind,bundle_volume as volume,recipient,amount,domain,domain as type,email,phonenumber,status,isProcessed,createdAt,active,DATE(createdAt) AS purchaseDate
             FROM bundle_transactions
         ) AS bundle_transactions_ 
         WHERE user=? AND active=1 and status='completed' AND purchaseDate BETWEEN ? AND ?;`,
@@ -1430,8 +1430,8 @@ router.get(
     const { id, isAdmin } = req.user;
     const { startDate, endDate } = req.query;
 
-    const sDate = moment(startDate).format("MMMM DD YYYY");
-    const eDate = moment(endDate).format("MMMM DD YYYY");
+    const sDate = moment(startDate).format("YYYY-MM-DD");
+    const eDate = moment(endDate).format("YYYY-MM-DD");
 
     let logs = [];
 
@@ -1439,7 +1439,7 @@ router.get(
       logs = await knex.raw(
         `SELECT *
           FROM (
-              SELECT *,DATE_FORMAT(createdAt,'%M %d %Y') AS created_date
+              SELECT *,DATE(createdAt) AS created_date
               FROM activity_logs_view
           ) AS activity_logs_view_  WHERE created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
         [sDate, eDate]
@@ -1448,7 +1448,7 @@ router.get(
       logs = await knex.raw(
         `SELECT *
           FROM (
-              SELECT *,DATE_FORMAT(createdAt,'%M %d %Y') AS created_date
+              SELECT *,DATE(createdAt) AS created_date
               FROM activity_logs_view
           ) AS activity_logs_view_  WHERE employeeId=? AND created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
         [id, sDate, eDate]
@@ -1549,8 +1549,8 @@ router.get(
     const { id } = req.user;
     const { sort, startDate, endDate } = req.query;
 
-    const sDate = moment(startDate).format("MMMM DD YYYY");
-    const eDate = moment(endDate).format("MMMM DD YYYY");
+    const sDate = moment(startDate).format("YYYY-MM-DD");
+    const eDate = moment(endDate).format("YYYY-MM-DD");
 
     let modifiedAirtimeTransaction = [];
     let modifiedBundleTransaction = [];
@@ -1558,7 +1558,7 @@ router.get(
     const transactions = await knex.raw(
       `SELECT *
         FROM (
-            SELECT *,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+            SELECT *,DATE(createdAt) AS purchaseDate
             FROM agent_transactions
         ) AS agent_transactions_ 
         WHERE agent_id=? and status='completed' AND purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,
@@ -1641,8 +1641,8 @@ router.post(
   asyncHandler(async (req, res) => {
     const { email } = req.user;
     const { startDate, endDate, transactions, type } = req.body;
-    const sDate = moment(startDate).format("MMMM DD YYYY");
-    const eDate = moment(endDate).format("MMMM DD YYYY");
+    const sDate = moment(startDate).format("YYYY-MM-DD");
+    const eDate = moment(endDate).format("YYYY-MM-DD");
 
     const id = randomUUID();
     const template = await generateHTMLTemplate(
@@ -1983,13 +1983,13 @@ router.get(
   asyncHandler(async (req, res) => {
     const { startDate, endDate, report } = req.query;
 
-    const sDate = moment(startDate).format("MMMM DD YYYY");
-    const eDate = moment(endDate).format("MMMM DD YYYY");
+    const sDate = moment(startDate).format("YYYY-MM-DD");
+    const eDate = moment(endDate).format("YYYY-MM-DD");
 
     const transactions = await knex.raw(
       `SELECT *
         FROM (
-            SELECT *,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+            SELECT *,DATE(createdAt) AS purchaseDate
             FROM agent_wallet_transactions_view
         ) AS agent_wallet_transactions_view_  WHERE purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,
       [sDate, eDate]
@@ -2164,13 +2164,13 @@ router.get(
   asyncHandler(async (req, res) => {
     const { startDate, endDate, report } = req.query;
 
-    const sDate = moment(startDate).format("MMMM DD YYYY");
-    const eDate = moment(endDate).format("MMMM DD YYYY");
+    const sDate = moment(startDate).format("YYYY-MM-DD");
+    const eDate = moment(endDate).format("YYYY-MM-DD");
 
     const transactions = await knex.raw(
       `SELECT *
         FROM (
-            SELECT *,DATE_FORMAT(createdAt,'%M %d %Y') AS purchaseDate
+            SELECT *,DATE(createdAt) AS purchaseDate
             FROM user_wallet_transactions_view
         ) AS user_wallet_transactions_view_  WHERE purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,
       [sDate, eDate]
