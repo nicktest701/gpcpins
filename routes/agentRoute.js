@@ -161,19 +161,17 @@ router.get(
     const eDate = moment(endDate).format("MMMM DD YYYY");
 
     const logs = await knex.raw(
-        `SELECT *
+      `SELECT *
           FROM (
               SELECT *,DATE_FORMAT(createdAt,'%M %d %Y') AS created_date
               FROM agent_activity_logs_view
           ) AS agent_activity_logs_view_  WHERE agentId=? AND created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
-        [id, sDate, eDate]
-      );
-  
+      [id, sDate, eDate]
+    );
 
     return res.status(200).json(logs[0]);
   })
 );
-
 
 router.get(
   "/:id",
@@ -757,7 +755,6 @@ router.post(
 
     // res.clearCookie("_SSUID_kyfc");
     // res.clearCookie("_SSUID_X_ayd");
-    req.user = null;
 
     //logs
     await knex("agent_activity_logs").insert({
@@ -765,6 +762,7 @@ router.post(
       title: "Logged out of account.",
       severity: "info",
     });
+    req.user = null;
 
     res.sendStatus(204);
   })
@@ -1686,12 +1684,12 @@ router.post(
 
       await transx.commit();
 
-         //logs
-         await knex("agent_activity_logs").insert({
-          agent_id: id,
-          title: "Transferred data bundle to Customers.",
-          severity: "info",
-        });
+      //logs
+      await knex("agent_activity_logs").insert({
+        agent_id: id,
+        title: "Transferred data bundle to Customers.",
+        severity: "info",
+      });
       return res.status(200).json("Bundle transfer was successful!");
     } catch (error) {
       await transx.rollback();
