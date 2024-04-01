@@ -2,6 +2,7 @@ const router = require("express").Router();
 const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
 const crypto = require("crypto");
+const xhub = require('express-x-hub');
 const sendEMail = require("../config/sendEmail");
 const { randomUUID } = require("crypto");
 const { mailTextShell } = require("../config/mailText");
@@ -18,6 +19,8 @@ const limit = rateLimit({
 });
 
 const knex = require("../db/knex");
+
+// router.use(xhub({ algorithm: 'sha1', secret: process.env.APP_SECRET }));
 
 router.get(
   "/",
@@ -177,10 +180,34 @@ function verifySignature(body, signature) {
   return signature === digest;
 }
 
+router.get(
+  "/whatsapp/callback/471045af9f65250818faa85d8d24912d7501d47114ff1841568267fed07f68dd",
+  asyncHandler(async (req, res) => {
+    if (
+      req.query["hub.mode"] == "subscribe" &&
+      req.query["hub.verify_token"] === process.env.WHATSAPP_TOKEN
+    ) {
+      res.send(req.query["hub.challenge"]);
+    } else {
+      res.sendStatus(400);
+    }
+
+    res.status(200).json("Done");
+  })
+);
+
+
 router.post(
   "/whatsapp/callback/471045af9f65250818faa85d8d24912d7501d47114ff1841568267fed07f68dd",
   asyncHandler(async (req, res) => {
-    console.log(req.body);
+    if (
+      req.query["hub.mode"] == "subscribe" &&
+      req.query["hub.verify_token"] === process.env.WHATSAPP_TOKEN
+    ) {
+      res.send(req.query["hub.challenge"]);
+    } else {
+      res.sendStatus(400);
+    }
 
     res.status(200).json("Done");
   })
