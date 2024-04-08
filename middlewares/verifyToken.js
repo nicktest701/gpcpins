@@ -5,7 +5,7 @@ const bcrypt = require("bcryptjs");
 const knex = require("../db/knex");
 
 const verifyToken = (req, res, next) => {
-  // if (isMobile(req)) {
+  req.user = null;
 
   const authHeader =
     req.headers["authorization"] || req.headers["Authorization"];

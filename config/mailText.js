@@ -480,7 +480,9 @@ module.exports = {
      </head>
     
      <body style='font-family: "Poppins",sans-serif;background-color:#fff;padding:16px;color:#333;'>
+     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
      ${htmlText}
+     </div>
      </body>
      </html>
     
@@ -579,8 +581,10 @@ ${style}
                                                           <tr>
                                                               <td align="center"
                                                                   style="Margin:0;padding-top:10px;padding-bottom:20px;padding-left:20px;padding-right:20px">
-                                    
-                                                                  ${stuff}
+                                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                                  
+                                    ${stuff}
+                                    </div>
                                                               </td>
                                                           </tr>
                                                           <tr>

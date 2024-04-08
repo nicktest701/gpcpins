@@ -1165,6 +1165,49 @@ router.get(
   })
 );
 
+
+//update wallet pin
+router.put(
+  "/wallet",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id, email } = req.user;
+    const { _id, pin, isAdmin, agentEmail } = req.body;
+
+    const agentId = isAdmin ? _id : id;
+    const emailAddress = isAdmin ? agentEmail : email;
+
+    const wallet = await knex("agent_wallets")
+      .where("agent_id", agentId)
+      .update("agent_key", pin);
+
+    if (wallet !== 1) {
+      return res
+        .status(400)
+        .json("Error updating agent pin! Please try again later.");
+    }
+
+    const message = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2 style="color: #333333;">Important: Profile Update Notification</h2>
+    <p>Dear Customer ,</p>
+    <p> Your profile information has been updated.</p>
+    <p>For security purposes, we wanted to ensure that you are aware of these changes. If you did not make these adjustments yourself or if you believe your account may have been compromised, please take immediate action by contacting our support team at <a href='mailto:info@gpcpins.com'>info@gpcpins</a>.</p>
+    <p>If you have made these changes intentionally, please disregard this message.</p>
+    <p>Thank you for your attention to this matter.</p>
+
+    <p>Best regards,</p>
+    <p>Gab Powerful Team<br>
+</div>
+    `;
+
+    // await sendEMail(emailAddress, message, "Profile Update Notification");
+
+    res.status(200).json("Wallet Pin Changed!");
+  })
+);
+
+
 //Top up wallet request
 router.post(
   "/top-up/request",

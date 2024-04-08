@@ -102,7 +102,7 @@ router.get(
 
     //Check if voucher pdf already exists
     if (fs.existsSync(path.join(process.cwd(), "/vouchers/", `${id}.pdf`))) {
-      await sendTicketMail(id, email,'GPC Vouchers');
+      await sendTicketMail(id, email, "GPC Vouchers");
 
       return res.status(200).json({ id: id });
     }
@@ -533,7 +533,7 @@ router.get(
           link: downloadLink,
         });
 
-        await sendTicketMail(_id, userInfo?.agentEmail,'GPC Tickets');
+        await sendTicketMail(_id, userInfo?.agentEmail, "GPC Tickets");
 
         await sendSMS(
           `Thank you for your purchase! 
@@ -894,7 +894,21 @@ router.post(
       paymentDetails,
       user,
       isWallet,
+      token,
     } = req.body;
+
+    if (isWallet) {
+      const userWallet = await knex("user_wallets")
+        .select("_id", "user_key", "active")
+        .where({
+          user_id: id,
+          user_key: token,
+        });
+
+      if (_.isEmpty(userWallet)) {
+        return res.status(401).json("Invalid pin!");
+      }
+    }
 
     if (!category || !ALLOWED_CATEGORIES.includes(category)) {
       return res.status(400).json("An unknown error has occurred");

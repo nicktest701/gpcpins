@@ -241,7 +241,7 @@ router.get(
         .where({ category: "bus", active: 1 });
     } else {
       bus = await knex("categories")
-      .where("voucherType", "LIKE", `%${voucherType}%`)
+        .where("voucherType", "LIKE", `%${voucherType}%`)
         .andWhere({ active: 1, category: "bus" })
         .select("*");
     }
@@ -269,6 +269,25 @@ router.get(
     const buses = await Promise.all(modifiedCategories);
 
     res.status(200).json(buses);
+  })
+);
+
+router.get(
+  "/module/status",
+  asyncHandler(async (req, res) => {
+    const { title } = req.query;
+
+    if (title) {
+      const module = await knex("modules")
+        .select("*")
+        .where("title", title)
+        .limit(1);
+
+      return res.status(200).json(module[0]);
+    }
+
+    const modules = await knex("modules").select("*");
+    res.status(200).json(modules);
   })
 );
 
@@ -333,6 +352,31 @@ router.post(
     });
 
     res.status(201).send(`Category Saved!`);
+  })
+);
+router.post(
+  "/module/status",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+    const { active, title, message } = req.body;
+
+    await knex("modules").where("title", title).update({
+      message,
+      active,
+    });
+
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: id,
+      title: `Updated ${title} module status to ${
+        active ? "active" : "disabled"
+      }.`,
+      severity: "warning",
+    });
+
+    res.status(201).send(`Changes updated!`);
   })
 );
 

@@ -31,7 +31,6 @@ const limit = rateLimit({
 });
 
 //model
-const { mailTextShell } = require("../config/mailText");
 const { hasTokenExpired } = require("../config/dateConfigs");
 // const isMobile = require("../config/isMobile");
 
@@ -42,6 +41,11 @@ const sendEMail = require("../config/sendEmail");
 const { sendBirthdayWishes } = require("../config/cronMessages");
 const currencyFormatter = require("../config/currencyFormatter");
 const { sendSMS, sendOTPSMS } = require("../config/sms");
+const { activate } = require("firebase/remote-config");
+const { calculateTimeDifference } = require("../config/timeHelper");
+const { uptime } = require("process");
+const { mailTextShell } = require("../config/mailText");
+const { getInternationalMobileFormat } = require("../config/PhoneCode");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -223,6 +227,49 @@ router.get(
     // res.sendStatus(200);
   })
 );
+router.get(
+  "/phonenumber/token",
+  limit,
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+    const { code } = req.query;
+
+    if (code) {
+      const userToken = await knex("verify_tokens")
+        .select("_id", "code")
+        .where({
+          _id: id,
+          code,
+        })
+        .limit(1);
+
+      if (_.isEmpty(userToken) || Number(code) !== Number(userToken[0]?.code)) {
+        return res.status(400).json("Invalid code.Try again");
+      }
+    } else {
+      const user = await knex("users")
+        .select("_id", "phonenumber", "active")
+        .where("_id", id)
+        .limit(1);
+
+      if (_.isEmpty(user) && !user[0]?.phonenumber) {
+        return res.status(400).json("Invalid Request");
+      }
+
+      const code = await otpGen();
+      await knex("verify_tokens").upsert({
+        _id: id,
+        code,
+      });
+      console.log(code);
+
+      sendOTPSMS(`Your verification code is ${code}.`, user[0]?.phonenumber);
+    }
+
+    res.sendStatus(201);
+  })
+);
 
 //@GET user by email
 router.post(
@@ -294,34 +341,53 @@ router.post(
   "/login",
   limit,
   asyncHandler(async (req, res) => {
-    const { email } = req.body;
+    const { email, type } = req.body;
 
-    if (!isValidEmail(email)) {
-      return res.status(400).json("Invalid Email Address!");
-    }
+    const transx = await knex.transaction();
+    try {
+      let user = null;
+      if (type === "email") {
+        if (!isValidEmail(email)) {
+          return res.status(400).json("Invalid Email Address!");
+        }
 
-    const user = await knex("users")
-      .select("email", "active")
-      .where("email", email)
-      .limit(1);
+        user = await transx("users")
+          .select("email", "phonenumber", "active")
+          .where("email", email)
+          .limit(1);
+      }
 
-    if (_.isEmpty(user)) {
-      return res.status(404).json("We could not find your Email Address!");
-    }
+      if (type === "phone") {
+        user = await transx("users")
+          .select("email", "phonenumber", "active")
+          .where("phonenumber", email)
+          .limit(1);
+      }
 
-    const token = await otpGen();
+      if (_.isEmpty(user)) {
+        return res
+          .status(404)
+          .json(
+            `We could not find your ${
+              type === "email" ? "email address" : "phone number"
+            }!`
+          );
+      }
 
-    if (process.env.NODE_ENV !== "production") {
-      console.log(token);
-    }
+      const token = await otpGen();
 
-    await knex("tokens").insert({
-      _id: randomUUID(),
-      token,
-      email: user[0]?.email,
-    });
+      if (process.env.NODE_ENV !== "production") {
+        console.log(token);
+      }
 
-    const message = `
+      await transx("tokens").insert({
+        _id: randomUUID(),
+        token,
+        email: email,
+      });
+
+      if (type === "email") {
+        const message = `
         <div style="width:100%;max-width:500px;margin-inline:auto;">
         <h2>Gab Powerful Consult</h2>
         <p>Your verification code is</p>
@@ -331,11 +397,20 @@ router.post(
     </div>
         `;
 
-    try {
-      await sendMail(user[0]?.email, mailTextShell(message));
-    } catch (error) {
-      await knex("tokens").where("email", user[0]?.email).del();
+        await sendMail(user[0]?.email, mailTextShell(message));
+      }
 
+      if (type === "phone") {
+        await sendOTPSMS(
+          `Your verification code is ${token}`,
+          user[0]?.phonenumber
+        );
+      }
+
+      await transx.commit();
+    } catch (error) {
+      await transx.rollback();
+      console.log(error);
       return res.status(500).json("An error has occurred!");
     }
 
@@ -475,8 +550,7 @@ router.post(
   limit,
   asyncHandler(async (req, res) => {
     const email = req.body.email;
-
-    // let user = await User.findByEmail(email);
+    let register = false;
     let user = await knex("users")
       .select("email")
       .where("email", email)
@@ -495,11 +569,11 @@ router.post(
         user_id: req.body?._id,
         user_key,
       });
+      register = true;
     } else {
       await knex("users").where("email", email).update({
         firstname: req.body.firstname,
         lastname: req.body.lastname,
-        // phonenumber: req.body.phonenumber,
         active: 1,
       });
     }
@@ -563,6 +637,7 @@ router.post(
     res.status(201).json({
       refreshToken,
       accessToken,
+      register,
     });
     // }
 
@@ -600,6 +675,17 @@ router.post(
       if (!_.isEmpty(doesUserExists[0])) {
         return res.status(400).json("Email address already taken!");
       }
+
+      const intNumber = getInternationalMobileFormat(newUser.phonenumber);
+
+      const doesPhoneExists = await transx("users")
+        .select("phonenumber")
+        .where("phonenumber", "IN", [newUser.phonenumber, intNumber]);
+
+      if (!_.isEmpty(doesPhoneExists)) {
+        return res.status(400).json("Telephone number already exists!");
+      }
+
       newUser._id = randomUUID();
       newUser.role = process.env.USER_ID;
 
@@ -663,7 +749,7 @@ router.post(
   "/verify-otp",
   limit,
   asyncHandler(async (req, res) => {
-    const { email, token } = req.body;
+    const { email, type, token } = req.body;
 
     if (!email || !token) {
       return res.status(400).json("Invalid Code");
@@ -685,13 +771,26 @@ router.post(
       return res.status(400).json("Sorry! Your code has expired.");
     }
 
-    await knex("users")
-      .where("email", userToken[0]?.email)
-      .update({ active: 1 });
+    let user = null;
+    if (type === "email") {
+      await knex("users")
+        .where("email", userToken[0]?.email)
+        .update({ active: 1 });
 
-    const user = await knex("users")
-      .select("*", knex.raw("CONCAT(firstname,'',lastname) as name"))
-      .where("email", userToken[0]?.email);
+      user = await knex("users")
+        .select("*", knex.raw("CONCAT(firstname,'',lastname) as name"))
+        .where("email", userToken[0]?.email);
+    }
+
+    if (type === "phone") {
+      await knex("users")
+        .where("phonenumber", userToken[0]?.email)
+        .update({ active: 1 });
+
+      user = await knex("users")
+        .select("*", knex.raw("CONCAT(firstname,'',lastname) as name"))
+        .where("phonenumber", userToken[0]?.email);
+    }
 
     if (_.isEmpty(user)) {
       return res.status(401).json("Authentication Failed!");
@@ -796,6 +895,7 @@ router.post(
     // res.clearCookie("_SSUID_kyfc");
     // res.clearCookie("_SSUID_X_ayd");
     req.user = null;
+    delete req.user;
 
     res.sendStatus(204);
   })
@@ -806,6 +906,21 @@ router.put(
   verifyToken,
   asyncHandler(async (req, res) => {
     const { id, admin, iat, exp, ...rest } = req.body;
+
+    const intNumber = getInternationalMobileFormat(rest.phonenumber);
+
+    const doesPhoneExists = await knex("users")
+      .select("phonenumber")
+      .where("phonenumber", "IN", [rest.phonenumber, intNumber])
+      .whereNot("_id", id);
+
+    if (!_.isEmpty(doesPhoneExists)) {
+      return res
+        .status(400)
+        .json(
+          "Telephone number already taken.Use a different telephone number!"
+        );
+    }
 
     const modifiedUser = await knex("users").where("_id", id).update(rest);
 
@@ -865,6 +980,22 @@ router.put(
     await knex("users").where("_id", user[0]?.id).update({
       token: hashedToken,
     });
+
+    const message = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2 style="color: #333333;">Important: Profile Update Notification</h2>
+    <p>Dear ${user[0]?.name || "Customer"} ,</p>
+    <p> Your profile information has been updated.</p>
+    <p>For security purposes, we wanted to ensure that you are aware of these changes. If you did not make these adjustments yourself or if you believe your account may have been compromised, please take immediate action by contacting our support team at <a href='mailto:info@gpcpins.com'>info@gpcpins</a>.</p>
+    <p>If you have made these changes intentionally, please disregard this message.</p>
+    <p>Thank you for your attention to this matter.</p>
+
+    <p>Best regards,</p>
+    <p>Gab Powerful Team<br>
+</div>
+    `;
+
+    await sendEMail(user[0]?.email, message, "Profile Update Notification");
 
     res.status(201).json({
       refreshToken,
@@ -966,10 +1097,58 @@ router.delete(
 
 //Get Wallet Balance
 router.get(
-  "/wallet/balance",
+  "/wallet/status",
   verifyToken,
   asyncHandler(async (req, res) => {
     const { id } = req.user;
+    const { action } = req.query;
+
+    if (action && action === "disable") {
+      await knex("user_wallets").where("user_id", id).update({ active: 0 });
+      return res.sendStatus(204);
+    }
+
+    const wallet = await knex("user_wallets")
+      .where("user_id", id)
+      .select("active", "createdAt", "updatedAt")
+      .limit(1);
+
+    if (_.isEmpty(wallet) || Boolean(wallet[0]?.active) === false) {
+      const now = moment();
+      const upTime = moment(new Date(wallet[0]?.updatedAt));
+      const timeLeft = calculateTimeDifference(now, upTime);
+
+      if (timeLeft.value <= 0) {
+        await knex("user_wallets").where("user_id", id).update({
+          active: 1,
+        });
+
+        return res.status(200).json({
+          active: true,
+        });
+      }
+
+      return res.status(200).json({
+        active: false,
+        timeOut:
+          timeLeft?.type === "hours"
+            ? `${timeLeft.value} hours`
+            : `${timeLeft.value} minutes`,
+      });
+    }
+
+    return res.status(200).json({
+      active: true,
+    });
+  })
+);
+
+//Get Wallet Balance
+router.get(
+  "/wallet/balance",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.query;
 
     const wallet = await knex("user_wallets")
       .where("user_id", id)
@@ -1069,6 +1248,47 @@ router.post(
     } catch (error) {
       res.status(500).json("An unknown error has occurred");
     }
+  })
+);
+
+//update wallet pin
+router.put(
+  "/wallet",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id, email } = req.user;
+    const { _id, pin, isAdmin, userEmail } = req.body;
+
+    const userId = isAdmin ? _id : id;
+    const emailAddress = isAdmin ? userEmail : email;
+
+    const wallet = await knex("user_wallets")
+      .where("user_id", userId)
+      .update("user_key", pin);
+
+    if (wallet !== 1) {
+      return res
+        .status(400)
+        .json("Error updating user pin! Please try again later.");
+    }
+
+    const message = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2 style="color: #333333;">Important: Profile Update Notification</h2>
+    <p>Dear Customer ,</p>
+    <p> Your profile information has been updated.</p>
+    <p>For security purposes, we wanted to ensure that you are aware of these changes. If you did not make these adjustments yourself or if you believe your account may have been compromised, please take immediate action by contacting our support team at <a href='mailto:info@gpcpins.com'>info@gpcpins</a>.</p>
+    <p>If you have made these changes intentionally, please disregard this message.</p>
+    <p>Thank you for your attention to this matter.</p>
+
+    <p>Best regards,</p>
+    <p>Gab Powerful Team<br>
+</div>
+    `;
+
+    await sendEMail(emailAddress, message, "Profile Update Notification");
+
+    res.status(200).json("Wallet Pin Changed!");
   })
 );
 
