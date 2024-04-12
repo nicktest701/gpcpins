@@ -423,6 +423,8 @@ router.post(
   limit,
   asyncHandler(async (req, res) => {
     const { credential } = req.body;
+    let register = false;
+    let user_key=null
 
     if (!credential) {
       return res.status(400).json("Authentication Failed");
@@ -434,6 +436,7 @@ router.post(
       .where("email", decodedUser?.email)
       .limit(1);
 
+   
     if (_.isEmpty(user)) {
       const info = {
         _id: randomUUID(),
@@ -448,13 +451,13 @@ router.post(
       };
 
       await knex("users").insert(info);
-
-      const user_key = await customOtpGen({ length: 4 });
+       user_key = await customOtpGen({ length: 4 });
       await knex("user_wallets").insert({
         _id: randomUUID(),
         user_id: info?._id,
         user_key,
       });
+      register = true;
     } else {
       await knex("users").where("email", decodedUser?.email).update({
         firstname: decodedUser?.given_name,
@@ -521,10 +524,19 @@ router.post(
       token: hashedToken,
     });
 
+    if (register) {
+      await sendOTPSMS(
+        `Welcome to GPC,
+      Your wallet pin is ${user_key}.Your are recommended to change it at the wallet page of your account when you log into your account.Thank You!`,
+        user[0]?.phonenumber
+      );
+    }
+
     // if (isMobile(req)) {
     res.status(201).json({
       refreshToken,
       accessToken,
+      register,
     });
     // }
 
@@ -551,11 +563,13 @@ router.post(
   asyncHandler(async (req, res) => {
     const email = req.body.email;
     let register = false;
+    let user_key=null
     let user = await knex("users")
       .select("email")
       .where("email", email)
       .limit(1);
 
+    
     if (_.isEmpty(user)) {
       req.body._id = randomUUID();
       req.body.role = process.env.USER_ID;
@@ -563,7 +577,7 @@ router.post(
 
       await knex("users").insert(req.body);
 
-      const user_key = await customOtpGen({ length: 4 });
+       user_key = await customOtpGen({ length: 4 }); 
       await knex("user_wallets").insert({
         _id: randomUUID(),
         user_id: req.body?._id,
@@ -632,6 +646,14 @@ router.post(
     await knex("users").where("_id", user[0]?._id).update({
       token: hashedToken,
     });
+
+    if (register) {
+      await sendOTPSMS(
+        `Welcome to GPC,
+   Your wallet pin is ${user_key}.Your are recommended to change it at the wallet page of your account when you log into your account.Thank You!`,
+        user[0]?.phonenumber
+      );
+    }
 
     // if (isMobile(req)) {
     res.status(201).json({
@@ -905,7 +927,7 @@ router.put(
   "/",
   verifyToken,
   asyncHandler(async (req, res) => {
-    const { id, admin, iat, exp, ...rest } = req.body;
+    const { id, admin, iat, exp, register, ...rest } = req.body;
 
     const intNumber = getInternationalMobileFormat(rest.phonenumber);
 

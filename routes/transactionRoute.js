@@ -1664,7 +1664,7 @@ router.post(
   <p>Thank you for your business!</p>
   <p>Sincerely,<br>Gab Powerful Consults</p>
   </div>`;
-      // console.log(result);
+     
       const downloadLink = await uploadFiles(result, "reports");
 
       await sendReportMail(
@@ -1994,7 +1994,7 @@ router.get(
         ) AS agent_wallet_transactions_view_  WHERE purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,
       [sDate, eDate]
     );
-    // console.log(_transactions[0]);
+   
     if (report && report === "true") {
       if (transactions[0].length === 0) {
         return res.status(200).json("No data found");
@@ -2175,7 +2175,7 @@ router.get(
         ) AS user_wallet_transactions_view_  WHERE purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,
       [sDate, eDate]
     );
-    // console.log(_transactions[0]);
+  
     if (report && report === "true") {
       if (transactions[0].length === 0) {
         return res.status(200).json("No data found");

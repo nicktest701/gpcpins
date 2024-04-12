@@ -36,35 +36,36 @@ const uploadWhatsappMedia = async (user) => {
       maxBodyLength: Infinity,
       url: `${process.env.WHATSAPP_URL}/media`,
       headers: {
-        Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+        Authorization: `Bearer EAAQQwWZCEFMABOwt4cpJRgzPSRKktS3owOZCP7eZAZAYK12SAijFy1eqjhyv0rqvMx17ZB0WzuysFLs320txyTqOTb8LMv8wU2oVSskbSBWKlciVvq0M9RQyIOkZAssHZAkPZAflVIoUVfsMQbxXuZAN6lyD0Nd7xx45nHHfUdE66yVuUQMYdpdyXyA9VOmrJlXQR25nfqjnpiPnjvhCZACw8ZD`,
         Cookie: "ps_l=0; ps_n=0",
-        ...data.getHeaders(),
+        // ...data.getHeaders(),
       },
       data: data,
     });
 
     return response.data;
   } catch (error) {
-    console.log(error);
+    console.log(error?.message);
   }
 };
 
-const sendWhatsappMessageWithMedia = async (user) => {
+const sendWhatsappMessageWithMedia = async (info) => {
+  console.log(info);
   const data = {
     messaging_product: "whatsapp",
     recipient_type: "individual",
-    to: user?.recipient,
+    to: info?.recipient,
     type: "document",
     document: {
-        id: user?.documentID,
-      caption: user?.message,
-      filename: user?.filename,
+      id: info?.documentID,
+      caption: info?.message,
+      filename: info?.filename,
     },
   };
 
   // let data = {
   //   "messaging_product": "whatsapp",
-  //   "to": "233560372844",
+  //   "to": "0560372844",
   //   "type": "template",
   //   "template": {
   //     "name": "receipt",
@@ -79,10 +80,14 @@ const sendWhatsappMessageWithMedia = async (user) => {
       method: "post",
       url: `${process.env.WHATSAPP_URL}/messages`,
       headers: {
-        Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+        Authorization: `Bearer EAAQQwWZCEFMABOwt4cpJRgzPSRKktS3owOZCP7eZAZAYK12SAijFy1eqjhyv0rqvMx17ZB0WzuysFLs320txyTqOTb8LMv8wU2oVSskbSBWKlciVvq0M9RQyIOkZAssHZAkPZAflVIoUVfsMQbxXuZAN6lyD0Nd7xx45nHHfUdE66yVuUQMYdpdyXyA9VOmrJlXQR25nfqjnpiPnjvhCZACw8ZD`,
+        Cookie: "ps_l=0; ps_n=0",
+        "Content-Type": "application/json",
+        "Cache-Control": "max-age=604800",
       },
       data,
     });
+    console.log(response.data);
     return response.data;
   } catch (error) {
     console.log(error);

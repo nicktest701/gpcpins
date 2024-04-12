@@ -202,8 +202,8 @@ router.post(
   asyncHandler(async (req, res) => {
     try {
       const info = {
-        documentID: "263740580144067",
-        recipient: "+233543772591",
+        documentID: "1354431841838442",
+        recipient: "0560372844",
         message: "Thank you for your purchase",
         filename: "Vouchers",
       };
@@ -233,15 +233,8 @@ router.get(
 router.post(
   "/whatsapp/callback/471045af9f65250818faa85d8d24912d7501d47114ff1841568267fed07f68dd",
   asyncHandler(async (req, res) => {
-    if (
-      req.query["hub.mode"] == "subscribe" &&
-      req.query["hub.verify_token"] === process.env.WHATSAPP_TOKEN
-    ) {
-      res.send(req.query["hub.challenge"]);
-    } else {
-      res.sendStatus(400);
-    }
-    res.status(200).json;
+  
+    res.status(200).json('done');
   })
 );
 

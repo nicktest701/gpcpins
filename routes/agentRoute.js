@@ -41,7 +41,7 @@ const { getPhoneNumberInfo } = require("../config/PhoneCode");
 const verifyAdminORAgent = require("../middlewares/verifyAdminORAgent");
 const sendEMail = require("../config/sendEmail");
 const generateRandomNumber = require("../config/generateRandomCode");
-const { sendSMS } = require("../config/sms");
+const { sendSMS, sendOTPSMS } = require("../config/sms");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -170,6 +170,54 @@ router.get(
     );
 
     return res.status(200).json(logs[0]);
+  })
+);
+
+router.get(
+  "/phonenumber/token",
+  limit,
+  verifyToken,
+  verifyAgent,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+    const { code } = req.query;
+
+    if (code) {
+      const agentToken = await knex("verify_tokens")
+        .select("_id", "code")
+        .where({
+          _id: id,
+          code,
+        })
+        .limit(1);
+
+      if (
+        _.isEmpty(agentToken) ||
+        Number(code) !== Number(agentToken[0]?.code)
+      ) {
+        return res.status(400).json("Invalid code.Try again");
+      }
+    } else {
+      const agent = await knex("agents")
+        .select("_id", "phonenumber", "active")
+        .where("_id", id)
+        .limit(1);
+
+      if (_.isEmpty(agent) && !agent[0]?.phonenumber) {
+        return res.status(400).json("Invalid Request");
+      }
+
+      const code = await otpGen();
+      await knex("verify_tokens").upsert({
+        _id: id,
+        code,
+      });
+      console.log(code);
+
+      sendOTPSMS(`Your verification code is ${code}.`, agent[0]?.phonenumber);
+    }
+
+    res.sendStatus(201);
   })
 );
 
@@ -367,9 +415,10 @@ router.post(
 
       <p><strong>Details:</strong></p>
       <p><strong>Login URL:</strong> <a href='https://accounts.gpcpins.com'>https://accounts.gpcpins.com</a></p>
-      <p><strong>Username:</strong> ${rest?.username}</p>
+      <p><strong>Username:</strong> ${rest?.email}</p>
       <p><strong>Default Password:</strong> ${password}</p>
-      <p><strong>Client ID:</strong> ${agent_key}</p>
+      <p><strong>Wallet PIN:</strong> ${agent_key}</p>
+      <p>We recommend you change your <b>Default Password</b> and <p>Wallet Pin</p> when you log into your account.</p>
 
       <p>Best regards,</p>
       
@@ -850,6 +899,22 @@ router.put(
       severity: "info",
     });
 
+    const message = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2 style="color: #333333;">Important: Profile Update Notification</h2>
+    <p>Dear ${accessData?.name || "Customer"},</p>
+    <p> Your profile information has been updated.</p>
+    <p>For security purposes, we wanted to ensure that you are aware of these changes. If you did not make these adjustments yourself or if you believe your account may have been compromised, please take immediate action by contacting our support team at <a href='mailto:info@gpcpins.com'>info@gpcpins</a>.</p>
+    <p>If you have made these changes intentionally, please disregard this message.</p>
+    <p>Thank you for your attention to this matter.</p>
+
+    <p>Best regards,</p>
+    <p>Gab Powerful Team<br>
+</div>
+    `;
+
+    await sendEMail(accessData?.email, message, "Profile Update Notification");
+
     res.status(201).json({
       user: accessToken,
     });
@@ -1147,7 +1212,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = req.user;
     const { startDate, endDate } = req.query;
-    
+
     const sDate = moment(startDate).format("YYYY-MM-DD");
     const eDate = moment(endDate).format("YYYY-MM-DD");
 
@@ -1165,11 +1230,11 @@ router.get(
   })
 );
 
-
 //update wallet pin
 router.put(
   "/wallet",
   verifyToken,
+  verifyAdminORAgent,
   asyncHandler(async (req, res) => {
     const { id, email } = req.user;
     const { _id, pin, isAdmin, agentEmail } = req.body;
@@ -1187,6 +1252,22 @@ router.put(
         .json("Error updating agent pin! Please try again later.");
     }
 
+    if (isAdmin) {
+      //logs
+      await knex("agent_activity_logs").insert({
+        employee_id: id,
+        title: "Updated an Agent Wallet pin.",
+        severity: "info",
+      });
+    } else {
+      //logs
+      await knex("agent_activity_logs").insert({
+        agent_id: agentId,
+        title: "Updated Wallet pin.",
+        severity: "info",
+      });
+    }
+
     const message = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
     <h2 style="color: #333333;">Important: Profile Update Notification</h2>
@@ -1201,12 +1282,11 @@ router.put(
 </div>
     `;
 
-    // await sendEMail(emailAddress, message, "Profile Update Notification");
+    await sendEMail(emailAddress, message, "Profile Update Notification");
 
     res.status(200).json("Wallet Pin Changed!");
   })
 );
-
 
 //Top up wallet request
 router.post(
@@ -1266,12 +1346,10 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = req.user;
     const { startDate, endDate, type } = req.query;
-    console.log(id);
-    console.log(type);
-    
+
     const sDate = moment(startDate).format("YYYY-MM-DD");
     const eDate = moment(endDate).format("YYYY-MM-DD");
-    
+
     const transactions = await knex.raw(
       `SELECT *
             FROM (
@@ -1288,7 +1366,6 @@ router.get(
         info: JSON.parse(info),
       };
     });
-   
 
     res.status(200).json(transaction);
   })
