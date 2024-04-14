@@ -424,7 +424,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const { credential } = req.body;
     let register = false;
-    let user_key=null
+    let user_key = null;
 
     if (!credential) {
       return res.status(400).json("Authentication Failed");
@@ -436,7 +436,6 @@ router.post(
       .where("email", decodedUser?.email)
       .limit(1);
 
-   
     if (_.isEmpty(user)) {
       const info = {
         _id: randomUUID(),
@@ -451,7 +450,7 @@ router.post(
       };
 
       await knex("users").insert(info);
-       user_key = await customOtpGen({ length: 4 });
+      user_key = await customOtpGen({ length: 4 });
       await knex("user_wallets").insert({
         _id: randomUUID(),
         user_id: info?._id,
@@ -563,13 +562,12 @@ router.post(
   asyncHandler(async (req, res) => {
     const email = req.body.email;
     let register = false;
-    let user_key=null
+    let user_key = null;
     let user = await knex("users")
       .select("email")
       .where("email", email)
       .limit(1);
 
-    
     if (_.isEmpty(user)) {
       req.body._id = randomUUID();
       req.body.role = process.env.USER_ID;
@@ -577,7 +575,7 @@ router.post(
 
       await knex("users").insert(req.body);
 
-       user_key = await customOtpGen({ length: 4 }); 
+      user_key = await customOtpGen({ length: 4 });
       await knex("user_wallets").insert({
         _id: randomUUID(),
         user_id: req.body?._id,
@@ -705,7 +703,9 @@ router.post(
         .where("phonenumber", "IN", [newUser.phonenumber, intNumber]);
 
       if (!_.isEmpty(doesPhoneExists)) {
-        return res.status(400).json("Telephone number already exists!");
+        return res
+          .status(400)
+          .json("An account with this telephone number already exists!");
       }
 
       newUser._id = randomUUID();
@@ -735,7 +735,7 @@ router.post(
       await transx("tokens").insert({
         _id: randomUUID(),
         token,
-        email: userData[0]?.email,
+        email: userData[0]?.phonenumber,
       });
 
       const message = `
@@ -756,7 +756,7 @@ router.post(
       }
 
       //   Send Email to the User with Verification Code
-      await sendMail(userData[0]?.email, mailTextShell(message));
+      // await sendMail(userData[0]?.email, mailTextShell(message));
       await transx.commit();
     } catch (error) {
       await transx.rollback();
@@ -927,21 +927,24 @@ router.put(
   "/",
   verifyToken,
   asyncHandler(async (req, res) => {
-    const { id, admin, iat, exp, register, ...rest } = req.body;
+    const { id, admin, iat, exp, google, register, ...rest } = req.body;
+    console.log(req.body)
 
-    const intNumber = getInternationalMobileFormat(rest.phonenumber);
+    if (!google) {
+      const intNumber = getInternationalMobileFormat(rest?.phonenumber || "");
 
-    const doesPhoneExists = await knex("users")
-      .select("phonenumber")
-      .where("phonenumber", "IN", [rest.phonenumber, intNumber])
-      .whereNot("_id", id);
+      const doesPhoneExists = await knex("users")
+        .select("phonenumber")
+        .where("phonenumber", "IN", [rest?.phonenumber, intNumber])
+        .whereNot("_id", id);
 
-    if (!_.isEmpty(doesPhoneExists)) {
-      return res
-        .status(400)
-        .json(
-          "Telephone number already taken.Use a different telephone number!"
-        );
+      if (!_.isEmpty(doesPhoneExists)) {
+        return res
+          .status(400)
+          .json(
+            "Telephone number already in use!"
+          );
+      }
     }
 
     const modifiedUser = await knex("users").where("_id", id).update(rest);

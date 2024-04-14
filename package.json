@@ -15,7 +15,7 @@
     "agent-dev": "concurrently \"npm run server\" \"npm run agent\""
   },
   "engines": {
-    "node": ">=18.18.0 <20.9.0"
+    "node": ">=18.18.0 <=20.10.0"
   },
   "keywords": [],
   "author": "",
