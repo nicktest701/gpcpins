@@ -1,15 +1,12 @@
 const pLimit = require("p-limit");
-const fs = require("fs");
-const path = require("path");
 const _ = require("lodash");
 
-const { sendTicketMail } = require("./mail");
 const { generateArrayVoucher } = require("./generatePDF");
 const { generateVoucherTemplate } = require("./generateVoucherTemplate");
 
 const limit = pLimit(5);
 const processVouchers = async (transaction) => {
-  let chunkSize = 4;
+  let chunkSize = 3;
 
   if (transaction?.info?.type === "waec") {
     chunkSize = 20;

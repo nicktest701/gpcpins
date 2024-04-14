@@ -13,6 +13,20 @@
             "database": "eseller",
             "username": "root",
             "password": ""
+        },
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "previewLimit": 50,
+            "server": "193.203.168.45",
+            "port": 3306,
+            "driver": "MariaDB",
+            "name": "gpcpins online",
+            "database": "u347964026_gab",
+            "username": "u347964026_gab_admin",
+            "password": "qS9|yoD+b"
         }
     ]
 }
