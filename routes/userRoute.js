@@ -523,13 +523,13 @@ router.post(
       token: hashedToken,
     });
 
-    if (register) {
-      await sendOTPSMS(
-        `Welcome to GPC,
-      Your wallet pin is ${user_key}.Your are recommended to change it at the wallet page of your account when you log into your account.Thank You!`,
-        user[0]?.phonenumber
-      );
-    }
+    // if (register) {
+    //   await sendOTPSMS(
+    //     `Welcome to GPC,
+    //   Your wallet pin is ${user_key}.Your are recommended to change it at the wallet page of your account when you log into your account.Thank You!`,
+    //     user[0]?.phonenumber
+    //   );
+    // }
 
     // if (isMobile(req)) {
     res.status(201).json({
@@ -645,13 +645,13 @@ router.post(
       token: hashedToken,
     });
 
-    if (register) {
-      await sendOTPSMS(
-        `Welcome to GPC,
-   Your wallet pin is ${user_key}.Your are recommended to change it at the wallet page of your account when you log into your account.Thank You!`,
-        user[0]?.phonenumber
-      );
-    }
+    //   if (register) {
+    //     await sendOTPSMS(
+    //       `Welcome to GPC,
+    //  Your wallet pin is ${user_key}.Your are recommended to change it at the wallet page of your account when you log into your account.Thank You!`,
+    //       user[0]?.phonenumber
+    //     );
+    //   }
 
     // if (isMobile(req)) {
     res.status(201).json({
@@ -928,7 +928,6 @@ router.put(
   verifyToken,
   asyncHandler(async (req, res) => {
     const { id, admin, iat, exp, google, register, ...rest } = req.body;
-    console.log(req.body)
 
     if (!google) {
       const intNumber = getInternationalMobileFormat(rest?.phonenumber || "");
@@ -939,11 +938,7 @@ router.put(
         .whereNot("_id", id);
 
       if (!_.isEmpty(doesPhoneExists)) {
-        return res
-          .status(400)
-          .json(
-            "Telephone number already in use!"
-          );
+        return res.status(400).json("Telephone number already in use!");
       }
     }
 
@@ -1006,7 +1001,38 @@ router.put(
       token: hashedToken,
     });
 
-    const message = `
+  
+
+    if (register) {
+      const userKey = await knex("user_wallets")
+      .select("user_key")
+      .where("user_id", id)
+      .limit(1);
+
+
+      await sendOTPSMS(
+        `Welcome to GPC,
+Your default wallet pin is ${userKey[0]?.user_key} .Your are recommended to change it at the wallet page of your account when you log into your account.Thank You!`,
+        user[0]?.phonenumber
+      );
+
+      const message = `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+<h2 style="color: #333333;">Important: Profile Update Notification</h2>
+<p>Dear ${user[0]?.name || "Customer"} ,</p>
+<p> Welcome to GPC</p>
+<p>Your default wallet pin is ${userKey[0]?.user_key}.Your are recommended to change it at the wallet page of your account when you log into your account.</p>
+<p>Thank you</p>
+
+<p>Best regards,</p>
+<p>Gab Powerful Team<p>
+</div>`;
+
+      await sendEMail(user[0]?.email, message, "GPC Account Confirmation");
+
+
+    } else {
+      const message = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
     <h2 style="color: #333333;">Important: Profile Update Notification</h2>
     <p>Dear ${user[0]?.name || "Customer"} ,</p>
@@ -1016,18 +1042,19 @@ router.put(
     <p>Thank you for your attention to this matter.</p>
 
     <p>Best regards,</p>
-    <p>Gab Powerful Team<br>
+    <p>Gab Powerful Team<p>
 </div>
     `;
 
-    await sendEMail(user[0]?.email, message, "Profile Update Notification");
-
+      await sendEMail(user[0]?.email, message, "Profile Update Notification");
+    }
     res.status(201).json({
       refreshToken,
       accessToken,
     });
   })
 );
+
 router.put(
   "/profile",
   verifyToken,

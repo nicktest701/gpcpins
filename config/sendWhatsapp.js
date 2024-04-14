@@ -50,7 +50,7 @@ const uploadWhatsappMedia = async (user) => {
 };
 
 const sendWhatsappMessageWithMedia = async (info) => {
-  console.log(info);
+ 
   const data = {
     messaging_product: "whatsapp",
     recipient_type: "individual",
@@ -87,7 +87,7 @@ const sendWhatsappMessageWithMedia = async (info) => {
       },
       data,
     });
-    console.log(response.data);
+
     return response.data;
   } catch (error) {
     console.log(error);
