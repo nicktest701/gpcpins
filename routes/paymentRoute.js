@@ -903,7 +903,8 @@ router.post(
         .where({
           user_id: id,
           user_key: token,
-        });
+        })
+        .limit(1);
 
       if (_.isEmpty(userWallet)) {
         return res.status(401).json("Invalid pin!");
@@ -1176,10 +1177,25 @@ router.post(
       pricing,
       email,
       isWallet,
+      token,
     } = req.body;
 
     if (!type || !["Airtime", "Bulk"].includes(type)) {
       return res.status(401).json("Invalid Request");
+    }
+
+    if (isWallet) {
+      const userWallet = await knex("user_wallets")
+        .select("_id", "user_key", "active")
+        .where({
+          user_id: id,
+          user_key: token,
+        })
+        .limit(1);
+
+      if (_.isEmpty(userWallet)) {
+        return res.status(401).json("Invalid pin!");
+      }
     }
 
     const tranx = await knex.transaction();
@@ -1402,10 +1418,25 @@ router.post(
       email,
       plan,
       isWallet,
+      token,
     } = req.body;
 
     if (!type || type !== "Bundle") {
       return res.status(401).json("Invalid Request");
+    }
+
+    if (isWallet) {
+      const userWallet = await knex("user_wallets")
+        .select("_id", "user_key", "active")
+        .where({
+          user_id: id,
+          user_key: token,
+        })
+        .limit(1);
+
+      if (_.isEmpty(userWallet)) {
+        return res.status(401).json("Invalid pin!");
+      }
     }
 
     const tranx = await knex.transaction();
@@ -1803,7 +1834,21 @@ router.post(
   rlimit,
   asyncHandler(async (req, res) => {
     const { id } = req.user;
-    const { meter, info, charges, topup, amount, isWallet } = req.body;
+    const { meter, info, charges, topup, amount, isWallet, token } = req.body;
+
+    if (isWallet) {
+      const userWallet = await knex("user_wallets")
+        .select("_id", "user_key", "active")
+        .where({
+          user_id: id,
+          user_key: token,
+        })
+        .limit(1);
+
+      if (_.isEmpty(userWallet)) {
+        return res.status(401).json("Invalid pin!");
+      }
+    }
 
     const transx = await knex.transaction();
 
