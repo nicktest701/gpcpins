@@ -31,9 +31,12 @@ const processVouchers = async (transaction) => {
     });
 
     //WAIT for templates to finish
-    const template = await Promise.allSettled(chunkedVouchers);
+    const template = await Promise.all(chunkedVouchers);
 
     const result = await generateArrayVoucher(template, transaction?._id);
+    // const result = limit(() =>
+    //   generateArrayVoucher(template, transaction?._id)
+    // );
     if (result) {
       return "done";
     }

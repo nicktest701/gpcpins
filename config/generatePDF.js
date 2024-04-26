@@ -54,14 +54,19 @@ const generateArrayVoucher = async (htmltextArray, transaction_id) => {
   try {
     const browser = await puppeteer.launch({
       headless: "new",
+      ignoreHTTPSErrors: true,
+      protocolTimeout: 60000000
     });
 
     //page
     const page = await browser.newPage();
-    page.setDefaultNavigationTimeout(0);
+    page.setDefaultNavigationTimeout(60000000);
 
     const combined = htmltextArray.join("");
-    await page.setContent(combined, { waitUntil: "domcontentloaded" });
+    await page.setContent(combined, {
+      waitUntil: "domcontentloaded",
+      timeout: 60000000,
+    });
 
     //pdf
     await page.pdf({
@@ -71,7 +76,7 @@ const generateArrayVoucher = async (htmltextArray, transaction_id) => {
       displayHeaderFooter: true,
       footerTemplate:
         '<small style="font-size:10px;font-style:italic;">Powered by Frebbytech consults</small>',
-      timeout: 0,
+      timeout: 60000000,
       width: "210mm",
       height: "297mm",
     });
@@ -81,6 +86,7 @@ const generateArrayVoucher = async (htmltextArray, transaction_id) => {
     await browser.close();
     return "done";
   } catch (error) {
+    console.log(error);
     throw "An error has occured.Couldnt generate vouchers";
   }
 };
@@ -147,7 +153,7 @@ const generateTransactionReport = async (htmltext, transaction_id, type) => {
 
   //close browser
   await browser.close();
-  return `${transaction_id}-${type}.pdf`
+  return `${transaction_id}-${type}.pdf`;
 };
 
 module.exports = {

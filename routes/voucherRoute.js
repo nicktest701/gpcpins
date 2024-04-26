@@ -278,7 +278,7 @@ router.put(
 
     const deletedVouchers = await knex("vouchers").whereIn("_id", id).del();
 
-    if (deletedVouchers !== 1) {
+    if (!deletedVouchers >= 1) {
       return res.status(404).json("Error removing vouchers!");
     }
 

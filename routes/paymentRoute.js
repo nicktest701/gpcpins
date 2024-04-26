@@ -188,6 +188,7 @@ router.get(
 
     try {
       const result = await processVouchers(generatedTransaction);
+     
       if (result === "done") {
         //Get ids of selected Vouchers
         const soldVouchers_ids = _.map(soldVouchers, "_id");
@@ -231,15 +232,15 @@ router.get(
           return `[${voucher?.pin}---${voucher?.serial}]`;
         });
 
-        await sendSMS(
-          `${modifiedVoucher[0]?.voucherType}  ${modifiedVoucher[0]?.dataURL}   
-[Pin---Serial]
-${smsData.join(" ")}  
-${userInfo?.agentEmail}
-${userInfo?.agentPhoneNumber}
-Download Voucher here: ${downloadLink}`,
-          userInfo?.agentPhoneNumber
-        );
+//         await sendSMS(
+//           `${modifiedVoucher[0]?.voucherType}  ${modifiedVoucher[0]?.dataURL}   
+// [Pin---Serial]
+// ${smsData.join(" ")}  
+// ${userInfo?.agentEmail}
+// ${userInfo?.agentPhoneNumber}
+// Download Voucher here: ${downloadLink}`,
+//           userInfo?.agentPhoneNumber
+//         );
 
         // await sendWhatsappMessage({
         //   user: getInternationalMobileFormat(userInfo?.agentPhoneNumber),
@@ -780,7 +781,8 @@ router.get(
         "pending"
       );
       // Send Mail and SMS to the User
-      const userSMS = await sendSMS(`Thank you for your purchase! You will be notified shortly after your transaction is complete.Your transaction id is ${transaction[0]?._id}`,
+      const userSMS = await sendSMS(
+        `Thank you for your purchase! You will be notified shortly after your transaction is complete.Your transaction id is ${transaction[0]?._id}`,
         transaction[0]?.mobileNo
       );
 
@@ -2127,7 +2129,8 @@ router.put(
             sendElectricityMail(_id, paymentInfo.email, transactions[0]?.status)
           );
 
-          await sendSMS(`You request to buy prepaid units has being completed.Click on the link below to download your receipt:${downloadLink}`,
+          await sendSMS(
+            `You request to buy prepaid units has being completed.Click on the link below to download your receipt:${downloadLink}`,
             paymentInfo?.mobileNo
           );
 
