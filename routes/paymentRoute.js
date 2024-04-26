@@ -232,19 +232,12 @@ router.get(
         });
 
         await sendSMS(
-          `Thank you for your purchase! 
-    
-${modifiedVoucher[0]?.voucherType}
-${modifiedVoucher[0]?.dataURL}
-    
-[Pin--- Serial]
-${smsData.join(" ")}
-    
+          `${modifiedVoucher[0]?.voucherType}  ${modifiedVoucher[0]?.dataURL}   
+[Pin---Serial]
+${smsData.join(" ")}  
 ${userInfo?.agentEmail}
 ${userInfo?.agentPhoneNumber}
-
-Download Voucher here: ${downloadLink}
-          `,
+Download Voucher here: ${downloadLink}`,
           userInfo?.agentPhoneNumber
         );
 
@@ -536,13 +529,8 @@ router.get(
         await sendTicketMail(_id, userInfo?.agentEmail, "GPC Tickets");
 
         await sendSMS(
-          `Thank you for your purchase! 
-    
-${userInfo?.agentEmail}
-${userInfo?.agentPhoneNumber}
-
-Download Ticket here: ${downloadLink}
-          `,
+          `${userInfo?.agentEmail} ${userInfo?.agentPhoneNumber}
+Download Ticket here: ${downloadLink}`,
           userInfo?.agentPhoneNumber
         );
 
@@ -657,10 +645,7 @@ router.get(
       confirm
     ) {
       await sendSMS(
-        `${_.capitalize(type)}
-      Your request to buy ${type} has been received.Thank you for purchasing from us!Your transaction id is ${
-          transaction[0]?._id
-        }`,
+        `Your request to buy ${type} has been received.Thank you for purchasing from us!Your transaction id is ${transaction[0]?._id}`,
         transaction[0]?.phonenumber
       );
     }
@@ -704,10 +689,7 @@ router.get(
 
           const balance = Number(response?.balance_after);
           if (balance < 1000) {
-            const body = `
-      Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.
-      Please recharge to avoid any inconveniences.
-      Thank you.
+            const body = `Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.Please recharge to avoid any inconveniences.Thank you.
             `;
             await sendEMail(
               process.env.MAIL_CLIENT_USER,
@@ -763,11 +745,7 @@ router.get(
 
           const balance = Number(response?.balance_after);
           if (balance < 1000) {
-            const body = `
-      Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.
-      Please recharge to avoid any inconveniences.
-      Thank you.
-            `;
+            const body = `Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.Please recharge to avoid any inconveniences.Thank you.`;
             await sendEMail(
               process.env.MAIL_CLIENT_USER,
               mailTextShell(`<p>${body}</p>`),
@@ -802,9 +780,7 @@ router.get(
         "pending"
       );
       // Send Mail and SMS to the User
-      const userSMS = await sendSMS(
-        `Prepaid Units
-Thank you for your purchase! You will be notified shortly after your transaction is complete.Your transaction id is ${transaction[0]?._id}`,
+      const userSMS = await sendSMS(`Thank you for your purchase! You will be notified shortly after your transaction is complete.Your transaction id is ${transaction[0]?._id}`,
         transaction[0]?.mobileNo
       );
 
@@ -962,7 +938,10 @@ router.post(
         .limit(quantity);
     }
 
-    if (_.isEmpty(selectedVouchers) || selectedVouchers.length < quantity) {
+    if (
+      _.isEmpty(selectedVouchers) ||
+      selectedVouchers?.length < Number(quantity)
+    ) {
       return res
         .status(404)
         .json("Requested Item not available!.Try again later.");
@@ -2148,13 +2127,7 @@ router.put(
             sendElectricityMail(_id, paymentInfo.email, transactions[0]?.status)
           );
 
-          await sendSMS(
-            `Prepaid Units
-
-You request to buy prepaid units has being completed.Thank you for your purchase!
-Click on the link below to download your receipt:
-${downloadLink}
-`,
+          await sendSMS(`You request to buy prepaid units has being completed.Click on the link below to download your receipt:${downloadLink}`,
             paymentInfo?.mobileNo
           );
 

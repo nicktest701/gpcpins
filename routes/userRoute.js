@@ -26,7 +26,7 @@ const { uploadPhoto } = require("../config/uploadFile");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 15, // 5 requests per windowMs
+  max: 100, // 5 requests per windowMs
   message: "Too many requests!. please try again later.",
 });
 
@@ -41,9 +41,7 @@ const sendEMail = require("../config/sendEmail");
 const { sendBirthdayWishes } = require("../config/cronMessages");
 const currencyFormatter = require("../config/currencyFormatter");
 const { sendSMS, sendOTPSMS } = require("../config/sms");
-const { activate } = require("firebase/remote-config");
 const { calculateTimeDifference } = require("../config/timeHelper");
-const { uptime } = require("process");
 const { mailTextShell } = require("../config/mailText");
 const { getInternationalMobileFormat } = require("../config/PhoneCode");
 
