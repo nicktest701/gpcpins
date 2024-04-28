@@ -9,7 +9,7 @@ const processVouchers = async (transaction) => {
   let chunkSize = 3;
 
   if (transaction?.info?.type === "waec") {
-    chunkSize = 20;
+    chunkSize = 24;
   }
 
   if (["cinema", "bus"].includes(transaction?.info?.type)) {

@@ -247,7 +247,7 @@ router.get(
         //   message: "Thank you for your purchase!",
         //   media: downloadLink,
         // });
-        return res.status(200).json({ id: _id });
+        return res.status(200).json({ id: _id,downloadLink});
       }
     } catch (error) {
       return res.status(500).json("Error processing your vouchers!");
@@ -541,7 +541,7 @@ Download Ticket here: ${downloadLink}`,
         //   media: downloadLink,
         // });
 
-        return res.status(200).json({ id: _id });
+        return res.status(200).json({ id: _id ,downloadLink});
       }
     } catch (error) {
       return res.status(500).json("Error processing your tickets!");
@@ -810,6 +810,7 @@ router.get(
       ),
       status: transaction[0].status,
     };
+	console.log(successfulTransaction);
 
     res.status(200).json(successfulTransaction);
   })

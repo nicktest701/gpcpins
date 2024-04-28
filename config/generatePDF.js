@@ -54,18 +54,17 @@ const generateArrayVoucher = async (htmltextArray, transaction_id) => {
   try {
     const browser = await puppeteer.launch({
       headless: "new",
-      ignoreHTTPSErrors: true,
-      protocolTimeout: 60000000
+      //  protocolTimeout: 60000000
     });
 
     //page
     const page = await browser.newPage();
-    page.setDefaultNavigationTimeout(60000000);
+    page.setDefaultNavigationTimeout(0);
 
     const combined = htmltextArray.join("");
     await page.setContent(combined, {
       waitUntil: "domcontentloaded",
-      timeout: 60000000,
+
     });
 
     //pdf
@@ -76,7 +75,7 @@ const generateArrayVoucher = async (htmltextArray, transaction_id) => {
       displayHeaderFooter: true,
       footerTemplate:
         '<small style="font-size:10px;font-style:italic;">Powered by Frebbytech consults</small>',
-      timeout: 60000000,
+      timeout: 0,
       width: "210mm",
       height: "297mm",
     });

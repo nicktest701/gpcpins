@@ -2,14 +2,14 @@ require("dotenv").config({ path: ".env" });
 const path = require("path");
 const compression = require("compression");
 const express = require("express");
-const cluster = require('cluster');
+// const cluster = require('cluster');
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const logger = require("morgan");
 const helmet = require("helmet");
 const createError = require("http-errors");
 
-const numCPUs = require('os').cpus().length;
+// const numCPUs = require('os').cpus().length;
 
 //
 
@@ -18,9 +18,6 @@ const port = process.env.PORT || 5000;
 
 //initialize express
 const app = express();
-
-
-
 
 const userRoute = require("./routes/userRoute");
 const adminRoute = require("./routes/adminRoute");
@@ -81,21 +78,19 @@ const corsOptions = {
   },
 };
 
+// if (cluster.isMaster) {
+//   console.log(`Master ${process.pid} is running`);
 
+//   // Fork workers
+//   for (let i = 0; i < numCPUs; i++) {
+//     cluster.fork();
+//   }
 
-if (cluster.isMaster) {
-  console.log(`Master ${process.pid} is running`);
-
-  // Fork workers
-  for (let i = 0; i < numCPUs; i++) {
-    cluster.fork();
-  }
-
-  cluster.on('exit', (worker, code, signal) => {
-    console.log(`Worker ${worker.process.pid} died`);
-    cluster.fork();
-  });
-} else {
+//   cluster.on('exit', (worker, code, signal) => {
+//     console.log(`Worker ${worker.process.pid} died`);
+//     cluster.fork();
+//   });
+// } else {
 
 app.set("trust proxy", 1);
 app.set("view engine", "ejs");
@@ -103,9 +98,9 @@ app.use(cookieParser());
 // app.use(cookieParser(process.env.SESSION_ID));
 
 // miiddlewares
-// if (process.env.NODE_ENV === 'development') {
-app.use(logger("dev"));
-// }
+if (process.env.NODE_ENV === "development") {
+  app.use(logger("dev"));
+}
 
 // if (process.env.NODE_ENV !== 'development') {
 //  app.use(verifyReferer);
@@ -285,4 +280,4 @@ app.listen(port, () => {
   // const host = server.address();
   // console.log(host);
 });
-}
+// }
