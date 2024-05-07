@@ -143,6 +143,41 @@ router.get(
 );
 
 router.get(
+  "/verify-identity",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user
+    const { nid, dob } = req.query;
+
+
+    const users = await knex("users").where({ _id: id })
+      .select('nid', 'dob', knex.raw("DATE_FORMAT(dob,'%D %M %Y') as dobb"))
+      .limit(1);
+
+
+    if (_.isEmpty(users[0])) {
+      return res.status(400).json('Invalid Request!');
+    }
+
+    if (nid && users[0]?.nid !== nid) {
+
+      return res.status(400).json("Sorry.We couldn't find your National ID.");
+    }
+
+    if (dob) {
+      const formattedDate = moment(dob).format('Do MMMM YYYY')
+
+      if (users[0]?.dobb !== formattedDate) {
+
+        return res.status(400).json("Sorry.We couldn't find your date of birth.");
+      }
+    }
+
+
+    return res.status(200).json('OK');
+  })
+);
+router.get(
   "/:id",
   verifyToken,
   verifyAdmin,
@@ -366,8 +401,7 @@ router.post(
         return res
           .status(404)
           .json(
-            `We could not find your ${
-              type === "email" ? "email address" : "phone number"
+            `We could not find your ${type === "email" ? "email address" : "phone number"
             }!`
           );
       }
@@ -927,7 +961,8 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id, admin, iat, exp, google, register, ...rest } = req.body;
 
-    if (!google) {
+
+    if (!google && rest?.phonenumber) {
       const intNumber = getInternationalMobileFormat(rest?.phonenumber || "");
 
       const doesPhoneExists = await knex("users")
@@ -999,13 +1034,13 @@ router.put(
       token: hashedToken,
     });
 
-  
+
 
     if (register) {
       const userKey = await knex("user_wallets")
-      .select("user_key")
-      .where("user_id", id)
-      .limit(1);
+        .select("user_key")
+        .where("user_id", id)
+        .limit(1);
 
 
       await sendOTPSMS(
@@ -1098,11 +1133,10 @@ router.put(
     //logs
     await knex("activity_logs").insert({
       employee_id: _id,
-      title: `${
-        Boolean(active) === true
-          ? "Activated a user account!"
-          : "Disabled a user account!"
-      }`,
+      title: `${Boolean(active) === true
+        ? "Activated a user account!"
+        : "Disabled a user account!"
+        }`,
       severity: "warning",
     });
 
@@ -1260,22 +1294,20 @@ router.post(
       <h1 style='text-transform:uppercase;'>Wallet Top Up Request</h1><br/>
       <div style='text-align:left;'>
 
-      <p>A request has been placed by <strong>${
-        user[0]?.name
-      }</strong> to top up wallet balance.
+      <p>A request has been placed by <strong>${user[0]?.name
+        }</strong> to top up wallet balance.
       <p><strong>Name:</strong> ${user[0]?.name}</p>
       <p><strong>Email:</strong> ${user[0]?.email}</p><br/>
       <p><strong>Telephone Number:</strong> ${user[0]?.phonenumber}</p><br/>
       <p><strong>Top Up Amount:</strong> ${currencyFormatter(
-        req?.body?.amount
-      )}</p><br/>
+          req?.body?.amount
+        )}</p><br/>
        
       </div>
       </div>`;
 
-      const message = `A request has been placed by '${
-        user[0]?.name
-      }' to top up wallet balance.
+      const message = `A request has been placed by '${user[0]?.name
+        }' to top up wallet balance.
       Name: ${user[0]?.name}
       Email: ${user[0]?.email}
       Telephone Number: ${user[0]?.phonenumber} 

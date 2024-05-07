@@ -147,6 +147,22 @@ router.put(
     res.status(201).json("Changes Saved!");
   })
 );
+router.put(
+  "/user",
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+
+    await knex("user_notifications")
+      .where("user_id", id)
+      .update({ active: false });
+
+
+    res.sendStatus(204);
+  })
+);
+
+
+// Delete a notification
 
 router.delete(
   "/",
@@ -159,6 +175,37 @@ router.delete(
     } else {
       notification = await knex("notifications").where("_id", id).del();
     }
+    if (!notification) {
+      return res.status(404).json("Error removing notification!");
+    }
+    res.status(200).json("Notification removed!");
+  })
+);
+
+
+router.delete(
+  "/user",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+
+    notification = await knex("user_notifications").where("user_id", id).del();
+
+    if (!notification) {
+      return res.status(404).json("Error removing notifications!");
+    }
+    res.status(200).json("Notifications removed!");
+  })
+);
+
+router.delete(
+  "/user/:id",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    notification = await knex("user_notifications").where("_id", id).del();
+
     if (!notification) {
       return res.status(404).json("Error removing notification!");
     }

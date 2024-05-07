@@ -51,7 +51,7 @@ const { MTN, VODAFONE, AIRTELTIGO } = require("../config/bundleList");
 const { sendWhatsappMessage } = require("../config/sendWhatsapp");
 const { getInternationalMobileFormat } = require("../config/PhoneCode");
 const { sendBirthdayWishes } = require("../config/cronMessages");
-const { Body } = require("twilio/lib/twiml/MessagingResponse");
+
 
 const corsOptions = {
   methods: "POST",
@@ -98,14 +98,8 @@ router.get(
       return res.status(404).json("Invalid request.Try again later");
     }
 
-    let { _id, email, info, vouchers, status, createdAt, updatedAt } = trans[0];
 
-    //Check if voucher pdf already exists
-    if (fs.existsSync(path.join(process.cwd(), "/vouchers/", `${id}.pdf`))) {
-      await sendTicketMail(id, email, "GPC Vouchers");
-
-      return res.status(200).json({ id: id });
-    }
+    let { _id, info, vouchers, status, createdAt, updatedAt } = trans[0];
 
     if (status === "pending" || status == "failed") {
       return res.status(404).json("Payment not completed!");
@@ -114,40 +108,44 @@ router.get(
     const userInfo = JSON.parse(info);
     const userVoucher = JSON.parse(vouchers);
 
-    let soldVouchers = [];
 
-    if (userVoucher?.length > 0) {
-      soldVouchers = await knex("vouchers")
-        .join("categories", "vouchers.category", "=", "categories._id")
-        .whereIn("vouchers._id", userVoucher)
-        .select(
-          "vouchers._id as _id",
-          "vouchers.pin as pin",
-          "vouchers.serial as serial",
-          "categories._id as categoryId",
-          "categories.voucherType as voucherType",
-          "categories.price as price",
-          "categories.details as details"
-        );
-    } else {
-      soldVouchers = await knex("vouchers")
-        .join("categories", "vouchers.category", "=", "categories._id")
-        .where({
-          "vouchers.category": userInfo?.categoryId,
-          "vouchers.status": "new",
-          "vouchers.active": 1,
-        })
-        .select(
-          "vouchers._id as _id",
-          "vouchers.pin as pin",
-          "vouchers.serial as serial",
-          "categories._id as categoryId",
-          "categories.voucherType as voucherType",
-          "categories.price as price",
-          "categories.details as details"
-        )
-        .limit(userInfo?.quantity);
+    //Check if voucher pdf already exists
+    // if (fs.existsSync(path.join(process.cwd(), "/vouchers/", `${id}.pdf`))) {
+    //   await sendTicketMail(id, email, "GPC Vouchers");
+
+    //   return res.status(200).json({ id: id });
+    // }
+
+    //Check if voucher pdf already exists
+    if (userInfo?.downloadLink) {
+
+      await sendSMS(
+        `${userInfo?.agentEmail} ${userInfo?.agentPhoneNumber}.
+ Download Vouchers here: ${userInfo?.downloadLink}`,
+        userInfo?.agentPhoneNumber
+      );
+
+      return res.status(200).json({ id, downloadLink: userInfo?.downloadLink });
     }
+
+
+    if (userVoucher?.length <= 0) {
+      return res.status(404).json("Payment not completed!");
+    }
+
+    const soldVouchers = await knex("vouchers")
+      .join("categories", "vouchers.category", "=", "categories._id")
+      .whereIn("vouchers._id", userVoucher)
+      .select(
+        "vouchers._id as _id",
+        "vouchers.pin as pin",
+        "vouchers.serial as serial",
+        "categories._id as categoryId",
+        "categories.voucherType as voucherType",
+        "categories.price as price",
+        "categories.details as details"
+      );
+
 
     //if creating new transaction fails
     if (_.isEmpty(soldVouchers)) {
@@ -186,25 +184,15 @@ router.get(
       status,
     };
 
+
     try {
       const result = await processVouchers(generatedTransaction);
-     
-      if (result === "done") {
-        //Get ids of selected Vouchers
-        const soldVouchers_ids = _.map(soldVouchers, "_id");
-        //Update Selected Vouchers as SOLD
-        await knex("vouchers").whereIn("_id", soldVouchers_ids).update({
-          active: 0,
-          status: "sold",
-        });
 
-        //Update transaction
-        await knex("voucher_transactions")
-          .where("_id", _id)
-          .update({ vouchers: JSON.stringify(soldVouchers_ids) });
+      if (result === "done") {
+
         const downloadLink = await uploadVoucherFile(`${_id}.pdf`);
 
-        const result = await knex("voucher_transactions")
+        await knex("voucher_transactions")
           .where("_id", _id)
           .update({
             info: JSON.stringify({
@@ -223,33 +211,40 @@ router.get(
           link: downloadLink,
         });
 
-        await sendTicketMail(
+        res.status(200).json({ id: _id, downloadLink });
+
+
+        const emailPrompt = await sendTicketMail(
           _id,
           userInfo?.agentEmail,
           modifiedVoucher[0]?.voucherType
         );
+
         const smsData = modifiedVoucher.map((voucher) => {
-          return `[${voucher?.pin}---${voucher?.serial}]`;
+          return `[${voucher?.pin}--${voucher?.serial}]`;
         });
 
-//         await sendSMS(
-//           `${modifiedVoucher[0]?.voucherType}  ${modifiedVoucher[0]?.dataURL}   
-// [Pin---Serial]
-// ${smsData.join(" ")}  
-// ${userInfo?.agentEmail}
-// ${userInfo?.agentPhoneNumber}
-// Download Voucher here: ${downloadLink}`,
-//           userInfo?.agentPhoneNumber
-//         );
+        const SMSPrompt = await sendSMS(
+          `${modifiedVoucher[0]?.voucherType}  ${modifiedVoucher[0]?.dataURL}   
+[Pin--Serial]
+${smsData.join(" ")}  
+${userInfo?.agentEmail}
+${userInfo?.agentPhoneNumber}
+Download Voucher here: ${downloadLink}`,
+          userInfo?.agentPhoneNumber
+        );
+
+        await Promise.all([emailPrompt, SMSPrompt])
+
 
         // await sendWhatsappMessage({
         //   user: getInternationalMobileFormat(userInfo?.agentPhoneNumber),
         //   message: "Thank you for your purchase!",
         //   media: downloadLink,
         // });
-        return res.status(200).json({ id: _id,downloadLink});
       }
     } catch (error) {
+      console.log(error)
       return res.status(500).json("Error processing your vouchers!");
     }
   })
@@ -276,14 +271,7 @@ router.get(
       return res.status(404).json("Invalid request.Try again later");
     }
 
-    let { _id, email, info, vouchers, status, createdAt, updatedAt } = trans[0];
-
-    //Check if voucher pdf already exists
-    if (fs.existsSync(path.join(process.cwd(), "/vouchers/", `${id}.pdf`))) {
-      await sendTicketMail(id, email, "GPC Tickets");
-
-      return res.status(200).json({ id });
-    }
+    const { _id, info, vouchers, status, createdAt, updatedAt } = trans[0];
 
     if (status === "pending" || status == "failed") {
       return res.status(404).json("Payment not completed.!");
@@ -292,15 +280,69 @@ router.get(
     const userInfo = JSON.parse(info);
     const userVoucher = JSON.parse(vouchers);
 
+    //Check if voucher pdf already exists
+    // if (fs.existsSync(path.join(process.cwd(), "/vouchers/", `${id}.pdf`))) {
+    //   await sendTicketMail(id, email, "GPC Tickets");
+
+    //   return res.status(200).json({ id });
+    // }
+
+    //Check if voucher pdf already exists
+    if (userInfo?.downloadLink) {
+
+      await sendSMS(
+        `${userInfo?.agentEmail} ${userInfo?.agentPhoneNumber}.
+   Download Tickets here: ${userInfo?.downloadLink}`,
+        userInfo?.agentPhoneNumber
+      );
+
+      return res.status(200).json({ id, downloadLink: userInfo?.downloadLink });
+    }
+
+    if (userVoucher?.length <= 0) {
+      return res.status(404).json("Payment not completed!");
+    }
+
+
     const { type, orderNo, categoryId, paymentDetails } = userInfo;
 
     let tickets = [];
-
     let soldVouchers = [];
-    if (userVoucher?.length > 0) {
+
+    if (["stadium", "cinema"].includes(type)) {
+
+      const vouchers = await Promise.all(
+        paymentDetails.tickets.flatMap(async (ticket) => {
+          return await knex("vouchers")
+            .join("categories", "vouchers.category", "=", "categories._id")
+            .whereIn("vouchers._id", userVoucher)
+            .andWhere('vouchers.type', ticket?.type)
+            .select(
+              "vouchers._id as _id",
+              "vouchers.pin as pin",
+              "vouchers.serial as serial",
+              "vouchers.type as type",
+              "categories._id as categoryId",
+              "categories.voucherType as voucherType",
+              "categories.price as price",
+              "categories.details as details",
+              "categories.year as year"
+            )
+            .limit(ticket?.quantity);
+        })
+      );
+
+      soldVouchers = _.flatMap(vouchers);
+
+    }
+    //Check if tickets are bus
+    if (["bus"].includes(type)) {
       soldVouchers = await knex("vouchers")
         .join("categories", "vouchers.category", "=", "categories._id")
-        .whereIn("vouchers._id", userVoucher)
+        .whereIn("vouchers.type", paymentDetails?.tickets)
+        .andWhere({
+          "vouchers.category": categoryId,
+        })
         .select(
           "vouchers._id as _id",
           "vouchers.pin as pin",
@@ -312,58 +354,10 @@ router.get(
           "categories.details as details",
           "categories.year as year"
         );
-    } else {
-      if (["stadium", "cinema"].includes(type)) {
-        const vouchers = await Promise.all(
-          paymentDetails.tickets.flatMap(async (ticket) => {
-            return await knex("vouchers")
-              .join("categories", "vouchers.category", "=", "categories._id")
-              .where({
-                "vouchers.category": categoryId,
-                "vouchers.type": ticket?.type,
-                "vouchers.status": "new",
-                "vouchers.active": 1,
-              })
-              .select(
-                "vouchers._id as _id",
-                "vouchers.pin as pin",
-                "vouchers.serial as serial",
-                "vouchers.type as type",
-                "categories._id as categoryId",
-                "categories.voucherType as voucherType",
-                "categories.price as price",
-                "categories.details as details",
-                "categories.year as year"
-              )
-              .limit(ticket?.quantity);
-          })
-        );
 
-        soldVouchers = _.flatMap(vouchers);
-      }
-      //Check if tickets are bus
-      if (["bus"].includes(type)) {
-        soldVouchers = await knex("vouchers")
-          .join("categories", "vouchers.category", "=", "categories._id")
-          .whereIn("vouchers.type", paymentDetails?.tickets)
-          .andWhere({
-            "vouchers.category": categoryId,
-            "vouchers.status": "new",
-            "vouchers.active": 1,
-          })
-          .select(
-            "vouchers._id as _id",
-            "vouchers.pin as pin",
-            "vouchers.serial as serial",
-            "vouchers.type as type",
-            "categories._id as categoryId",
-            "categories.voucherType as voucherType",
-            "categories.price as price",
-            "categories.details as details",
-            "categories.year as year"
-          );
-      }
+
     }
+
 
     if (["stadium", "cinema"].includes(type)) {
       const generatedTickets = _.map(
@@ -379,10 +373,12 @@ router.get(
         }) => {
           const detailsInfo = JSON.parse(details);
 
+
           const item = _.find(
             detailsInfo?.pricing,
             (item) => item.type === vType
           );
+
 
           const code = await generateQRCode(orderNo, _id, pin || serial);
 
@@ -398,7 +394,7 @@ router.get(
               time: moment(new Date(detailsInfo?.time)).format("hh:mm a"),
               message: detailsInfo?.message,
               year: year,
-              type: type || detailsInfo?.type,
+              type: vType || detailsInfo?.type,
               qrCode: code,
               poster: detailsInfo?.cinema,
               companyName: detailsInfo?.companyName || "Gab Powerful Consult",
@@ -420,7 +416,7 @@ router.get(
               time: moment(new Date(detailsInfo?.time)).format("hh:mm a"),
               message: detailsInfo?.message,
               year: year,
-              type: type || detailsInfo?.type,
+              type: vType || detailsInfo?.type,
               qrCode: code,
               status: "sold",
               homeImage: detailsInfo?.homeImage,
@@ -431,6 +427,7 @@ router.get(
         }
       );
       tickets = await Promise.all(generatedTickets);
+
     }
 
     if (type === "bus") {
@@ -479,6 +476,8 @@ router.get(
       tickets = await Promise.all(generatedTickets);
     }
 
+    // console.log(tickets)
+
     const generatedTransaction = {
       info: userInfo,
       _id,
@@ -492,19 +491,6 @@ router.get(
       const result = await processVouchers(generatedTransaction);
 
       if (result === "done") {
-        //Get ids of selected Vouchers
-        const soldVouchers_ids = _.map(soldVouchers, "_id");
-
-        //Update Selected Vouchers as SOLD
-        await knex("vouchers").whereIn("_id", soldVouchers_ids).update({
-          active: 0,
-          status: "sold",
-        });
-
-        //Update transaction
-        await knex("voucher_transactions")
-          .where("_id", _id)
-          .update({ vouchers: JSON.stringify(soldVouchers_ids) });
 
         const downloadLink = await uploadVoucherFile(`${_id}.pdf`);
 
@@ -527,6 +513,8 @@ router.get(
           link: downloadLink,
         });
 
+        res.status(200).json({ id: _id, downloadLink });
+
         await sendTicketMail(_id, userInfo?.agentEmail, "GPC Tickets");
 
         await sendSMS(
@@ -539,11 +527,11 @@ Download Ticket here: ${downloadLink}`,
         //   user: getInternationalMobileFormat(userInfo?.agentPhoneNumber),
         //   message: "Thank you for your purchase!",
         //   media: downloadLink,
-        // });
+        // })
 
-        return res.status(200).json({ id: _id ,downloadLink});
       }
     } catch (error) {
+      console.log(error)
       return res.status(500).json("Error processing your tickets!");
     }
   })
@@ -566,7 +554,7 @@ router.get(
 
     if (type === "voucher" || type === "ticket") {
       transaction = await knex("voucher_transactions")
-        .select("_id", "info", "mode", "createdAt", "status")
+        .select("*")
         .where("_id", id)
         .limit(1);
     }
@@ -639,6 +627,91 @@ router.get(
     }
 
     const info = transaction[0]?.info ? JSON.parse(transaction[0]?.info) : "";
+
+
+    if (["voucher", 'ticket'].includes(type) && confirm) {
+      const { _id, info } = transaction[0]
+
+      const userInfo = JSON.parse(info);
+
+      let selectedVouchers = [];
+
+      //Check if tickets are Stadium tickets or cinema
+
+      if (["stadium", "cinema"].includes(userInfo?.type)) {
+        const vouchers = await Promise.all(
+          userInfo?.paymentDetails.tickets.flatMap(async (ticket) => {
+            return await knex("vouchers")
+              .join("categories", "vouchers.category", "=", "categories._id")
+              .where({
+                "vouchers.category": userInfo?.categoryId,
+                "vouchers.type": ticket?.type,
+                "vouchers.status": "new",
+                "vouchers.active": 1,
+              })
+              .select("vouchers._id", 'vouchers.type')
+              .limit(ticket?.quantity);
+          })
+        );
+
+        selectedVouchers = _.flatMap(vouchers);
+
+      }
+      //Check if tickets are bus
+      else if (["bus"].includes(userInfo?.type)) {
+        selectedVouchers = await knex("vouchers")
+          .join("categories", "vouchers.category", "=", "categories._id")
+          .whereIn("vouchers.type", userInfo?.paymentDetails?.tickets)
+          .andWhere({
+            "vouchers.category": userInfo?.categoryId,
+            "vouchers.status": "new",
+            "vouchers.active": 1,
+          })
+          .select("vouchers._id");
+
+
+      }
+      //Check if vouchers are waec,university or security
+      else {
+        selectedVouchers = await knex("vouchers")
+          .join("categories", "vouchers.category", "=", "categories._id")
+          .where({
+            "vouchers.category": userInfo?.categoryId,
+            "vouchers.status": "new",
+            "vouchers.active": 1,
+          })
+          .select("vouchers._id")
+          .limit(userInfo?.quantity);
+      }
+
+
+      const soldVouchers_ids = _.map(selectedVouchers, '_id');
+      const transx = await knex.transaction();
+
+      try {
+
+
+        await transx("voucher_transactions").where('_id', _id).update(
+          { vouchers: JSON.stringify(soldVouchers_ids) }
+        );
+
+        //Update Selected Vouchers as SOLD
+        await transx("vouchers").whereIn("_id", soldVouchers_ids).update({
+          active: 0,
+          status: "sold",
+        });
+        await transx.commit();
+
+      } catch (error) {
+
+        console.log(error);
+        await transx.rollback();
+        return res.status(500).json("Error Processing your request!Please try again later.");
+      }
+
+    }
+
+
     if (
       ["airtime"].includes(type) &&
       transaction[0].type === "bulk" &&
@@ -665,10 +738,10 @@ router.get(
           transaction[0]?.network === "mtn-gh"
             ? 4
             : transaction[0]?.network === "vodafone-gh"
-            ? 6
-            : transaction[0]?.network === "tigo-gh"
-            ? 1
-            : 0,
+              ? 6
+              : transaction[0]?.network === "tigo-gh"
+                ? 1
+                : 0,
         transaction_reference,
       };
 
@@ -685,19 +758,26 @@ router.get(
             user_id: userID,
             type: "bundle",
             title: "Data Bundle Transfer",
-            message: `You have successfully recharged ${bundleInfo.recipient} with ${bundleInfo.data_code}, you were charged GHS ${transaction[0]?.amount}`,
+            message: `You have successfully recharged ${bundleInfo.recipient} with data bundle, "${bundleInfo.data_code}", you were charged GHS ${transaction[0]?.amount} .`,
           });
 
           const balance = Number(response?.balance_after);
           if (balance < 1000) {
             const body = `Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.Please recharge to avoid any inconveniences.Thank you.
             `;
-            await sendEMail(
-              process.env.MAIL_CLIENT_USER,
-              mailTextShell(`<p>${body}</p>`),
-              "LOW TOP UP ACCOUNT BALANCE"
-            );
-            await sendSMS(body, process.env.CLIENT_PHONENUMBER);
+
+            if (process.env.NODE_ENV === 'production') {
+
+              const emailPrompt = await sendEMail(
+                process.env.MAIL_CLIENT_USER,
+                mailTextShell(`<p>${body}</p>`),
+                "LOW TOP UP ACCOUNT BALANCE"
+              );
+              const SMSPrompt = await sendSMS(body, process.env.CLIENT_PHONENUMBER);
+
+              await Promise.all([emailPrompt, SMSPrompt])
+            }
+
           }
         }
       } catch (error) {
@@ -721,10 +801,10 @@ router.get(
           transaction[0]?.network === "mtn-gh"
             ? 4
             : transaction[0]?.network === "vodafone-gh"
-            ? 6
-            : transaction[0]?.network === "tigo-gh"
-            ? 1
-            : 0,
+              ? 6
+              : transaction[0]?.network === "tigo-gh"
+                ? 1
+                : 0,
         transaction_reference,
       };
       try {
@@ -747,12 +827,19 @@ router.get(
           const balance = Number(response?.balance_after);
           if (balance < 1000) {
             const body = `Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.Please recharge to avoid any inconveniences.Thank you.`;
-            await sendEMail(
-              process.env.MAIL_CLIENT_USER,
-              mailTextShell(`<p>${body}</p>`),
-              "LOW TOP UP ACCOUNT BALANCE"
-            );
-            await sendSMS(body, process.env.CLIENT_PHONENUMBER);
+
+
+            if (process.env.NODE_ENV === 'production') {
+
+              const emailPrompt = await sendEMail(
+                process.env.MAIL_CLIENT_USER,
+                mailTextShell(`<p>${body}</p>`),
+                "LOW TOP UP ACCOUNT BALANCE"
+              );
+              const SMSPrompt = await sendSMS(body, process.env.CLIENT_PHONENUMBER);
+
+              limit(() => Promise.all([emailPrompt, SMSPrompt]))
+            }
           }
         }
       } catch (error) {
@@ -761,11 +848,10 @@ router.get(
     }
 
     if (type === "prepaid" && confirm) {
-      const message = `The number ${transaction[0]?.mobileNo} with METER NO. '${
-        transaction[0]?.number
-      }' has successfully made payment to buy PREPAID UNITS at an amount of ${currencyFormatter(
-        info?.amount
-      )}
+      const message = `The number ${transaction[0]?.mobileNo} with METER NO. '${transaction[0]?.number
+        }' has successfully made payment to buy PREPAID UNITS at an amount of ${currencyFormatter(
+          info?.amount
+        )}
 
   .`;
 
@@ -810,7 +896,7 @@ router.get(
       ),
       status: transaction[0].status,
     };
-	console.log(successfulTransaction);
+    // console.log(successfulTransaction);
 
     res.status(200).json(successfulTransaction);
   })
@@ -828,8 +914,8 @@ router.get(
       type === "airtime"
         ? "airtime_transactions"
         : type === "bundle"
-        ? "bundle_transactions"
-        : "voucher_transactions";
+          ? "bundle_transactions"
+          : "voucher_transactions";
 
     await knex(db).where({ _id: id }).update({
       status: "failed",
@@ -875,6 +961,7 @@ router.post(
       isWallet,
       token,
     } = req.body;
+    // console.log(req.body)
 
     if (isWallet) {
       const userWallet = await knex("user_wallets")
@@ -969,7 +1056,7 @@ router.post(
           _.isEmpty(user_balance) ||
           Number(user_balance[0]?.amount) < Number(totalAmount)
         ) {
-          return res.status(401).json("Error Processing your request!");
+          return res.status(401).json("Insufficient wallet balance to complete transaction!");
         }
 
         const user_deduction = await transx("user_wallets")
@@ -1019,14 +1106,15 @@ router.post(
           transaction_reference,
         };
 
+
         const sendMoneyReponse = await sendMoney(payment, "v");
 
         const status =
           sendMoneyReponse?.ResponseCode === "0000"
             ? "completed"
             : sendMoneyReponse?.ResponseCode === "0001"
-            ? "pending"
-            : "failed";
+              ? "pending"
+              : "failed";
 
         transactionInfo = {
           _id: transaction_id,
@@ -1049,12 +1137,14 @@ router.post(
               : "Voucher",
             paymentDetails: paymentDetails || {},
           }),
+          provider: user?.provider,
           partner: JSON.stringify(sendMoneyReponse?.Data),
           vouchers: JSON.stringify([]),
           status,
           reference: transaction_reference,
         };
       }
+      // console.log(transactionInfo)
 
       const transaction = await transx("voucher_transactions").insert(
         transactionInfo
@@ -1072,9 +1162,9 @@ router.post(
 
       res.status(200).json({ _id: transaction_id });
     } catch (error) {
-      if (process.env.NODE_ENV !== "production") {
-        console.log(error);
-      }
+
+      console.log(error);
+
       await transx.rollback();
       return res.status(500).json("Transaction Failed!Please try again later.");
     }
@@ -1166,6 +1256,8 @@ router.post(
       return res.status(401).json("Invalid Request");
     }
 
+    // console.log(req.body)
+
     if (isWallet) {
       const userWallet = await knex("user_wallets")
         .select("_id", "user_key", "active")
@@ -1199,7 +1291,7 @@ router.post(
           _.isEmpty(user_balance) ||
           Number(user_balance[0]?.amount) < Number(amount)
         ) {
-          return res.status(401).json("Error Processing your request!");
+          return res.status(401).json("Insufficient Wallet Balance!");
         }
 
         const user_deduction = await tranx("user_wallets")
@@ -1233,6 +1325,7 @@ router.post(
           isProcessed: type === "Airtime",
           reference: transaction_reference,
         };
+        // console.log(transactionInfo)
       } else {
         const payment = {
           phonenumber,
@@ -1247,8 +1340,8 @@ router.post(
           sendMoneyReponse?.ResponseCode === "0000"
             ? "completed"
             : sendMoneyReponse?.ResponseCode === "0001"
-            ? "pending"
-            : "failed";
+              ? "pending"
+              : "failed";
 
         transactionInfo = {
           _id: transaction_id,
@@ -1287,7 +1380,7 @@ router.post(
       res.status(200).json({ _id: transaction_id });
     } catch (error) {
       await tranx.rollback();
-      // console.log(error);
+      console.log(error);
       return res.status(500).json("Transaction Failed!");
     }
   })
@@ -1327,10 +1420,10 @@ router.put(
           item?.type === "MTN"
             ? 4
             : item?.type === "Vodafone"
-            ? 6
-            : item?.type === "AirtelTigo"
-            ? 1
-            : 0,
+              ? 6
+              : item?.type === "AirtelTigo"
+                ? 1
+                : 0,
         transaction_reference,
       };
 
@@ -1489,8 +1582,8 @@ router.post(
           sendMoneyReponse?.ResponseCode === "0000"
             ? "completed"
             : sendMoneyReponse?.ResponseCode === "0001"
-            ? "pending"
-            : "failed";
+              ? "pending"
+              : "failed";
 
         transactionInfo = {
           _id: transaction_id,
@@ -1595,8 +1688,11 @@ router.get(
         return rest;
       });
 
+      // console.log(_.groupBy(bundles, 'category'))
+
       res.status(200).json(_.compact(bundles));
     } catch (error) {
+      console.log(error)
       res.status(401).json("An unknown error has occurred");
     }
   })
@@ -1818,6 +1914,8 @@ router.post(
     const { id } = req.user;
     const { meter, info, charges, topup, amount, isWallet, token } = req.body;
 
+    // console.log(req.body)
+
     if (isWallet) {
       const userWallet = await knex("user_wallets")
         .select("_id", "user_key", "active")
@@ -1915,8 +2013,8 @@ router.post(
           sendMoneyReponse?.ResponseCode === "0000"
             ? "completed"
             : sendMoneyReponse?.ResponseCode === "0001"
-            ? "pending"
-            : "failed";
+              ? "pending"
+              : "failed";
 
         transactionInfo = {
           _id: transaction_id,
@@ -1975,8 +2073,8 @@ router.post(
       ResponseCode === "0000"
         ? "completed"
         : ResponseCode === "0001"
-        ? "pending"
-        : "failed";
+          ? "pending"
+          : "failed";
 
     if (type === "p") {
       await knex("prepaid_transactions")

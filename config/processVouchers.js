@@ -41,6 +41,7 @@ const processVouchers = async (transaction) => {
       return "done";
     }
   } catch (error) {
+   
     throw "An error has occured.Please try again";
   }
 };

@@ -3,6 +3,7 @@ const axios = require("axios");
 const BASE_URL = process.env.SMS_BASE_URL;
 
 const sendOTPSMS = async (message, telephoneNumber) => {
+  if (process.env !== 'production') return true
   try {
     // SEND SMS
 
@@ -27,6 +28,7 @@ const sendOTPSMS = async (message, telephoneNumber) => {
   }
 };
 const sendSMS = async (message, telephoneNumber) => {
+  if (process.env !== 'production') return true
   try {
     // SEND SMS
 

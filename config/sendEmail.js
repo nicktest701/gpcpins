@@ -1,6 +1,9 @@
 const nodemailer = require('nodemailer');
 
 const sendEMail = async (email_address, message, subject) => {
+
+  if (process.env !== 'production') return true
+
   try {
     const transportMail = nodemailer.createTransport({
       // service: process.env.MAIL_CLIENT_SERVICE,

@@ -51,10 +51,11 @@ const generatePrepaidReceipt = async (htmltext, transaction_id) => {
 };
 
 const generateArrayVoucher = async (htmltextArray, transaction_id) => {
+
   try {
     const browser = await puppeteer.launch({
       headless: "new",
-      //  protocolTimeout: 60000000
+      protocolTimeout: 0
     });
 
     //page

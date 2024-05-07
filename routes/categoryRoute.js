@@ -231,17 +231,21 @@ router.get(
 router.get(
   "/bus",
   asyncHandler(async (req, res) => {
-    const { voucherType } = req.query;
+    const { origin, destination } = req.query;
+
+    const voucherType = `${origin} to ${destination}`;
 
     let bus;
 
-    if (!voucherType) {
+    if (!origin && !destination) {
       bus = await knex("categories")
         .select("*")
         .where({ category: "bus", active: 1 });
     } else {
       bus = await knex("categories")
         .where("voucherType", "LIKE", `%${voucherType}%`)
+        .orWhere("voucherType", "LIKE", `%${origin}`)
+        .orWhere("voucherType", "LIKE", `${destination}%`)
         .andWhere({ active: 1, category: "bus" })
         .select("*");
     }
@@ -370,9 +374,8 @@ router.post(
     //logs
     await knex("activity_logs").insert({
       employee_id: id,
-      title: `Updated ${title} module status to ${
-        active ? "active" : "disabled"
-      }.`,
+      title: `Updated ${title} module status to ${active ? "active" : "disabled"
+        }.`,
       severity: "warning",
     });
 
@@ -475,11 +478,10 @@ router.patch(
     //logs
     await knex("activity_logs").insert({
       employee_id: _id,
-      title: `${
-        Boolean(active) === true
-          ? "Activated a category!"
-          : "Disabled a category!"
-      }`,
+      title: `${Boolean(active) === true
+        ? "Activated a category!"
+        : "Disabled a category!"
+        }`,
       severity: "warning",
     });
 

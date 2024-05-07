@@ -4,7 +4,7 @@ async function generateQRCode(id, voucherId, serial) {
   try {
     // const url = await QRCode.toDataURL(serial);
     const url = await QRCode.toDataURL(
-      `https://eseller.onrender.com/verify?XwnA=${id}&bwhT=${voucherId}_${serial}`
+      `https://gpcpins.com/verify?XwnA=${id}&bwhT=${voucherId}_${serial}`
     );
     // const url = await QRCode.toDataURL(
     //   `http://localhost:3000/verify?XwnA=${id}&bwhT=${voucherId}_${serial}`
@@ -16,5 +16,4 @@ async function generateQRCode(id, voucherId, serial) {
   }
 }
 
-generateQRCode(123, 192);
 module.exports = generateQRCode;

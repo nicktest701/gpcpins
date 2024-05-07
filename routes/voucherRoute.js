@@ -116,7 +116,7 @@ router.get(
 
 router.get(
   "/available",
-  verifyToken,
+  // verifyToken,
   asyncHandler(async (req, res) => {
     const { id, type } = req.query;
 
@@ -149,6 +149,29 @@ router.get(
     const totalCount = count.total;
 
     res.status(200).json(totalCount);
+  })
+);
+router.get(
+  "/available/tickets",
+  // verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.query
+
+    if (!isValidUUID2(id)) {
+      return res.status(400).json("Invalid Request Token!");
+    }
+
+    const ticketTypes = await knex("vouchers")
+      .select("_id", 'type')
+      .where({
+        category: id,
+        status: "new",
+        active: 1,
+      })
+
+    const groupTickets = _.countBy(ticketTypes, 'type');
+
+    res.status(200).json(groupTickets);
   })
 );
 
