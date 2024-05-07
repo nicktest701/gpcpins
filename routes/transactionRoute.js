@@ -1482,10 +1482,11 @@ router.get(
     ) {
       return res.status(400).json("No results match your search!");
     }
+    const { reference, partner, user, info, ...rest } = transaction[0]
 
     res.status(200).json({
-      ...transaction[0],
-      info: JSON.parse(transaction[0].info),
+      ...rest,
+      info: JSON.parse(info),
       vouchers: "",
     });
   })
@@ -1664,7 +1665,7 @@ router.post(
   <p>Thank you for your business!</p>
   <p>Sincerely,<br>Gab Powerful Consults</p>
   </div>`;
-     
+
       const downloadLink = await uploadFiles(result, "reports");
 
       await sendReportMail(
@@ -1994,7 +1995,7 @@ router.get(
         ) AS agent_wallet_transactions_view_  WHERE purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,
       [sDate, eDate]
     );
-   
+
     if (report && report === "true") {
       if (transactions[0].length === 0) {
         return res.status(200).json("No data found");
@@ -2175,7 +2176,7 @@ router.get(
         ) AS user_wallet_transactions_view_  WHERE purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,
       [sDate, eDate]
     );
-  
+
     if (report && report === "true") {
       if (transactions[0].length === 0) {
         return res.status(200).json("No data found");
