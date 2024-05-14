@@ -119,11 +119,13 @@ router.get(
     //Check if voucher pdf already exists
     if (userInfo?.downloadLink) {
 
-      await sendSMS(
-        `${userInfo?.agentEmail} ${userInfo?.agentPhoneNumber}.
- Download Vouchers here: ${userInfo?.downloadLink}`,
-        userInfo?.agentPhoneNumber
-      );
+      //       await sendSMS(
+      //         `${userInfo?.agentEmail} ${userInfo?.agentPhoneNumber}.
+      //  Download Vouchers here: ${userInfo?.downloadLink}`,
+      //         userInfo?.agentPhoneNumber
+      //       );
+
+      await sendTicketMail(id, userInfo?.agentEmail, "GPC Vouchers");
 
       return res.status(200).json({ id, downloadLink: userInfo?.downloadLink });
     }
@@ -214,27 +216,27 @@ router.get(
         res.status(200).json({ id: _id, downloadLink });
 
 
-        const emailPrompt = await sendTicketMail(
+        await sendTicketMail(
           _id,
           userInfo?.agentEmail,
           modifiedVoucher[0]?.voucherType
         );
 
-        const smsData = modifiedVoucher.map((voucher) => {
-          return `[${voucher?.pin}--${voucher?.serial}]`;
-        });
+        // const smsData = modifiedVoucher.map((voucher) => {
+        //   return `[${voucher?.pin}--${voucher?.serial}]`;
+        // });
 
-        const SMSPrompt = await sendSMS(
-          `${modifiedVoucher[0]?.voucherType}  ${modifiedVoucher[0]?.dataURL}   
-[Pin--Serial]
-${smsData.join(" ")}  
-${userInfo?.agentEmail}
-${userInfo?.agentPhoneNumber}
-Download Voucher here: ${downloadLink}`,
-          userInfo?.agentPhoneNumber
-        );
+        //         const SMSPrompt = await sendSMS(
+        //           `${modifiedVoucher[0]?.voucherType}  ${modifiedVoucher[0]?.dataURL}   
+        // [Pin--Serial]
+        // ${smsData.join(" ")}  
+        // ${userInfo?.agentEmail}
+        // ${userInfo?.agentPhoneNumber}
+        // Download Voucher here: ${downloadLink}`,
+        //           userInfo?.agentPhoneNumber
+        //         );
 
-        await Promise.all([emailPrompt, SMSPrompt])
+        // await Promise.all([emailPrompt, SMSPrompt])
 
 
         // await sendWhatsappMessage({
@@ -290,11 +292,13 @@ router.get(
     //Check if voucher pdf already exists
     if (userInfo?.downloadLink) {
 
-      await sendSMS(
-        `${userInfo?.agentEmail} ${userInfo?.agentPhoneNumber}.
-   Download Tickets here: ${userInfo?.downloadLink}`,
-        userInfo?.agentPhoneNumber
-      );
+      //     await sendSMS(
+      //       `${userInfo?.agentEmail} ${userInfo?.agentPhoneNumber}.
+      //  Download Tickets here: ${userInfo?.downloadLink}`,
+      //       userInfo?.agentPhoneNumber
+      //     );
+
+      await sendTicketMail(_id, userInfo?.agentEmail, "GPC Tickets");
 
       return res.status(200).json({ id, downloadLink: userInfo?.downloadLink });
     }
@@ -380,7 +384,7 @@ router.get(
           );
 
 
-          const code = await generateQRCode(orderNo, _id, pin || serial);
+          const code = await generateQRCode(id, _id, serial || pin);
 
           if (type === "cinema") {
             return {
@@ -395,6 +399,7 @@ router.get(
               message: detailsInfo?.message,
               year: year,
               type: vType || detailsInfo?.type,
+              serial: serial || pin,
               qrCode: code,
               poster: detailsInfo?.cinema,
               companyName: detailsInfo?.companyName || "Gab Powerful Consult",
@@ -417,6 +422,7 @@ router.get(
               message: detailsInfo?.message,
               year: year,
               type: vType || detailsInfo?.type,
+              serial: serial || pin,
               qrCode: code,
               status: "sold",
               homeImage: detailsInfo?.homeImage,
@@ -445,7 +451,7 @@ router.get(
         }) => {
           const detailsInfo = JSON.parse(details);
 
-          const code = await generateQRCode(orderNo, _id, pin || serial);
+          const code = await generateQRCode(id, _id, pin || serial);
           return {
             _id,
             category: "bus",
@@ -465,10 +471,11 @@ router.get(
             departureTime: moment(new Date(detailsInfo?.time)).format(
               "hh:mm a"
             ),
+            serial: serial || pin,
             qrCode: code,
             year: year,
             status: "sold",
-            companyName: detailsInfo?.companyName || "Gab Powerful Consult",
+            companyName: detailsInfo?.companyName || "Gab Powerful Consult"
           };
         }
       );
@@ -649,7 +656,11 @@ router.get(
                 "vouchers.status": "new",
                 "vouchers.active": 1,
               })
-              .select("vouchers._id", 'vouchers.type')
+              .select("vouchers._id",
+                'vouchers.serial',
+                'vouchers.pin',
+                'vouchers.type',
+                "categories.voucherType as voucherType",)
               .limit(ticket?.quantity);
           })
         );
@@ -667,7 +678,11 @@ router.get(
             "vouchers.status": "new",
             "vouchers.active": 1,
           })
-          .select("vouchers._id");
+          .select("vouchers._id",
+            'vouchers.serial',
+            'vouchers.pin',
+            'vouchers.type',
+            "categories.voucherType as voucherType",);
 
 
       }
@@ -680,9 +695,16 @@ router.get(
             "vouchers.status": "new",
             "vouchers.active": 1,
           })
-          .select("vouchers._id")
+          .select("vouchers._id",
+            'vouchers.serial',
+            'vouchers.pin',
+            'vouchers.type',
+            "categories.voucherType as voucherType",
+            "categories.details as details"
+          )
           .limit(userInfo?.quantity);
       }
+
 
 
       const soldVouchers_ids = _.map(selectedVouchers, '_id');
@@ -702,11 +724,51 @@ router.get(
         });
         await transx.commit();
 
+
+
+        if (type === 'voucher' && confirm) {
+          const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
+
+          const smsData = selectedVouchers.map((voucher) => {
+            return `[${voucher?.pin}--${voucher?.serial}]`;
+          });
+
+          await sendSMS(
+            `${selectedVouchers[0]?.voucherType}  ${detailsInfo?.voucherURL}   
+[Pin--Serial]
+${smsData.join(" ")}  
+${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your vouchers.
+`,
+            userInfo?.agentPhoneNumber
+          );
+
+        }
+
+        if (type === 'ticket' && confirm) {
+          // const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
+          // console.log(selectedVouchers)
+
+          const smsData = selectedVouchers.map((voucher) => {
+            return `[${voucher?.type}--${voucher?.serial || voucher?.pin}]`;
+          });
+
+          await sendSMS(
+            `${selectedVouchers[0]?.voucherType}   
+[Seat No./Type--Serial]
+${smsData.join(" ")}  
+${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your tickets.
+`,
+            userInfo?.agentPhoneNumber
+          );
+
+        }
+
+
       } catch (error) {
 
         console.log(error);
         await transx.rollback();
-        return res.status(500).json("Error Processing your request!Please try again later.");
+        return res.status(500).json("Error Processing your request! Please try again later.");
       }
 
     }
@@ -1052,6 +1114,7 @@ router.post(
           .select("amount")
           .limit(1);
 
+
         if (
           _.isEmpty(user_balance) ||
           Number(user_balance[0]?.amount) < Number(totalAmount)
@@ -1064,6 +1127,25 @@ router.post(
           .decrement({
             amount: totalAmount,
           });
+
+
+        await transx("user_wallet_transactions")
+          .insert({
+            _id: randomUUID(),
+            user_id: id,
+            issuer: id,
+            type: 'purchase',
+            wallet: user_balance[0]?.amount,
+            amount: totalAmount,
+            comment: 'Voucher',
+            attachment: null,
+            status: user_deduction === 1 ? "completed" : "failed",
+
+          })
+
+
+
+
 
         transactionInfo = {
           _id: transaction_id,
@@ -1208,6 +1290,7 @@ router.get(
 
     const modifiedTransactions = transactions.map(
       ({ recipient, info, isProcessed, ...rest }) => {
+        // console.log(recipient)
         return {
           isProcessed: Boolean(isProcessed),
           recipient: JSON.parse(recipient),
@@ -1299,6 +1382,24 @@ router.post(
           .decrement({
             amount: amount,
           });
+
+        await tranx("user_wallet_transactions")
+          .insert({
+            _id: randomUUID(),
+            user_id: id,
+            issuer: id,
+            type: 'purchase',
+            wallet: user_balance[0]?.amount,
+            amount: amount,
+            comment: 'Airtime',
+            attachment: null,
+            status: user_deduction === 1 ? "completed" : "failed",
+
+          });
+
+
+
+
 
         transactionInfo = {
           _id: transaction_id,
@@ -1541,6 +1642,23 @@ router.post(
           .decrement({
             amount: amount,
           });
+
+
+        await tranx("user_wallet_transactions")
+          .insert({
+            _id: randomUUID(),
+            user_id: id,
+            issuer: id,
+            type: 'purchase',
+            wallet: Number(user_balance[0]?.amount),
+            amount: amount,
+            comment: 'Data Bundle',
+            attachment: null,
+            status: user_deduction === 1 ? "completed" : "failed",
+
+          });
+
+
 
         transactionInfo = {
           _id: transaction_id,
@@ -1837,6 +1955,7 @@ router.get(
         year: transaction?.year,
         topup: transaction?.topup,
         charges: transaction?.charges,
+        amount: transaction?.amount,
         status: transaction?.status,
         isProcessed: Boolean(transaction?.processed),
         createdAt: transaction?.createdAt,
@@ -1970,6 +2089,23 @@ router.post(
           .decrement({
             amount,
           });
+
+
+        await transx("user_wallet_transactions")
+          .insert({
+            _id: randomUUID(),
+            user_id: id,
+            issuer: id,
+            type: 'purchase',
+            wallet: user_balance[0]?.amount,
+            amount: amount,
+            comment: 'Prepaid Units',
+            attachment: null,
+            status: user_deduction === 1 ? "completed" : "failed",
+
+          });
+
+
 
         transactionInfo = {
           _id: transaction_id,

@@ -832,7 +832,7 @@ router.post(
         .update({ active: 1 });
 
       user = await knex("users")
-        .select("*", knex.raw("CONCAT(firstname,'',lastname) as name"))
+        .select("*", knex.raw("CONCAT(firstname,' ',lastname) as name"))
         .where("email", userToken[0]?.email);
     }
 
@@ -842,7 +842,7 @@ router.post(
         .update({ active: 1 });
 
       user = await knex("users")
-        .select("*", knex.raw("CONCAT(firstname,'',lastname) as name"))
+        .select("*", knex.raw("CONCAT(firstname,' ',lastname) as name"))
         .where("phonenumber", userToken[0]?.email);
     }
 
@@ -1261,7 +1261,7 @@ router.get(
     const transactions = await knex.raw(
       `SELECT *
         FROM (
-            SELECT _id,user_id,amount,status,createdAt,DATE(createdAt) AS purchaseDate
+            SELECT _id,user_id,type,wallet,amount,comment,status,createdAt,DATE(createdAt) AS purchaseDate
             FROM user_wallet_transactions
         ) AS user_wallet_transactions_ 
         WHERE user_id=? AND purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,

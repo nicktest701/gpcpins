@@ -6,11 +6,11 @@ const { storage } = require("../firebase");
 
 async function uploadVoucherFile(fileName) {
 
-  
+
   const filePath = path.join(process.cwd(), "/vouchers/", fileName);
   const file = fs.readFileSync(filePath);
 
-  if (process.env !== 'production') return filePath
+  // if (process.env.NODE_ENV !== 'production') return filePath
 
   const storageRef = ref(storage, `vouchers/${fileName}`);
 
@@ -32,7 +32,7 @@ async function uploadReceiptFile(fileName) {
   const filePath = path.join(process.cwd(), "/receipts/", fileName);
   const file = fs.readFileSync(filePath);
 
-  if (process.env !== 'production') return filePath
+  // if (process.env.NODE_ENV !== 'production') return filePath
 
   const storageRef = ref(storage, `receipts/${fileName}`);
 
@@ -49,11 +49,9 @@ async function uploadReceiptFile(fileName) {
 
 async function uploadPhoto(file) {
 
-
-
   const filePath = path.join(process.cwd(), "/images/", file?.filename);
 
-  if (process.env !== 'production') return filePath
+  // if (process.env.NODE_ENV !== 'production') return filePath
 
 
   const storageRef = ref(storage, `photos/${file.filename}`);
@@ -70,11 +68,15 @@ async function uploadPhoto(file) {
   }
 }
 
+
+
+
+
 async function uploadAttachment(file) {
   const filePath = path.join(process.cwd(), "/images/attachments/", file?.filename);
 
 
-  if (process.env !== 'production') return filePath
+  // if (process.env.NODE_ENV !== 'production') return filePath
 
 
   const storageRef = ref(storage, `attachments/${file.filename}`);
@@ -90,10 +92,16 @@ async function uploadAttachment(file) {
     console.error("Error uploading file to Cloud Storage", error);
   }
 }
+
+
+
+
+
+
 async function uploadFiles(filename, location) {
   const filePath = path.join(process.cwd(), `/${location}/`, filename);
 
-  if (process.env !== 'production') return filePath
+  // if (process.env.NODE_ENV !== 'production') return filePath
 
   const storageRef = ref(storage, `${location}/${filename}`);
 

@@ -1277,9 +1277,7 @@ router.get(
     });
 
     const modifiedTransaction = transactions.map(async (transaction) => {
-      // if (_.isEmpty(transaction?.info)) {
-      //   return null;
-      // }
+
       const category = await knex("categories")
         .select("voucherType")
         .where("_id", transaction?.info?.categoryId)
@@ -1311,7 +1309,7 @@ router.get(
     const prepaid_transactions = await knex.raw(
       `SELECT *
         FROM (
-            SELECT _id,user,email,mobileNo,info,createdAt,year,active,processed,meterId,number,status,DATE(createdAt) AS purchaseDate
+            SELECT *,DATE(createdAt) AS purchaseDate
             FROM meter_prepaid_transaction_view
         ) AS meter_prepaid_transaction_view_ 
         WHERE user=? AND active=1 and status='completed' AND purchaseDate BETWEEN ? AND ?;`,
@@ -1329,7 +1327,9 @@ router.get(
           phonenumber: transInfo?.mobileNo,
           email: transInfo?.email,
           downloadLink: transInfo?.downloadLink,
-          amount: transInfo?.amount,
+          topup: transaction?.topup,
+          charges: transaction?.charges,
+          amount: transaction?.amount,
           createdAt: transaction?.createdAt,
           status: Boolean(transaction?.processed) ? "compeleted" : "pending",
         };
@@ -2092,35 +2092,59 @@ router.post(
       if (req.file) {
         url = await uploadAttachment(req.file);
       }
+
+
       if (type === "user") {
-        await transaction("user_wallet_transactions").insert({
-          _id: randomUUID(),
-          user_id,
-          issuer: id,
-          amount,
-          comment,
-          attachment: url,
-        });
+
+        const user_balance = await transaction("user_wallets")
+          .where("user_id", user_id)
+          .select("amount")
+          .limit(1);
 
         await transaction("user_wallets").where("user_id", user_id).increment({
           amount,
         });
+
+
+        await transaction("user_wallet_transactions").insert({
+          _id: randomUUID(),
+          user_id,
+          issuer: id,
+          type: 'deposit',
+          wallet: Number(user_balance[0]?.amount),
+          amount,
+          comment: comment || "Top Up",
+          attachment: url,
+          status: 'completed'
+        });
+
+
       }
       if (type === "agent") {
-        await transaction("agent_wallet_transactions").insert({
-          _id: randomUUID(),
-          agent_id: user_id,
-          issuer: id,
-          amount,
-          comment,
-          attachment: url,
-        });
+        const agent_balance = await transaction("agent_wallets")
+          .where("agent_id", user_id)
+          .select("amount")
+          .limit(1);
 
         await transaction("agent_wallets")
           .where("agent_id", user_id)
           .increment({
             amount,
           });
+
+        await transaction("agent_wallet_transactions").insert({
+          _id: randomUUID(),
+          agent_id: user_id,
+          issuer: id,
+          type: 'deposit',
+          wallet: Number(agent_balance[0]?.amount),
+          amount,
+          comment: comment || "Top Up",
+          attachment: url,
+          status: 'completed'
+        });
+
+
       }
 
       if (type === "user") {
@@ -2129,7 +2153,7 @@ router.post(
           user_id: user_id,
           type: "wallet",
           title: "Wallet",
-          message: `Your wallet account has been credited with an amount of GHS ${amount}.`,
+          message: `Your wallet account has been credited with an amount of ${currencyFormatter(amount)}.`,
         });
       }
       if (type === "agent") {
@@ -2138,7 +2162,7 @@ router.post(
           agent_id: user_id,
           type: "wallet",
           title: "Wallet",
-          message: `Your wallet account has been created with GHS ${amount}.`,
+          message: `Your wallet account has been credited with an amount of ${currencyFormatter(amount)}.`,
         });
       }
       await transaction.commit();
