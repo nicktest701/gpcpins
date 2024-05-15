@@ -1534,8 +1534,10 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = req.query;
     const transactions = await knex("agent_wallet_transactions_view")
-      .where("agentID", id)
-      .select("_id", "createdAt", "amount", "status", "issuerName")
+      .where({
+        "agentID": id, type: 'deposit'
+      })
+      .select("_id", "createdAt", "type", 'wallet', "amount", "status", "issuerName")
       .orderBy("createdAt", "desc");
 
     res.status(200).json(transactions);
@@ -1948,17 +1950,35 @@ router.post(
         url = await uploadAttachment(req.file);
       }
 
+      const agent_balance = await transaction("agent_wallets")
+        .where("agent_id", agent_id)
+        .select("amount")
+        .limit(1);
+
+      await transaction("agent_wallets").where("agent_id", agent_id).increment({
+        amount,
+      });
+
+
       await transaction("agent_wallet_transactions").insert({
         _id: randomUUID(),
         agent_id,
         issuer: id,
+        type: 'deposit',
+        wallet: Number(agent_balance[0]?.amount),
         amount,
-        comment,
+        comment: comment || "Top Up",
         attachment: url,
+        status: 'completed'
       });
 
-      await transaction("agent_wallets").where("agent_id", agent_id).increment({
-        amount,
+
+      await transaction("agent_notifications").insert({
+        _id: randomUUID(),
+        agent_id,
+        type: "wallet",
+        title: "Wallet",
+        message: `Your wallet account has been credited with an amount of ${currencyFormatter(amount)}.`,
       });
 
       await transaction.commit();
@@ -1966,7 +1986,7 @@ router.post(
       //logs
       await knex("activity_logs").insert({
         employee_id: id,
-        title: "Topped up agent wallet",
+        title: "Topped up agent wallet.",
         severity: "info",
       });
 
@@ -2170,7 +2190,7 @@ router.post(
       //logs
       await knex("activity_logs").insert({
         employee_id: id,
-        title: `Topped up ${type} wallet`,
+        title: `Topped up ${type} wallet.`,
         severity: "info",
       });
 
@@ -2264,8 +2284,11 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const transactions = await knex("user_wallet_transactions_view")
-      .where("userID", id)
-      .select("_id", "createdAt", "amount", "status", "issuerName")
+      .where({
+        userID: id,
+        type: 'deposit'
+      })
+      .select("_id", "createdAt", "type", 'wallet', "amount", "status", "issuerName")
       .orderBy("createdAt", "desc");
 
     res.status(200).json(transactions);

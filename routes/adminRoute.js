@@ -6,6 +6,7 @@ const { randomUUID } = require("crypto");
 const { otpGen } = require("otp-gen-agent");
 const { signMainToken, signSampleRefreshToken } = require("../config/token");
 const multer = require("multer");
+const moment = require('moment')
 const { rateLimit } = require("express-rate-limit");
 const sendMail = require("../config/sendEmail");
 const {
@@ -28,6 +29,7 @@ const limit = rateLimit({
 const { hasTokenExpired } = require("../config/dateConfigs");
 
 const knex = require("../db/knex");
+const { sendOTPSMS } = require("../config/sms");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -107,6 +109,8 @@ router.get(
   })
 );
 
+
+
 router.get(
   "/auth/token",
   limit,
@@ -160,6 +164,87 @@ router.get(
     // res.sendStatus(200);
   })
 );
+
+router.get(
+  "/verify-identity",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user
+    const { nid, dob } = req.query;
+
+
+    const employees = await knex("employees").where({ _id: id })
+      .select('nid', 'dob', knex.raw("DATE_FORMAT(dob,'%D %M %Y') as dobb"))
+      .limit(1);
+
+
+    if (_.isEmpty(employees[0])) {
+      return res.status(400).json('Invalid Request!');
+    }
+
+    if (nid && employees[0]?.nid !== nid) {
+
+      return res.status(400).json("Sorry.We couldn't find your National ID.");
+    }
+
+    if (dob) {
+      const formattedDate = moment(dob).format('Do MMMM YYYY')
+
+      if (employees[0]?.dobb !== formattedDate) {
+
+        return res.status(400).json("Sorry.We couldn't find your date of birth.");
+      }
+    }
+
+
+    return res.status(200).json('OK');
+  })
+);
+
+router.get(
+  "/phonenumber/token",
+  limit,
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+    const { code } = req.query;
+
+    if (code) {
+      const employeeToken = await knex("verify_tokens")
+        .select("_id", "code")
+        .where({
+          _id: id,
+          code,
+        })
+        .limit(1);
+
+      if (_.isEmpty(employeeToken) || Number(code) !== Number(employeeToken[0]?.code)) {
+        return res.status(400).json("Invalid code.Try again");
+      }
+    } else {
+      const employee = await knex("employees")
+        .select("_id", "phonenumber", "active")
+        .where("_id", id)
+        .limit(1);
+
+      if (_.isEmpty(employee) && !employee[0]?.phonenumber) {
+        return res.status(400).json("Invalid Request");
+      }
+
+      const code = await otpGen();
+      await knex("verify_tokens").upsert({
+        _id: id,
+        code,
+      });
+      console.log(code);
+
+      sendOTPSMS(`Your verification code is ${code}.`, employee[0]?.phonenumber);
+    }
+
+    res.sendStatus(201);
+  })
+);
+
 
 //@GET employee by email
 router.post(
@@ -637,11 +722,10 @@ router.put(
     //logs
     await knex("activity_logs").insert({
       employee_id: _id,
-      title: `${
-        Boolean(active) === true
-          ? "Activated an employee account!"
-          : "Disabled an employee account!"
-      }`,
+      title: `${Boolean(active) === true
+        ? "Activated an employee account!"
+        : "Disabled an employee account!"
+        }`,
       severity: "warning",
     });
 

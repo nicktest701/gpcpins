@@ -137,14 +137,20 @@ router.put(
   asyncHandler(async (req, res) => {
     const { ids } = req.query;
 
-    const notifications = await knex("notifications")
-      .where("_id", "IN", ids)
-      .update({ active: false });
 
-    if (notifications !== 1) {
-      return res.status(404).json("Error updating notification!");
+    if (ids) {
+
+      await knex("notifications")
+        .where("_id", "IN", ids)
+        .update({ active: false });
+    } else {
+      await knex("notifications")
+        .update({ active: false });
+
     }
-    res.status(201).json("Changes Saved!");
+
+
+    res.sendStatus(204);
   })
 );
 router.put(
@@ -167,18 +173,18 @@ router.put(
 router.delete(
   "/",
   asyncHandler(async (req, res) => {
-    const { id, all } = req.query;
+    const { id, all } = req.body;
 
     let notification;
-    if (all) {
-      notification = await knex("notifications").where("_id", "IN", id).del();
+    if (all && !_.isEmpty(all)) {
+      notification = await knex("notifications").where("_id", "IN", all).del();
     } else {
       notification = await knex("notifications").where("_id", id).del();
     }
     if (!notification) {
       return res.status(404).json("Error removing notification!");
     }
-    res.status(200).json("Notification removed!");
+    res.status(200).json("Notifications removed!");
   })
 );
 
