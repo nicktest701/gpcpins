@@ -186,9 +186,9 @@ router.post(
     };
     await transx("tokens").insert(codeInfo);
 
-    let message_url = `http://localhost:5003/auth/verify?id=${codeInfo?._id}&token=${codeInfo?.token}`;
+    let message_url = `http://localhost:5003/auth/verify?id=${codeInfo?._id}&token=${codeInfo?.token}&type=new`;
     if (process.env.NODE_ENV === "production") {
-      message_url = `https://admin.gpcpins/auth/verify?id=${codeInfo?._id}&token=${codeInfo?.token}`;
+      message_url = `https://admin.gpcpins.com/auth/verify?id=${codeInfo?._id}&token=${codeInfo?.token}&type=new`;
     }
     console.log(message_url);
 
@@ -335,7 +335,7 @@ router.put(
     };
     await knex("tokens").insert(codeInfo);
 
-    const message_url = `https://admin.gpcpins/auth/verify?id=${codeInfo?._id}&token=${codeInfo?.token}`;
+    const message_url = `https://admin.gpcpins.com/auth/verify?id=${codeInfo?._id}&token=${codeInfo?.token}`;
 
     const message = `
         <div style="width:500px;">
