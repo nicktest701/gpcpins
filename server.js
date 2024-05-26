@@ -253,25 +253,27 @@ app.use((err, req, res, next) => {
   // res.send({
   //   message: err.message,
   // });
-
-  // if (process.env.NODE_ENV === 'production') {
-  //   res.json('An error has occurred.Try again later');
-  // } else {
-
   console.log({
     status: err?.status || 500,
     message: err?.message,
     stack: err?.stack,
   });
 
-  res.send({
-    error: {
-      status: err?.status || 500,
-      message: err?.message,
-      stack: err?.stack,
-    },
-  });
-  // }
+
+  if (process.env.NODE_ENV === 'production') {
+
+    res.json('An error has occurred.Try again later');
+  } else {
+
+
+    res.send({
+      error: {
+        status: err?.status || 500,
+        message: err?.message,
+        stack: err?.stack,
+      },
+    });
+  }
 });
 
 app.listen(port, () => {

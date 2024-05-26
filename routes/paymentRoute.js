@@ -2380,8 +2380,8 @@ router.put(
       downloadLink = await uploadReceiptFile(url);
     }
 
-
-    await transx("prepaid_transactions")
+    const trans = await knex.transaction();
+    await trans("prepaid_transactions")
       .where("_id", _id)
       .update({
 
@@ -2392,7 +2392,7 @@ router.put(
       });
 
     if (downloadLink !== "") {
-      await transx("user_notifications").insert({
+      await trans("user_notifications").insert({
         _id: randomUUID(),
         user_id: transactions[0]?.userID,
         type: "prepaid",
@@ -2403,7 +2403,7 @@ router.put(
 
     } else {
 
-      await transx("user_notifications").insert({
+      await trans("user_notifications").insert({
         _id: randomUUID(),
         user_id: transactions[0]?.userID,
         type: "prepaid",
@@ -2414,7 +2414,7 @@ router.put(
 
     }
 
-    await transx.commit();
+    await trans.commit();
 
 
     limit(() =>
