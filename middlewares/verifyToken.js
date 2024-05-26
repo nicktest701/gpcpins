@@ -45,11 +45,13 @@ const verifyToken = (req, res, next) => {
         .where("_id", user?.id)
         .limit(1);
     }
+    
 
     const isTrue = bcrypt.compare(token, authUser[0]?.token || "");
-    if (!isTrue) {
+    if (!isTrue || Boolean(authUser[0]?.isEnabled) === false) {
       return res.status(403).json("Session has expired.");
     }
+
 
     let newUser = {
       id: authUser[0]?._id,
@@ -132,11 +134,13 @@ const verifyRefreshToken = (req, res, next) => {
         .where("_id", user?.id)
         .limit(1);
     }
+ 
 
     const isTrue = bcrypt.compare(token, authUser[0]?.token || "");
-    if (!isTrue) {
+    if (!isTrue || Boolean(authUser[0]?.isEnabled) === false) {
       return res.status(403).json("Session has expired.");
     }
+
 
     req.user = {
       id: authUser[0]?._id,

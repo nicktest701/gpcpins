@@ -8,7 +8,7 @@ const { otpGen, customOtpGen } = require("otp-gen-agent");
 const { signMainToken, signMainRefreshToken } = require("../config/token");
 const multer = require("multer");
 const { rateLimit } = require("express-rate-limit");
-const sendMail = require("../config/sendEmail");
+// const sendMail = require("../config/sendEmail");
 const {
   verifyToken,
   verifyRefreshToken,
@@ -17,13 +17,12 @@ const { isValidUUID2 } = require("../config/validation");
 const verifyAgent = require("../middlewares/verifyAgent");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const { uploadPhoto } = require("../config/uploadFile");
-// const isMobile = require("../config/isMobile");
 const { mailTextShell } = require("../config/mailText");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
   max: 15, // 5 requests per windowMs
-  message: "Too many requests!. please try again later.",
+  message: "Too many requests! please try again later.",
 });
 
 //model
@@ -67,6 +66,7 @@ router.get(
       "firstname",
       "lastname",
       "username",
+      "name",
       "dob",
       "nid",
       "email",
@@ -81,7 +81,7 @@ router.get(
       "business_description",
       "business_email",
       "business_phonenumber",
-      knex.raw("CONCAT(firstname,'',lastname) as name")
+
     );
 
     res.status(200).json(agents);
@@ -100,7 +100,8 @@ router.get(
         "_id",
         "firstname",
         "lastname",
-        knex.raw("CONCAT(firstname,'',lastname) as name"),
+        'username',
+        "name",
         "email",
         "role",
         "phonenumber",
@@ -121,6 +122,7 @@ router.get(
         id: agent[0]?._id,
         firstname: agent[0]?.firstname,
         lastname: agent[0]?.lastname,
+        username: agent[0]?.username,
         name: agent[0]?.name,
         email: agent[0]?.email,
         role: agent[0]?.role,
@@ -172,6 +174,42 @@ router.get(
     return res.status(200).json(logs[0]);
   })
 );
+router.get(
+  "/verify-identity",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user
+    const { nid, dob } = req.query;
+
+
+    const agent = await knex("agents").where({ _id: id })
+      .select('nid', 'dob', knex.raw("DATE_FORMAT(dob,'%D %M %Y') as dobb"))
+      .limit(1);
+
+
+    if (_.isEmpty(agent[0])) {
+      return res.status(400).json('Invalid Request!');
+    }
+
+    if (nid && agent[0]?.nid !== nid) {
+
+      return res.status(400).json("Sorry.We couldn't find your National ID.");
+    }
+
+    if (dob) {
+      const formattedDate = moment(dob).format('Do MMMM YYYY')
+
+      if (agent[0]?.dobb !== formattedDate) {
+
+        return res.status(400).json("Sorry.We couldn't find your date of birth.");
+      }
+    }
+
+
+    return res.status(200).json('OK');
+  })
+);
+
 
 router.get(
   "/phonenumber/token",
@@ -251,7 +289,8 @@ router.get(
         "_id",
         "firstname",
         "lastname",
-        knex.raw("CONCAT(firstname,'',lastname) as name"),
+        "username",
+        "name",
         "email",
         "role",
         "phonenumber",
@@ -268,6 +307,7 @@ router.get(
       name: agent[0]?.name,
       firstname: agent[0]?.firstname,
       lastname: agent[0]?.lastname,
+      username: agent[0]?.username,
       email: agent[0]?.email,
       phonenumber: agent[0]?.phonenumber,
       role: agent[0]?.role,
@@ -342,9 +382,26 @@ router.post(
         business_phonenumber,
         ...rest
       } = req.body;
+
+
+      const doesUserNameExists = await transaction("agents")
+        .select("username", 'email')
+        .where("email", rest?.email)
+        .orWhere("username", rest?.username)
+        .limit(1);
+
+      if (!_.isEmpty(doesUserNameExists)) {
+        return res
+          .status(400)
+          .json("Username or Email Address already exists!");
+      }
+
+
+
       const agent_id = randomUUID();
       const password = generateRandomNumber(10);
       const hashedPassword = await bcrypt.hash(password, 10);
+
 
       //Save Agent Personal Information
       await transaction("agents").insert({
@@ -353,6 +410,7 @@ router.post(
         password: hashedPassword,
         active: 1,
         ...rest,
+        username: `${rest.username}@gpc`
       });
 
       //Save Agent Business Information
@@ -414,11 +472,12 @@ router.post(
       
 
       <p><strong>Details:</strong></p>
-      <p><strong>Login URL:</strong> <a href='https://accounts.gpcpins.com'>https://accounts.gpcpins.com</a></p>
-      <p><strong>Username:</strong> ${rest?.email}</p>
+      <p><strong>Login URL:</strong> <a href='https://agents.gpcpins.com'>https://agents.gpcpins.com</a></p>
+      <p><strong>Username:</strong> ${rest?.username}@gpc</p>
       <p><strong>Default Password:</strong> ${password}</p>
+      <p><strong>Email Address:</strong> ${rest?.email}</p>
       <p><strong>Wallet PIN:</strong> ${agent_key}</p>
-      <p>We recommend you change your <b>Default Password</b> and <p>Wallet Pin</p> when you log into your account.</p>
+      <p>We recommend you change your <b>Default Password</b> and <b>Wallet Pin</b> when you log into your account.</p>
 
       <p>Best regards,</p>
       
@@ -487,9 +546,8 @@ router.post(
       <p><strong>Business Address:</strong> ${business_location}</p>
       <p><strong>Description of Business:</strong> ${business_description}</p>
       <p><strong>Business Email Address:</strong> ${business_email || ""}</p>
-      <p><strong>Business Telephone Line:</strong> ${
-        business_phonenumber || ""
-      }</p>
+      <p><strong>Business Telephone Line:</strong> ${business_phonenumber || ""
+        }</p>
 
       <p>Thank you for considering my application. I look forward to the possibility of working together and contributing to the growth of GAB POWERFUL CONSULT.</p>
       </div>
@@ -567,56 +625,141 @@ router.post(
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
-    const agent = await knex("agents")
-      .select("email", "password", "active")
+    const agentExists = await knex("agents")
+      .select("email", 'username', "password", "active", 'isEnabled')
       .where("email", email)
+      .orWhere('username', email)
       .limit(1);
 
-    if (_.isEmpty(agent[0])) {
-      return res.status(400).json("Invalid Email or Password!!");
+    if (_.isEmpty(agentExists[0])) {
+      return res.status(400).json("Invalid login credentials!");
     }
 
-    const passwordIsValid = await bcrypt.compare(password, agent[0]?.password);
+    const passwordIsValid = await bcrypt.compare(password, agentExists[0]?.password);
 
     if (!passwordIsValid) {
       return res.status(400).json("Invalid Email or Password!");
     }
 
-    if (agent[0]?.active === 0) {
-      return res.status(400).json("Account disabled!");
+
+    if (Boolean(agentExists[0]?.active) === false || Boolean(agentExists[0]?.isEnabled) === false) {
+      return res.status(400).json("Account disabled! Please try again later.");
     }
 
-    const token = await otpGen();
+    //
+    const agent = await knex("agent_business_view")
+      .select("*")
+      .where("email", agentExists[0]?.email);
 
-    await knex("tokens").insert({
-      _id: randomUUID(),
-      token,
+    if (_.isEmpty(agent)) {
+      return res.status(401).json("Authentication Failed!");
+    }
+
+    const accessData = {
+      id: agent[0]?._id,
+      name: agent[0]?.name,
+      firstname: agent[0]?.firstname,
+      lastname: agent[0]?.lastname,
+      username: agent[0]?.username,
       email: agent[0]?.email,
+      phonenumber: agent[0]?.phonenumber,
+      role: agent[0]?.role,
+      profile: agent[0]?.profile,
+      active: agent[0]?.active,
+      //business
+      businessName: agent[0]?.business_name,
+      businessLocation: agent[0]?.business_location,
+      businessDescription: agent[0]?.business_description,
+    };
+
+    const updatedAgent = {
+      id: agent[0]?._id,
+      role: agent[0]?.role,
+      active: agent[0]?.active,
+    };
+
+    const accessToken = signMainToken(accessData, "30m");
+    const refreshToken = signMainRefreshToken(updatedAgent, "1h");
+
+    // res.cookie("_SSUID_kyfc", accessToken, {
+    //   maxAge: 1 * 60 * 60 * 1000,
+    //   httpOnly: true,
+    //   path: "/",
+    //   secure: true,
+    //   // domain:
+    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
+    //   sameSite: "none",
+    // });
+
+    // res.cookie("_SSUID_X_ayd", refreshToken, {
+    //   maxAge: 90 * 24 * 60 * 60 * 1000,
+    //   httpOnly: true,
+    //   path: "/",
+    //   secure: true,
+    //   // domain:
+    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
+    //   sameSite: "none",
+    // });
+
+    const hashedToken = await bcrypt.hash(refreshToken, 10);
+
+    await knex("agents").where("_id", agent[0]?._id).update({
+      token: hashedToken,
     });
 
-    const message = `
-        <div style="width:100%;max-width:500px;margin-inline:auto;">
-    
-        <p>Your verification code is</p>
-        <h1>${token}</h1>
+    //logs
+    await knex("agent_activity_logs").insert({
+      agent_id: agent[0]?._id,
+      title: "Logged into account.",
+      severity: "info",
+    });
 
-        <p>-- Gab Powerful Team --</p>
-    </div>
-        `;
 
-    if (process.env.NODE_ENV !== "production") {
-      console.log(token);
-    }
 
-    try {
-      await sendMail(agent[0]?.email, mailTextShell(message));
-    } catch (error) {
-      await knex("tokens").where("email", agent[0]?.email).del();
+    return res.status(201).json({
+      refreshToken,
+      accessToken,
+    });
 
-      return res.status(500).json("An error has occurred!");
-    }
 
-    res.sendStatus(201);
+
+
+    ///
+
+    // const token = await otpGen();
+
+    // await knex("tokens").insert({
+    //   _id: randomUUID(),
+    //   token,
+    //   email: agent[0]?.email,
+    // });
+
+    // const message = `
+    //     <div style="width:100%;max-width:500px;margin-inline:auto;">
+
+    //     <p>Your verification code is</p>
+    //     <h1>${token}</h1>
+
+    //     <p>-- Gab Powerful Team --</p>
+    // </div>
+    //     `;
+
+    // if (process.env.NODE_ENV !== "production") {
+    //   console.log(token);
+    // }
+
+    // try {
+    //   await sendMail(agent[0]?.email, mailTextShell(message));
+    // } catch (error) {
+    //   await knex("tokens").where("email", agent[0]?.email).del();
+
+    //   return res.status(500).json("An error has occurred!");
+    // }
+
+    // res.sendStatus(201);
+
+
+
   })
 );
 
@@ -708,6 +851,7 @@ router.post(
       name: agent[0]?.name,
       firstname: agent[0]?.firstname,
       lastname: agent[0]?.lastname,
+      username: agent[0]?.username,
       email: agent[0]?.email,
       phonenumber: agent[0]?.phonenumber,
       role: agent[0]?.role,
@@ -761,27 +905,12 @@ router.post(
       severity: "info",
     });
 
-    // if (isMobile(req)) {
+
     return res.status(201).json({
       refreshToken,
       accessToken,
     });
-    // }
 
-    // res.status(201).json({
-    //   user: {
-    //     id: agent[0]?._id,
-    //     name: `${agent[0]?.firstname} ${agent[0]?.lastname}`,
-    //     email: agent[0]?.email,
-    //     phonenumber: agent[0]?.phonenumber,
-    //     role: agent[0]?.role,
-    //     profile: agent[0]?.profile,
-    //     //business
-    //     businessName: agent[0]?.business_name,
-    //     businessLocation: agent[0]?.business_location,
-    //     businessDescription: agent[0]?.business_description,
-    //   },
-    // });
   })
 );
 
@@ -865,6 +994,7 @@ router.put(
         "_id",
         "firstname",
         "lastname",
+        "username",
         "name",
         "email",
         "role",
@@ -879,6 +1009,7 @@ router.put(
       id: agent[0]?._id,
       firstname: agent[0]?.firstname,
       lastname: agent[0]?.lastname,
+      username: agent[0]?.username,
       name: agent[0]?.name,
       email: agent[0]?.email,
       phonenumber: agent[0]?.phonenumber,
@@ -927,8 +1058,28 @@ router.put(
   verifyToken,
   verifyAdminORAgent,
   asyncHandler(async (req, res) => {
-    const { role } = req.user;
-    const { id, password } = req.body;
+    const { id: ID, role } = req.user;
+    const { id, oldPassword, password } = req.body;
+
+
+
+    if (role === process.env.AGENT_ID) {
+
+      const agentPassword = await knex('agents').select('password').where('_id', id).limit(1);
+
+      const passwordIsValid = await bcrypt.compare(
+        oldPassword,
+        agentPassword[0]?.password
+      );
+
+
+      if (!passwordIsValid) {
+        return res.status(400).json("Invalid Password!");
+      }
+    }
+
+
+
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -943,7 +1094,7 @@ router.put(
     if (role === process.env.ADMIN_ID) {
       //logs
       await knex("activity_logs").insert({
-        employee_id: id,
+        employee_id: ID,
         title: "Modified an agent password.",
         severity: "info",
       });
@@ -956,6 +1107,7 @@ router.put(
         "_id",
         "firstname",
         "lastname",
+        "username",
         "name",
         "email",
         "role",
@@ -975,6 +1127,7 @@ router.put(
       id: agent[0]?._id,
       firstname: agent[0]?.firstname,
       lastname: agent[0]?.lastname,
+      username: agent[0]?.username,
       name: agent[0]?.name,
       email: agent[0]?.email,
       phonenumber: agent[0]?.phonenumber,
@@ -1078,9 +1231,10 @@ router.put(
     const { id: _id } = req.user;
     const { id, active } = req.body;
 
+
     const updatedAgent = await knex("agents")
       .where("_id", id)
-      .update({ active: active });
+      .update({ active: active, isEnabled: active });
 
     if (updatedAgent !== 1) {
       return res.status(400).json("Error updating agent info");
@@ -1089,11 +1243,10 @@ router.put(
     //logs
     await knex("activity_logs").insert({
       employee_id: _id,
-      title: `${
-        Boolean(active) === true
-          ? "Activated an agent account!"
-          : "Disabled an agent account!"
-      }`,
+      title: `${Boolean(active) === true
+        ? "Activated an agent account!"
+        : "Disabled an agent account!"
+        }`,
       severity: "warning",
     });
 
@@ -1475,10 +1628,10 @@ router.post(
         info?.network === "MTN"
           ? 4
           : info?.network === "Vodafone"
-          ? 6
-          : info?.network === "AirtelTigo"
-          ? 1
-          : 0,
+            ? 6
+            : info?.network === "AirtelTigo"
+              ? 1
+              : 0,
       transaction_reference,
     };
 

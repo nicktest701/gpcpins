@@ -385,14 +385,14 @@ router.post(
         }
 
         user = await transx("users")
-          .select("email", "phonenumber", "active")
+          .select("email", "phonenumber", "active", 'isEnabled')
           .where("email", email)
           .limit(1);
       }
 
       if (type === "phone") {
         user = await transx("users")
-          .select("email", "phonenumber", "active")
+          .select("email", "phonenumber", "active", "isEnabled")
           .where("phonenumber", email)
           .limit(1);
       }
@@ -404,6 +404,12 @@ router.post(
             `We could not find your ${type === "email" ? "email address" : "phone number"
             }!`
           );
+      }
+
+      if (Boolean(user[0]?.isEnabled) === false) {
+        return res
+          .status(400)
+          .json("Account disabled! Try again later.");
       }
 
       const token = await otpGen();
@@ -464,7 +470,7 @@ router.post(
     const decodedUser = jwt.decode(credential);
 
     let user = await knex("users")
-      .select("email")
+      .select("email", 'isEnabled')
       .where("email", decodedUser?.email)
       .limit(1);
 
@@ -490,6 +496,12 @@ router.post(
       });
       register = true;
     } else {
+      if (Boolean(user[0]?.isEnabled) === false) {
+        return res
+          .status(400)
+          .json("Account disabled! Try again later.");
+      }
+
       await knex("users").where("email", decodedUser?.email).update({
         firstname: decodedUser?.given_name,
         lastname: decodedUser?.family_name,
@@ -596,7 +608,7 @@ router.post(
     let register = false;
     let user_key = null;
     let user = await knex("users")
-      .select("email")
+      .select("email", 'isEnabled')
       .where("email", email)
       .limit(1);
 
@@ -615,6 +627,15 @@ router.post(
       });
       register = true;
     } else {
+
+
+      if (Boolean(user[0]?.isEnabled) === false) {
+        return res
+          .status(400)
+          .json("Account disabled! Try again later.");
+      }
+
+
       await knex("users").where("email", email).update({
         firstname: req.body.firstname,
         lastname: req.body.lastname,
@@ -1124,7 +1145,7 @@ router.put(
 
     const updatedUser = await knex("users")
       .where("_id", id)
-      .update({ active: active });
+      .update({ active: active, isEnabled: active });
 
     if (updatedUser !== 1) {
       return res.status(400).json("Error updating user info");

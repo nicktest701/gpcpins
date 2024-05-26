@@ -15,23 +15,35 @@ router.get(
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const { id, createdAt: modifiedAt } = req.user;
+    const { title } = req.query
+
+    let notification = [];
 
     if (!isValidUUID2(id)) {
       return res.status(400).json("Invalid Request!");
     }
-    const allNotifications = await knex("notifications").select("*");
-    const broadcastMessages = await knex("broadcast_messages")
-      .where("recipient", "Employees")
-      .select("*");
+    if (title) {
+      notification = await knex("notifications").where('title', title).select("*");
 
-    const recentNotifications = [
-      ...broadcastMessages,
-      ...allNotifications,
-    ].filter(({ createdAt }) => {
+    } else {
+      notification = await knex("notifications").select("*");
+      // const broadcastMessages = await knex("broadcast_messages")
+      //   .where("recipient", "Employees")
+      //   .select("*");
+
+      // notification = [
+      //   ...broadcastMessages,
+      //   ...allNotifications,
+      // ]
+
+    }
+
+
+    notification.filter(({ createdAt }) => {
       return moment(createdAt).isSameOrAfter(moment(modifiedAt));
     });
 
-    const notifications = _.orderBy(recentNotifications, "createdAt", "desc");
+    const notifications = _.orderBy(notification, "createdAt", "desc");
 
     res.status(200).json(notifications);
   })
@@ -135,7 +147,7 @@ router.post(
 router.put(
   "/",
   asyncHandler(async (req, res) => {
-    const { ids } = req.query;
+    const { ids } = req.body;
 
 
     if (ids) {
@@ -158,6 +170,9 @@ router.put(
     res.sendStatus(204);
   })
 );
+
+
+//Mark user notifications as read
 router.put(
   "/user",
   asyncHandler(async (req, res) => {
@@ -172,23 +187,36 @@ router.put(
   })
 );
 
+//Mark agent notifications as read
+router.put(
+  "/agent",
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+
+    await knex("agent_notifications")
+      .where("agent_id", id)
+      .update({ active: false });
+
+
+    res.sendStatus(204);
+  })
+);
+
+
 
 // Delete a notification
-
 router.delete(
   "/",
   asyncHandler(async (req, res) => {
     const { id, all } = req.body;
 
-    let notification;
+
     if (all && !_.isEmpty(all)) {
-      notification = await knex("notifications").where("_id", "IN", all).del();
+      await knex("notifications").where("_id", "IN", all).del();
     } else {
-      notification = await knex("notifications").where("_id", id).del();
+      await knex("notifications").where("_id", id).del();
     }
-    if (!notification) {
-      return res.status(404).json("Error removing notification!");
-    }
+
     res.status(200).json("Notifications removed!");
   })
 );
@@ -209,6 +237,23 @@ router.delete(
   })
 );
 
+
+
+router.delete(
+  "/agent",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+
+    await knex("agent_notifications").where("agent_id", id).del();
+
+
+    res.status(200).json("Notifications removed!");
+  })
+);
+
+
+
 router.delete(
   "/user/:id",
   verifyToken,
@@ -223,5 +268,23 @@ router.delete(
     res.status(200).json("Notification removed!");
   })
 );
+
+
+router.delete(
+  "/agent/:id",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    notification = await knex("agent_notifications").where("_id", id).del();
+
+    if (!notification) {
+      return res.status(404).json("Error removing notification!");
+    }
+    res.status(200).json("Notification removed!");
+  })
+);
+
+
 
 module.exports = router;

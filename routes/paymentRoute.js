@@ -677,6 +677,7 @@ router.get(
                 'vouchers.serial',
                 'vouchers.pin',
                 'vouchers.type',
+                "categories.details as details",
                 "categories.voucherType as voucherType",)
               .limit(ticket?.quantity);
           })
@@ -699,6 +700,7 @@ router.get(
             'vouchers.serial',
             'vouchers.pin',
             'vouchers.type',
+            "categories.details as details",
             "categories.voucherType as voucherType",);
 
 
@@ -753,7 +755,7 @@ router.get(
           await sendSMS(
             `${selectedVouchers[0]?.voucherType}  ${detailsInfo?.voucherURL}   
 [Pin--Serial]
-${smsData.join(" ")}  
+${smsData.join(" ")}
 ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your vouchers.
 `,
             userInfo?.agentPhoneNumber
@@ -762,7 +764,7 @@ ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.g
         }
 
         if (type === 'ticket' && confirm) {
-          // const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
+           const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
           // console.log(selectedVouchers)
 
           const smsData = selectedVouchers.map((voucher) => {
@@ -773,6 +775,7 @@ ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.g
             `${selectedVouchers[0]?.voucherType}   
 [Seat No./Type--Serial]
 ${smsData.join(" ")}  
+${moment(detailsInfo?.date)?.format('dddd,Do MMMM,YYYY')},${moment(detailsInfo?.time).format('hh:mm a')},  
 ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your tickets.
 `,
             userInfo?.agentPhoneNumber
