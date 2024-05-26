@@ -62,82 +62,91 @@ router.post(
     const { id } = req.user;
     const newBroadcastMessage = req.body;
 
-    const _id = randomUUID();
-    const broadcastMessage = await knex("broadcast_messages").insert({
-      _id,
-      ...newBroadcastMessage,
-    });
+    const transx = await knex.transaction()
+    try {
 
-    if (_.isEmpty(broadcastMessage)) {
-      return res.status(404).json("Message Failed. An error has occurred.");
-    }
 
-    const MAIL_TEXT = `<div>
+
+      const _id = randomUUID();
+      const broadcastMessage = await knex("broadcast_messages").insert({
+        _id,
+        ...newBroadcastMessage,
+        isDelivered: true
+      });
+
+      if (_.isEmpty(broadcastMessage)) {
+        return res.status(404).json("Message Failed. An error has occurred.");
+      }
+
+      res.status(201).json("Message sent!!!")
+
+      const MAIL_TEXT = `<div>
     <h2>${newBroadcastMessage?.title}</h2>
     <div style='text-align:left;'>
-    <p>Dear ${newBroadcastMessage.recipient},</p>
+    <div>${newBroadcastMessage.message}</div>
     
-    <p>${newBroadcastMessage.message}</p>
-    
-    <p>-- Gab Powerful Team --</p>
     </div>
    
      </div>`;
 
-    const MESSAGE_TEXT = `Dear ${newBroadcastMessage.recipient},
-     ${newBroadcastMessage.message}`;
+      const MESSAGE_TEXT = `${newBroadcastMessage.message}`;
 
-    let info = [];
+      let info = [];
 
-    if (newBroadcastMessage?.recipient === "Customers") {
-      const electricityTransactions = await knex("prepaid_transactions").select(
-        "email",
-        "mobileNo as phonenumber"
-      );
-      const transactions = await knex("voucher_transactions").select(
-        "email",
-        "phonenumber"
-      );
+      if (newBroadcastMessage?.recipient === "Customers") {
+        const electricityTransactions = await transx("prepaid_transactions").select(
+          "email",
+          "mobileNo as phonenumber"
+        );
+        const transactions = await transx("voucher_transactions").select(
+          "email",
+          "phonenumber"
+        );
 
-      const users = await knex("users").select("email", "phonenumber");
-      const employees = await knex("employees").select("email", "phonenumber");
+        const users = await transx("users").select("email", "phonenumber");
+        const employees = await transx("employees").select("email", "phonenumber");
 
-      info = [
-        ...electricityTransactions,
-        ...transactions,
-        ...users,
-        ...employees,
-      ];
+        info = [
+          ...electricityTransactions,
+          ...transactions,
+          ...users,
+          ...employees,
+        ];
+      }
+
+      if (newBroadcastMessage?.recipient === "Employees") {
+        info = await transx("employees").select("email", "phonenumber");
+      }
+
+      if (newBroadcastMessage?.type === "Email") {
+        const emails = _.uniqWith(_.compact(_.map(info, "email")), _.isEqual);
+        await sendEMail(emails, mailTextShell(MAIL_TEXT));
+      }
+
+      if (newBroadcastMessage?.type === "SMS") {
+        const numbers = _.uniqWith(
+          _.compact(_.map(info, "phonenumber")),
+          _.isEqual
+        );
+
+        await sendBatchSMS(MESSAGE_TEXT, numbers);
+      }
+
+      //logs
+      await transx("activity_logs").insert({
+        employee_id: id,
+        title: "Broadcasted a message!",
+        severity: "info",
+      });
+
+      await transx.commit()
+    } catch (error) {
+      await transx.rollback()
+      await knex("broadcast_messages").where("_id", _id).update({ isDelivered: false });
+      return res.status(404).json("Message Failed. An error has occurred.");
     }
 
-    if (newBroadcastMessage?.recipient === "Employees") {
-      info = await knex("employees").select("email", "phonenumber");
-    }
-
-    if (newBroadcastMessage?.type === "Email") {
-      const emails = _.uniqWith(_.compact(_.map(info, "email")), _.isEqual);
-      await sendEMail(emails, mailTextShell(MAIL_TEXT));
-    }
-
-    if (newBroadcastMessage?.type === "SMS") {
-      const numbers = _.uniqWith(
-        _.compact(_.map(info, "phonenumber")),
-        _.isEqual
-      );
-
-      await sendBatchSMS(MESSAGE_TEXT, numbers);
-    }
-
-    await knex("broadcast_messages").where("_id", _id).update({ active: 1 });
-
-    //logs
-    await knex("activity_logs").insert({
-      employee_id: id,
-      title: "Broadcasted a message!",
-      severity: "info",
-    });
-
-    return res.status(201).json("Message sent!!!");
+    // return res.status(201).json("Message sent!!!");
   })
 );
 
@@ -145,22 +154,17 @@ router.put(
   "/",
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const newBroadcastMessage = req.message;
+    const newBroadcastMessage = req.body;
 
     const MAIL_TEXT = `<div>
     <h2>${newBroadcastMessage?.title}</h2>
-    <div style='text-align:left;'>
-    <p>Dear ${newBroadcastMessage.recipient},</p>
-    
-    <p>${newBroadcastMessage.message}</p>
-    
-    <p>-- Gab Powerful Team --</p>
+    <div style='text-align:left;'> 
+    <div>${newBroadcastMessage.message}</div>
     </div>
    
      </div>`;
 
-    const MESSAGE_TEXT = `Dear ${newBroadcastMessage.recipient},
-     ${newBroadcastMessage.message}`;
+    const MESSAGE_TEXT = `${newBroadcastMessage.message}`;
 
     let info = [];
 
@@ -206,6 +210,21 @@ router.put(
     return res.status(201).json("Message sent!!!");
   })
 );
+
+router.put(
+  "/delete-all",
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { messages } = req.body;
+    
+    await knex("broadcast_messages")
+      .where("_id", "IN", messages)
+      .del();
+
+    res.sendStatus(204)
+  })
+);
+
 
 router.delete(
   "/",

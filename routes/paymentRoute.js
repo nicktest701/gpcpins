@@ -2,6 +2,7 @@ const router = require("express").Router();
 const { randomUUID, randomBytes } = require("crypto");
 const pLimit = require("p-limit");
 const fs = require("fs");
+const multer = require("multer");
 const cors = require("cors");
 const path = require("path");
 const _ = require("lodash");
@@ -51,6 +52,22 @@ const { MTN, VODAFONE, AIRTELTIGO } = require("../config/bundleList");
 const { sendWhatsappMessage } = require("../config/sendWhatsapp");
 const { getInternationalMobileFormat } = require("../config/PhoneCode");
 const { sendBirthdayWishes } = require("../config/cronMessages");
+
+
+
+const Storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "./receipts/");
+  },
+  filename: function (req, file, cb) {
+    const ext = file?.mimetype?.split("/")[1];
+
+    cb(null, `${req.body?._id}-prepaid.${ext}`);
+  },
+});
+
+const Upload = multer({ storage: Storage });
+
 
 
 const corsOptions = {
@@ -1405,7 +1422,7 @@ router.post(
           _id: transaction_id,
           user: id,
           type: type === "Airtime" ? "single" : "bulk",
-          recipient: recipient || pricing,
+          recipient: recipient || JSON.stringify(pricing),
           phonenumber,
           email: email,
           amount,
@@ -1448,7 +1465,7 @@ router.post(
           _id: transaction_id,
           user: id,
           type: type === "Airtime" ? "single" : "bulk",
-          recipient: recipient || pricing,
+          recipient: recipient || JSON.stringify(pricing),
           phonenumber,
           email: email,
           amount,
@@ -1869,6 +1886,7 @@ router.get(
     const modifiedTransactions = transactions.map((transaction) => {
       return {
         _id: transaction?._id,
+        paymentId: transaction?.paymentId,
         active: transaction?.active,
         email: transaction?.email,
         mobileNo: transaction?.mobileNo,
@@ -1949,6 +1967,7 @@ router.get(
     const modifiedTransactions = transactions.map((transaction) => {
       return {
         _id: transaction?._id,
+        paymentId: transaction?.paymentId,
         active: transaction?.active,
         email: transaction?.email,
         mobileNo: transaction?.mobileNo,
@@ -1996,6 +2015,7 @@ router.get(
     const modifiedTransactions = transactions.map((transaction) => {
       return {
         _id: transaction?._id,
+        paymentId: transaction?.paymentId,
         active: transaction?.active,
         email: transaction?.email,
         mobileNo: transaction?.mobileNo,
@@ -2257,9 +2277,11 @@ router.put(
   "/electricity",
   verifyToken,
   verifyAdmin,
+  Upload.single("receipt"),
   asyncHandler(async (req, res) => {
     const { id } = req.user;
-    const { _id, meter, meterId, info } = req.body;
+    const { _id, data } = req.body;
+    const { meter, meterId, paymentId, info } = JSON.parse(data)
 
     const transx = await knex.transaction();
 
@@ -2272,6 +2294,7 @@ router.put(
     const updateTransactionDetails = await transx("prepaid_transactions")
       .where("_id", _id)
       .update({
+        paymentId,
         info: JSON.stringify({
           ...info,
           domain: "Prepaid",
@@ -2289,97 +2312,127 @@ router.put(
         _id: _id,
         status: "completed",
       })
+      .select("_id", 'paymentId', 'email', 'mobileNo', 'info', 'toppup', 'charges', 'amount')
       .limit(1);
 
     if (!transactions[0]) {
       return res.status(404).json("Error updating request");
     }
 
-    const issuer = await transx("employees")
-      .where("_id", id)
-      .select("_id", knex.raw("CONCAT(firstname,' ',lastname) as name"));
+    // const issuer = await transx("employees")
+    //   .where("_id", id)
+    //   .select("_id", knex.raw("CONCAT(firstname,' ',lastname) as name"));
 
     const paymentInfo = JSON.parse(transactions[0]?.info);
     const meterInfo = {
       id: transactions[0]?._id,
-      number: transactions[0]?.number,
-      name: transactions[0]?.name,
-      district: transactions[0]?.district,
-      address: transactions[0]?.address,
+      paymentId: transactions[0]?.paymentId,
+      email: paymentInfo?.email,
+      mobileNo: paymentInfo?.mobileNo,
+      orderNo: paymentInfo?.orderNo,
       topup: currencyFormatter(transactions[0]?.topup),
       charges: currencyFormatter(transactions[0]?.charges),
       amount: currencyFormatter(paymentInfo?.amount),
-      paymentMethod: transactions[0]?.mode,
-      orderNo: paymentInfo?.orderNo,
-      email: paymentInfo?.email,
-      mobileNo: paymentInfo?.mobileNo,
-      lastCharge: paymentInfo?.lastCharge,
-      lastMonthConsumption: paymentInfo?.lastMonthConsumption,
-      createdAt: moment(transactions[0].createdAt).format("lll"),
-      issuer: issuer[0]?.name || "N/A",
+      // district: transactions[0]?.district,
+      // name: transactions[0]?.name,
+      // number: transactions[0]?.number,
+      // paymentMethod: transactions[0]?.mode,
+      // address: transactions[0]?.address,
+      // lastCharge: paymentInfo?.lastCharge,
+      // lastMonthConsumption: paymentInfo?.lastMonthConsumption,
+      // createdAt: moment(transactions[0].createdAt).format("lll"),
+      // issuer: issuer[0]?.name || "N/A",
     };
 
-    const template = await generatePrepaidTemplate(meterInfo);
-    const result = limit(() => generatePrepaidReceipt(template, _id));
 
-    result
-      .then(async (data) => {
-        if (data === "done") {
-          const downloadLink = await uploadReceiptFile(`${_id}-prepaid.pdf`);
+    //logs
+    await transx("activity_logs").insert({
+      employee_id: id,
+      title: "Processed prepaid transaction!",
+      severity: "info",
+    });
 
-          await transx("prepaid_transactions")
-            .where("_id", _id)
-            .update({
-              info: JSON.stringify({
-                ...paymentInfo,
-                downloadLink,
-              }),
-            });
+    await transx.commit();
 
-          await transx("user_notifications").insert({
-            _id: randomUUID(),
-            user_id: transactions[0]?.userID,
-            type: "prepaid",
-            title: "Prepaid Units",
-            message: `You request to buy prepaid units has being completed.Click on the button below to download your receipt.`,
-            link: downloadLink,
-          });
+    await sendSMS(
+      `You request to buy prepaid units has being completed.Transaction Details:Order No.:${meterInfo?.paymentId},-Token:${meterInfo?.orderNo},-Amount Paid:${meterInfo?.amount}.`,
+      paymentInfo?.mobileNo
+    );
 
-          await transx.commit();
+    res
+      .status(201)
+      .json(
+        "Your request is being processed.You will be notified shortly!!"
+      );
 
-          //logs
-          await knex("activity_logs").insert({
-            employee_id: id,
-            title: "Processed prepaid transaction!",
-            severity: "info",
-          });
 
-          // await sendWhatsappMessage({
-          //   user: getInternationalMobileFormat(paymentInfo?.mobileNo),
-          //   message: "Thank you for your purchase!",
-          //   media: downloadLink,
-          // });
 
-          limit(() =>
-            sendElectricityMail(_id, paymentInfo.email, transactions[0]?.status)
-          );
 
-          await sendSMS(
-            `You request to buy prepaid units has being completed.Click on the link below to download your receipt:${downloadLink}`,
-            paymentInfo?.mobileNo
-          );
+    // await sendWhatsappMessage({
+    //   user: getInternationalMobileFormat(paymentInfo?.mobileNo),
+    //   message: "Thank you for your purchase!",
+    //   media: downloadLink,
+    // });
 
-          return res
-            .status(201)
-            .json(
-              "Your request is being processed.You will be notified shortly!!"
-            );
-        }
-      })
-      .catch((error) => {
-        console.log(error);
-        return res.status(404).json("Error updating request");
+    let downloadLink = "";
+    const url = req.file?.filename;
+    if (req.file) {
+      downloadLink = await uploadReceiptFile(url);
+    }
+
+
+    await transx("prepaid_transactions")
+      .where("_id", _id)
+      .update({
+
+        info: JSON.stringify({
+          ...paymentInfo,
+          downloadLink,
+        }),
       });
+
+    if (downloadLink !== "") {
+      await transx("user_notifications").insert({
+        _id: randomUUID(),
+        user_id: transactions[0]?.userID,
+        type: "prepaid",
+        title: "Prepaid Units",
+        message: `You request to buy prepaid units has being completed.Click on the button below to download your receipt.`,
+        link: downloadLink,
+      });
+
+    } else {
+
+      await transx("user_notifications").insert({
+        _id: randomUUID(),
+        user_id: transactions[0]?.userID,
+        type: "prepaid",
+        title: "Prepaid Units",
+        message: `You request to buy prepaid units has being completed.`,
+
+      });
+
+    }
+
+    await transx.commit();
+
+
+    limit(() =>
+      sendElectricityMail(_id, paymentInfo?.email, transactions[0]?.status, url)
+    );
+
+
+    // const template = await generatePrepaidTemplate(meterInfo);
+    // const result = limit(() => generatePrepaidReceipt(template, _id));
+
+    //       result
+    //       .then(async (data) => {
+    //         if (data === "done") {    }
+    // })
+    // .catch((error) => {
+    //   console.log(error);
+    //   return res.status(404).json("Error updating request");
+    // });
 
     // const data = await sendSMS(
     //   `You request to buy prepaid units has being completed.

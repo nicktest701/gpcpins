@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer');
 const { ecgText } = require('./mailText');
 
-const sendElectricityMail = async (transaction_id, email_address, status) => {
+const sendElectricityMail = async (transaction_id, email_address, status, url) => {
   try {
     const transportMail = nodemailer.createTransport({
       host: process.env.MAIL_CLIENT_SERVICE,
@@ -43,8 +43,8 @@ const sendElectricityMail = async (transaction_id, email_address, status) => {
       ),
       attachments: [
         {
-          filename: `${transaction_id}-prepaid.pdf`,
-          path: `./receipts/${transaction_id}-prepaid.pdf`,
+          filename: url,
+          path: `./receipts/${url}`,
         },
       ],
     };
@@ -54,7 +54,7 @@ const sendElectricityMail = async (transaction_id, email_address, status) => {
     );
     return mailResult;
   } catch (error) {
-     console.log(error.message);
+    console.log(error.message);
   }
 };
 

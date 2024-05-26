@@ -143,7 +143,12 @@ router.put(
       await knex("notifications")
         .where("_id", "IN", ids)
         .update({ active: false });
+      await knex("broadcast_messages")
+        .where("_id", "IN", ids)
+        .update({ active: false });
     } else {
+      await knex("broadcast_messages")
+        .update({ active: false });
       await knex("notifications")
         .update({ active: false });
 

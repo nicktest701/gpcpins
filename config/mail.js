@@ -20,6 +20,7 @@ const transportMail = nodemailer.createTransport({
 });
 
 const sendMail = async (transaction_id, email_address) => {
+  if (process.env.NODE_ENV !== 'production') return true
   try {
     const mailOptions = {
       from: `GPC ${process.env.MAIL_CLIENT_USER}`,
@@ -48,6 +49,10 @@ const sendTicketMail = async (
   email_address,
   type = "Voucher"
 ) => {
+
+  if (process.env.NODE_ENV !== 'production') return true
+
+
   try {
     const mailOptions = {
       from: `GPC ${process.env.MAIL_CLIENT_USER}`,
@@ -77,6 +82,9 @@ const resendReceiptMail = async (
   email_address,
   downloadLink
 ) => {
+  // if (process.env.NODE_ENV !== 'production') return true
+
+
   try {
     const mailOptions = {
       from: `GPC ${process.env.MAIL_CLIENT_USER}`,
@@ -101,6 +109,9 @@ const sendReportMail = async (
   transaction_id,
   subject
 ) => {
+  // if (process.env.NODE_ENV !== 'production') return true
+
+
   try {
     const mailOptions = {
       from: `GPC ${process.env.MAIL_CLIENT_USER}`,

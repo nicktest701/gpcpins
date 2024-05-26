@@ -1976,7 +1976,7 @@ ${style}
                                                                 <td align="center"
                                                                     style="Margin:0;padding-top:10px;padding-bottom:20px;padding-left:20px;padding-right:20px">
                                                                     <p> ${message} </p>
-                                                                    <p> Attached to this a copy of your receipt. </p>
+                                                                   
 
                                                                 </td>
                                                             </tr>

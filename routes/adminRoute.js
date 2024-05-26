@@ -205,7 +205,9 @@ router.get(
   "/phonenumber/token",
   limit,
   verifyToken,
+  verifyAdmin,
   asyncHandler(async (req, res) => {
+    
     const { id } = req.user;
     const { code } = req.query;
 
@@ -560,6 +562,131 @@ router.put(
   limit,
   asyncHandler(async (req, res) => {
     const { id, password } = req.body;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const modifiedEmployee = await knex("employees").where("_id", id).update({
+      password: hashedPassword,
+    });
+
+    if (modifiedEmployee !== 1) {
+      return res.status(404).json("Error updating employee information.");
+    }
+    const employee = await knex("employees")
+      .select(
+        "_id",
+        "firstname",
+        "lastname",
+        knex.raw("CONCAT(firstname,' ',lastname) as name"),
+        "email",
+        "role",
+        "nid",
+        "dob",
+        "residence",
+        "permissions",
+        "phonenumber",
+        "profile",
+        "isAdmin"
+      )
+      .where("_id", id);
+
+    if (_.isEmpty(employee)) {
+      return res.status(404).json("Error! Could not save changes.");
+    }
+
+    const updatedEmployee = {
+      id: employee[0]?._id,
+      role: employee[0]?.role,
+      active: employee[0]?.active,
+      isAdmin: Boolean(employee[0]?.isAdmin),
+    };
+
+    const accessToken = signMainToken(updatedEmployee, "30m");
+    const refreshToken = signSampleRefreshToken(updatedEmployee, "1h");
+
+    // res.cookie("_SSUID_kyfc", accessToken, {
+    //   maxAge: 1 * 60 * 60 * 1000,
+    //   httpOnly: true,
+    //   path: "/",
+    //   secure: true,
+    //   // domain:
+    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
+    //   sameSite: "none",
+    // });
+
+    // res.cookie("_SSUID_X_ayd", refreshToken, {
+    //   maxAge: 90 * 24 * 60 * 60 * 1000,
+    //   httpOnly: true,
+    //   path: "/",
+    //   secure: true,
+    //   // domain:
+    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
+    //   sameSite: "none",
+    // });
+
+    const hashedToken = await bcrypt.hash(refreshToken, 10);
+
+    await knex("employees")
+      .where("_id", id)
+      .update({ token: hashedToken, active: 1 });
+
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: id,
+      title: "Updated account password!",
+      severity: "info",
+    });
+
+    // if (isMobile(req)) {
+    res.status(201).json({
+      user: {
+        id: employee[0]?._id,
+        firstname: employee[0]?.firstname,
+        lastname: employee[0]?.lastname,
+        name: employee[0]?.name,
+        email: employee[0]?.email,
+        phonenumber: employee[0]?.phonenumber,
+        role: employee[0]?.role,
+        permissions: JSON.parse(employee[0]?.permissions),
+        profile: employee[0]?.profile,
+      },
+      refreshToken,
+      accessToken,
+    });
+    // }
+
+    // res.status(201).json({
+    //   user: {
+    //     id: employee[0]?._id,
+    //     name: `${employee[0]?.firstname} ${employee[0]?.lastname}`,
+    //     email: employee[0]?.email,
+    //     phonenumber: employee[0]?.phonenumber,
+    //     role: employee[0]?.role,
+    //     profile: employee[0]?.profile,
+    //   },
+    // });
+  })
+);
+
+
+router.put(
+  "/password-reset",
+  limit,
+  verifyToken, verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { id, oldPassword, password } = req.body;
+  
+
+    const employeePassword = await knex('employees').select('password').where('_id', id).limit(1);
+
+    const passwordIsValid = await bcrypt.compare(
+      oldPassword,
+      employeePassword[0]?.password
+    );
+
+    if (!passwordIsValid) {
+      return res.status(400).json("Invalid Password!");
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 

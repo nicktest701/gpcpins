@@ -1422,6 +1422,8 @@ router.get(
   })
 );
 
+
+// GET All Logs
 router.get(
   "/logs",
   verifyToken,
@@ -1441,7 +1443,7 @@ router.get(
           FROM (
               SELECT *,DATE(createdAt) AS created_date
               FROM activity_logs_view
-          ) AS activity_logs_view_  WHERE created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
+          ) AS activity_logs_view_  created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
         [sDate, eDate]
       );
     } else {
@@ -1450,7 +1452,7 @@ router.get(
           FROM (
               SELECT *,DATE(createdAt) AS created_date
               FROM activity_logs_view
-          ) AS activity_logs_view_  WHERE employeeId=? AND created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
+          ) AS activity_logs_view_  WHERE employeeId=? AND isActive=1 AND created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
         [id, sDate, eDate]
       );
     }
@@ -1458,6 +1460,27 @@ router.get(
     return res.status(200).json(logs[0]);
   })
 );
+// PUT Remove All Selected Logs
+router.put(
+  "/logs",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { id, isAdmin } = req.user;
+    const { logs } = req.body;
+
+
+    await knex('activity_logs').where("_id", "IN", logs).update({
+      isActive: false
+    });
+    return res.sendStatus(204);
+
+  })
+);
+
+
+
+
 
 router.get(
   "/:transactionId",
