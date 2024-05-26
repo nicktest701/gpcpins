@@ -1443,7 +1443,7 @@ router.get(
           FROM (
               SELECT *,DATE(createdAt) AS created_date
               FROM activity_logs_view
-          ) AS activity_logs_view_  created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
+          ) AS activity_logs_view_ WHERE created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
         [sDate, eDate]
       );
     } else {

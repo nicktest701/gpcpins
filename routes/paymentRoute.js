@@ -2312,7 +2312,7 @@ router.put(
         _id: _id,
         status: "completed",
       })
-      .select("_id", 'paymentId', 'email', 'mobileNo', 'info', 'toppup', 'charges', 'amount')
+      .select("_id", 'paymentId', 'email', 'mobileNo', 'info', 'topup', 'charges', 'amount')
       .limit(1);
 
     if (!transactions[0]) {
