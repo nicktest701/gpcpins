@@ -498,7 +498,7 @@ router.post(
       
 
       <p><strong>Details:</strong></p>
-      <p><strong>Login URL:</strong> <a href='https://agents.gpcpins.com'>https://agents.gpcpins.com</a></p>
+      <p><strong>Login URL:</strong> <a href='https://agent.gpcpins.com'>https://agent.gpcpins.com</a></p>
       <p><strong>Username:</strong> ${rest?.username}@gpc</p>
       <p><strong>Default Password:</strong> ${password}</p>
       <p><strong>Email Address:</strong> ${rest?.email}</p>
