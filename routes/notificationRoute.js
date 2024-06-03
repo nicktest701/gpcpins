@@ -1,7 +1,7 @@
 const router = require("express").Router();
 const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
-const { randomUUID } = require("crypto");
+const generateId = require("../config/generateId");
 const moment = require("moment");
 const knex = require("../db/knex");
 const { isValidUUID2 } = require("../config/validation");
@@ -133,7 +133,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const newNotification = req.body;
     const notification = await knex("notifications").insert({
-      _id: randomUUID(),
+      _id: generateId(),
       ...newNotification,
     });
 

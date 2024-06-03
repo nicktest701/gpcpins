@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer');
 const { ecgText } = require('./mailText');
 
-const sendElectricityMail = async (transaction_id, email_address, status, url) => {
+const sendElectricityMail = async (transaction_id, email_address, status, url, meterInfo) => {
   try {
     const transportMail = nodemailer.createTransport({
       host: process.env.MAIL_CLIENT_SERVICE,
@@ -33,12 +33,20 @@ const sendElectricityMail = async (transaction_id, email_address, status, url) =
       from: `GPC ${process.env.MAIL_CLIENT_USER}`,
       sender: process.env.MAIL_CLIENT_USER,
       to: [email_address],
-      subject: 'Prepaid Units',
+      subject: 'Prepaid Units Confirmation',
       text: 'Prepaid units',
       html: ecgText(
         transaction_id,
         `Thank you for choosing our service! Your transaction is complete, and we appreciate your trust in us. If you have any questions or need further assistance, please don't hesitate to reach out. Wishing you a fantastic day ahead!.
         Attached to this message,is a copy of your receipt. Please keep it for your records.
+        <div>       
+        Transaction Details:
+        <p>Order No.:${meterInfo?.paymentId}</p>
+        <p>Token:${meterInfo?.orderNo}</p>
+        <p>Meter No:${meterInfo?.number}</p>
+        <p>Meter Name:${meterInfo?.name}</p>
+        <p>Amount Paid:${meterInfo?.amount}</p>
+        </div>
         `
       ),
       attachments: [

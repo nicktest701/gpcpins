@@ -3,7 +3,7 @@ const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
 const moment = require("moment");
 
-const { randomUUID } = require("crypto");
+const generateId = require("../config/generateId");
 const findDuplicates = require("../config/findDuplicates");
 //model
 
@@ -233,7 +233,7 @@ router.post(
 
     const modifiedVouchers = newVouchers.map((voucher) => {
       return {
-        _id: randomUUID(),
+        _id: generateId(),
         category: voucher?.category,
         type: voucher?.type,
         serial: voucher?.serial,

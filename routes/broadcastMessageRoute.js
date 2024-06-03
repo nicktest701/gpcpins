@@ -2,7 +2,6 @@ const router = require("express").Router();
 const moment = require("moment");
 const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
-const { randomUUID } = require("crypto");
 const sendEMail = require("../config/sendEmail");
 const { mailTextShell } = require("../config/mailText");
 const { sendBatchSMS } = require("../config/sms");
@@ -13,11 +12,10 @@ const verifyAdmin = require("../middlewares/verifyAdmin");
 //db
 const knex = require("../db/knex");
 const { isValidUUID2 } = require("../config/validation");
-const { verifyToken } = require("../middlewares/verifyToken");
+const generateId = require("../config/generateId");
 
 router.get(
   "/",
-  verifyToken,
   asyncHandler(async (req, res) => {
     const { role, createdAt } = req.user;
 
@@ -67,7 +65,7 @@ router.post(
 
 
 
-      const _id = randomUUID();
+      const _id = generateId();
       const broadcastMessage = await knex("broadcast_messages").insert({
         _id,
         ...newBroadcastMessage,

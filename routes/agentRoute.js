@@ -3,7 +3,9 @@ const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
 const moment = require("moment");
 const bcrypt = require("bcryptjs");
-const { randomUUID, randomBytes } = require("crypto");
+const path = require("path")
+const fs = require("fs")
+const { randomBytes } = require("crypto");
 const { otpGen, customOtpGen } = require("otp-gen-agent");
 const { signMainToken, signMainRefreshToken } = require("../config/token");
 const multer = require("multer");
@@ -18,10 +20,12 @@ const verifyAgent = require("../middlewares/verifyAgent");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const { uploadPhoto } = require("../config/uploadFile");
 const { mailTextShell } = require("../config/mailText");
+const generateId = require("../config/generateId");
+const { calculateTimeDifference } = require("../config/timeHelper");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 15, // 5 requests per windowMs
+  max: 20, // 5 requests per windowMs
   message: "Too many requests! please try again later.",
 });
 
@@ -49,7 +53,7 @@ const Storage = multer.diskStorage({
   filename: function (req, file, cb) {
     const ext = file?.mimetype?.split("/")[1];
 
-    cb(null, `${randomUUID()}.${ext}`);
+    cb(null, `${generateId()}.${ext}`);
   },
 });
 
@@ -167,13 +171,33 @@ router.get(
           FROM (
               SELECT *,DATE(createdAt) AS created_date
               FROM agent_activity_logs_view
-          ) AS agent_activity_logs_view_  WHERE agentId=? AND created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
+          ) AS agent_activity_logs_view_  WHERE agentId=? AND isActive=1  AND created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
       [id, sDate, eDate]
     );
 
     return res.status(200).json(logs[0]);
   })
 );
+
+// PUT Remove All Selected Logs
+router.put(
+  "/logs",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+
+    const { logs } = req.body;
+
+
+    await knex('agent_activity_logs').where("_id", "IN", logs).update({
+      isActive: false
+    });
+    return res.sendStatus(204);
+
+  })
+);
+
+
+
 router.get(
   "/verify-identity",
   verifyToken,
@@ -398,7 +422,7 @@ router.post(
 
 
 
-      const agent_id = randomUUID();
+      const agent_id = generateId();
       const password = generateRandomNumber(10);
       const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -415,7 +439,7 @@ router.post(
 
       //Save Agent Business Information
       await transaction("agent_businesses").insert({
-        _id: randomUUID(),
+        _id: generateId(),
         agent_id,
         name: business_name,
         location: business_location,
@@ -427,10 +451,12 @@ router.post(
 
       //Create Agent Wallet Information
       const agent_key = await customOtpGen({ length: 4 });
+      const hashedPin = await bcrypt.hash(agent_key, 10)
+
       await transaction("agent_wallets").insert({
-        _id: randomUUID(),
+        _id: generateId(),
         agent_id,
-        agent_key,
+        agent_key: hashedPin,
       });
 
       //Create Agent Wallet Information
@@ -729,7 +755,7 @@ router.post(
     // const token = await otpGen();
 
     // await knex("tokens").insert({
-    //   _id: randomUUID(),
+    //   _id: generateId(),
     //   token,
     //   email: agent[0]?.email,
     // });
@@ -1358,6 +1384,59 @@ router.get(
   })
 );
 
+
+
+//Get Wallet Balance
+router.get(
+  "/wallet/status",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+    const { action } = req.query;
+
+    if (action && action === "disable") {
+      await knex("agent_wallets").where("agent_id", id).update({ active: 0 });
+      return res.sendStatus(204);
+    }
+
+    const wallet = await knex("agent_wallets")
+      .where("agent_id", id)
+      .select("active", "createdAt", "updatedAt")
+      .limit(1);
+
+    if (_.isEmpty(wallet) || Boolean(wallet[0]?.active) === false) {
+      const now = moment();
+      const upTime = moment(new Date(wallet[0]?.updatedAt));
+      const timeLeft = calculateTimeDifference(now, upTime);
+
+      if (timeLeft.value <= 0) {
+        await knex("agent_wallets").where("agent_id", id).update({
+          active: 1,
+        });
+
+        return res.status(200).json({
+          active: true,
+        });
+      }
+
+      return res.status(200).json({
+        active: false,
+        timeOut:
+          timeLeft?.type === "hours"
+            ? `${timeLeft.value} hours`
+            : `${timeLeft.value} minutes`,
+      });
+    }
+
+    return res.status(200).json({
+      active: true,
+    });
+  })
+);
+
+
+
+
 router.get(
   "/wallet/transactions",
   verifyToken,
@@ -1383,6 +1462,22 @@ router.get(
   })
 );
 
+// /airtime/template
+router.get(
+  "/airtime/template",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const filePath = path.join(process.cwd(), "/views/", `template.xlsx`);
+
+    if (fs.existsSync(filePath)) {
+      return res.sendFile(filePath);
+    } else {
+      return res.sendStatus(204);
+
+    }
+  })
+);
+
 //update wallet pin
 router.put(
   "/wallet",
@@ -1395,9 +1490,12 @@ router.put(
     const agentId = isAdmin ? _id : id;
     const emailAddress = isAdmin ? agentEmail : email;
 
+    const hashedPin = await bcrypt.hash(pin, 10)
+
+
     const wallet = await knex("agent_wallets")
       .where("agent_id", agentId)
-      .update("agent_key", pin);
+      .update("agent_key", hashedPin);
 
     if (wallet !== 1) {
       return res
@@ -1617,6 +1715,37 @@ router.post(
     const info = req.body;
     const { id } = req.user;
 
+
+    const agentWallet = await knex("agent_wallets")
+      .select("_id", "agent_key", "amount", "active")
+      .where({
+        agent_id: id,
+
+      })
+      .limit(1);
+
+
+    if (_.isEmpty(agentWallet)) {
+      return res.status(401).json("Invalid pin!");
+    }
+
+    const isPinValid = await bcrypt.compare(info?.token, agentWallet[0]?.agent_key)
+
+
+    if (!isPinValid) {
+      return res.status(401).json("Invalid pin!");
+    }
+
+
+    if (
+      Number(agentWallet[0]?.amount) < Number(info?.amount)
+    ) {
+      return res.status(401).json("Insufficient wallet balance to complete transaction!");
+    }
+
+
+
+
     //transaction reference
     const transaction_reference = randomBytes(24).toString("hex");
 
@@ -1652,7 +1781,7 @@ router.post(
 
     //Generate transaction info
     const transactionInfo = {
-      _id: randomUUID(),
+      _id: generateId(),
       agent_id: id,
       reference: transaction_reference,
       type: "airtime",
@@ -1699,7 +1828,7 @@ router.post(
 
         //send notiication to agent about the transaction
         await transx("agent_notifications").insert({
-          _id: randomUUID(),
+          _id: generateId(),
           agent_id: id,
           type: "airtime",
           title: "Airtime Transfer",
@@ -1736,9 +1865,42 @@ router.post(
   asyncHandler(async (req, res) => {
     const data = req.body;
     const { id } = req.user;
-    // const id = "7949d62c-fc40-4fc9-be60-e59df348f868";
 
-    const transactions = data?.map(async (info) => {
+
+    const agentWallet = await knex("agent_wallets")
+      .select("_id", "agent_key", "amount", "active")
+      .where({
+        agent_id: id,
+
+      })
+      .limit(1);
+
+
+    if (_.isEmpty(agentWallet)) {
+      return res.status(401).json("Invalid pin!");
+    }
+
+    const isPinValid = await bcrypt.compare(data?.token, agentWallet[0]?.agent_key)
+
+
+    if (!isPinValid) {
+      return res.status(401).json("Invalid pin!");
+    }
+
+
+    const totalAmount = _.sumBy(data?.content, (info) => Number(info?.amount));
+
+
+    if (
+      Number(agentWallet[0]?.amount) < Number(totalAmount)
+    ) {
+      return res.status(401).json("Insufficient wallet balance to complete transaction!");
+    }
+
+
+
+
+    const transactions = data?.content?.map(async (info) => {
       //transaction reference
       const transaction_reference = randomBytes(24).toString("hex");
 
@@ -1771,7 +1933,7 @@ router.post(
 
       //Generate transaction info
       const transactionInfo = {
-        _id: randomUUID(),
+        _id: generateId(),
         agent_id: id,
         reference: transaction_reference,
         type: "airtime",
@@ -1806,7 +1968,7 @@ router.post(
 
             //send notiication to agent about the transaction
             await transx("agent_notifications").insert({
-              _id: randomUUID(),
+              _id: generateId(),
               agent_id: id,
               type: "airtime",
               title: "Airtime Transfer",
@@ -1839,7 +2001,7 @@ router.post(
       } catch (error) {
         return res
           .status(401)
-          .json("Transaction failed! An error has occurreds.");
+          .json("Transaction failed! An error has occurred.");
       }
     });
 
@@ -1885,6 +2047,34 @@ router.post(
     const info = req.body;
     const { id } = req.user;
 
+    const agentWallet = await knex("agent_wallets")
+    .select("_id", "agent_key", "amount", "active")
+    .where({
+      agent_id: id,
+
+    })
+    .limit(1);
+
+
+  if (_.isEmpty(agentWallet)) {
+    return res.status(401).json("Invalid pin!");
+  }
+
+  const isPinValid = await bcrypt.compare(info?.token, agentWallet[0]?.agent_key)
+
+
+  if (!isPinValid) {
+    return res.status(401).json("Invalid pin!");
+  }
+
+
+  if (
+    Number(agentWallet[0]?.amount) < Number(info?.amount)
+  ) {
+    return res.status(401).json("Insufficient wallet balance to complete transaction!");
+  }
+
+
     //transaction reference
     const transaction_reference = randomBytes(24).toString("hex");
 
@@ -1898,7 +2088,7 @@ router.post(
 
     //Generate transaction info
     const transactionInfo = {
-      _id: randomUUID(),
+      _id: generateId(),
       agent_id: id,
       reference: transaction_reference,
       type: "bundle",
@@ -1930,7 +2120,7 @@ router.post(
         });
 
         await transx("agent_notifications").insert({
-          _id: randomUUID(),
+          _id: generateId(),
           agent_id: id,
           type: "bundle",
           title: "Data Bundle Transfer",

@@ -439,8 +439,8 @@ a[x-apple-data-detectors] {
 </style>`;
 
 module.exports = {
-  mailText: (htmlText) => {
-    return `<!DOCTYPE html>
+    mailText: (htmlText) => {
+        return `<!DOCTYPE html>
      <html lang="en">
     
      <head>
@@ -487,9 +487,9 @@ module.exports = {
      </html>
     
      `;
-  },
+    },
 
-  mailTextShell: (stuff) => `<!DOCTYPE html
+    mailTextShell: (stuff) => `<!DOCTYPE html
   PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office" lang="en"
   style="font-family:arial, 'helvetica neue', helvetica, sans-serif">
@@ -579,8 +579,7 @@ ${style}
                                                     
                             
                                                           <tr>
-                                                              <td align="center"
-                                                                  style="Margin:0;padding-top:10px;padding-bottom:20px;padding-left:20px;padding-right:20px">
+                                                              <td>
                                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                                   
                                     ${stuff}
@@ -833,7 +832,7 @@ ${style}
 
 </html>`,
 
-  resendMailText: (id, downloadLink) => `<!DOCTYPE html
+    resendMailText: (id, downloadLink) => `<!DOCTYPE html
   PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office" lang="en"
   style="font-family:arial, 'helvetica neue', helvetica, sans-serif">
@@ -922,16 +921,14 @@ ${style}
                                                           style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:separate;border-spacing:0px;border-radius:5px">
                                                     
                                                           <tr>
-                                                              <td align="center"
-                                                                  style="Margin:0;padding-top:10px;padding-bottom:10px;padding-left:20px;padding-right:20px">
-                                                                  <h1
+                                                              <td>
+                                                                  <h3
                                                                       style="Margin:0;line-height:43px;mso-line-height-rule:exactly;font-family:Poppins, sans-serif;font-size:36px;font-style:normal;font-weight:bold;color:#022B3A">
-                                                                      Thank you for purchasing from us.</h1>
+                                                                      Thank you for purchasing from us.</h3>
                                                               </td>
                                                           </tr>
                                                           <tr>
-                                                              <td align="center"
-                                                                  style="Margin:0;padding-top:10px;padding-bottom:20px;padding-left:20px;padding-right:20px">
+                                                              <td >
                                                                   <p
                                                                       style="Margin:0;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;font-family:Poppins, sans-serif;line-height:21px;color:#022B3A;font-size:14px">
                                                                       We look forward to serving you in the future.
@@ -1019,10 +1016,9 @@ ${style}
                                                           <tr style="background-color: #f0f0f4;">
                                                               <td align="center"
                                                                   style="padding:0;Margin:0;padding-top:15px;padding-bottom:15px">
-                                                                  <h1
                                                                       style="Margin:0;line-height:43px;mso-line-height-rule:exactly;font-family:Poppins, sans-serif;font-size:36px;font-style:normal;font-weight:bold;color:#022B3A">
                                                                       <strong>${id}</strong>
-                                                                  </h1>
+                                                                  </p>
                                                               </td>
                                                           </tr>
                                                       </table>
@@ -1366,7 +1362,7 @@ ${style}
 
 </html>`,
 
-  thankYouText: (id) => `<!DOCTYPE html
+    thankYouText: (id) => `<!DOCTYPE html
   PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office" lang="en"
   style="font-family:arial, 'helvetica neue', helvetica, sans-serif">
@@ -1457,22 +1453,34 @@ ${style}
                                                           <tr>
                                                               <td align="center"
                                                                   style="Margin:0;padding-top:10px;padding-bottom:10px;padding-left:20px;padding-right:20px">
-                                                                  <h1
-                                                                      style="Margin:0;line-height:43px;mso-line-height-rule:exactly;font-family:Poppins, sans-serif;font-size:36px;font-style:normal;font-weight:bold;color:#022B3A">
-                                                                      Thank you for purchasing from us.</h1>
+                                                                  <h3 >Thank you for purchasing from us.</h3>
                                                               </td>
                                                           </tr>
                                                           <tr>
-                                                              <td align="center"
-                                                                  style="Margin:0;padding-top:10px;padding-bottom:20px;padding-left:20px;padding-right:20px">
+                                                              <td>
                                                                   <p
                                                                       style="Margin:0;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;font-family:Poppins, sans-serif;line-height:21px;color:#022B3A;font-size:14px">
-                                                                      We look forward to serving you in the future..
+                                                                      We look forward to serving you in the future.👇🏾Attached to this a copy of your voucher.
                                                                   </p>
-                                                                  <p> Attached to this a copy of your voucher.👇🏾 </p>
-
+                                                                
                                                               </td>
                                                           </tr>
+                                                          <tr style="background-color: #f0f0f4;">
+                                                        
+                                                          <td align="center"
+                                                              style="padding:0;Margin:0;padding-top:15px;padding-bottom:15px">
+                                                              <div>
+                                                              <h3
+                                                          style="Margin:0;line-height:24px;mso-line-height-rule:exactly;font-family:Poppins, sans-serif;font-size:20px;font-style:normal;font-weight:bold;color:#022B3A">
+                                                          Transaction ID:</h3>
+                                                            
+                                                              <p
+                                                                  style="Margin:0;line-height:43px;mso-line-height-rule:exactly;font-family:Poppins, sans-serif;font-size:36px;font-style:normal;font-weight:bold;color:#022B3A">
+                                                                  <strong>${id}</strong>
+                                                              </p>
+                                                              </div>
+                                                          </td>
+                                                      </tr>
                                                       </table>
                                                   </td>
                                               </tr>
@@ -1483,69 +1491,7 @@ ${style}
                           </td>
                       </tr>
                   </table>
-                  <table cellpadding="0" cellspacing="0" class="es-content" align="center"
-                      style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;table-layout:fixed !important;width:100%">
-                      <tr>
-                          <td align="center" style="padding:0;Margin:0">
-                              <table bgcolor="#ffffff" class="es-content-body" align="center" cellpadding="0"
-                                  cellspacing="0"
-                                  style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;background-color:#FFFFFF;width:600px">
-                                  <tr>
-                                      <td align="left" style="padding:20px;Margin:0">
-                                          <!--[if mso]><table style="width:560px" cellpadding="0" cellspacing="0"><tr><td style="width:270px" valign="top"><![endif]-->
-                                          <table cellpadding="0" cellspacing="0" class="es-left" align="left"
-                                              style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;float:left">
-                                              <tr>
-                                                  <td class="es-m-p20b" align="left"
-                                                      style="padding:0;Margin:0;width:270px">
-                                                      <table cellpadding="0" cellspacing="0" width="100%"
-                                                          style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px">
-                                                          <tr>
-                                                              <td align="left" style="padding:0;Margin:0">
-                                                                  <h3
-                                                                      style="Margin:0;line-height:24px;mso-line-height-rule:exactly;font-family:Poppins, sans-serif;font-size:20px;font-style:normal;font-weight:bold;color:#022B3A">
-                                                                      Transaction ID:</h3>
-                                                              </td>
-                                                          </tr>
-                                                      </table>
-                                                  </td>
-                                              </tr>
-                                          </table>
-                                          <!--[if mso]></td><td style="width:20px"></td><td style="width:270px" valign="top"><![endif]-->
-                                          <table cellpadding="0" cellspacing="0" class="es-right" align="right"
-                                              style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;float:right">
-                                              <tr>
-                                                  <td align="left" style="padding:0;Margin:0;width:270px">
-                                                      <table cellpadding="0" cellspacing="0" width="100%"
-                                                          style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px">
-
-                                                      </table>
-                                                  </td>
-                                              </tr>
-                                          </table><!--[if mso]></td></tr></table><![endif]-->
-                                      </td>
-                                  </tr>
-                                  <tr>
-                                      <td align="left"
-                                          style="padding:0;Margin:0;padding-bottom:20px;padding-left:20px;padding-right:20px">
-                                          <table cellpadding="0" cellspacing="0" width="100%"
-                                              style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px">
-                                              <tr>
-                                                  <td align="center" valign="top"
-                                                      style="padding:0;Margin:0;width:560px">
-                                                      <table cellpadding="0" cellspacing="0" width="100%"
-                                                          style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:separate;border-spacing:0px;border-radius:5px;background-color:#f2fcfe"
-                                                          bgcolor="">
-                                                          <tr style="background-color: #f0f0f4;">
-                                                              <td align="center"
-                                                                  style="padding:0;Margin:0;padding-top:15px;padding-bottom:15px">
-                                                                  <h1
-                                                                      style="Margin:0;line-height:43px;mso-line-height-rule:exactly;font-family:Poppins, sans-serif;font-size:36px;font-style:normal;font-weight:bold;color:#022B3A">
-                                                                      <strong>${id}</strong>
-                                                                  </h1>
-                                                              </td>
-                                                          </tr>
-                                                      </table>
+                
                                                   </td>
                                               </tr>
                                               <tr>
@@ -1884,7 +1830,7 @@ ${style}
 </body>
 
 </html>`,
-  ecgText: (id, message) => `
+    ecgText: (id, message) => `
   <!DOCTYPE html
     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office" lang="en"
@@ -1967,18 +1913,31 @@ ${style}
                                                             <tr>
                                                                 <td align="center"
                                                                     style="Margin:0;padding-top:10px;padding-bottom:10px;padding-left:20px;padding-right:20px">
-                                                                    <h1
+                                                                    <h3
                                                                         style="Margin:0;line-height:43px;mso-line-height-rule:exactly;font-family:Poppins, sans-serif;font-size:36px;font-style:normal;font-weight:bold;color:#022B3A">
-                                                                        Thank you for purchasing from us.</h1>
+                                                                        Thank you for purchasing from us.</h3>
                                                                 </td>
                                                             </tr>
                                                             <tr>
-                                                                <td align="center"
-                                                                    style="Margin:0;padding-top:10px;padding-bottom:20px;padding-left:20px;padding-right:20px">
-                                                                    <p> ${message} </p>
-                                                                   
+                                                                <td >
+                                                                    <div> ${message} </div>                                                                
 
                                                                 </td>
+                                                                </tr>
+                                                                <tr>
+                                                                <td align="center"
+                                                                style="padding:0;Margin:0;padding-top:15px;padding-bottom:15px">
+                                                                <div>
+                                                                <h3
+                                                            style="Margin:0;line-height:24px;mso-line-height-rule:exactly;font-family:Poppins, sans-serif;font-size:20px;font-style:normal;font-weight:bold;color:#022B3A">
+                                                            Transaction ID:</h3>
+                                                              
+                                                                <p
+                                                                    style="Margin:0;line-height:43px;mso-line-height-rule:exactly;font-family:Poppins, sans-serif;font-size:36px;font-style:normal;font-weight:bold;color:#022B3A">
+                                                                    <strong>${id}</strong>
+                                                                </p>
+                                                                </div>
+                                                            </td>
                                                             </tr>
                                                         </table>
                                                     </td>
@@ -1992,69 +1951,13 @@ ${style}
                     </table>
                     <table cellpadding="0" cellspacing="0" class="es-content" align="center"
                         style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;table-layout:fixed !important;width:100%">
-                        <tr>
-                            <td align="center" style="padding:0;Margin:0">
-                                <table bgcolor="#ffffff" class="es-content-body" align="center" cellpadding="0"
-                                    cellspacing="0"
-                                    style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;background-color:#FFFFFF;width:600px">
-                                    <tr>
-                                        <td align="left" style="padding:20px;Margin:0">
-                                            <!--[if mso]><table style="width:560px" cellpadding="0" cellspacing="0"><tr><td style="width:270px" valign="top"><![endif]-->
-                                            <table cellpadding="0" cellspacing="0" class="es-left" align="left"
-                                                style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;float:left">
-                                                <tr>
-                                                    <td class="es-m-p20b" align="left"
-                                                        style="padding:0;Margin:0;width:270px">
-                                                        <table cellpadding="0" cellspacing="0" width="100%"
-                                                            style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px">
-                                                            <tr>
-                                                                <td align="left" style="padding:0;Margin:0">
-                                                                    <h3
-                                                                        style="Margin:0;line-height:24px;mso-line-height-rule:exactly;font-family:Poppins, sans-serif;font-size:20px;font-style:normal;font-weight:bold;color:#022B3A">
-                                                                        Transaction ID:</h3>
-                                                                </td>
-                                                            </tr>
-                                                        </table>
-                                                    </td>
-                                                </tr>
-                                            </table>
-                                            <!--[if mso]></td><td style="width:20px"></td><td style="width:270px" valign="top"><![endif]-->
-                                            <table cellpadding="0" cellspacing="0" class="es-right" align="right"
-                                                style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;float:right">
-                                                <tr>
-                                                    <td align="left" style="padding:0;Margin:0;width:270px">
-                                                        <table cellpadding="0" cellspacing="0" width="100%"
-                                                            style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px">
-
-                                                        </table>
-                                                    </td>
-                                                </tr>
-                                            </table><!--[if mso]></td></tr></table><![endif]-->
-                                        </td>
-                                    </tr>
+                     
                                     <tr>
                                         <td align="left"
                                             style="padding:0;Margin:0;padding-bottom:20px;padding-left:20px;padding-right:20px">
                                             <table cellpadding="0" cellspacing="0" width="100%"
                                                 style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px">
-                                                <tr>
-                                                    <td align="center" valign="top"
-                                                        style="padding:0;Margin:0;width:560px">
-                                                        <table cellpadding="0" cellspacing="0" width="100%"
-                                                            style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:separate;border-spacing:0px;border-radius:5px;background-color:#f2fcfe"
-                                                            bgcolor="">
-                                                            <tr style="background-color: #f0f0f4;">
-                                                                <td align="center"
-                                                                    style="padding:0;Margin:0;padding-top:15px;padding-bottom:15px">
-                                                                    <h1
-                                                                        style="Margin:0;line-height:43px;mso-line-height-rule:exactly;font-family:Poppins, sans-serif;font-size:36px;font-style:normal;font-weight:bold;color:#022B3A">
-                                                                        <strong>${id}</strong>
-                                                                    </h1>
-                                                                </td>
-                                                            </tr>
-                                                        </table>
-                                                    </td>
-                                                </tr>
+                                               
                                                 <tr>
                                                     <td align="center" valign="top"
                                                         style="padding:0;Margin:0;width:560px">

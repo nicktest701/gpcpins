@@ -3,7 +3,7 @@ const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { randomUUID } = require("crypto");
+const generateId = require("../config/generateId");
 const { otpGen, customOtpGen } = require("otp-gen-agent");
 const multer = require("multer");
 const moment = require("moment");
@@ -52,7 +52,7 @@ const Storage = multer.diskStorage({
   filename: function (req, file, cb) {
     const ext = file?.mimetype?.split("/")[1];
 
-    cb(null, `${randomUUID()}.${ext}`);
+    cb(null, `${generateId()}.${ext}`);
   },
 });
 
@@ -314,7 +314,7 @@ router.post(
     let user = await knex("users").select("*").where("email", email).limit(1);
 
     if (_.isEmpty(user[0])) {
-      req.body._id = randomUUID();
+      req.body._id = generateId();
       req.body.role = process.env.USER_ID;
       req.body.email = email;
 
@@ -389,7 +389,7 @@ router.post(
           .where("email", email)
           .limit(1);
       }
-
+     
       if (type === "phone") {
         user = await transx("users")
           .select("email", "phonenumber", "active", "isEnabled")
@@ -419,7 +419,7 @@ router.post(
       }
 
       await transx("tokens").insert({
-        _id: randomUUID(),
+        _id: generateId(),
         token,
         email: email,
       });
@@ -476,7 +476,7 @@ router.post(
 
     if (_.isEmpty(user)) {
       const info = {
-        _id: randomUUID(),
+        _id: generateId(),
         name: decodedUser?.name,
         firstname: decodedUser?.given_name,
         lastname: decodedUser?.family_name,
@@ -488,11 +488,16 @@ router.post(
       };
 
       await knex("users").insert(info);
+
       user_key = await customOtpGen({ length: 4 });
+
+      const hashedPin =await bcrypt.hash(user_key, 10)
+
+
       await knex("user_wallets").insert({
-        _id: randomUUID(),
+        _id: generateId(),
         user_id: info?._id,
-        user_key,
+        user_key: hashedPin,
       });
       register = true;
     } else {
@@ -613,17 +618,19 @@ router.post(
       .limit(1);
 
     if (_.isEmpty(user)) {
-      req.body._id = randomUUID();
+      req.body._id = generateId();
       req.body.role = process.env.USER_ID;
       req.body.active = true;
 
       await knex("users").insert(req.body);
 
       user_key = await customOtpGen({ length: 4 });
+      const hashedPin =await bcrypt.hash(user_key, 10)
+
       await knex("user_wallets").insert({
-        _id: randomUUID(),
+        _id: generateId(),
         user_id: req.body?._id,
-        user_key,
+        user_key: hashedPin,
       });
       register = true;
     } else {
@@ -761,7 +768,7 @@ router.post(
           .json("An account with this telephone number already exists!");
       }
 
-      newUser._id = randomUUID();
+      newUser._id = generateId();
       newUser.role = process.env.USER_ID;
 
       const user = await transx("users").insert(newUser);
@@ -774,10 +781,12 @@ router.post(
         .where("_id", newUser._id);
 
       const user_key = await customOtpGen({ length: 4 });
+      const hashedPin = await bcrypt.hash(user_key, 10)
+
       await transx("user_wallets").insert({
-        _id: randomUUID(),
+        _id: generateId(),
         user_id: newUser._id,
-        user_key,
+        user_key: hashedPin,
       });
 
       const token = await otpGen();
@@ -786,7 +795,7 @@ router.post(
       }
 
       await transx("tokens").insert({
-        _id: randomUUID(),
+        _id: generateId(),
         token,
         email: userData[0]?.phonenumber,
       });
@@ -813,7 +822,8 @@ router.post(
       await transx.commit();
     } catch (error) {
       await transx.rollback();
-      return res.status(500).json("An error has occurred");
+      console.log(error)
+      return res.status(500).json("An error has occurred!");
     }
 
     res.sendStatus(201);
@@ -1058,15 +1068,14 @@ router.put(
 
 
     if (register) {
-      const userKey = await knex("user_wallets")
-        .select("user_key")
-        .where("user_id", id)
-        .limit(1);
+      // const userKey = await knex("user_wallets")
+      //   .select("user_key")
+      //   .where("user_id", id)
+      //   .limit(1);
 
 
       await sendOTPSMS(
-        `Welcome to GPC,
-Your default wallet pin is ${userKey[0]?.user_key} .Your are recommended to change it at the wallet page of your account when you log into your account.Thank You!`,
+        `Welcome to GPC.You are recommended to setup your wallet pin at the wallet page of your account when you log into your account.Thank You!`,
         user[0]?.phonenumber
       );
 
@@ -1075,7 +1084,7 @@ Your default wallet pin is ${userKey[0]?.user_key} .Your are recommended to chan
 <h2 style="color: #333333;">Important: Profile Update Notification</h2>
 <p>Dear ${user[0]?.name || "Customer"} ,</p>
 <p> Welcome to GPC</p>
-<p>Your default wallet pin is ${userKey[0]?.user_key}.Your are recommended to change it at the wallet page of your account when you log into your account.</p>
+<p>You are recommended to setup your wallet pin at the wallet page of your account when you log into your account.</p>
 <p>Thank you</p>
 
 <p>Best regards,</p>
@@ -1327,25 +1336,26 @@ router.post(
       </div>
       </div>`;
 
-      const message = `A request has been placed by '${user[0]?.name
-        }' to top up wallet balance.
-      Name: ${user[0]?.name}
-      Email: ${user[0]?.email}
-      Telephone Number: ${user[0]?.phonenumber} 
+      const message = `A request has been placed by ${user[0]?.name
+        } to top up wallet balance.
+      Name: ${user[0]?.name},
+      Email: ${user[0]?.email},
+      Telephone Number: ${user[0]?.phonenumber}, 
       Top Up Amount: ${currencyFormatter(req?.body?.amount)}
       `;
 
       await knex("notifications").insert({
-        _id: randomUUID(),
+        _id: generateId(),
         title: "Wallet top up request",
         message,
       });
 
-      await sendEMail(
-        process.env.MAIL_CLIENT_USER,
-        mailTextShell(body),
-        "Wallet Top Up Request"
-      );
+      // await sendEMail(
+      //   process.env.MAIL_CLIENT_USER,
+      //   mailTextShell(body),
+      //   "Wallet Top Up Request"
+      // );
+      
 
       res.status(200).json("Request Sent!");
     } catch (error) {
@@ -1365,9 +1375,11 @@ router.put(
     const userId = isAdmin ? _id : id;
     const emailAddress = isAdmin ? userEmail : email;
 
+    const hashedPin = await bcrypt.hash(pin, 10)
+
     const wallet = await knex("user_wallets")
       .where("user_id", userId)
-      .update("user_key", pin);
+      .update("user_key", hashedPin);
 
     if (wallet !== 1) {
       return res

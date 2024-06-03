@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const { randomUUID, randomBytes } = require("crypto");
+const {  randomBytes } = require("crypto");
 const pLimit = require("p-limit");
 const fs = require("fs");
 const multer = require("multer");
@@ -10,7 +10,7 @@ const moment = require("moment");
 const { rateLimit } = require("express-rate-limit");
 const processVouchers = require("../config/processVouchers");
 const asyncHandler = require("express-async-handler");
-const puppeteer = require("puppeteer");
+const bcrypt = require("bcryptjs");
 //functons
 const {
   sendMoney,
@@ -31,11 +31,11 @@ const generateQRCode = require("../config/qrcode");
 const currencyFormatter = require("../config/currencyFormatter");
 const sendElectricityMail = require("../config/ecgMail");
 const {
-  generatePrepaidReceipt,
+
   generateAgentTransactionRport,
 } = require("../config/generatePDF");
 const {
-  generatePrepaidTemplate,
+
   generateAgentTransactionTemplate,
 } = require("../config/generateVoucherTemplate");
 const verifyAdmin = require("../middlewares/verifyAdmin");
@@ -49,9 +49,7 @@ const knex = require("../db/knex");
 const { verifyToken } = require("../middlewares/verifyToken");
 const { mailTextShell } = require("../config/mailText");
 const { MTN, VODAFONE, AIRTELTIGO } = require("../config/bundleList");
-const { sendWhatsappMessage } = require("../config/sendWhatsapp");
-const { getInternationalMobileFormat } = require("../config/PhoneCode");
-const { sendBirthdayWishes } = require("../config/cronMessages");
+const generateId = require("../config/generateId");
 
 
 
@@ -86,8 +84,8 @@ const ALLOWED_CATEGORIES = [
 
 const rlimit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 15, // 5 requests per windowMs
-  message: "Too many requests!. please try again later.",
+  max: 15, // 15 requests per windowMs
+  message: "Too many requests! Please try again later.",
 });
 
 const limit = pLimit(3);
@@ -222,7 +220,7 @@ router.get(
           });
 
         await knex("user_notifications").insert({
-          _id: randomUUID(),
+          _id: generateId(),
           user_id: userID,
           type: "voucher",
           title: modifiedVoucher[0].voucherType + " Voucher",
@@ -529,7 +527,7 @@ router.get(
           });
 
         await knex("user_notifications").insert({
-          _id: randomUUID(),
+          _id: generateId(),
           user_id: userID,
           type: "ticket",
           title: "ticket",
@@ -764,7 +762,7 @@ ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.g
         }
 
         if (type === 'ticket' && confirm) {
-           const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
+          const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
           // console.log(selectedVouchers)
 
           const smsData = selectedVouchers.map((voucher) => {
@@ -836,7 +834,7 @@ ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.g
           });
 
           await knex("user_notifications").insert({
-            _id: randomUUID(),
+            _id: generateId(),
             user_id: userID,
             type: "bundle",
             title: "Data Bundle Transfer",
@@ -899,7 +897,7 @@ ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.g
           });
 
           await knex("user_notifications").insert({
-            _id: randomUUID(),
+            _id: generateId(),
             user_id: userID,
             type: "airtime",
             title: "Airtime Transfer",
@@ -938,7 +936,7 @@ ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.g
   .`;
 
       await knex("notifications").insert({
-        _id: randomUUID(),
+        _id: generateId(),
         title: "Prepaid Units",
         message,
       });
@@ -1050,13 +1048,22 @@ router.post(
         .select("_id", "user_key", "active")
         .where({
           user_id: id,
-          user_key: token,
+
         })
         .limit(1);
 
       if (_.isEmpty(userWallet)) {
         return res.status(401).json("Invalid pin!");
       }
+
+      const isPinValid = await bcrypt.compare(token, userWallet[0]?.user_key)
+
+
+      if (!isPinValid) {
+        return res.status(401).json("Invalid pin!");
+      }
+
+
     }
 
     if (!category || !ALLOWED_CATEGORIES.includes(category)) {
@@ -1122,7 +1129,7 @@ router.post(
     const transx = await knex.transaction();
 
     try {
-      const transaction_id = randomUUID();
+      const transaction_id =generateId();
       const transaction_reference = randomBytes(24).toString("hex");
       const orderNo = randomBytes(20).toString("hex");
       let transactionInfo = {};
@@ -1151,7 +1158,7 @@ router.post(
 
         await transx("user_wallet_transactions")
           .insert({
-            _id: randomUUID(),
+            _id: generateId(),
             user_id: id,
             issuer: id,
             type: 'purchase',
@@ -1366,11 +1373,17 @@ router.post(
         .select("_id", "user_key", "active")
         .where({
           user_id: id,
-          user_key: token,
+
         })
         .limit(1);
 
       if (_.isEmpty(userWallet)) {
+        return res.status(401).json("Invalid pin!");
+      }
+
+      const isPinValid = await bcrypt.compare(token, userWallet[0]?.user_key)
+
+      if (!isPinValid) {
         return res.status(401).json("Invalid pin!");
       }
     }
@@ -1379,7 +1392,7 @@ router.post(
 
     try {
       const transaction_reference = randomBytes(24).toString("hex");
-      const transaction_id = randomUUID();
+      const transaction_id = generateId();
       let transactionInfo = {};
 
       // Check if the user has a wallet account
@@ -1405,7 +1418,7 @@ router.post(
 
         await tranx("user_wallet_transactions")
           .insert({
-            _id: randomUUID(),
+            _id: generateId(),
             user_id: id,
             issuer: id,
             type: 'purchase',
@@ -1558,7 +1571,7 @@ router.put(
         });
 
         // await knex("user_notifications").insert({
-        //   _id: randomUUID(),
+        //   _id: generateId(),
         //   user_id: userID,
         //   type: "airtime",
         //   title: "Airtime Transfer",
@@ -1626,20 +1639,27 @@ router.post(
         .select("_id", "user_key", "active")
         .where({
           user_id: id,
-          user_key: token,
         })
         .limit(1);
 
       if (_.isEmpty(userWallet)) {
         return res.status(401).json("Invalid pin!");
       }
+
+      const isPinValid = await bcrypt.compare(token, userWallet[0]?.user_key)
+
+
+      if (!isPinValid) {
+        return res.status(401).json("Invalid pin!");
+      }
+
     }
 
     const tranx = await knex.transaction();
 
     try {
       const transaction_reference = randomBytes(24).toString("hex");
-      const transaction_id = randomUUID();
+      const transaction_id = generateId();
       let transactionInfo = {};
 
       // Check if the user has a wallet account
@@ -1666,7 +1686,7 @@ router.post(
 
         await tranx("user_wallet_transactions")
           .insert({
-            _id: randomUUID(),
+            _id: generateId(),
             user_id: id,
             issuer: id,
             type: 'purchase',
@@ -1891,6 +1911,7 @@ router.get(
         _id: transaction?._id,
         paymentId: transaction?.paymentId,
         active: transaction?.active,
+        spn: transaction?.spn,
         email: transaction?.email,
         mobileNo: transaction?.mobileNo,
         year: transaction?.year,
@@ -2026,6 +2047,7 @@ router.get(
         mode: transaction?.mode,
         charges: transaction?.charges,
         topup: transaction?.topup,
+        amount: transaction?.amount,
         status: transaction?.status,
         isProcessed: Boolean(transaction?.processed),
         createdAt: transaction?.createdAt,
@@ -2037,9 +2059,9 @@ router.get(
           name: transaction?.name,
           type: transaction?.type,
           district: transaction?.district,
-          address: transaction?.address,
-          geoCode: transaction?.geoCode,
-          accountNumber: transaction?.accountNumber,
+          address: transaction?.address, spn: transaction?.spn,
+          // geoCode: transaction?.geoCode,
+          // accountNumber: transaction?.accountNumber,
         },
       };
     });
@@ -2063,24 +2085,30 @@ router.post(
         .select("_id", "user_key", "active")
         .where({
           user_id: id,
-          user_key: token,
         })
         .limit(1);
 
       if (_.isEmpty(userWallet)) {
         return res.status(401).json("Invalid pin!");
       }
+
+      const isPinValid = await bcrypt.compare(token, userWallet[0]?.user_key)
+
+      if (!isPinValid) {
+        return res.status(401).json("Invalid pin!");
+      }
+
     }
 
     const transx = await knex.transaction();
 
-    let meterId = randomUUID();
+    let meterId = generateId();
     let newMeter;
     if (!isValidUUID2(meter)) {
       newMeter = {
         _id: meterId,
         ...meter,
-        user: id ?? randomUUID(),
+        user: id ?? generateId(),
       };
       await transx("meters").insert(newMeter);
     } else {
@@ -2089,7 +2117,7 @@ router.post(
 
     try {
       // Call the API to create a transaction
-      const transaction_id = randomUUID();
+      const transaction_id = generateId();
       const transaction_reference = randomBytes(24).toString("hex");
       let transactionInfo = {};
 
@@ -2116,7 +2144,7 @@ router.post(
 
         await transx("user_wallet_transactions")
           .insert({
-            _id: randomUUID(),
+            _id: generateId(),
             user_id: id,
             issuer: id,
             type: 'purchase',
@@ -2315,7 +2343,7 @@ router.put(
         _id: _id,
         status: "completed",
       })
-      .select("_id", 'paymentId', 'email', 'mobileNo', 'info', 'topup', 'charges', 'amount')
+      .select("_id", "number", "name", 'paymentId', "spn", 'email', 'mobileNo', 'info', 'topup', 'charges', 'amount')
       .limit(1);
 
     if (!transactions[0]) {
@@ -2329,9 +2357,12 @@ router.put(
     const paymentInfo = JSON.parse(transactions[0]?.info);
     const meterInfo = {
       id: transactions[0]?._id,
+      number: transactions[0]?.number,
+      name: transactions[0]?.name,
       paymentId: transactions[0]?.paymentId,
       email: paymentInfo?.email,
       mobileNo: paymentInfo?.mobileNo,
+      spn: paymentInfo?.spn,
       orderNo: paymentInfo?.orderNo,
       topup: currencyFormatter(transactions[0]?.topup),
       charges: currencyFormatter(transactions[0]?.charges),
@@ -2358,7 +2389,7 @@ router.put(
     await transx.commit();
 
     await sendSMS(
-      `You request to buy prepaid units has being completed.Transaction Details:Order No.:${meterInfo?.paymentId},-Token:${meterInfo?.orderNo},-Amount Paid:${meterInfo?.amount}.`,
+      `You request to buy prepaid units has being completed.Transaction Details:Order No.:${meterInfo?.paymentId},-Token:${meterInfo?.orderNo},Meter No:${meterInfo?.number},Meter Name:${meterInfo?.name}-Amount Paid:${meterInfo?.amount}.`,
       paymentInfo?.mobileNo
     );
 
@@ -2396,7 +2427,7 @@ router.put(
 
     if (downloadLink !== "") {
       await trans("user_notifications").insert({
-        _id: randomUUID(),
+        _id: generateId(),
         user_id: transactions[0]?.userID,
         type: "prepaid",
         title: "Prepaid Units",
@@ -2407,7 +2438,7 @@ router.put(
     } else {
 
       await trans("user_notifications").insert({
-        _id: randomUUID(),
+        _id: generateId(),
         user_id: transactions[0]?.userID,
         type: "prepaid",
         title: "Prepaid Units",
@@ -2421,7 +2452,7 @@ router.put(
 
 
     limit(() =>
-      sendElectricityMail(_id, paymentInfo?.email, transactions[0]?.status, url)
+      sendElectricityMail(_id, paymentInfo?.email, transactions[0]?.status, url, meterInfo)
     );
 
 

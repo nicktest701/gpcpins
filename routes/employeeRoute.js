@@ -1,13 +1,13 @@
 const router = require("express").Router();
 const asyncHandler = require("express-async-handler");
-const { randomUUID, randomBytes } = require("crypto");
+const { randomBytes } = require("crypto");
 const _ = require("lodash");
 const multer = require("multer");
 
 const sendMail = require("../config/sendEmail");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const { verifyToken } = require("../middlewares/verifyToken");
-
+const generateId = require("../config/generateId");
 //model
 
 const { mailTextShell } = require("../config/mailText");
@@ -24,7 +24,7 @@ const Storage = multer.diskStorage({
   filename: function (req, file, cb) {
     const ext = file?.originalname?.split(".")[1];
 
-    cb(null, `${randomUUID()}.${ext}`);
+    cb(null, `${generateId()}.${ext}`);
   },
 });
 
@@ -166,7 +166,7 @@ router.post(
       newEmployee.profile = url;
     }
 
-    const _id = randomUUID();
+    const _id = generateId();
     const employee = await transx("employees").insert({
       _id,
       ...newEmployee,
@@ -180,7 +180,7 @@ router.post(
     const token = randomBytes(32).toString("hex");
 
     const codeInfo = {
-      _id: randomUUID(),
+      _id: generateId(),
       token,
       email: newEmployee?.email,
     };
@@ -329,7 +329,7 @@ router.put(
     const token = randomBytes(32).toString("hex");
 
     const codeInfo = {
-      _id: randomUUID(),
+      _id: generateId(),
       token,
       email,
     };

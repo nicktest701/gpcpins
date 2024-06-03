@@ -1,15 +1,15 @@
 const router = require("express").Router();
 const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
-const { randomUUID } = require("crypto");
+const generateId = require("../config/generateId");
 
 //model
 
 const { isValidUUID2 } = require("../config/validation");
 
 const knex = require("../db/knex");
-const { verifyToken } = require("../middlewares/verifyToken");
 const verifyAdmin = require("../middlewares/verifyAdmin");
+
 
 router.get(
   "/",
@@ -36,7 +36,6 @@ router.get(
 
 router.get(
   "/all",
-  verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const meters = await knex("meters").select("*");
@@ -90,7 +89,7 @@ router.post(
     }
 
     const meter = await knex("meters").insert({
-      _id: randomUUID(),
+      _id: generateId(),
       ...newMeter,
     });
 

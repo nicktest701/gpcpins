@@ -4,7 +4,7 @@ const _ = require("lodash");
 const crypto = require("crypto");
 const xhub = require("express-x-hub");
 const sendEMail = require("../config/sendEmail");
-const { randomUUID } = require("crypto");
+const generateId = require("../config/generateId");
 const { mailTextShell } = require("../config/mailText");
 
 //model
@@ -34,7 +34,7 @@ router.get(
     const messages = await knex("messages")
       .select("_id", "body as message", "email as title", "createdAt")
       .orderBy("createdAt", "desc");
-    // .limit(15);
+   
 
     res.status(200).json(messages);
   })
@@ -64,7 +64,7 @@ router.post(
     const newMessage = req.body;
 
     const message = await knex("messages").insert({
-      _id: randomUUID(),
+      _id: generateId(),
       ...newMessage,
     });
 

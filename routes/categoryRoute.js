@@ -2,13 +2,12 @@ const router = require("express").Router();
 const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
 const moment = require("moment");
-const { randomUUID } = require("crypto");
 const { rateLimit } = require("express-rate-limit");
 const { verifyToken } = require("../middlewares/verifyToken");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const { isValidUUID2 } = require("../config/validation");
 const knex = require("../db/knex");
-const sendMoney = require("../config/sendMoney");
+const generateId = require("../config/generateId");
 
 const ALLOWED_CATEGORIES = [
   "waec",
@@ -172,6 +171,7 @@ router.get(
     const categories = await knex("categories")
       .select("*")
       .where({ active: 1 });
+
     if (_.isEmpty(categories)) {
       return res.status(200).json([]);
     }
@@ -185,7 +185,7 @@ router.get(
     res.status(200).json(modifiedCategories);
   })
 );
-//GET all categories
+
 
 //GET all categories
 router.get(
@@ -203,29 +203,7 @@ router.get(
   })
 );
 
-//GET all categories
-// @route   GET api/categories/money
-router.get(
-  "/money",
-  asyncHandler(async (req, res) => {
-    const payment = {
-      name: "Nana Akwasi",
-      phonenumber: "+233543772591",
-      email: "nicktest701@gmail.com",
-      amount: 0.1,
-      provider: "mtn-gh",
-      reference: "MTN1234567890",
-    };
 
-    try {
-      const response = await sendMoney(payment, "p");
-
-      return res.status(200).json(response);
-    } catch (error) {
-      return res.status(500).send({ error: error?.message });
-    }
-  })
-);
 
 //GET BUS BY DESTINATION
 router.get(
@@ -333,7 +311,7 @@ router.post(
     }
 
     const modifiedCategory = {
-      _id: randomUUID(),
+      _id: generateId(),
       ...newCategory,
       details: JSON.stringify(newCategory?.details),
     };
@@ -345,13 +323,13 @@ router.post(
     if (_.isEmpty(category)) {
       return res
         .status(200)
-        .json(`Error occured! Failed to add ${newCategory.category}`);
+        .json(`Error occurred! Failed to add ${newCategory.category}`);
     }
 
     //logs
     await knex("activity_logs").insert({
       employee_id: id,
-      title: `Created a new ${modifiedCategory?.category} category`,
+      title: `Created a new ${modifiedCategory?.category} category.`,
       severity: "info",
     });
 

@@ -2,7 +2,7 @@ const router = require("express").Router();
 const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
 const moment = require("moment");
-const { randomUUID } = require("crypto");
+const generateId = require("../config/generateId");
 const multer = require("multer");
 const pLimit = require("p-limit");
 //model
@@ -58,7 +58,7 @@ const Storage = multer.diskStorage({
   filename: function (req, file, cb) {
     const ext = file?.mimetype?.split("/")[1];
 
-    cb(null, `${randomUUID()}.${ext}`);
+    cb(null, `${generateId()}.${ext}`);
   },
 });
 
@@ -595,7 +595,7 @@ router.post(
         template = await generateHTMLTemplate(transactions, "transactions.ejs");
     }
 
-    const id = randomUUID();
+    const id = generateId();
 
     const result = await generateTransactionReport(
       template,
@@ -1670,7 +1670,7 @@ router.post(
     const sDate = moment(startDate).format("YYYY-MM-DD");
     const eDate = moment(endDate).format("YYYY-MM-DD");
 
-    const id = randomUUID();
+    const id = generateId();
     const template = await generateHTMLTemplate(
       transactions,
       "agent_transactions.ejs"
@@ -1984,7 +1984,7 @@ router.post(
 
 
       await transaction("agent_wallet_transactions").insert({
-        _id: randomUUID(),
+        _id: generateId(),
         agent_id,
         issuer: id,
         type: 'deposit',
@@ -1997,7 +1997,7 @@ router.post(
 
 
       await transaction("agent_notifications").insert({
-        _id: randomUUID(),
+        _id: generateId(),
         agent_id,
         type: "wallet",
         title: "Wallet",
@@ -2057,7 +2057,7 @@ router.get(
         data,
         "wallet_report.ejs"
       );
-      const id = randomUUID();
+      const id = generateId();
 
       const result = await generateTransactionReport(
         walletTemplate,
@@ -2150,7 +2150,7 @@ router.post(
 
 
         await transaction("user_wallet_transactions").insert({
-          _id: randomUUID(),
+          _id: generateId(),
           user_id,
           issuer: id,
           type: 'deposit',
@@ -2176,7 +2176,7 @@ router.post(
           });
 
         await transaction("agent_wallet_transactions").insert({
-          _id: randomUUID(),
+          _id: generateId(),
           agent_id: user_id,
           issuer: id,
           type: 'deposit',
@@ -2192,7 +2192,7 @@ router.post(
 
       if (type === "user") {
         await transaction("user_notifications").insert({
-          _id: randomUUID(),
+          _id: generateId(),
           user_id: user_id,
           type: "wallet",
           title: "Wallet",
@@ -2201,7 +2201,7 @@ router.post(
       }
       if (type === "agent") {
         await transaction("agent_notifications").insert({
-          _id: randomUUID(),
+          _id: generateId(),
           agent_id: user_id,
           type: "wallet",
           title: "Wallet",
@@ -2262,7 +2262,7 @@ router.get(
         data,
         "wallet_report.ejs"
       );
-      const id = randomUUID();
+      const id = generateId();
 
       const result = await generateTransactionReport(
         walletTemplate,

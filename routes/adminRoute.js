@@ -2,7 +2,6 @@ const router = require("express").Router();
 const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
 const bcrypt = require("bcryptjs");
-const { randomUUID } = require("crypto");
 const { otpGen } = require("otp-gen-agent");
 const { signMainToken, signSampleRefreshToken } = require("../config/token");
 const multer = require("multer");
@@ -16,7 +15,6 @@ const {
 const { isValidUUID2 } = require("../config/validation");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const { uploadPhoto } = require("../config/uploadFile");
-const isMobile = require("../config/isMobile");
 const { mailTextShell } = require("../config/mailText");
 
 const limit = rateLimit({
@@ -30,6 +28,7 @@ const { hasTokenExpired } = require("../config/dateConfigs");
 
 const knex = require("../db/knex");
 const { sendOTPSMS } = require("../config/sms");
+const generateId = require("../config/generateId");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -38,28 +37,32 @@ const Storage = multer.diskStorage({
   filename: function (req, file, cb) {
     const ext = file?.mimetype?.split("/")[1];
 
-    cb(null, `${randomUUID()}.${ext}`);
+    cb(null, `${generateId()}.${ext}`);
   },
 });
 
 const Upload = multer({ storage: Storage });
 
+// Define the route for getting all non-admin employees
 router.get(
-  "/",
+  '/',
   verifyToken,
   verifyAdmin,
+  // Handle async errors
   asyncHandler(async (req, res) => {
-    const employees = await knex("employees").select("*").where("isAdmin", 0);
+    // Fetch all non-admin employees from the database
+    const employees = await knex('employees').where({ isAdmin: 0 });
 
-    const modifiedEmployees = employees.map(
-      ({ permissions, password, ...rest }) => {
-        return {
-          permissions: JSON.parse(permissions),
-          ...rest,
-        };
-      }
-    );
+    // Map through the employees and modify the permissions property
+    const modifiedEmployees = employees.map(({ permissions, ...rest }) => {
+      // Parse the permissions string to a JSON object
+      return {
+        ...rest,
+        permissions: JSON.parse(permissions),
+      };
+    });
 
+    // Send the modified employees as a JSON response with a 200 status code
     res.status(200).json(modifiedEmployees);
   })
 );
@@ -129,45 +132,24 @@ router.get(
     const accessToken = signMainToken(updatedEmployee, "30m");
     const refreshToken = signSampleRefreshToken(updatedEmployee, "1h");
 
-    // res.cookie("_SSUID_kyfc", accessToken, {
-    //   maxAge: 1 * 60 * 60 * 1000,
-    //   httpOnly: true,
-    //   path: "/",
-    //   secure: true,
-    //   // domain:
-    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-    //   sameSite: "none",
-    // });
-
-    // res.cookie("_SSUID_X_ayd", refreshToken, {
-    //   maxAge: 90 * 24 * 60 * 60 * 1000,
-    //   httpOnly: true,
-    //   path: "/",
-    //   secure: true,
-    //   // domain:
-    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-    //   sameSite: "none",
-    // });
-
     const hashedToken = await bcrypt.hash(refreshToken, 10);
     await knex("employees").where("_id", id).update({
       token: hashedToken,
     });
 
-    // if (isMobile(req)) {
+
     res.status(200).json({
       refreshToken,
       accessToken,
     });
-    // }
 
-    // res.sendStatus(200);
   })
 );
 
 router.get(
   "/verify-identity",
   verifyToken,
+  verifyAdmin,
   asyncHandler(async (req, res) => {
     const { id } = req.user
     const { nid, dob } = req.query;
@@ -207,7 +189,7 @@ router.get(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    
+
     const { id } = req.user;
     const { code } = req.query;
 
@@ -280,7 +262,7 @@ router.post(
     const token = await otpGen();
 
     await knex("tokens").insert({
-      _id: randomUUID(),
+      _id: generateId(),
       token,
       email: employee[0]?.email,
     });
@@ -434,7 +416,7 @@ router.post(
     //logs
     await knex("activity_logs").insert({
       employee_id: employee[0]?._id,
-      title: "Logged into account",
+      title: "Logged into account.",
       severity: "info",
     });
 
@@ -472,6 +454,7 @@ router.post(
 router.post(
   "/logout",
   verifyToken,
+  verifyAdmin,
   asyncHandler(async (req, res) => {
     const { id } = req.user;
 
@@ -505,6 +488,7 @@ router.post(
 router.put(
   "/",
   verifyToken,
+  verifyAdmin,
   asyncHandler(async (req, res) => {
     const { id } = req.user;
     const { _id, ...rest } = req.body;
@@ -537,7 +521,7 @@ router.put(
     //logs
     await knex("activity_logs").insert({
       employee_id: id,
-      title: "Updated account details",
+      title: "Updated account details.",
       severity: "info",
     });
 
@@ -675,7 +659,7 @@ router.put(
   verifyToken, verifyAdmin,
   asyncHandler(async (req, res) => {
     const { id, oldPassword, password } = req.body;
-  
+
 
     const employeePassword = await knex('employees').select('password').where('_id', id).limit(1);
 
@@ -796,6 +780,7 @@ router.put(
 router.put(
   "/profile",
   verifyToken,
+  verifyAdmin,
   Upload.single("profile"),
   asyncHandler(async (req, res) => {
     const { id } = req.body;
