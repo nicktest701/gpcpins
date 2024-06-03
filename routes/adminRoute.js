@@ -50,14 +50,17 @@ router.get(
   verifyAdmin,
   // Handle async errors
   asyncHandler(async (req, res) => {
+    const { email } = req.user
+
     // Fetch all non-admin employees from the database
-    const employees = await knex('employees').where({ isAdmin: 0 });
+    const employees = await knex('employees').where({ isAdmin: 0 }).whereNot('email', email);
 
     // Map through the employees and modify the permissions property
-    const modifiedEmployees = employees.map(({ permissions, ...rest }) => {
+    const modifiedEmployees = employees.map(({ role, permissions, ...rest }) => {
       // Parse the permissions string to a JSON object
       return {
         ...rest,
+        role: role === process.env.ADMIN_ID ? "Administrator" : "Employee",
         permissions: JSON.parse(permissions),
       };
     });

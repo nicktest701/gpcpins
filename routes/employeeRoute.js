@@ -35,6 +35,8 @@ router.get(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { email } = req.user
+   
     const employees = await knex("employees")
       .select(
         "_id",
@@ -51,8 +53,8 @@ router.get(
         "role",
         "profile",
         "active"
-      )
-      .where("isAdmin", 0);
+      ).where("isAdmin", 0)
+      .whereNot('email', email);
 
     const modifiedEmployees = employees.map(
       ({ role, permissions, ...rest }) => {
@@ -289,11 +291,10 @@ router.put(
     //logs
     await knex("activity_logs").insert({
       employee_id: _id,
-      title: `${
-        Boolean(active) === true
-          ? "Activated an employee account!"
-          : "Disabled an employee account!"
-      }`,
+      title: `${Boolean(active) === true
+        ? "Activated an employee account!"
+        : "Disabled an employee account!"
+        }`,
       severity: "warning",
     });
 
