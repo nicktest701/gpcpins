@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const {  randomBytes } = require("crypto");
+const { randomBytes } = require("crypto");
 const pLimit = require("p-limit");
 const fs = require("fs");
 const multer = require("multer");
@@ -746,14 +746,15 @@ router.get(
         if (type === 'voucher' && confirm) {
           const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
 
-          const smsData = selectedVouchers.map((voucher) => {
+          const smsInfo = selectedVouchers.map((voucher) => {
             return `[${voucher?.pin}--${voucher?.serial}]`;
           });
+          const smsData = await Promise.all([smsInfo])
 
           await sendSMS(
             `${selectedVouchers[0]?.voucherType}  ${detailsInfo?.voucherURL}   
 [Pin--Serial]
-${smsData.join(" ")}
+${smsData.join(" ")},
 ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your vouchers.
 `,
             userInfo?.agentPhoneNumber
@@ -765,14 +766,15 @@ ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.g
           const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
           // console.log(selectedVouchers)
 
-          const smsData = selectedVouchers.map((voucher) => {
+          const smsInfo = selectedVouchers.map((voucher) => {
             return `[${voucher?.type}--${voucher?.serial || voucher?.pin}]`;
           });
+          const smsData = await Promise.all([smsInfo])
 
           await sendSMS(
             `${selectedVouchers[0]?.voucherType}   
 [Seat No./Type--Serial]
-${smsData.join(" ")}  
+${smsData.join(" ")},  
 ${moment(detailsInfo?.date)?.format('dddd,Do MMMM,YYYY')},${moment(detailsInfo?.time).format('hh:mm a')},  
 ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your tickets.
 `,
@@ -1129,7 +1131,7 @@ router.post(
     const transx = await knex.transaction();
 
     try {
-      const transaction_id =generateId();
+      const transaction_id = generateId();
       const transaction_reference = randomBytes(24).toString("hex");
       const orderNo = randomBytes(20).toString("hex");
       let transactionInfo = {};
@@ -1311,7 +1313,9 @@ router.get(
         "airtime_transactions.isProcessed as isProcessed",
         "airtime_transactions.active as active",
         "airtime_transactions.createdAt as createdAt",
-        "airtime_transactions.status as status"
+        "airtime_transactions.updatedAt as updatedAt",
+        "airtime_transactions.status as status",
+        "airtime_transactions.issuer as issuer"
       )
       .where({ "airtime_transactions.status": "completed", type: "bulk" });
 
@@ -1526,7 +1530,7 @@ router.put(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const { id: _id } = req.user;
+    const { id: _id, name } = req.user;
     // const recipient = req.body;
     const id = req.query.id;
 
@@ -1568,6 +1572,7 @@ router.put(
       .then(async (data) => {
         await knex("airtime_transactions").where("_id", id).update({
           isProcessed: 1,
+          issuer: name
         });
 
         // await knex("user_notifications").insert({
@@ -1587,18 +1592,23 @@ router.put(
 
         res.status(200).json(data);
 
-        const balance = await accountBalance();
-        if (Number(balance) < 1000) {
-          const body = `
+
+        if (process.env.NODE_ENV === 'production') {
+
+          const balance = await accountBalance();
+          if (Number(balance) < 1000) {
+            const body = `
 Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.
 Please recharge to avoid any inconveniences.
 Thank you.
           `;
-          await sendEMail(
-            process.env.MAIL_CLIENT_USER,
-            mailTextShell(`<p>${body}</p>`),
-            "LOW TOP UP ACCOUNT BALANCE"
-          );
+            await sendEMail(
+              process.env.MAIL_CLIENT_USER,
+              mailTextShell(`<p>${body}</p>`),
+              "LOW TOP UP ACCOUNT BALANCE"
+            );
+          }
+
         }
       })
       .catch((error) => {
@@ -2003,6 +2013,7 @@ router.get(
         isProcessed: Boolean(transaction?.processed),
         createdAt: transaction?.createdAt,
         updatedAt: transaction?.updatedAt,
+        issuerName: transaction?.issuerName,
         info: JSON.parse(transaction?.info),
         meter: {
           _id: transaction?.meterId,
@@ -2049,6 +2060,7 @@ router.get(
         topup: transaction?.topup,
         amount: transaction?.amount,
         status: transaction?.status,
+        issuerName: transaction?.issuerName,
         isProcessed: Boolean(transaction?.processed),
         createdAt: transaction?.createdAt,
         updatedAt: transaction?.updatedAt,
@@ -2310,7 +2322,7 @@ router.put(
   verifyAdmin,
   Upload.single("receipt"),
   asyncHandler(async (req, res) => {
-    const { id } = req.user;
+    const { id, name } = req.user;
     const { _id, data } = req.body;
     const { meter, meterId, paymentId, info } = JSON.parse(data)
 

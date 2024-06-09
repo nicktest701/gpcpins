@@ -6,7 +6,7 @@ const { getDatesOfLastSevenDates } = require("./dateConfigs");
 const knex = require("../db/knex");
 
 function getRecentTransaction(data, quantity) {
-  const orderedData = _.orderBy(data, "createdAt", "desc");
+  const orderedData = _.orderBy(data, "updatedAt", "desc");
 
   //GET Recent Transactions
   const recentTransaction = _.map(_.take(orderedData, quantity), (item) => {
@@ -18,8 +18,10 @@ function getRecentTransaction(data, quantity) {
         item?.info?.mobileNo ||
         item?.phonenumber,
       amount: item?.info?.amount || item?.amount,
+      issuer: item?.issuer || "N/A",
       domain: item?.info?.domain || item?.domain,
       createdAt: item?.createdAt,
+      updated: item?.updatedAt,
     };
   });
 
@@ -452,7 +454,7 @@ async function getTopSellingProducts(data) {
   return _.orderBy(topVouchers, "count", "desc");
 }
 
- function getRangeTransactions(startDate, endDate, data) {
+function getRangeTransactions(startDate, endDate, data) {
   // console.log(data)
   const sDate = moment(startDate);
   const eDate = moment(endDate);

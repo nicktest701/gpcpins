@@ -91,7 +91,7 @@ router.get(
         "domain as type",
         "isProcessed",
         "status",
-        "createdAt",
+        "createdAt", "updatedAt",
         knex.raw("DATE_FORMAT(createdAt,'%D %M,%Y %r') as modifiedAt")
       )
       .where({
@@ -118,7 +118,7 @@ router.get(
         "domain as type",
         "isProcessed",
         "status",
-        "createdAt",
+        "createdAt", "updatedAt",
         knex.raw("DATE_FORMAT(createdAt,'%D %M,%Y %r') as modifiedAt")
       )
       .where({
@@ -140,7 +140,7 @@ router.get(
         "info",
         "mode",
         "reference",
-        "createdAt",
+        "createdAt", "updatedAt",
         knex.raw("DATE_FORMAT(createdAt,'%D %M,%Y %r') as modifiedAt")
       )
       .where({
@@ -185,6 +185,7 @@ router.get(
         status: transaction?.status,
         modifiedAt: transaction?.modifiedAt,
         createdAt: transaction?.createdAt,
+        updatedAt: transaction?.updatedAt,
         meter: {
           _id: transaction?.meterId,
           number: transaction?.number,
@@ -351,6 +352,7 @@ router.get(
           transaction?.info?.amount ||
           transaction?.info?.paymentDetails?.totalAmount,
         createdAt: transaction?.createdAt,
+        updatedAt: transaction?.updatedAt,
         modifiedAt: transaction?.modifiedAt,
         mode: transaction?.mode,
         status: "completed",
@@ -370,6 +372,7 @@ router.get(
         downloadLink: transaction?.info?.downloadLink,
         amount: transaction?.info?.amount,
         createdAt: transaction?.createdAt,
+        updatedAt: transaction?.updatedAt,
         modifiedAt: transaction?.modifiedAt,
         mode: transaction?.mode,
         status: transaction?.status,
@@ -397,7 +400,7 @@ router.get(
 
     //Bundle
     const bundle_transactions = await knex("bundle_transactions")
-      .select("_id", "info", "amount", "createdAt", "year")
+      .select("_id", "info", "amount", "createdAt", "updatedAt", "year")
       .where({
         year: year,
         status: "completed",
@@ -413,7 +416,7 @@ router.get(
     );
     //Airtime
     const airtime_transactions = await knex("airtime_transactions")
-      .select("_id", "info", "amount", "createdAt", "year")
+      .select("_id", "info", "amount", "createdAt", "updatedAt", "year")
       .where({
         year: year,
         status: "completed",
@@ -430,7 +433,7 @@ router.get(
 
     //Voucher
     const voucher_transactions = await knex("voucher_transactions")
-      .select("_id", "info", "createdAt", "year")
+      .select("_id", "info", "createdAt", "updatedAt", "year")
       .where({
         year: year,
         status: "completed",
@@ -466,6 +469,7 @@ router.get(
         _id: transaction?._id,
         status: transaction?.status,
         createdAt: transaction?.createdAt,
+        updatedAt: transaction?.updatedAt,
         info: JSON.parse(transaction?.info),
         meter: {
           _id: transaction?.meterId,
@@ -725,11 +729,11 @@ router.get(
         "phonenumber",
         "domain",
         "amount",
-        "createdAt",
+        "createdAt", "updatedAt",
         "year"
       )
       .where({ year: year, status: "completed" })
-      .orderBy("createdAt", "desc");
+      .orderBy("updatedAt", "desc");
 
     const bundleTransaction = bundle_transactions.map(({ info, ...rest }) => {
       return {
@@ -747,10 +751,11 @@ router.get(
         "domain",
         "amount",
         "createdAt",
+        "updatedAt",
         "year"
       )
       .where({ year: year, status: "completed" })
-      .orderBy("createdAt", "desc");
+      .orderBy("updatedAt", "desc");
 
     const airtimeTransaction = airtime_transactions.map(({ info, ...rest }) => {
       return {
@@ -761,9 +766,9 @@ router.get(
 
     //Vouchers
     const voucher_transactions = await knex("voucher_transactions")
-      .select("_id", "info", "createdAt", "year")
+      .select("_id", "info", "createdAt", "updatedAt", "year")
       .where({ year: year, status: "completed" })
-      .orderBy("createdAt", "desc");
+      .orderBy("updatedAt", "desc");
 
     const transaction = voucher_transactions.map(({ info, ...rest }) => {
       return {
@@ -774,14 +779,15 @@ router.get(
 
     const prepaid_transactions = await knex("prepaid_transactions")
       .where({ year: year, status: "completed" })
-      .select("_id", "info", "status", "year", "createdAt")
-      .orderBy("createdAt", "desc");
+      .select("_id", "info", "status", "year", "createdAt", "updatedAt")
+      .orderBy("updatedAt", "desc");
 
     const ecgTransaction = prepaid_transactions.map((transaction) => {
       return {
         _id: transaction?._id,
         status: transaction?.status,
         createdAt: transaction?.createdAt,
+        updatedAt: transaction?.updatedAt,
         info: JSON.parse(transaction?.info),
         meter: {
           _id: transaction?.meterId,
@@ -813,7 +819,7 @@ router.get(
         ...getRecentTransaction(airtimeTransaction, 3),
         ...getRecentTransaction(bundleTransaction, 3),
       ],
-      "createdAt",
+      "updatedAt",
       "desc"
     );
 
@@ -882,7 +888,7 @@ router.get(
     } else {
       logs = await knex("activity_logs_view")
         .where({ employeeId: id })
-        .select("title", "createdAt")
+        .select("title", "createdAt", "updatedAt")
         .limit(3)
         .orderBy("createdAt", "desc");
     }
@@ -1071,7 +1077,7 @@ router.get(
 
     const prepaid_transactions = await knex("prepaid_transactions")
       .where({ year: moment().year(), status: "completed" })
-      .select("_id", "info", "status", "processed", "year", "createdAt")
+      .select("_id", "info", "status", "processed", "year", "createdAt", "updatedAt")
       .orderBy("createdAt", "desc");
 
     const transaction = prepaid_transactions.map((transaction) => {
@@ -1080,6 +1086,7 @@ router.get(
         status: transaction?.status,
         isProcessed: transaction?.processed,
         createdAt: transaction?.createdAt,
+        updatedAt: transaction?.updatedAt,
         info: JSON.parse(transaction?.info),
         meter: {
           _id: transaction?.meterId,
@@ -1143,8 +1150,9 @@ router.get(
         "domain",
         "info",
         "status",
+        "issuer",
         "year",
-        "createdAt"
+        "createdAt", "updatedAt"
       )
       .orderBy("createdAt", "desc");
 
@@ -1204,8 +1212,8 @@ router.get(
         "info",
         "status",
         "year",
-        "createdAt"
-      )
+        "createdAt",
+        "updatedAt",)
       .orderBy("createdAt", "desc");
 
     const transaction = bundle_transactions.map(({ info, ...rest }) => {
@@ -1300,6 +1308,7 @@ router.get(
           transaction?.info?.amount ||
           transaction?.info?.paymentDetails?.totalAmount,
         createdAt: transaction?.createdAt,
+        updatedAt: transaction?.updatedAt,
         status: "completed",
       };
     });
@@ -1331,6 +1340,7 @@ router.get(
           charges: transaction?.charges,
           amount: transaction?.amount,
           createdAt: transaction?.createdAt,
+          updatedAt: transaction?.updatedAt,
           status: Boolean(transaction?.processed) ? "compeleted" : "pending",
         };
       }
@@ -1370,7 +1380,7 @@ router.get(
             ...airtime_transactions[0],
             ...bundle_transactions[0],
           ],
-          "createdAt",
+          "createdAt", "updatedAt",
           "desc"
         )
       );
@@ -1560,7 +1570,7 @@ router.get(
       .where({
         "agentID": id, type: 'deposit'
       })
-      .select("_id", "createdAt", "type", 'wallet', "amount", "status", "issuerName")
+      .select("_id", "createdAt", "updatedAt", "type", 'wallet', "amount", "status", "issuerName")
       .orderBy("createdAt", "desc");
 
     res.status(200).json(transactions);
@@ -1722,7 +1732,7 @@ router.get(
         "recipient as phonenumber",
         "type as domain",
         "amount",
-        "createdAt",
+        "createdAt", "updatedAt",
         "year"
       )
       .where({ agent_id: id, type, status: "completed" })
@@ -1783,7 +1793,7 @@ router.get(
         "recipient as phonenumber",
         "type as domain",
         "amount",
-        "createdAt",
+        "createdAt", "updatedAt",
         "year"
       )
       .where({ agent_id: id, year: year, status: "completed" })
@@ -1813,7 +1823,7 @@ router.get(
         ...getRecentTransaction(airtimeTransaction, 3),
         ...getRecentTransaction(bundleTransaction, 3),
       ],
-      "createdAt",
+      "createdAt", "updatedAt",
       "desc"
     );
 
@@ -1884,8 +1894,8 @@ router.get(
         "year",
         "status",
         "agent_id",
-        "createdAt"
-      )
+        "createdAt",
+        "updatedAt",)
       .where({
         year,
         status: "completed",
@@ -2311,7 +2321,7 @@ router.get(
         userID: id,
         type: 'deposit'
       })
-      .select("_id", "createdAt", "type", 'wallet', "amount", "status", "issuerName")
+      .select("_id", "createdAt", "updatedAt", "type", 'wallet', "amount", "status", "issuerName")
       .orderBy("createdAt", "desc");
 
     res.status(200).json(transactions);

@@ -45,7 +45,7 @@ const verifyToken = (req, res, next) => {
         .where("_id", user?.id)
         .limit(1);
     }
-    
+
 
     const isTrue = bcrypt.compare(token, authUser[0]?.token || "");
     if (!isTrue || Boolean(authUser[0]?.isEnabled) === false) {
@@ -63,6 +63,7 @@ const verifyToken = (req, res, next) => {
 
     if (user?.role === process.env.ADMIN_ID) {
       newUser.isAdmin = Boolean(authUser[0]?.isAdmin);
+      newUser.name = `${authUser[0]?.firstname} ${authUser[0]?.lastname}`;
     }
 
     req.user = newUser;
@@ -134,7 +135,7 @@ const verifyRefreshToken = (req, res, next) => {
         .where("_id", user?.id)
         .limit(1);
     }
- 
+
 
     const isTrue = bcrypt.compare(token, authUser[0]?.token || "");
     if (!isTrue || Boolean(authUser[0]?.isEnabled) === false) {
@@ -142,13 +143,22 @@ const verifyRefreshToken = (req, res, next) => {
     }
 
 
-    req.user = {
+
+
+    let newUser = {
       id: authUser[0]?._id,
       role: authUser[0]?.role,
       active: authUser[0]?.active,
       createdAt: authUser[0]?.createdAt,
       email: authUser[0]?.email,
     };
+
+    if (user?.role === process.env.ADMIN_ID) {
+      newUser.isAdmin = Boolean(authUser[0]?.isAdmin);
+      newUser.name = `${authUser[0]?.firstname} ${authUser[0]?.lastname}`;
+    }
+
+    req.user = newUser;
 
     next();
   });
