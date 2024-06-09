@@ -1506,7 +1506,7 @@ router.put(
     if (isAdmin) {
       //logs
       await knex("agent_activity_logs").insert({
-        employee_id: id,
+        agent_id: id,
         title: "Updated an Agent Wallet pin.",
         severity: "info",
       });

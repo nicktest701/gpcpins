@@ -1570,7 +1570,7 @@ router.get(
       .where({
         "agentID": id, type: 'deposit'
       })
-      .select("_id", "createdAt", "updatedAt", "type", 'wallet', "amount", "status", "issuerName")
+      .select("_id", "createdAt", "type", 'wallet', "amount", "status", "issuerName")
       .orderBy("createdAt", "desc");
 
     res.status(200).json(transactions);
@@ -2321,7 +2321,7 @@ router.get(
         userID: id,
         type: 'deposit'
       })
-      .select("_id", "createdAt", "updatedAt", "type", 'wallet', "amount", "status", "issuerName")
+      .select("_id", "createdAt","type", 'wallet', "amount", "status", "issuerName")
       .orderBy("createdAt", "desc");
 
     res.status(200).json(transactions);
