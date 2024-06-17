@@ -349,8 +349,8 @@ router.get(
       role,
     };
 
-    const accessToken = signMainToken(accessData, "30m");
-    const refreshToken = signMainRefreshToken(updatedAgent, "1h");
+    const accessToken = signMainToken(accessData, "1d");
+    const refreshToken = signMainRefreshToken(updatedAgent, "30d");
 
     // res.cookie("_SSUID_kyfc", accessToken, {
     //   maxAge: 1 * 60 * 60 * 1000,
@@ -704,8 +704,8 @@ router.post(
       active: agent[0]?.active,
     };
 
-    const accessToken = signMainToken(accessData, "30m");
-    const refreshToken = signMainRefreshToken(updatedAgent, "1h");
+    const accessToken = signMainToken(accessData, "1d");
+    const refreshToken = signMainRefreshToken(updatedAgent, "30d");
 
     // res.cookie("_SSUID_kyfc", accessToken, {
     //   maxAge: 1 * 60 * 60 * 1000,
@@ -895,8 +895,8 @@ router.post(
       active: agent[0]?.active,
     };
 
-    const accessToken = signMainToken(accessData, "30m");
-    const refreshToken = signMainRefreshToken(updatedAgent, "1h");
+    const accessToken = signMainToken(accessData, "1d");
+    const refreshToken = signMainRefreshToken(updatedAgent, "30d");
 
     // res.cookie("_SSUID_kyfc", accessToken, {
     //   maxAge: 1 * 60 * 60 * 1000,
@@ -1047,7 +1047,7 @@ router.put(
       businessDescription: agent[0]?.business_description,
     };
 
-    const accessToken = signMainToken(accessData, "30m");
+    const accessToken = signMainToken(accessData, "1d");
 
     //logs
     await knex("agent_activity_logs").insert({
@@ -1171,8 +1171,8 @@ router.put(
       active: agent[0]?.active,
     };
 
-    const accessToken = signMainToken(accessData, "30m");
-    const refreshToken = signMainRefreshToken(updatedAgent, "1h");
+    const accessToken = signMainToken(accessData, "1d");
+    const refreshToken = signMainRefreshToken(updatedAgent, "30d");
 
     // res.cookie("_SSUID_kyfc", accessToken, {
     //   maxAge: 1 * 60 * 60 * 1000,

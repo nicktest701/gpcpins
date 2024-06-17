@@ -755,6 +755,7 @@ router.get(
             `${selectedVouchers[0]?.voucherType}  ${detailsInfo?.voucherURL}   
 [Pin--Serial]
 ${smsData.join(" ")},
+
 ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your vouchers.
 `,
             userInfo?.agentPhoneNumber
@@ -775,6 +776,7 @@ ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.g
             `${selectedVouchers[0]?.voucherType}   
 [Seat No./Type--Serial]
 ${smsData.join(" ")},  
+
 ${moment(detailsInfo?.date)?.format('dddd,Do MMMM,YYYY')},${moment(detailsInfo?.time).format('hh:mm a')},  
 ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your tickets.
 `,

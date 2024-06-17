@@ -132,8 +132,8 @@ router.get(
       createdAt,
     };
 
-    const accessToken = signMainToken(updatedEmployee, "30m");
-    const refreshToken = signSampleRefreshToken(updatedEmployee, "1h");
+    const accessToken = signMainToken(updatedEmployee, "1d");
+    const refreshToken = signSampleRefreshToken(updatedEmployee, "30d");
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
     await knex("employees").where("_id", id).update({
@@ -387,8 +387,8 @@ router.post(
       isAdmin: Boolean(employee[0]?.isAdmin),
     };
 
-    const accessToken = signMainToken(updatedEmployee, "30m");
-    const refreshToken = signSampleRefreshToken(updatedEmployee, "1h");
+    const accessToken = signMainToken(updatedEmployee, "1d");
+    const refreshToken = signSampleRefreshToken(updatedEmployee, "30d");
 
     // res.cookie("_SSUID_kyfc", accessToken, {
     //   maxAge: 1 * 60 * 60 * 1000,
@@ -588,8 +588,8 @@ router.put(
       isAdmin: Boolean(employee[0]?.isAdmin),
     };
 
-    const accessToken = signMainToken(updatedEmployee, "30m");
-    const refreshToken = signSampleRefreshToken(updatedEmployee, "1h");
+    const accessToken = signMainToken(updatedEmployee, "1d");
+    const refreshToken = signSampleRefreshToken(updatedEmployee, "30d");
 
     // res.cookie("_SSUID_kyfc", accessToken, {
     //   maxAge: 1 * 60 * 60 * 1000,
@@ -713,8 +713,8 @@ router.put(
       isAdmin: Boolean(employee[0]?.isAdmin),
     };
 
-    const accessToken = signMainToken(updatedEmployee, "30m");
-    const refreshToken = signSampleRefreshToken(updatedEmployee, "1h");
+    const accessToken = signMainToken(updatedEmployee, "1d");
+    const refreshToken = signSampleRefreshToken(updatedEmployee, "30d");
 
     // res.cookie("_SSUID_kyfc", accessToken, {
     //   maxAge: 1 * 60 * 60 * 1000,
