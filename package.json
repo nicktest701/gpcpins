@@ -10,9 +10,12 @@
     "client": "npm run dev --prefix app",
     "admin": "npm run dev --prefix admin",
     "agent": "npm run dev --prefix agent",
+    "scanner": "npm run dev --prefix scanner",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "admin-dev": "concurrently \"npm run server\" \"npm run admin\"",
-    "agent-dev": "concurrently \"npm run server\" \"npm run agent\""
+    "agent-dev": "concurrently \"npm run server\" \"npm run agent\"",
+    "scan-dev": "concurrently \"npm run server\" \"npm run scanner\""
+	
   },
   "engines": {
     "node": ">=18.18.0 <=20.10.0"

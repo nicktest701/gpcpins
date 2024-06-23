@@ -26,6 +26,7 @@ function signSampleRefreshToken(data) {
 function signMainToken(data, expires) {
   return jwt.sign(data, process.env.TOKEN, {
     expiresIn: expires,
+    
   });
 }
 function signMainRefreshToken(data, expires) {

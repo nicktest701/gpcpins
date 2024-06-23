@@ -13,14 +13,14 @@ const {
   verifyRefreshToken,
 } = require("../middlewares/verifyToken");
 const { isValidUUID2 } = require("../config/validation");
-const verifyAdmin = require("../middlewares/verifyAdmin");
+const verifyScanner = require("../middlewares/verifyScanner");
 const { uploadPhoto } = require("../config/uploadFile");
 const { mailTextShell } = require("../config/mailText");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 20, // 5 requests per windowMs
-  message: "Too many requests!. please try again later.",
+  max: 10000, // 5 requests per windowMs
+  message: "Too many requests! Please try again later.",
 });
 
 //model
@@ -43,30 +43,29 @@ const Storage = multer.diskStorage({
 
 const Upload = multer({ storage: Storage });
 
-// Define the route for getting all non-admin employees
+// Define the route for getting all non-scanner verifiers
 router.get(
   '/',
   verifyToken,
-  verifyAdmin,
+  verifyScanner,
   // Handle async errors
   asyncHandler(async (req, res) => {
     const { email } = req.user
 
-    // Fetch all non-admin employees from the database
-    const employees = await knex('employees').where({ isAdmin: 0 }).whereNot('email', email);
+    // Fetch all non-scanner verifiers from the database
+    const verifiers = await knex('verifiers').whereNot('email', email);
 
-    // Map through the employees and modify the permissions property
-    const modifiedEmployees = employees.map(({ role, permissions, ...rest }) => {
+    // Map through the verifiers and modify the permissions property
+    const modifiedVerifiers = verifiers.map(({ role, permissions, ...rest }) => {
       // Parse the permissions string to a JSON object
       return {
         ...rest,
-        role: role === process.env.ADMIN_ID ? "Administrator" : "Employee",
         permissions: JSON.parse(permissions),
       };
     });
 
-    // Send the modified employees as a JSON response with a 200 status code
-    res.status(200).json(modifiedEmployees);
+    // Send the modified verifiers as a JSON response with a 200 status code
+    res.status(200).json(modifiedVerifiers);
   })
 );
 
@@ -77,7 +76,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = req.user;
 
-    const employee = await knex("employees")
+    const verifier = await knex("verifiers")
       .select(
         "_id",
         "firstname",
@@ -95,21 +94,21 @@ router.get(
       .where("_id", id)
       .limit(1);
 
-    if (_.isEmpty(employee) || employee[0]?.active === 0) {
+    if (_.isEmpty(verifier) || verifier[0]?.active === 0) {
       return res.sendStatus(204);
     }
 
     res.status(200).json({
       user: {
-        id: employee[0]?._id,
-        firstname: employee[0]?.firstname,
-        lastname: employee[0]?.lastname,
-        name: employee[0]?.name,
-        email: employee[0]?.email,
-        role: employee[0]?.role,
-        permissions: JSON.parse(employee[0]?.permissions),
-        phonenumber: employee[0]?.phonenumber,
-        profile: employee[0]?.profile,
+        id: verifier[0]?._id,
+        firstname: verifier[0]?.firstname,
+        lastname: verifier[0]?.lastname,
+        name: verifier[0]?.name,
+        email: verifier[0]?.email,
+        role: verifier[0]?.role,
+        permissions: JSON.parse(verifier[0]?.permissions),
+        phonenumber: verifier[0]?.phonenumber,
+        profile: verifier[0]?.profile,
       },
     });
   })
@@ -122,13 +121,22 @@ router.get(
   limit,
   verifyRefreshToken,
   asyncHandler(async (req, res) => {
-    const authEmployee = req.user;
+    const { id, isAdmin, active, role, createdAt } = req.user;
 
-    const accessToken = signMainToken(authEmployee, "24h");
-    const refreshToken = signSampleRefreshToken(authEmployee, "24h");
+    const updatedVerifier = {
+      id,
+      active,
+      role,
+      isAdmin,
+      createdAt,
+    };
+
+    const accessToken = signMainToken(updatedVerifier, "1d");
+    const refreshToken = signSampleRefreshToken(updatedVerifier, "30d");
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
-    await knex("employees").where("_id", authEmployee?.id).update({
+    
+    await knex("verifiers").where("_id", id).update({
       token: hashedToken,
     });
 
@@ -144,22 +152,22 @@ router.get(
 router.get(
   "/verify-identity",
   verifyToken,
-  verifyAdmin,
+  verifyScanner,
   asyncHandler(async (req, res) => {
     const { id } = req.user
     const { nid, dob } = req.query;
 
 
-    const employees = await knex("employees").where({ _id: id })
+    const verifiers = await knex("verifiers").where({ _id: id })
       .select('nid', 'dob', knex.raw("DATE_FORMAT(dob,'%D %M %Y') as dobb"))
       .limit(1);
 
 
-    if (_.isEmpty(employees[0])) {
+    if (_.isEmpty(verifiers[0])) {
       return res.status(400).json('Invalid Request!');
     }
 
-    if (nid && employees[0]?.nid !== nid) {
+    if (nid && verifiers[0]?.nid !== nid) {
 
       return res.status(400).json("Sorry.We couldn't find your National ID.");
     }
@@ -167,7 +175,7 @@ router.get(
     if (dob) {
       const formattedDate = moment(dob).format('Do MMMM YYYY')
 
-      if (employees[0]?.dobb !== formattedDate) {
+      if (verifiers[0]?.dobb !== formattedDate) {
 
         return res.status(400).json("Sorry.We couldn't find your date of birth.");
       }
@@ -182,14 +190,14 @@ router.get(
   "/phonenumber/token",
   limit,
   verifyToken,
-  verifyAdmin,
+  verifyScanner,
   asyncHandler(async (req, res) => {
 
     const { id } = req.user;
     const { code } = req.query;
 
     if (code) {
-      const employeeToken = await knex("verify_tokens")
+      const verifierToken = await knex("verify_tokens")
         .select("_id", "code")
         .where({
           _id: id,
@@ -197,16 +205,16 @@ router.get(
         })
         .limit(1);
 
-      if (_.isEmpty(employeeToken) || Number(code) !== Number(employeeToken[0]?.code)) {
+      if (_.isEmpty(verifierToken) || Number(code) !== Number(verifierToken[0]?.code)) {
         return res.status(400).json("Invalid code.Try again");
       }
     } else {
-      const employee = await knex("employees")
+      const verifier = await knex("verifiers")
         .select("_id", "phonenumber", "active")
         .where("_id", id)
         .limit(1);
 
-      if (_.isEmpty(employee) && !employee[0]?.phonenumber) {
+      if (_.isEmpty(verifier) && !verifier[0]?.phonenumber) {
         return res.status(400).json("Invalid Request");
       }
 
@@ -217,7 +225,7 @@ router.get(
       });
       console.log(code);
 
-      sendOTPSMS(`Your verification code is ${code}.`, employee[0]?.phonenumber);
+      sendOTPSMS(`Your verification code is ${code}.`, verifier[0]?.phonenumber);
     }
 
     res.sendStatus(201);
@@ -225,32 +233,32 @@ router.get(
 );
 
 
-//@GET employee by email
+//@GET verifier by email
 router.post(
   "/login",
   limit,
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
-    const employee = await knex("employees")
+    const verifier = await knex("verifiers")
       .select("email", "password", "active")
       .where("email", email)
       .limit(1);
 
-    if (_.isEmpty(employee[0])) {
+    if (_.isEmpty(verifier[0])) {
       return res.status(400).json("Invalid Email or Password!!");
     }
 
     const passwordIsValid = await bcrypt.compare(
       password,
-      employee[0]?.password
+      verifier[0]?.password
     );
 
     if (!passwordIsValid) {
       return res.status(400).json("Invalid Email or Password!");
     }
 
-    if (employee[0]?.active === 0) {
+    if (verifier[0]?.active === 0) {
       return res.status(400).json("Account disabled!");
     }
 
@@ -259,7 +267,7 @@ router.post(
     await knex("tokens").insert({
       _id: generateId(),
       token,
-      email: employee[0]?.email,
+      email: verifier[0]?.email,
     });
 
     const message = `
@@ -277,9 +285,9 @@ router.post(
     }
 
     try {
-      await sendMail(employee[0]?.email, mailTextShell(message));
+      await sendMail(verifier[0]?.email, mailTextShell(message));
     } catch (error) {
-      await knex("tokens").where("email", employee[0]?.email).del();
+      await knex("tokens").where("email", verifier[0]?.email).del();
 
       return res.status(500).json("An error has occurred!");
     }
@@ -298,35 +306,35 @@ router.post(
       return res.status(400).json("An unknown error has occurred!");
     }
 
-    const employeeToken = await knex("tokens")
+    const verifierToken = await knex("tokens")
       .where({
         _id: id,
         token,
       })
       .select("*");
 
-    if (_.isEmpty(employeeToken)) {
+    if (_.isEmpty(verifierToken)) {
       return res.status(400).json("An unknown error has occurred!");
     }
 
-    if (hasTokenExpired(employeeToken[0]?.createdAt)) {
+    if (hasTokenExpired(verifierToken[0]?.createdAt)) {
       return res.status(400).json("Sorry! Your link has expired.");
     }
 
-    await knex("employees")
-      .where("email", employeeToken[0]?.email)
+    await knex("verifiers")
+      .where("email", verifierToken[0]?.email)
       .update({ active: 1 });
 
-    const employee = await knex("employees")
+    const verifier = await knex("verifiers")
       .select("_id")
       .where({
-        email: employeeToken[0]?.email,
+        email: verifierToken[0]?.email,
       })
       .limit(1);
 
     res.status(201).json({
       user: {
-        id: employee[0]?._id,
+        id: verifier[0]?._id,
       },
     });
   })
@@ -343,7 +351,7 @@ router.post(
       return res.status(400).json("Invalid Code");
     }
 
-    const employeeToken = await knex("tokens")
+    const verifierToken = await knex("tokens")
       .select("*")
       .where({
         email,
@@ -351,105 +359,87 @@ router.post(
       })
       .limit(1);
 
-    if (_.isEmpty(employeeToken)) {
+    if (_.isEmpty(verifierToken)) {
       return res.status(400).json("Invalid Code");
     }
 
-    if (hasTokenExpired(employeeToken[0]?.createdAt)) {
+    if (hasTokenExpired(verifierToken[0]?.createdAt)) {
       return res.status(400).json("Sorry! Your code has expired.");
     }
 
-    await knex("employees")
-      .where("email", employeeToken[0]?.email)
+    await knex("verifiers")
+      .where("email", verifierToken[0]?.email)
       .update({ active: 1 });
 
-    const employee = await knex("employees")
-      .select("*", "_id as id", knex.raw("CONCAT(firstname,' ',lastname) as name"))
-      .where("email", employeeToken[0]?.email);
+    const verifier = await knex("verifiers")
+      .select("*", knex.raw("CONCAT(firstname,' ',lastname) as name"))
+      .where("email", verifierToken[0]?.email);
 
-    if (_.isEmpty(employee)) {
+    if (_.isEmpty(verifier)) {
       return res.status(401).json("Authentication Failed!");
-
     }
-   
-    const { active, isAdmin, permissions, ...rests } = employee[0];
 
-    const authEmployee = {
-      ...rests,
-      permissions: JSON.parse(permissions),
-      active: Boolean(active),
-      isAdmin: Boolean(isAdmin)
-
+    const updatedVerifier = {
+      id: verifier[0]?._id,
+      role: verifier[0]?.role,
+      active: verifier[0]?.active,
+      createdAt: verifier[0]?.createdAt,
+      isActive: Boolean(verifier[0]?.isActive),
     };
-   
 
-
-    const accessToken = signMainToken(authEmployee, "24h");
-    const refreshToken = signSampleRefreshToken(authEmployee, "24h");
-
+    const accessToken = signMainToken(updatedVerifier, "1d");
+    const refreshToken = signSampleRefreshToken(updatedVerifier, "30d");
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
 
-    await knex("employees").where("_id", employee[0]?._id).update({
+    await knex("verifiers").where("_id", verifier[0]?._id).update({
       token: hashedToken,
     });
 
     //logs
-    await knex("activity_logs").insert({
-      employee_id: employee[0]?._id,
+    await knex("verifier_activity_logs").insert({
+      verifier_id: verifier[0]?._id,
       title: "Logged into account.",
       severity: "info",
     });
 
     // if (isMobile(req)) {
     res.status(201).json({
-
+      user: {
+        id: verifier[0]?._id,
+        firstname: verifier[0]?.firstname,
+        lastname: verifier[0]?.lastname,
+        name: verifier[0]?.name,
+        email: verifier[0]?.email,
+        phonenumber: verifier[0]?.phonenumber,
+        role: verifier[0]?.role,
+        permissions: JSON.parse(verifier[0]?.permissions),
+        profile: verifier[0]?.profile,
+      },
       accessToken,
       refreshToken,
     });
-    // }
 
-    // res.status(201).json({
-    //   user: {
-    //     id: employee[0]?._id,
-    //     name: `${employee[0]?.firstname} ${employee[0]?.lastname}`,
-    //     email: employee[0]?.email,
-    //     phonenumber: employee[0]?.phonenumber,
-    //     role: employee[0]?.role,
-    //     profile: employee[0]?.profile,
-    //   },
-    // });
+
+   
   })
 );
 
 router.post(
   "/logout",
   verifyToken,
-  verifyAdmin,
+  verifyScanner,
   asyncHandler(async (req, res) => {
     const { id } = req.user;
 
     //logs
-    await knex("activity_logs").insert({
-      employee_id: id,
+    await knex("verifier_activity_logs").insert({
+      verifier_id: id,
       title: "Logged out of account.",
       severity: "info",
     });
 
-    // res.cookie("_SSUID_kyfc", "", {
-    //   httpOnly: true,
-    //   path: "/",
-    //   expires: new Date(0),
-    // });
-
-    // res.cookie("_SSUID_X_ayd", "", {
-    //   httpOnly: true,
-    //   path: "/",
-    //   expires: new Date(0),
-    // });
-
-    // res.clearCookie("_SSUID_kyfc");
-    // res.clearCookie("_SSUID_X_ayd");
+  
     req.user = null;
 
     res.sendStatus(204);
@@ -459,66 +449,55 @@ router.post(
 router.put(
   "/",
   verifyToken,
-  verifyAdmin,
+  verifyScanner,
   asyncHandler(async (req, res) => {
     const { id } = req.user;
     const { _id, ...rest } = req.body;
 
-    const updatedEmployee = await knex("employees")
+    const updatedVerifier = await knex("verifiers")
       .where("_id", _id)
       .update(rest);
 
-    if (updatedEmployee !== 1) {
-      return res.status(400).json("Error updating employee information.");
+    if (updatedVerifier !== 1) {
+      return res.status(400).json("Error updating verifier information.");
     }
-    //logs
-    await knex("activity_logs").insert({
-      employee_id: id,
-      title: "Updated account details.",
-      severity: "info",
-    });
 
-
-    const employee = await knex("employees")
+    const verifier = await knex("verifiers")
       .select(
-        "_id as id",
+        "_id",
         "firstname",
         "lastname",
         knex.raw("CONCAT(firstname,' ',lastname) as name"),
         "email",
+        "nid",
+        "dob",
+        "residence",
         "role",
         "permissions",
         "phonenumber",
-        "profile",
-        "isAdmin",
-        "active",
-        'createdAt'
+        "profile"
       )
-      .where("_id", _id).limit(1)
-    if (_.isEmpty(employee)) {
-      return res.status(404).json("Error! Could not save changes.");
-    }
+      .where("_id", _id);
 
-
-
-    const { active, isAdmin, permissions, ...rests } = employee[0];
-
-    const authEmployee = {
-      ...rests,
-      permissions: JSON.parse(permissions),
-      active: Boolean(active),
-      isAdmin: Boolean(isAdmin)
-
-    };
-
-    const accessToken = signMainToken(authEmployee, "24h");
-    const refreshToken = signSampleRefreshToken(authEmployee, "24h");
-
-
+    //logs
+    await knex("verifier_activity_logs").insert({
+      verifier_id: id,
+      title: "Updated account details.",
+      severity: "info",
+    });
 
     res.status(201).json({
-      accessToken,
-      refreshToken
+      user: {
+        id: verifier[0]?._id,
+        firstname: verifier[0]?.firstname,
+        lastname: verifier[0]?.lastname,
+        name: verifier[0]?.name,
+        email: verifier[0]?.email,
+        phonenumber: verifier[0]?.phonenumber,
+        permissions: JSON.parse(verifier[0]?.permissions),
+        role: verifier[0]?.role,
+        profile: verifier[0]?.profile,
+      },
     });
   })
 );
@@ -531,70 +510,74 @@ router.put(
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const modifiedEmployee = await knex("employees").where("_id", id).update({
+    const modifiedVerifier = await knex("verifiers").where("_id", id).update({
       password: hashedPassword,
     });
 
-    if (modifiedEmployee !== 1) {
-      return res.status(404).json("Error updating employee information.");
+    if (modifiedVerifier !== 1) {
+      return res.status(404).json("Error updating verifier information.");
     }
-    const employee = await knex("employees")
+    const verifier = await knex("verifiers")
       .select(
-        "_id as id",
+        "_id",
         "firstname",
         "lastname",
         knex.raw("CONCAT(firstname,' ',lastname) as name"),
         "email",
         "role",
+        "nid",
+        "dob",
+        "residence",
         "permissions",
         "phonenumber",
         "profile",
-        "isAdmin",
-        "active",
-        'createdAt'
+        "isScanner"
       )
-      .where("_id", id).limit(1)
+      .where("_id", id);
 
-    if (_.isEmpty(employee)) {
+    if (_.isEmpty(verifier)) {
       return res.status(404).json("Error! Could not save changes.");
     }
 
-
-    const { active, isAdmin, permissions, ...rests } = employee[0];
-
-
-    const authEmployee = {
-      ...rests,
-      permissions: JSON.parse(permissions),
-      active: Boolean(active),
-      isAdmin: Boolean(isAdmin)
-
+    const updatedVerifier = {
+      id: verifier[0]?._id,
+      role: verifier[0]?.role,
+      active: verifier[0]?.active,
+      isScanner: Boolean(verifier[0]?.isScanner),
     };
 
-    const accessToken = signMainToken(authEmployee, "24h");
-    const refreshToken = signSampleRefreshToken(authEmployee, "24h");
+    const accessToken = signMainToken(updatedVerifier, "1d");
+    const refreshToken = signSampleRefreshToken(updatedVerifier, "30d");
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
 
-    await knex("employees")
+    await knex("verifiers")
       .where("_id", id)
       .update({ token: hashedToken, active: 1 });
 
     //logs
-    await knex("activity_logs").insert({
-      employee_id: id,
+    await knex("verifier_activity_logs").insert({
+      verifier_id: id,
       title: "Updated account password!",
       severity: "info",
     });
 
-
+    // if (isMobile(req)) {
     res.status(201).json({
+      user: {
+        id: verifier[0]?._id,
+        firstname: verifier[0]?.firstname,
+        lastname: verifier[0]?.lastname,
+        name: verifier[0]?.name,
+        email: verifier[0]?.email,
+        phonenumber: verifier[0]?.phonenumber,
+        role: verifier[0]?.role,
+        permissions: JSON.parse(verifier[0]?.permissions),
+        profile: verifier[0]?.profile,
+      },
       refreshToken,
       accessToken,
     });
-
-
-
   })
 );
 
@@ -602,16 +585,16 @@ router.put(
 router.put(
   "/password-reset",
   limit,
-  verifyToken, verifyAdmin,
+  verifyToken, verifyScanner,
   asyncHandler(async (req, res) => {
     const { id, oldPassword, password } = req.body;
 
 
-    const employeePassword = await knex('employees').select('password').where('_id', id).limit(1);
+    const verifierPassword = await knex('verifiers').select('password').where('_id', id).limit(1);
 
     const passwordIsValid = await bcrypt.compare(
       oldPassword,
-      employeePassword[0]?.password
+      verifierPassword[0]?.password
     );
 
     if (!passwordIsValid) {
@@ -620,77 +603,82 @@ router.put(
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const modifiedEmployee = await knex("employees").where("_id", id).update({
+    const modifiedVerifier = await knex("verifiers").where("_id", id).update({
       password: hashedPassword,
     });
 
-    if (modifiedEmployee !== 1) {
-      return res.status(404).json("Error updating employee information.");
+    if (modifiedVerifier !== 1) {
+      return res.status(404).json("Error updating verifier information.");
     }
-    const employee = await knex("employees")
+    const verifier = await knex("verifiers")
       .select(
-        "_id as id",
+        "_id",
         "firstname",
         "lastname",
         knex.raw("CONCAT(firstname,' ',lastname) as name"),
         "email",
         "role",
+        "nid",
+        "dob",
+        "residence",
         "permissions",
         "phonenumber",
         "profile",
-        "isAdmin",
-        "active",
-        'createdAt'
+        "isScanner"
       )
-      .where("_id", _id).limit(1)
+      .where("_id", id);
 
-
-    if (_.isEmpty(employee)) {
+    if (_.isEmpty(verifier)) {
       return res.status(404).json("Error! Could not save changes.");
     }
 
-    const { active, isAdmin, permissions, ...rests } = employee[0];
-
-
-    const authEmployee = {
-      ...rests,
-      permissions: JSON.parse(permissions),
-      active: Boolean(active),
-      isAdmin: Boolean(isAdmin)
-
+    const updatedVerifier = {
+      id: verifier[0]?._id,
+      role: verifier[0]?.role,
+      active: verifier[0]?.active,
+      isScanner: Boolean(verifier[0]?.isScanner),
     };
 
-    const accessToken = signMainToken(authEmployee, "24h");
-    const refreshToken = signSampleRefreshToken(authEmployee, "24h");
-
+    const accessToken = signMainToken(updatedVerifier, "1d");
+    const refreshToken = signSampleRefreshToken(updatedVerifier, "30d");
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
 
-    await knex("employees")
+    await knex("verifiers")
       .where("_id", id)
       .update({ token: hashedToken, active: 1 });
 
     //logs
-    await knex("activity_logs").insert({
-      employee_id: id,
+    await knex("verifier_activity_logs").insert({
+      verifier_id: id,
       title: "Updated account password!",
       severity: "info",
     });
 
-
+    // if (isMobile(req)) {
     res.status(201).json({
+      user: {
+        id: verifier[0]?._id,
+        firstname: verifier[0]?.firstname,
+        lastname: verifier[0]?.lastname,
+        name: verifier[0]?.name,
+        email: verifier[0]?.email,
+        phonenumber: verifier[0]?.phonenumber,
+        role: verifier[0]?.role,
+        permissions: JSON.parse(verifier[0]?.permissions),
+        profile: verifier[0]?.profile,
+      },
       refreshToken,
       accessToken,
     });
-
-
+  
   })
 );
 
 router.put(
   "/profile",
   verifyToken,
-  verifyAdmin,
+  verifyScanner,
   Upload.single("profile"),
   asyncHandler(async (req, res) => {
     const { id } = req.body;
@@ -705,17 +693,17 @@ router.put(
       url = await uploadPhoto(req.file);
     }
 
-    const employee = await knex("employees")
+    const verifier = await knex("verifiers")
       .where("_id", id)
       .update({ profile: url });
 
-    if (employee !== 1) {
+    if (verifier !== 1) {
       return res.status(404).json("An unknown error has occurred!");
     }
 
     //logs
-    await knex("activity_logs").insert({
-      employee_id: id,
+    await knex("verifier_activity_logs").insert({
+      verifier_id: id,
       title: "Updated account profile!",
       severity: "info",
     });
@@ -724,29 +712,29 @@ router.put(
   })
 );
 
-//Enable or Disable Employee Account
+//Enable or Disable Verifier Account
 router.put(
   "/account",
   verifyToken,
-  verifyAdmin,
+  verifyScanner,
   asyncHandler(async (req, res) => {
     const { id: _id } = req.user;
     const { id, active } = req.body;
 
-    const updatedEmployee = await knex("employees")
+    const updatedVerifier = await knex("verifiers")
       .where("_id", id)
       .update({ active: active });
 
-    if (updatedEmployee !== 1) {
-      return res.status(400).json("Error updating employee info");
+    if (updatedVerifier !== 1) {
+      return res.status(400).json("Error updating verifier info");
     }
 
     //logs
-    await knex("activity_logs").insert({
-      employee_id: _id,
+    await knex("verifier_activity_logs").insert({
+      verifier_id: _id,
       title: `${Boolean(active) === true
-        ? "Activated an employee account!"
-        : "Disabled an employee account!"
+        ? "Activated an verifier account!"
+        : "Disabled an verifier account!"
         }`,
       severity: "warning",
     });
@@ -763,7 +751,7 @@ router.put(
 router.delete(
   "/:id",
   verifyToken,
-  verifyAdmin,
+  verifyScanner,
   asyncHandler(async (req, res) => {
     const { id: _id } = req.user;
     const { id } = req.params;
@@ -772,20 +760,20 @@ router.delete(
       return res.status(401).json("Invalid Request!");
     }
 
-    const employee = await knex("employees").where("_id", id).del();
+    const verifier = await knex("verifiers").where("_id", id).del();
 
-    if (!employee) {
+    if (!verifier) {
       return res.status(500).json("Invalid Request!");
     }
 
     //logs
-    await knex("activity_logs").insert({
-      employee_id: _id,
-      title: "Deleted an employee account!",
+    await knex("verifier_activity_logs").insert({
+      verifier_id: _id,
+      title: "Deleted an verifier account!",
       severity: "error",
     });
 
-    res.status(200).json("Employee Removed!");
+    res.status(200).json("Verifier Removed!");
   })
 );
 

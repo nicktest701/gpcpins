@@ -1488,6 +1488,51 @@ router.put(
   })
 );
 
+router.get(
+  "/general",
+  limit,
+  asyncHandler(async (req, res) => {
+    const { mobileNo, id } = req.query;
+
+
+    if (!isValidUUID2(id) || !mobileNo) {
+      return res.status(400).json("No results match your search");
+    }
+
+    const voucherTransaction = await knex("voucher_transactions")
+      .select("_id", 'phonenumber', 'mode', 'info', 'createdAt', 'status')
+      .where({ _id: id, phonenumber: mobileNo })
+      .limit(1);
+
+    const prepaidTransaction = await knex("prepaid_transactions")
+      .select("_id", 'mobileNo as phonenumber', 'mode', 'info', "amount", 'createdAt', 'status')
+      .where({ _id: id, mobileNo: mobileNo })
+      .limit(1);
+
+    const airtimeTransaction = await knex("airtime_transactions")
+      .select("_id", 'phonenumber', 'mode', 'info', "amount", 'createdAt', 'status')
+      .where({ _id: id, phonenumber: mobileNo })
+      .limit(1);
+
+    const transaction = [...voucherTransaction, ...airtimeTransaction, ...prepaidTransaction]
+
+
+    if (_.isEmpty(transaction)) {
+      return res.status(400).json("No results match your search!");
+    }
+    const { info, ...rest } = transaction[0]
+    const details = JSON.parse(info)
+
+    res.status(200).json({
+      ...rest,
+      amount: rest?.amount || details?.amount,
+      downloadLink: details?.downloadLink,
+      domain: details?.domain,
+
+    });
+  })
+);
+
 
 
 
@@ -2321,7 +2366,7 @@ router.get(
         userID: id,
         type: 'deposit'
       })
-      .select("_id", "createdAt","type", 'wallet', "amount", "status", "issuerName")
+      .select("_id", "createdAt", "type", 'wallet', "amount", "status", "issuerName")
       .orderBy("createdAt", "desc");
 
     res.status(200).json(transactions);

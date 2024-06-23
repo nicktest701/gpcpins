@@ -36,7 +36,7 @@ router.get(
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const { email } = req.user
-   
+
     const employees = await knex("employees")
       .select(
         "_id",
@@ -192,7 +192,7 @@ router.post(
     if (process.env.NODE_ENV === "production") {
       message_url = `https://admin.gpcpins.com/auth/verify?id=${codeInfo?._id}&token=${codeInfo?.token}&type=new`;
     }
-    console.log(message_url);
+
 
     const message = `
         <div style="width:500px;">
@@ -354,6 +354,7 @@ router.put(
         <p style="text-align:center;">-- Gab Powerful Team --</p>
     </div>
         `;
+    console.log(message_url)
 
     try {
       await sendMail(email, mailTextShell(message));

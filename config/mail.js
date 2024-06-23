@@ -20,7 +20,7 @@ const transportMail = nodemailer.createTransport({
 });
 
 const sendMail = async (transaction_id, email_address) => {
-  // if (process.env.NODE_ENV !== 'production') return true
+  if (process.env.NODE_ENV !== 'production') return true
   try {
     const mailOptions = {
       from: `GPC ${process.env.MAIL_CLIENT_USER}`,

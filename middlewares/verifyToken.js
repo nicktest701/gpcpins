@@ -39,6 +39,14 @@ const verifyToken = (req, res, next) => {
         .select("*")
         .where("_id", user?.id)
         .limit(1);
+    }
+    else if (user?.role === process.env.SCANNER_ID) {
+      authUser = await knex("verifiers")
+        .select("*")
+        .where("_id", user?.id)
+        .limit(1);
+
+
     } else {
       authUser = await knex("users")
         .select("*")
@@ -62,8 +70,14 @@ const verifyToken = (req, res, next) => {
     };
 
     if (user?.role === process.env.ADMIN_ID) {
-      newUser.isAdmin = Boolean(authUser[0]?.isAdmin);
+      newUser.profile = Boolean(authUser[0]?.profile);
+      newUser.firstname = Boolean(authUser[0]?.firstname);
+      newUser.lastname = Boolean(authUser[0]?.lastname);
       newUser.name = `${authUser[0]?.firstname} ${authUser[0]?.lastname}`;
+      newUser.phonenumber = Boolean(authUser[0]?.phonenumber);
+      newUser.isAdmin = Boolean(authUser[0]?.isAdmin);
+      newUser.isEnabled = Boolean(authUser[0]?.isEnabled);
+      newUser.permissions = JSON.parse(authUser[0]?.permissions)
     }
 
     req.user = newUser;
@@ -112,23 +126,33 @@ const verifyRefreshToken = (req, res, next) => {
   }
 
   jwt.verify(token, process.env.TOKEN_REFRESH, async (err, user) => {
+
     if (err) {
+
       return res.status(403).json("Session has expired.");
     }
     let authUser = {};
+    const userRole = Number(user?.role)
+
     if (
-      user?.role === process.env.ADMIN_ID ||
-      user?.role === process.env.EMPLOYEE_ID
+      userRole === Number(process.env.ADMIN_ID) ||
+      userRole === Number(process.env.EMPLOYEE_ID)
     ) {
       authUser = await knex("employees")
         .select("*")
         .where("_id", user?.id)
         .limit(1);
-    } else if (user?.role === process.env.AGENT_ID) {
+    } else if (userRole === Number(process.env.AGENT_ID)) {
       authUser = await knex("agents")
         .select("*")
         .where("_id", user?.id)
         .limit(1);
+    } else if (userRole === Number(process.env.SCANNER_ID)) {
+      authUser = await knex("verifiers")
+        .select("*")
+        .where("_id", user?.id)
+        .limit(1);
+
     } else {
       authUser = await knex("users")
         .select("*")
@@ -154,8 +178,14 @@ const verifyRefreshToken = (req, res, next) => {
     };
 
     if (user?.role === process.env.ADMIN_ID) {
-      newUser.isAdmin = Boolean(authUser[0]?.isAdmin);
+      newUser.profile = Boolean(authUser[0]?.profile);
+      newUser.firstname = Boolean(authUser[0]?.firstname);
+      newUser.lastname = Boolean(authUser[0]?.lastname);
       newUser.name = `${authUser[0]?.firstname} ${authUser[0]?.lastname}`;
+      newUser.phonenumber = Boolean(authUser[0]?.phonenumber);
+      newUser.isAdmin = Boolean(authUser[0]?.isAdmin);
+      newUser.isEnabled = Boolean(authUser[0]?.isEnabled);
+      newUser.permissions = JSON.parse(authUser[0]?.permissions)
     }
 
     req.user = newUser;

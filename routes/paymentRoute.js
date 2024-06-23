@@ -1333,14 +1333,15 @@ router.get(
       }
     );
 
+
     const sDate = moment(startDate);
     const eDate = moment(endDate);
 
-    const modifiedPayments = modifiedTransactions.filter(({ createdAt }) => {
-      return moment(createdAt).isBetween(sDate, eDate, "days", "[]");
+    const modifiedPayments = modifiedTransactions.filter(({ updatedAt }) => {
+      return moment(updatedAt).isBetween(sDate, eDate, "days", "[]");
     });
 
-    const sortedPayments = _.orderBy(modifiedPayments, ["createdAt"], ["desc"]);
+    const sortedPayments = _.orderBy(modifiedPayments, ["updatedAt"], ["desc"]);
 
     res.status(200).json(sortedPayments);
   })
@@ -1454,6 +1455,7 @@ router.post(
             phonenumber,
             amount,
             pricing: pricing ?? [],
+            domain: 'Airtime'
           }),
           partner: JSON.stringify({
             ResponseCode: user_deduction === 1 ? "0000" : "2000",
@@ -1497,6 +1499,7 @@ router.post(
             phonenumber,
             amount,
             pricing: pricing ?? [],
+               domain: 'Airtime'
           }),
           partner: JSON.stringify(sendMoneyReponse?.Data),
           status,
@@ -1526,14 +1529,13 @@ router.post(
   })
 );
 
-//Proccess bulk airtime for agents
+//Proccess bulk airtime 
 router.put(
   "/airtime",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const { id: _id, name } = req.user;
-    // const recipient = req.body;
     const id = req.query.id;
 
     if (_.isEmpty(id) || !isValidUUID2(id)) {
@@ -1541,7 +1543,7 @@ router.put(
     }
 
     const transaction = await knex("airtime_transactions")
-      .select("recipient")
+      .select("_id", 'phonenumber')
       .where("_id", id)
       .limit(1);
 
@@ -1549,73 +1551,89 @@ router.put(
       return res.status(401).json("Error Processing your request!");
     }
 
-    const recipient = JSON.parse(transaction[0].recipient);
-
-    const list = recipient.map(async (item) => {
-      const transaction_reference = randomBytes(24).toString("hex");
-      const info = {
-        recipient: item?.recipient,
-        amount: item?.price,
-        network:
-          item?.type === "MTN"
-            ? 4
-            : item?.type === "Vodafone"
-              ? 6
-              : item?.type === "AirtelTigo"
-                ? 1
-                : 0,
-        transaction_reference,
-      };
-
-      return sendAirtime(info);
+    await knex("airtime_transactions").where("_id", id).update({
+      isProcessed: 1,
+      issuer: name
     });
 
-    Promise.all(list)
-      .then(async (data) => {
-        await knex("airtime_transactions").where("_id", id).update({
-          isProcessed: 1,
-          issuer: name
-        });
+    //logs
+    await knex("activity_logs").insert({
+      employee_id: _id,
+      title: "Processed bulk airtime transaction!",
+      severity: "info",
+    });
 
-        // await knex("user_notifications").insert({
-        //   _id: generateId(),
-        //   user_id: userID,
-        //   type: "airtime",
-        //   title: "Airtime Transfer",
-        //   message: `You have successfully recharged ${airtimeInfo.recipient} with GHS ${airtimeInfo.amount} of airtime, you were charged GHS ${airtimeInfo.amount}`,
-        // });
-
-        //logs
-        await knex("activity_logs").insert({
-          employee_id: _id,
-          title: "Processed bulk airtime transaction!",
-          severity: "info",
-        });
-
-        res.status(200).json(data);
+    res.status(200).json("Transaction Completed!");
 
 
-        if (process.env.NODE_ENV === 'production') {
+    await sendSMS(
+      `Your request to buy bulk airtime has been completed.Thank you for purchasing from us!Your transaction id is ${transaction[0]?._id}`,
+      transaction[0]?.phonenumber
+    );
 
-          const balance = await accountBalance();
-          if (Number(balance) < 1000) {
-            const body = `
-Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.
-Please recharge to avoid any inconveniences.
-Thank you.
-          `;
-            await sendEMail(
-              process.env.MAIL_CLIENT_USER,
-              mailTextShell(`<p>${body}</p>`),
-              "LOW TOP UP ACCOUNT BALANCE"
-            );
-          }
 
-        }
-      })
-      .catch((error) => {
-        return res.status(500).json("Transaction Failed!");
-      });
+    // const recipient = JSON.parse(transaction[0].recipient);
+
+    // const list = recipient.map(async (item) => {
+    //   const transaction_reference = randomBytes(24).toString("hex");
+    //   const info = {
+    //     recipient: item?.recipient,
+    //     amount: item?.price,
+    //     network:
+    //       item?.type === "MTN"
+    //         ? 4
+    //         : item?.type === "Vodafone"
+    //           ? 6
+    //           : item?.type === "AirtelTigo"
+    //             ? 1
+    //             : 0,
+    //     transaction_reference,
+    //   };
+
+    //   return sendAirtime(info);
+    // });
+
+    //     Promise.all(list)
+    //       .then(async (data) => {
+    //         await knex("airtime_transactions").where("_id", id).update({
+    //           isProcessed: 1,
+    //           issuer: name
+    //         });
+
+    //         await knex("user_notifications").insert({
+    //           _id: generateId(),
+    //           user_id: userID,
+    //           type: "airtime",
+    //           title: "Airtime Transfer",
+    //           message: `You have successfully recharged ${airtimeInfo.recipient} with GHS ${airtimeInfo.amount} of airtime, you were charged GHS ${airtimeInfo.amount}`,
+    //         });
+
+
+
+
+    //         if (process.env.NODE_ENV === 'production') {
+
+    //           const balance = await accountBalance();
+    //           if (Number(balance) < 1000) {
+    //             const body = `
+    // Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.
+    // Please recharge to avoid any inconveniences.
+    // Thank you.
+    //           `;
+    //             await sendEMail(
+    //               process.env.MAIL_CLIENT_USER,
+    //               mailTextShell(`<p>${body}</p>`),
+    //               "LOW TOP UP ACCOUNT BALANCE"
+    //             );
+    //           }
+
+    //         }
+    //       })
+    //       .catch((error) => {
+    //         return res.status(500).json("Transaction Failed!");
+    //       });
+
+
   })
 );
 

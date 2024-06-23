@@ -20,6 +20,7 @@ const port = process.env.PORT || 5000;
 const app = express();
 
 const userRoute = require("./routes/userRoute");
+const verifierRoute = require("./routes/verifierRoute");
 const adminRoute = require("./routes/adminRoute");
 const agentRoute = require("./routes/agentRoute");
 const employeeRoute = require("./routes/employeeRoute");
@@ -39,21 +40,25 @@ const whitelist = [
   "https://www.gpcpins.com",
   "https://admin.gpcpins.com",
   "https://agent.gpcpins.com",
+  "https://verification.gpcpins.com",
   "http://192.168.0.175:5000",
   "http://192.168.0.175:5001",
   "http://192.168.0.175:5003",
+  "http://192.168.0.175:5004",
   "http://localhost:5001",
   "http://localhost:5002",
   "http://localhost:5003",
-  "http://localhost:5000",
+  "http://localhost:5004",
   "http://127.0.0.1:5000",
   "http://127.0.0.1:5001",
   "http://127.0.0.1:5002",
   "http://127.0.0.1:5003",
+  "http://127.0.0.1:5004",
   "https://154.160.23.99:5000",
   "https://154.160.23.99:5001",
   "https://154.160.23.99:5002",
   "https://154.160.23.99:5003",
+  "https://154.160.23.99:5004",
   process.env.CLIENT_URL,
 ];
 const corsOptions = {
@@ -116,6 +121,7 @@ app.use(
           "https://www.gpcpins.com/",
           "https://admin.gpcpins.com/",
           "https://agent.gpcpins.com",
+          "https://verification.gpcpins.com",
           "https://*.gpcpins.com",
         ],
         scriptSrc: [
@@ -124,6 +130,7 @@ app.use(
           "https://www.gpcpins.com/",
           "https://admin.gpcpins.com/",
           "https://agent.gpcpins.com",
+          "https://verification.gpcpins.com",
           "https://*.gpcpins.com",
         ],
         connectSrc: [
@@ -132,6 +139,7 @@ app.use(
           "https://www.gpcpins.com/",
           "https://admin.gpcpins.com/",
           "https://agent.gpcpins.com",
+          "https://verification.gpcpins.com",
           "https://*.gpcpins.com",
         ],
         frameSrc: [
@@ -140,6 +148,7 @@ app.use(
           "https://www.gpcpins.com/",
           "https://admin.gpcpins.com/",
           "https://agent.gpcpins.com",
+          "https://verification.gpcpins.com",
           "https://*.gpcpins.com",
         ],
         objectSrc: ["'none'"],
@@ -150,6 +159,7 @@ app.use(
           "https://admin.gpcpins.com/",
           "https://agent.gpcpins.com",
           "https://*.gpcpins.com",
+          "https://verification.gpcpins.com",
           "https://cdnjs.cloudflare.com/",
         ],
         styleSrc: [
@@ -159,6 +169,7 @@ app.use(
           "https://www.gpcpins.com/",
           "https://admin.gpcpins.com/",
           "https://agent.gpcpins.com",
+          "https://verification.gpcpins.com",
           "https://*.gpcpins.com",
         ],
         fontSrc: [
@@ -168,6 +179,7 @@ app.use(
           "https://admin.gpcpins.com/",
           "https://*.gpcpins.com",
           "https://agent.gpcpins.com",
+          "https://verification.gpcpins.com",
           "https://fonts.gstatic.com",
         ],
         mediaSrc: [
@@ -176,6 +188,7 @@ app.use(
           "https://www.gpcpins.com/",
           "https://admin.gpcpins.com/",
           "https://agent.gpcpins.com",
+          "https://verification.gpcpins.com",
           "https://*.gpcpins.com",
         ],
         upgradeInsecureRequests: [],
@@ -220,6 +233,7 @@ app.use("/", express.static(path.join(__dirname, "public")));
 
 //routes
 app.use("/api/gabs/v1/users", userRoute);
+app.use("/api/gabs/v1/verifiers", verifierRoute);
 app.use("/api/gabs/v1/admin", adminRoute);
 app.use("/api/gabs/v1/agents", agentRoute);
 app.use("/api/gabs/v1/category", categoryRoute);
