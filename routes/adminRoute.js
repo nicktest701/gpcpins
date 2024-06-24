@@ -48,7 +48,7 @@ router.get(
   '/',
   verifyToken,
   verifyAdmin,
-  // Handle async errors
+
   asyncHandler(async (req, res) => {
     const { email } = req.user
 
@@ -56,7 +56,7 @@ router.get(
     const employees = await knex('employees').where({ isAdmin: 0 }).whereNot('email', email);
 
     // Map through the employees and modify the permissions property
-    const modifiedEmployees = employees.map(({ role, permissions, ...rest }) => {
+    const modifiedEmployees = employees.map(({ role, permissions, password, ...rest }) => {
       // Parse the permissions string to a JSON object
       return {
         ...rest,
@@ -70,50 +70,6 @@ router.get(
   })
 );
 
-router.get(
-  "/auth",
-  limit,
-  verifyToken,
-  asyncHandler(async (req, res) => {
-    const { id } = req.user;
-
-    const employee = await knex("employees")
-      .select(
-        "_id",
-        "firstname",
-        "lastname",
-        knex.raw("CONCAT(firstname,' ',lastname) as name"),
-        "nid",
-        "dob",
-        "residence",
-        "permissions",
-        "email",
-        "role",
-        "phonenumber",
-        "profile"
-      )
-      .where("_id", id)
-      .limit(1);
-
-    if (_.isEmpty(employee) || employee[0]?.active === 0) {
-      return res.sendStatus(204);
-    }
-
-    res.status(200).json({
-      user: {
-        id: employee[0]?._id,
-        firstname: employee[0]?.firstname,
-        lastname: employee[0]?.lastname,
-        name: employee[0]?.name,
-        email: employee[0]?.email,
-        role: employee[0]?.role,
-        permissions: JSON.parse(employee[0]?.permissions),
-        phonenumber: employee[0]?.phonenumber,
-        profile: employee[0]?.profile,
-      },
-    });
-  })
-);
 
 
 
@@ -143,6 +99,7 @@ router.get(
 
 router.get(
   "/verify-identity",
+  limit,
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
@@ -364,14 +321,27 @@ router.post(
       .update({ active: 1 });
 
     const employee = await knex("employees")
-      .select("*", "_id as id", knex.raw("CONCAT(firstname,' ',lastname) as name"))
+
+      .select("_id ",
+        "_id as id",
+        "firstname",
+        "lastname",
+        knex.raw("CONCAT(firstname,' ',lastname) as name"),
+        "email",
+        "role",
+        "permissions",
+        "phonenumber",
+        "profile",
+        "isAdmin",
+        "active",
+        'createdAt')
       .where("email", employeeToken[0]?.email);
 
     if (_.isEmpty(employee)) {
       return res.status(401).json("Authentication Failed!");
 
     }
-   
+
     const { active, isAdmin, permissions, ...rests } = employee[0];
 
     const authEmployee = {
@@ -381,7 +351,7 @@ router.post(
       isAdmin: Boolean(isAdmin)
 
     };
-   
+
 
 
     const accessToken = signMainToken(authEmployee, "24h");
@@ -401,24 +371,14 @@ router.post(
       severity: "info",
     });
 
-    // if (isMobile(req)) {
+
     res.status(201).json({
 
       accessToken,
       refreshToken,
     });
-    // }
 
-    // res.status(201).json({
-    //   user: {
-    //     id: employee[0]?._id,
-    //     name: `${employee[0]?.firstname} ${employee[0]?.lastname}`,
-    //     email: employee[0]?.email,
-    //     phonenumber: employee[0]?.phonenumber,
-    //     role: employee[0]?.role,
-    //     profile: employee[0]?.profile,
-    //   },
-    // });
+
   })
 );
 
@@ -435,21 +395,6 @@ router.post(
       title: "Logged out of account.",
       severity: "info",
     });
-
-    // res.cookie("_SSUID_kyfc", "", {
-    //   httpOnly: true,
-    //   path: "/",
-    //   expires: new Date(0),
-    // });
-
-    // res.cookie("_SSUID_X_ayd", "", {
-    //   httpOnly: true,
-    //   path: "/",
-    //   expires: new Date(0),
-    // });
-
-    // res.clearCookie("_SSUID_kyfc");
-    // res.clearCookie("_SSUID_X_ayd");
     req.user = null;
 
     res.sendStatus(204);
@@ -458,6 +403,7 @@ router.post(
 
 router.put(
   "/",
+  limit,
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
@@ -689,6 +635,7 @@ router.put(
 
 router.put(
   "/profile",
+  limit,
   verifyToken,
   verifyAdmin,
   Upload.single("profile"),
@@ -727,6 +674,7 @@ router.put(
 //Enable or Disable Employee Account
 router.put(
   "/account",
+  limit,
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
@@ -762,6 +710,7 @@ router.put(
 //@DELETE student
 router.delete(
   "/:id",
+  limit,
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {

@@ -84,7 +84,7 @@ const ALLOWED_CATEGORIES = [
 
 const rlimit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 15, // 15 requests per windowMs
+  max: 20, // 20 requests per windowMs
   message: "Too many requests! Please try again later.",
 });
 

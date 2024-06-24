@@ -45,7 +45,7 @@ const { mailTextShell } = require("../config/mailText");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 5, // 5 requests per windowMs
+  max: 20, // 5 requests per windowMs
   message: "Too many requests!. please try again later.",
 });
 

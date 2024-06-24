@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-// const isMobile = require("../config/isMobile");
+
 
 const knex = require("../db/knex");
 
@@ -70,11 +70,11 @@ const verifyToken = (req, res, next) => {
     };
 
     if (user?.role === process.env.ADMIN_ID) {
-      newUser.profile = Boolean(authUser[0]?.profile);
-      newUser.firstname = Boolean(authUser[0]?.firstname);
-      newUser.lastname = Boolean(authUser[0]?.lastname);
+      newUser.profile = authUser[0]?.profile;
+      newUser.firstname = authUser[0]?.firstname;
+      newUser.lastname = authUser[0]?.lastname;
       newUser.name = `${authUser[0]?.firstname} ${authUser[0]?.lastname}`;
-      newUser.phonenumber = Boolean(authUser[0]?.phonenumber);
+      newUser.phonenumber = authUser[0]?.phonenumber;
       newUser.isAdmin = Boolean(authUser[0]?.isAdmin);
       newUser.isEnabled = Boolean(authUser[0]?.isEnabled);
       newUser.permissions = JSON.parse(authUser[0]?.permissions)
@@ -178,11 +178,11 @@ const verifyRefreshToken = (req, res, next) => {
     };
 
     if (user?.role === process.env.ADMIN_ID) {
-      newUser.profile = Boolean(authUser[0]?.profile);
-      newUser.firstname = Boolean(authUser[0]?.firstname);
-      newUser.lastname = Boolean(authUser[0]?.lastname);
+      newUser.profile = authUser[0]?.profile;
+      newUser.firstname = authUser[0]?.firstname;
+      newUser.lastname = authUser[0]?.lastname;
       newUser.name = `${authUser[0]?.firstname} ${authUser[0]?.lastname}`;
-      newUser.phonenumber = Boolean(authUser[0]?.phonenumber);
+      newUser.phonenumber = authUser[0]?.phonenumber;
       newUser.isAdmin = Boolean(authUser[0]?.isAdmin);
       newUser.isEnabled = Boolean(authUser[0]?.isEnabled);
       newUser.permissions = JSON.parse(authUser[0]?.permissions)
@@ -193,7 +193,7 @@ const verifyRefreshToken = (req, res, next) => {
     next();
   });
 
-  // next();
+
 };
 
 module.exports = {
