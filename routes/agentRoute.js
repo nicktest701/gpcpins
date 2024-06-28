@@ -434,7 +434,8 @@ router.post(
         password: hashedPassword,
         active: 1,
         ...rest,
-        username: `${rest.username}@gpc`
+        username: `${rest.username}@gpc`,
+        email:rest?.email?.toLowerCase()
       });
 
       //Save Agent Business Information

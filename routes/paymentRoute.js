@@ -605,6 +605,7 @@ router.get(
           "_id",
           "type",
           "recipient",
+          "email",
           "phonenumber",
           "amount",
           "mode",
@@ -802,10 +803,51 @@ ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.g
       Boolean(transaction[0].isProcessed) === false &&
       confirm
     ) {
+
+
+      const recipients = JSON.parse(transaction[0]?.recipient)
+      const recipientList = recipients?.map(recipient => {
+        return `${recipient?.type}(${recipient?.recipient}) at an amount of ${currencyFormatter(
+          recipient?.price
+        )}`
+      })
+
+      const formatter = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
+      const formattedList = formatter.format(recipientList);
+
+
       await sendSMS(
-        `Your request to buy ${type} has been received.Thank you for purchasing from us!Your transaction id is ${transaction[0]?._id}`,
+        `Your request to buy bulk ${type} has been received.Your transaction id is ${transaction[0]?._id}.Thank you for your business with us!`,
         transaction[0]?.phonenumber
       );
+
+
+      const message = `The number ${transaction[0]?.phonenumber} with Email Address ${transaction[0]?.email
+        } has successfully made payment to transfer bulk airtime to:
+         ${formattedList}.`;
+      // console.log(message)
+
+
+       if (process.env.NODE_ENV === 'production') {
+
+      const emailPrompt = await sendEMail(
+        process.env.MAIL_CLIENT_USER,
+        mailTextShell(`<p>${message}</p>`),
+        "REQUEST FOR BULK AIRTIME TRANSFER"
+      );
+      // const SMSPrompt = await sendSMS(message, '+233543772591');
+      const SMSPrompt = await sendSMS(message, process.env.CLIENT_PHONENUMBER);
+
+      await Promise.all([emailPrompt, SMSPrompt])
+       }
+
+      await knex("notifications").insert({
+        _id: generateId(),
+        title: "Bulk Airtime Transfer",
+        message,
+      });
+
+
     }
 
     if (
@@ -932,12 +974,9 @@ ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.g
     }
 
     if (type === "prepaid" && confirm) {
-      const message = `The number ${transaction[0]?.mobileNo} with METER NO. '${transaction[0]?.number
-        }' has successfully made payment to buy PREPAID UNITS at an amount of ${currencyFormatter(
-          info?.amount
-        )}
 
-  .`;
+      const message = `The number ${transaction[0]?.mobileNo} with METER NO. '${transaction[0]?.number
+        }' has successfully made payment to buy PREPAID UNITS at an amount of ${currencyFormatter(info?.amount)}.`;
 
       await knex("notifications").insert({
         _id: generateId(),
@@ -1336,8 +1375,9 @@ router.get(
 
     const sDate = moment(startDate);
     const eDate = moment(endDate);
+  
 
-    const modifiedPayments = modifiedTransactions.filter(({ updatedAt }) => {
+    const modifiedPayments = modifiedTransactions?.filter(({ updatedAt }) => {
       return moment(updatedAt).isBetween(sDate, eDate, "days", "[]");
     });
 
@@ -1356,6 +1396,8 @@ router.post(
     if (_.isEmpty(req.body)) {
       return res.status(401).json("Error Processing your request!");
     }
+
+
 
     const {
       type,
@@ -1445,7 +1487,7 @@ router.post(
           _id: transaction_id,
           user: id,
           type: type === "Airtime" ? "single" : "bulk",
-          recipient: recipient || JSON.stringify(pricing),
+          recipient: recipient || pricing,
           phonenumber,
           email: email,
           amount,
@@ -1489,7 +1531,7 @@ router.post(
           _id: transaction_id,
           user: id,
           type: type === "Airtime" ? "single" : "bulk",
-          recipient: recipient || JSON.stringify(pricing),
+          recipient: recipient || pricing,
           phonenumber,
           email: email,
           amount,
@@ -1499,7 +1541,7 @@ router.post(
             phonenumber,
             amount,
             pricing: pricing ?? [],
-               domain: 'Airtime'
+            domain: 'Airtime'
           }),
           partner: JSON.stringify(sendMoneyReponse?.Data),
           status,
