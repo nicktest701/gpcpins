@@ -637,8 +637,8 @@ router.post(
       const downloadLink = await uploadFiles(result, "reports");
 
       await sendReportMail(
-        'nicktest701@gmail.com',
-        // process.env.MAIL_CLIENT_USER,
+        // 'nicktest701@gmail.com',
+        process.env.MAIL_CLIENT_USER,
         mailTextShell(body),
         result,
         "Transaction Report"
