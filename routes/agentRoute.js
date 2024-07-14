@@ -25,7 +25,7 @@ const { calculateTimeDifference } = require("../config/timeHelper");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 20, // 5 requests per windowMs
+  max: 50, // 5 requests per windowMs
   message: "Too many requests! please try again later.",
 });
 
@@ -343,48 +343,14 @@ router.get(
       businessDescription: agent[0]?.business_description,
     };
 
-    const updatedAgent = {
-      id,
-      active,
-      role,
-    };
-
-    const accessToken = signMainToken(accessData, "24h");
-    const refreshToken = signMainRefreshToken(updatedAgent, "24h");
-
-    // res.cookie("_SSUID_kyfc", accessToken, {
-    //   maxAge: 1 * 60 * 60 * 1000,
-    //   httpOnly: true,
-    //   path: "/",
-    //   secure: true,
-    //   // domain:
-    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-    //   sameSite: "none",
-    // });
-
-    // res.cookie("_SSUID_X_ayd", refreshToken, {
-    //   maxAge: 90 * 24 * 60 * 60 * 1000,
-    //   httpOnly: true,
-    //   path: "/",
-    //   secure: true,
-    //   // domain:
-    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-    //   sameSite: "none",
-    // });
-
-    const hashedToken = await bcrypt.hash(refreshToken, 10);
-    await knex("agents").where("_id", id).update({
-      token: hashedToken,
-    });
-
-    // if (isMobile(req)) {
+    const accessToken = signMainToken(accessData, "15m");
+  
+  
     res.status(200).json({
-      refreshToken,
+   
       accessToken,
     });
-    // }
-
-    // res.sendStatus(200);
+   
   })
 );
 
@@ -705,7 +671,7 @@ router.post(
       active: agent[0]?.active,
     };
 
-    const accessToken = signMainToken(accessData, "24h");
+    const accessToken = signMainToken(accessData, "15m");
     const refreshToken = signMainRefreshToken(updatedAgent, "24h");
 
     // res.cookie("_SSUID_kyfc", accessToken, {
@@ -896,7 +862,7 @@ router.post(
       active: agent[0]?.active,
     };
 
-    const accessToken = signMainToken(accessData, "24h");
+    const accessToken = signMainToken(accessData, "15m");
     const refreshToken = signMainRefreshToken(updatedAgent, "24h");
 
     // res.cookie("_SSUID_kyfc", accessToken, {
@@ -1048,7 +1014,7 @@ router.put(
       businessDescription: agent[0]?.business_description,
     };
 
-    const accessToken = signMainToken(accessData, "24h");
+    const accessToken = signMainToken(accessData, "15m");
 
     //logs
     await knex("agent_activity_logs").insert({
@@ -1166,41 +1132,8 @@ router.put(
       businessDescription: agent[0]?.business_description,
     };
 
-    const updatedAgent = {
-      id: agent[0]?._id,
-      role: agent[0]?.role,
-      active: agent[0]?.active,
-    };
-
-    const accessToken = signMainToken(accessData, "24h");
-    const refreshToken = signMainRefreshToken(updatedAgent, "24h");
-
-    // res.cookie("_SSUID_kyfc", accessToken, {
-    //   maxAge: 1 * 60 * 60 * 1000,
-    //   httpOnly: true,
-    //   path: "/",
-    //   secure: true,
-    //   // domain:
-    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-    //   sameSite: "none",
-    // });
-
-    // res.cookie("_SSUID_X_ayd", refreshToken, {
-    //   maxAge: 90 * 24 * 60 * 60 * 1000,
-    //   httpOnly: true,
-    //   path: "/",
-    //   secure: true,
-    //   // domain:
-    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-    //   sameSite: "none",
-    // });
-
-    const hashedToken = await bcrypt.hash(refreshToken, 10);
-
-    await knex("agents")
-      .where("_id", id)
-      .update({ token: hashedToken, active: 1 });
-
+    const accessToken = signMainToken(accessData, "15m");
+  
     //logs
     await knex("agent_activity_logs").insert({
       agent_id: agent[0]?._id,

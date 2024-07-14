@@ -828,18 +828,18 @@ ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.g
       // console.log(message)
 
 
-       if (process.env.NODE_ENV === 'production') {
+      if (process.env.NODE_ENV === 'production') {
 
-      const emailPrompt = await sendEMail(
-        process.env.MAIL_CLIENT_USER,
-        mailTextShell(`<p>${message}</p>`),
-        "REQUEST FOR BULK AIRTIME TRANSFER"
-      );
-      // const SMSPrompt = await sendSMS(message, '+233543772591');
-      const SMSPrompt = await sendSMS(message, process.env.CLIENT_PHONENUMBER);
+        const emailPrompt = await sendEMail(
+          process.env.MAIL_CLIENT_USER,
+          mailTextShell(`<p>${message}</p>`),
+          "REQUEST FOR BULK AIRTIME TRANSFER"
+        );
+        // const SMSPrompt = await sendSMS(message, '+233543772591');
+        const SMSPrompt = await sendSMS(message, process.env.CLIENT_PHONENUMBER);
 
-      await Promise.all([emailPrompt, SMSPrompt])
-       }
+        await Promise.all([emailPrompt, SMSPrompt])
+      }
 
       await knex("notifications").insert({
         _id: generateId(),
@@ -1375,7 +1375,7 @@ router.get(
 
     const sDate = moment(startDate);
     const eDate = moment(endDate);
-  
+
 
     const modifiedPayments = modifiedTransactions?.filter(({ updatedAt }) => {
       return moment(updatedAt).isBetween(sDate, eDate, "days", "[]");
@@ -1595,7 +1595,8 @@ router.put(
 
     await knex("airtime_transactions").where("_id", id).update({
       isProcessed: 1,
-      issuer: name
+      issuer: _id,
+      issuerName: name,
     });
 
     //logs
@@ -2406,6 +2407,7 @@ router.put(
         }),
         processed: 1,
         issuer: id,
+        issuerName: name
       });
 
     if (updateTransactionDetails !== 1) {

@@ -8,13 +8,12 @@ const { otpGen, customOtpGen } = require("otp-gen-agent");
 const multer = require("multer");
 const moment = require("moment");
 const { rateLimit } = require("express-rate-limit");
-const axios = require("axios");
 const cron = require("node-cron");
 const {
-  signAccessToken,
-  signRefreshToken,
   signSampleRefreshToken,
   signSampleToken,
+  signMainToken,
+  signMainRefreshToken
 } = require("../config/token");
 const {
   verifyToken,
@@ -212,52 +211,12 @@ router.get(
       .where("_id", id)
       .limit(1);
 
-    const updatedUser = {
-      id,
-      active,
-      role,
-      createdAt,
-    };
+    const accessToken = signMainToken(user[0], '15m');
 
-    const accessToken = signAccessToken(user[0]);
-    const refreshToken = signRefreshToken(updatedUser);
-
-    // res.cookie("_SSUID_kyfc", accessToken, {
-    //   maxAge: 1 * 60 * 60 * 1000,
-    //   expires: ACCESS_EXPIRATION,
-    //   httpOnly: true,
-    //   path: "/",
-    //   secure: true,
-
-    //   // domain:
-    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-    //   sameSite: "none",
-    // });
-
-    // res.cookie("_SSUID_X_ayd", refreshToken, {
-    //   maxAge: 90 * 24 * 60 * 60 * 1000,
-    //   expires: REFRESH_EXPIRATION,
-    //   httpOnly: true,
-    //   path: "/",
-    //   secure: true,
-    //   // domain:
-    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-    //   sameSite: "none",
-    // });
-
-    const hashedToken = await bcrypt.hash(refreshToken, 10);
-    await knex("users").where("_id", id).update({
-      token: hashedToken,
-    });
-
-    // if (isMobile(req)) {
     res.status(200).json({
-      refreshToken,
       accessToken,
     });
-    // }
 
-    // res.sendStatus(200);
   })
 );
 router.get(
@@ -389,7 +348,7 @@ router.post(
           .where("email", email)
           .limit(1);
       }
-     
+
       if (type === "phone") {
         user = await transx("users")
           .select("email", "phonenumber", "active", "isEnabled")
@@ -491,7 +450,7 @@ router.post(
 
       user_key = await customOtpGen({ length: 4 });
 
-      const hashedPin =await bcrypt.hash(user_key, 10)
+      const hashedPin = await bcrypt.hash(user_key, 10)
 
 
       await knex("user_wallets").insert({
@@ -541,8 +500,8 @@ router.post(
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signAccessToken(accessData);
-    const refreshToken = signRefreshToken(updatedUser);
+    const accessToken = signMainToken(accessData, '15m');
+    const refreshToken = signMainRefreshToken(updatedUser, '365d');
 
     // res.cookie("_SSUID_kyfc", accessToken, {
     //   maxAge: 1 * 60 * 60 * 1000,
@@ -625,7 +584,7 @@ router.post(
       await knex("users").insert(req.body);
 
       user_key = await customOtpGen({ length: 4 });
-      const hashedPin =await bcrypt.hash(user_key, 10)
+      const hashedPin = await bcrypt.hash(user_key, 10)
 
       await knex("user_wallets").insert({
         _id: generateId(),
@@ -675,8 +634,8 @@ router.post(
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signAccessToken(accessData);
-    const refreshToken = signRefreshToken(updatedUser);
+    const accessToken = signMainToken(accessData, '15m');
+    const refreshToken = signMainRefreshToken(updatedUser, '365d');
 
     // res.cookie("_SSUID_kyfc", accessToken, {
     //   maxAge: 1 * 60 * 60 * 1000,
@@ -901,8 +860,8 @@ router.post(
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signAccessToken(accessData);
-    const refreshToken = signRefreshToken(updatedUser);
+    const accessToken = signMainToken(accessData, '15m');
+    const refreshToken = signMainRefreshToken(updatedUser, '365d');
 
     // res.cookie("_SSUID_kyfc", accessToken, {
     //   maxAge: 1 * 60 * 60 * 1000,
@@ -1057,21 +1016,9 @@ router.put(
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signAccessToken(accessData);
-    const refreshToken = signRefreshToken(updatedUser);
-
-    const hashedToken = await bcrypt.hash(refreshToken, 10);
-    await knex("users").where("_id", user[0]?.id).update({
-      token: hashedToken,
-    });
-
-
+    const accessToken = signMainToken(accessData, '15m');
 
     if (register) {
-      // const userKey = await knex("user_wallets")
-      //   .select("user_key")
-      //   .where("user_id", id)
-      //   .limit(1);
 
 
       await sendOTPSMS(
@@ -1112,7 +1059,6 @@ router.put(
       await sendEMail(user[0]?.email, message, "Profile Update Notification");
     }
     res.status(201).json({
-      refreshToken,
       accessToken,
     });
   })
@@ -1355,7 +1301,7 @@ router.post(
       //   mailTextShell(body),
       //   "Wallet Top Up Request"
       // );
-      
+
 
       res.status(200).json("Request Sent!");
     } catch (error) {

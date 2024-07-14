@@ -62,6 +62,7 @@
           <th>Phone Number</th>
           <th>Payable Amount</th>
           <th>Mode</th>
+          <th>Issuer</th>
           <th>Status</th>
         </tr>
       </thead>
@@ -76,6 +77,7 @@
           <td><%= transaction?.phonenumber %></td>
           <td>GHS <%= transaction?.amount %></td>
           <td><%= transaction?.mode %></td>
+          <td><%= transaction?.issuerName %></td>
           <td><%= transaction?.status %></td>
         </tr>
         <% }) %>
@@ -90,6 +92,7 @@
           <th>Phone Number</th>
           <th>Payable Amount</th>
           <th>Mode</th>
+          <th>Issuer</th>
           <th>Status</th>
         </tr>
       </tfoot>

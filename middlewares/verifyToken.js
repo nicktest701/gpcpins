@@ -7,8 +7,10 @@ const knex = require("../db/knex");
 const verifyToken = (req, res, next) => {
   req.user = null;
 
+
   const authHeader =
     req.headers["authorization"] || req.headers["Authorization"];
+
 
   if (!authHeader) {
     return res.status(401).json("Unauthorized Access");
@@ -22,25 +24,27 @@ const verifyToken = (req, res, next) => {
 
   jwt.verify(token, process.env.TOKEN, async (err, user) => {
     if (err) {
+
       return res.status(403).json("Session has expired.");
     }
 
+    const userRole = Number(user?.role)
+
     let authUser = {};
     if (
-      user?.role === process.env.ADMIN_ID ||
-      user?.role === process.env.EMPLOYEE_ID
+      userRole === Number(process.env.ADMIN_ID) ||
+      userRole === Number(process.env.EMPLOYEE_ID)
     ) {
       authUser = await knex("employees")
         .select("*")
         .where("_id", user?.id)
         .limit(1);
-    } else if (user?.role === process.env.AGENT_ID) {
+    } else if (userRole === Number(process.env.AGENT_ID)) {
       authUser = await knex("agents")
         .select("*")
         .where("_id", user?.id)
         .limit(1);
-    }
-    else if (user?.role === process.env.SCANNER_ID) {
+    } else if (userRole === Number(process.env.SCANNER_ID)) {
       authUser = await knex("verifiers")
         .select("*")
         .where("_id", user?.id)
@@ -49,14 +53,15 @@ const verifyToken = (req, res, next) => {
 
     } else {
       authUser = await knex("users")
-        .select("*")
         .where("_id", user?.id)
+        .select("*")
         .limit(1);
     }
 
 
-    const isTrue = bcrypt.compare(token, authUser[0]?.token || "");
-    if (!isTrue || Boolean(authUser[0]?.isEnabled) === false) {
+
+
+    if (Number(authUser[0]?.isEnabled) !== 1) {
       return res.status(403).json("Session has expired.");
     }
 
@@ -84,33 +89,11 @@ const verifyToken = (req, res, next) => {
 
     next();
   });
-  // } else {
-  //   const token = req.cookies._SSUID_kyfc;
 
-  //   if (!token) {
-  //     return res.status(401).json("Unauthorized Access!");
-  //   }
-
-  //   jwt.verify(token, process.env.TOKEN, (err, user) => {
-  //     if (err) {
-  //       return res.status(403).json("Session has expired.");
-  //     }
-
-  //     req.user = user;
-
-  //     next();
-  //   });
-  // }
-
-  // next();
 };
 
 const verifyRefreshToken = (req, res, next) => {
-  // const token = req.cookies._SSUID_X_ayd;
 
-  // if (!token) {
-  //   return res.status(401).json("Unauthorized Access!");
-  // }
 
   const authHeader =
     req.headers["authorization"] || req.headers["Authorization"];
@@ -153,6 +136,7 @@ const verifyRefreshToken = (req, res, next) => {
         .where("_id", user?.id)
         .limit(1);
 
+
     } else {
       authUser = await knex("users")
         .select("*")
@@ -161,8 +145,7 @@ const verifyRefreshToken = (req, res, next) => {
     }
 
 
-    const isTrue = bcrypt.compare(token, authUser[0]?.token || "");
-    if (!isTrue || Boolean(authUser[0]?.isEnabled) === false) {
+    if (Number(authUser[0]?.isEnabled) !== 1) {
       return res.status(403).json("Session has expired.");
     }
 

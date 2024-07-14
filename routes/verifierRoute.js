@@ -3,7 +3,7 @@ const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
 const bcrypt = require("bcryptjs");
 const { otpGen } = require("otp-gen-agent");
-const { signMainToken, signSampleRefreshToken } = require("../config/token");
+const { signMainToken, signMainRefreshToken } = require("../config/token");
 const multer = require("multer");
 const moment = require('moment')
 const { rateLimit } = require("express-rate-limit");
@@ -46,14 +46,15 @@ const Upload = multer({ storage: Storage });
 // Define the route for getting all non-scanner verifiers
 router.get(
   '/',
-  verifyToken,
-  verifyScanner,
+  // verifyToken,
+  // verifyScanner,
   // Handle async errors
   asyncHandler(async (req, res) => {
-    const { email } = req.user
+    // const { email } = req.user
 
     // Fetch all non-scanner verifiers from the database
-    const verifiers = await knex('verifiers').whereNot('email', email);
+    const verifiers = await knex('verifiers').select("*", knex.raw("CONCAT(firstname,' ',lastname) as name"));
+    // const verifiers = await knex('verifiers').whereNot('email', email);
 
     // Map through the verifiers and modify the permissions property
     const modifiedVerifiers = verifiers.map(({ role, permissions, ...rest }) => {
@@ -131,18 +132,9 @@ router.get(
       createdAt,
     };
 
-    const accessToken = signMainToken(updatedVerifier, "1d");
-    const refreshToken = signSampleRefreshToken(updatedVerifier, "30d");
-
-    const hashedToken = await bcrypt.hash(refreshToken, 10);
-    
-    await knex("verifiers").where("_id", id).update({
-      token: hashedToken,
-    });
-
+    const accessToken = signMainToken(updatedVerifier, "30s");
 
     res.status(200).json({
-      refreshToken,
       accessToken,
     });
 
@@ -152,7 +144,7 @@ router.get(
 router.get(
   "/verify-identity",
   verifyToken,
-  verifyScanner,
+  // verifyScanner,
   asyncHandler(async (req, res) => {
     const { id } = req.user
     const { nid, dob } = req.query;
@@ -190,7 +182,7 @@ router.get(
   "/phonenumber/token",
   limit,
   verifyToken,
-  verifyScanner,
+  // verifyScanner,
   asyncHandler(async (req, res) => {
 
     const { id } = req.user;
@@ -229,6 +221,132 @@ router.get(
     }
 
     res.sendStatus(201);
+  })
+);
+
+router.get(
+  "/:id",
+  // verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    if (!isValidUUID2(id)) {
+      return res.status(400).json("Invalid ID!");
+    }
+
+    const verifier = await knex("verifiers")
+      .select(
+        "_id",
+        "firstname",
+        "lastname",
+        "username",
+        knex.raw("CONCAT(firstname,' ',lastname) as name"),
+        "email",
+        "nid",
+        "dob",
+        "residence",
+        "permissions",
+        "phonenumber",
+        "role",
+        "profile",
+        "active"
+      )
+      .where({
+        _id: id,
+      })
+      .limit(1);
+
+    if (_.isEmpty(verifier)) {
+      return res.status(400).json({});
+    }
+
+    const { permissions, role, ...rest } = verifier[0];
+
+    const modifiedVerifier = {
+      ...rest,
+      permissions: JSON.parse(permissions),
+      role: role === process.env.ADMIN_ID ? "Administrator" : "Verifier",
+    };
+
+    res.status(200).json(modifiedVerifier);
+  })
+);
+router.post(
+  "/",
+  // verifyToken,
+  Upload.single("profile"),
+  asyncHandler(async (req, res) => {
+    // const { id } = req.user;
+    const newVerifier = req.body;
+
+    const transx = await knex.transaction();
+
+    const doesVerifierExists = await transx("verifiers")
+      .select("email")
+      .where("email", newVerifier.email)
+      .limit(1);
+
+    if (!_.isEmpty(doesVerifierExists[0])) {
+      return res
+        .status(400)
+        .json("An verifier with this account already exists!");
+    }
+
+    const doesUserNameExists = await transx("verifiers")
+      .select("username")
+      .where("username", newVerifier?.username)
+      .limit(1);
+
+    if (!_.isEmpty(doesUserNameExists)) {
+      return res
+        .status(400)
+        .json(`Username, '${newVerifier?.username}' is not available!`);
+    }
+
+    if (req.body?.role === "Verifier") {
+      newVerifier.role = process.env.VERIFIER_ID;
+    }
+
+    if (req.body?.role === "Administrator") {
+      newVerifier.role = process.env.ADMIN_ID;
+    }
+
+    newVerifier.profile = req.file?.filename;
+
+    if (req.file) {
+      const url = await uploadPhoto(req.file);
+      newVerifier.profile = url;
+    }
+
+    const _id = generateId();
+    const verifier = await transx("verifiers").insert({
+      _id,
+      ...newVerifier,
+      permissions: JSON.stringify([]),
+    });
+
+    if (_.isEmpty(verifier)) {
+      res.status(400).json("Error saving verifier information!");
+    }
+
+    //logs
+    // await transx("activity_logs").insert({
+    //   verifier_id: id,
+    //   title: "Created new verifier account.",
+    //   severity: "info",
+    // });
+
+    await transx.commit();
+
+    // try {
+    //   // await sendMail(newVerifier?.email, mailTextShell(message));
+    // } catch (error) {
+    //   await transx.rollback();
+
+    //   return res.status(400).json("An error has occurred.Try again later");
+    // }
+
+    res.status(201).json("Verifier saved successfully!!!");
   })
 );
 
@@ -387,8 +505,8 @@ router.post(
       isActive: Boolean(verifier[0]?.isActive),
     };
 
-    const accessToken = signMainToken(updatedVerifier, "1d");
-    const refreshToken = signSampleRefreshToken(updatedVerifier, "30d");
+    const accessToken = signMainToken(updatedVerifier, "30s");
+    const refreshToken = signMainRefreshToken(updatedVerifier, "60s");
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
 
@@ -421,14 +539,14 @@ router.post(
     });
 
 
-   
+
   })
 );
 
 router.post(
   "/logout",
   verifyToken,
-  verifyScanner,
+  // verifyScanner,
   asyncHandler(async (req, res) => {
     const { id } = req.user;
 
@@ -439,7 +557,7 @@ router.post(
       severity: "info",
     });
 
-  
+
     req.user = null;
 
     res.sendStatus(204);
@@ -449,7 +567,7 @@ router.post(
 router.put(
   "/",
   verifyToken,
-  verifyScanner,
+  // verifyScanner,
   asyncHandler(async (req, res) => {
     const { id } = req.user;
     const { _id, ...rest } = req.body;
@@ -546,14 +664,7 @@ router.put(
       isScanner: Boolean(verifier[0]?.isScanner),
     };
 
-    const accessToken = signMainToken(updatedVerifier, "1d");
-    const refreshToken = signSampleRefreshToken(updatedVerifier, "30d");
-
-    const hashedToken = await bcrypt.hash(refreshToken, 10);
-
-    await knex("verifiers")
-      .where("_id", id)
-      .update({ token: hashedToken, active: 1 });
+    const accessToken = signMainToken(updatedVerifier, "30s");
 
     //logs
     await knex("verifier_activity_logs").insert({
@@ -585,7 +696,7 @@ router.put(
 router.put(
   "/password-reset",
   limit,
-  verifyToken, verifyScanner,
+  // verifyToken, verifyScanner,
   asyncHandler(async (req, res) => {
     const { id, oldPassword, password } = req.body;
 
@@ -640,13 +751,6 @@ router.put(
     };
 
     const accessToken = signMainToken(updatedVerifier, "1d");
-    const refreshToken = signSampleRefreshToken(updatedVerifier, "30d");
-
-    const hashedToken = await bcrypt.hash(refreshToken, 10);
-
-    await knex("verifiers")
-      .where("_id", id)
-      .update({ token: hashedToken, active: 1 });
 
     //logs
     await knex("verifier_activity_logs").insert({
@@ -671,14 +775,14 @@ router.put(
       refreshToken,
       accessToken,
     });
-  
+
   })
 );
 
 router.put(
   "/profile",
   verifyToken,
-  verifyScanner,
+  // verifyScanner,
   Upload.single("profile"),
   asyncHandler(async (req, res) => {
     const { id } = req.body;
@@ -716,7 +820,7 @@ router.put(
 router.put(
   "/account",
   verifyToken,
-  verifyScanner,
+  // verifyScanner,
   asyncHandler(async (req, res) => {
     const { id: _id } = req.user;
     const { id, active } = req.body;
@@ -747,11 +851,11 @@ router.put(
   })
 );
 
-//@DELETE student
+//@DELETE verifier
 router.delete(
   "/:id",
   verifyToken,
-  verifyScanner,
+  // verifyScanner,
   asyncHandler(async (req, res) => {
     const { id: _id } = req.user;
     const { id } = req.params;

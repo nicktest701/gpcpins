@@ -91,8 +91,9 @@ router.get(
         "domain as type",
         "isProcessed",
         "status",
-        "createdAt", "updatedAt",
-        knex.raw("DATE_FORMAT(createdAt,'%D %M,%Y %r') as modifiedAt")
+        "createdAt",
+        "updatedAt",
+        knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt")
       )
       .where({
         status: "completed",
@@ -117,9 +118,12 @@ router.get(
         "domain",
         "domain as type",
         "isProcessed",
+        "issuer",
+        "issuerName",
         "status",
-        "createdAt", "updatedAt",
-        knex.raw("DATE_FORMAT(createdAt,'%D %M,%Y %r') as modifiedAt")
+        "createdAt",
+        "updatedAt",
+        knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt")
       )
       .where({
         status: "completed",
@@ -127,8 +131,10 @@ router.get(
 
     const airtimeTransactions = airtime_transactions.map(
       ({ info, ...rest }) => {
+
         return {
           ...rest,
+          createdAt: rest?.updatedAt,
           info: JSON.parse(info),
         };
       }
@@ -140,8 +146,9 @@ router.get(
         "info",
         "mode",
         "reference",
-        "createdAt", "updatedAt",
-        knex.raw("DATE_FORMAT(createdAt,'%D %M,%Y %r') as modifiedAt")
+        "createdAt",
+        "updatedAt",
+        knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt")
       )
       .where({
         status: "completed",
@@ -165,9 +172,12 @@ router.get(
         "prepaid_transactions.info as info",
         "prepaid_transactions.mode as mode",
         "prepaid_transactions.status as status",
+        "prepaid_transactions.issuer as issuer",
+        "prepaid_transactions.issuerName as issuerName",
         "prepaid_transactions.createdAt as createdAt",
+        "prepaid_transactions.updatedAt as updatedAt",
         knex.raw(
-          "DATE_FORMAT(prepaid_transactions.createdAt,'%D %M,%Y %r') as modifiedAt"
+          "DATE_FORMAT(prepaid_transactions.updatedAt,'%D %M,%Y %r') as modifiedAt"
         ),
         "meters._id as meterId",
         "meters.number as number"
@@ -184,7 +194,9 @@ router.get(
         mode: transaction?.mode,
         status: transaction?.status,
         modifiedAt: transaction?.modifiedAt,
-        createdAt: transaction?.createdAt,
+        createdAt: transaction?.updatedAt,
+        issuer: transaction?.issuer,
+        issuerName: transaction?.issuerName,
         updatedAt: transaction?.updatedAt,
         meter: {
           _id: transaction?.meterId,
@@ -198,6 +210,8 @@ router.get(
       endDate,
       transactions
     );
+    // console.log(modifiedTransactionWithRange)
+
 
     const modifiedECGTransactionWithRange = getRangeTransactions(
       startDate,
@@ -351,7 +365,7 @@ router.get(
         amount:
           transaction?.info?.amount ||
           transaction?.info?.paymentDetails?.totalAmount,
-        createdAt: transaction?.createdAt,
+        createdAt: transaction?.updatedAt,
         updatedAt: transaction?.updatedAt,
         modifiedAt: transaction?.modifiedAt,
         mode: transaction?.mode,
@@ -361,6 +375,7 @@ router.get(
     const vouchers = await Promise.all(VoucherTransactions);
 
     const prepaids = modifiedECGTransaction.map((transaction) => {
+
       return {
         _id: transaction?._id,
         reference: transaction?.reference,
@@ -371,7 +386,9 @@ router.get(
         email: transaction?.info?.email,
         downloadLink: transaction?.info?.downloadLink,
         amount: transaction?.info?.amount,
-        createdAt: transaction?.createdAt,
+        issuer: transaction?.issuer,
+        issuerName: transaction?.issuerName,
+        createdAt: transaction?.updatedAt,
         updatedAt: transaction?.updatedAt,
         modifiedAt: transaction?.modifiedAt,
         mode: transaction?.mode,
@@ -460,6 +477,7 @@ router.get(
         "prepaid_transactions.status as status",
         "prepaid_transactions.year as year",
         "prepaid_transactions.createdAt as createdAt",
+        "prepaid_transactions.updatedAt as updatedAt",
         "meters._id as meterId",
         "meters.number as number"
       );
@@ -610,7 +628,7 @@ router.post(
       const body = ` <div class="container">
   <h1>Transactional Report</h1>
   <p>Dear Customer,</p>
-  <p>Attached is your wallet transactional report from the period ${sDate} to ${endDate}. Please review the details below:</p>
+  <p>Attached is your wallet transactional report from the period ${startDate} to ${endDate}. Please review the details below:</p>
   <p>If you have any questions or concerns regarding this report, please feel free to contact us.</p>
   <p>Thank you for your business!</p>
   <p>Sincerely,<br>Gab Powerful Consults</p>
@@ -619,7 +637,8 @@ router.post(
       const downloadLink = await uploadFiles(result, "reports");
 
       await sendReportMail(
-        process.env.MAIL_CLIENT_USER,
+        'nicktest701@gmail.com',
+        // process.env.MAIL_CLIENT_USER,
         mailTextShell(body),
         result,
         "Transaction Report"
@@ -729,7 +748,8 @@ router.get(
         "phonenumber",
         "domain",
         "amount",
-        "createdAt", "updatedAt",
+        "createdAt",
+        "updatedAt",
         "year"
       )
       .where({ year: year, status: "completed" })
@@ -1078,14 +1098,14 @@ router.get(
     const prepaid_transactions = await knex("prepaid_transactions")
       .where({ year: moment().year(), status: "completed" })
       .select("_id", "info", "status", "processed", "year", "createdAt", "updatedAt")
-      .orderBy("createdAt", "desc");
+      .orderBy("updatedAt", "desc");
 
     const transaction = prepaid_transactions.map((transaction) => {
       return {
         _id: transaction?._id,
         status: transaction?.status,
         isProcessed: transaction?.processed,
-        createdAt: transaction?.createdAt,
+        createdAt: transaction?.updatedAt,
         updatedAt: transaction?.updatedAt,
         info: JSON.parse(transaction?.info),
         meter: {
@@ -2003,7 +2023,7 @@ router.get(
         "agents.phonenumber as phonenumber",
         knex.raw("CONCAT(firstname,' ',lastname) as name"),
         knex.raw(
-          "DATE_FORMAT(agent_wallets.updatedAt,'%D %M %Y 🔸 %r' ) as updatedAt"
+          "DATE_FORMAT(agent_wallets.updatedAt,'%D %M %Y . %r' ) as updatedAt"
         )
       );
 
@@ -2166,7 +2186,7 @@ router.get(
         "users.phonenumber as phonenumber",
         knex.raw("CONCAT(firstname,' ',lastname) as name"),
         knex.raw(
-          "DATE_FORMAT(user_wallets.updatedAt,'%D %M %Y 🔸 %r' ) as updatedAt"
+          "DATE_FORMAT(user_wallets.updatedAt,'%D %M %Y . %r' ) as updatedAt"
         )
       );
 

@@ -3,7 +3,7 @@ const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
 const bcrypt = require("bcryptjs");
 const { otpGen } = require("otp-gen-agent");
-const { signMainToken, signSampleRefreshToken } = require("../config/token");
+const { signMainToken, signMainRefreshToken } = require("../config/token");
 const multer = require("multer");
 const moment = require('moment')
 const { rateLimit } = require("express-rate-limit");
@@ -80,17 +80,9 @@ router.get(
   asyncHandler(async (req, res) => {
     const authEmployee = req.user;
 
-    const accessToken = signMainToken(authEmployee, "24h");
-    const refreshToken = signSampleRefreshToken(authEmployee, "24h");
-
-    const hashedToken = await bcrypt.hash(refreshToken, 10);
-    await knex("employees").where("_id", authEmployee?.id).update({
-      token: hashedToken,
-    });
-
+    const accessToken = signMainToken(authEmployee, "15m");
 
     res.status(200).json({
-      refreshToken,
       accessToken,
     });
 
@@ -354,8 +346,8 @@ router.post(
 
 
 
-    const accessToken = signMainToken(authEmployee, "24h");
-    const refreshToken = signSampleRefreshToken(authEmployee, "24h");
+    const accessToken = signMainToken(authEmployee, "15m");
+    const refreshToken = signMainRefreshToken(authEmployee, "24h");
 
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
@@ -457,14 +449,11 @@ router.put(
 
     };
 
-    const accessToken = signMainToken(authEmployee, "24h");
-    const refreshToken = signSampleRefreshToken(authEmployee, "24h");
-
-
+    const accessToken = signMainToken(authEmployee, "15m");
 
     res.status(201).json({
       accessToken,
-      refreshToken
+
     });
   })
 );
@@ -517,14 +506,7 @@ router.put(
 
     };
 
-    const accessToken = signMainToken(authEmployee, "24h");
-    const refreshToken = signSampleRefreshToken(authEmployee, "24h");
-
-    const hashedToken = await bcrypt.hash(refreshToken, 10);
-
-    await knex("employees")
-      .where("_id", id)
-      .update({ token: hashedToken, active: 1 });
+    const accessToken = signMainToken(authEmployee, "15m");
 
     //logs
     await knex("activity_logs").insert({
@@ -535,7 +517,6 @@ router.put(
 
 
     res.status(201).json({
-      refreshToken,
       accessToken,
     });
 
@@ -606,15 +587,7 @@ router.put(
 
     };
 
-    const accessToken = signMainToken(authEmployee, "24h");
-    const refreshToken = signSampleRefreshToken(authEmployee, "24h");
-
-
-    const hashedToken = await bcrypt.hash(refreshToken, 10);
-
-    await knex("employees")
-      .where("_id", id)
-      .update({ token: hashedToken, active: 1 });
+    const accessToken = signMainToken(authEmployee, "15m");
 
     //logs
     await knex("activity_logs").insert({
@@ -625,7 +598,6 @@ router.put(
 
 
     res.status(201).json({
-      refreshToken,
       accessToken,
     });
 

@@ -19,7 +19,9 @@ const port = process.env.PORT || 5000;
 //initialize express
 const app = express();
 
+const logRoute = require("./routes/logRoute");
 const userRoute = require("./routes/userRoute");
+const ticketRoute = require("./routes/ticketRoute");
 const verifierRoute = require("./routes/verifierRoute");
 const adminRoute = require("./routes/adminRoute");
 const agentRoute = require("./routes/agentRoute");
@@ -233,6 +235,8 @@ app.use("/", express.static(path.join(__dirname, "public")));
 
 //routes
 app.use("/api/gabs/v1/users", userRoute);
+app.use("/api/gabs/v1/logs", logRoute);
+app.use("/api/gabs/v1/tickets", ticketRoute);
 app.use("/api/gabs/v1/verifiers", verifierRoute);
 app.use("/api/gabs/v1/admin", adminRoute);
 app.use("/api/gabs/v1/agents", agentRoute);

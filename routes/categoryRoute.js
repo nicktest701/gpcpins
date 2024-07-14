@@ -54,6 +54,81 @@ router.get(
   })
 );
 
+//@GET Get all tickets
+router.get(
+  "/tickets",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const category = req?.query?.category
+    let categories = [];
+  
+
+    if (category) {
+      categories = await knex("categories")
+        .select("*")
+        .where({ category: category, active: 1, })
+        .orderBy("createdAt", "desc");
+    } else {
+
+      categories = await knex("categories")
+        .select("*")
+        .where("active", 1)
+        .andWhere('category', "IN", ['bus', 'cinema', 'stadium'])
+        .orderBy("createdAt", "desc");
+    }
+
+
+
+
+    const modifiedCategories = categories.map((category) => {
+      const details = JSON.parse(category?.details);
+      // const date = moment(details?.date).add(12, "hours");
+
+      // if (
+      //   ["cinema", "stadium", "bus"].includes(category?.category) &&
+      //   today.isAfter(date)
+      // ) {
+      //   return;
+      // } else {
+      return {
+        ...category,
+        details,
+      };
+      // }
+    });
+
+    res.status(200).json(_.compact(modifiedCategories));
+  })
+);
+
+
+//@GET Get Ticket by ID
+router.get(
+  "/tickets/:id",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const id = req.params.id
+    const category = await knex("categories")
+      .select("*")
+      .where({ _id: id, active: 1 })
+      .orderBy("createdAt", "desc").limit(1)
+
+
+    if (_.isEmpty(category)) {
+      return res.status(200).json({})
+    }
+
+
+    const details = JSON.parse(category[0]?.details)
+
+    res.status(200).json({
+      ...category[0],
+      details
+    });
+  })
+);
+
+
 router.get(
   "/main",
   verifyToken,
@@ -202,7 +277,6 @@ router.get(
     res.status(200).json(modifiedCategories);
   })
 );
-
 
 
 //GET BUS BY DESTINATION

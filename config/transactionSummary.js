@@ -20,7 +20,7 @@ function getRecentTransaction(data, quantity) {
       amount: item?.info?.amount || item?.amount,
       issuer: item?.issuer || "N/A",
       domain: item?.info?.domain || item?.domain,
-      createdAt: item?.createdAt,
+      createdAt: item?.updatedAt,
       updated: item?.updatedAt,
     };
   });
@@ -31,7 +31,7 @@ function getRecentTransaction(data, quantity) {
 function getTodayTransactionArray(data) {
   const modifiedTodayTransaction = data?.filter(
     (transaction) =>
-      moment(transaction?.createdAt).format("l") === moment().format("l")
+      moment(transaction?.updatedAt).format("l") === moment().format("l")
   );
 
   return modifiedTodayTransaction;
@@ -39,7 +39,7 @@ function getTodayTransactionArray(data) {
 function getTodayTransaction(data) {
   const modifiedTodayTransaction = data?.filter(
     (transaction) =>
-      moment(transaction?.createdAt).format("l") === moment().format("l")
+      moment(transaction?.updatedAt).format("l") === moment().format("l")
   );
   const todayTotal = _.sum(
     _.map(modifiedTodayTransaction, (item) =>
@@ -52,7 +52,7 @@ function getTodayTransaction(data) {
 function getYesterdayTransaction(data) {
   const modifiedTodayTransaction = data?.filter(
     (transaction) =>
-      moment(transaction?.createdAt).format("l") ===
+      moment(transaction?.updatedAt).format("l") ===
       moment().subtract(1, "days").format("l")
   );
 
@@ -66,7 +66,7 @@ function getYesterdayTransaction(data) {
 function getYesterdayTransactionArray(data) {
   const yesterdayTransaction = data?.filter(
     (transaction) =>
-      moment(transaction?.createdAt).format("l") ===
+      moment(transaction?.updatedAt).format("l") ===
       moment().subtract(1, "days").format("l")
   );
 
@@ -76,7 +76,7 @@ function getYesterdayTransactionArray(data) {
 function getThisMonthTransaction(data) {
   const modifiedTodayTransaction = data?.filter(
     (transaction) =>
-      moment(transaction?.createdAt).format("MMM,YYYY") ===
+      moment(transaction?.updatedAt).format("MMM,YYYY") ===
       moment().format("MMM,YYYY")
   );
 
@@ -90,7 +90,7 @@ function getThisMonthTransaction(data) {
 function getThisMonthTransactionArray(data) {
   const thisMonthTransaction = data?.filter(
     (transaction) =>
-      moment(transaction?.createdAt).format("MMM,YYYY") ===
+      moment(transaction?.updatedAt).format("MMM,YYYY") ===
       moment().format("MMM,YYYY")
   );
 
@@ -103,7 +103,7 @@ function getLastMonthTransactionArray(data) {
   const lastMonthEnd = moment().subtract(1, "months").endOf("month");
 
   const lastMonthTransaction = data?.filter((transaction) =>
-    moment(transaction?.createdAt).isBetween(
+    moment(transaction?.updatedAt).isBetween(
       lastMonthStart,
       lastMonthEnd,
       null,
@@ -118,7 +118,7 @@ function getThisYearTransactionArray(data) {
   const currentYearEnd = moment().endOf("year");
 
   const thisYearTransaction = data?.filter((transaction) =>
-    moment(transaction?.createdAt).isBetween(
+    moment(transaction?.updatedAt).isBetween(
       currentYearStart,
       currentYearEnd,
       null,
@@ -133,7 +133,7 @@ function getLastYearTransactionArray(data) {
   const lastYearEnd = moment().subtract(1, "years").endOf("year");
 
   const lastYearTransaction = data?.filter((transaction) =>
-    moment(transaction?.createdAt).isBetween(
+    moment(transaction?.updatedAt).isBetween(
       lastYearStart,
       lastYearEnd,
       null,
@@ -157,8 +157,8 @@ function getLastSevenDaysTransactions(vouchersTransaction, ecgTransaction) {
 
   if (vouchersTransaction?.length > 0) {
     const lastSevenDatesTransactions = _.reverse(
-      vouchersTransaction?.filter(({ createdAt }) =>
-        lastSevenDates.includes(moment(createdAt).format("ddd,Do MMM"))
+      vouchersTransaction?.filter(({ updatedAt }) =>
+        lastSevenDates.includes(moment(updatedAt).format("ddd,Do MMM"))
       )
     );
 
@@ -166,7 +166,7 @@ function getLastSevenDaysTransactions(vouchersTransaction, ecgTransaction) {
     const lastSevenDaysVouchersTransaction = lastSevenDatesTransactions.map(
       (transaction) => {
         return {
-          createdAt: moment(transaction?.createdAt).format("ddd,Do MMM"),
+          createdAt: moment(transaction?.updatedAt).format("ddd,Do MMM"),
           amount: _.isNaN(
             Number(transaction?.info?.amount || transaction?.amount)
           )
@@ -188,15 +188,15 @@ function getLastSevenDaysTransactions(vouchersTransaction, ecgTransaction) {
 
   if (ecgTransaction?.length > 0) {
     const lastSevenDatesECGTransactions = _.reverse(
-      ecgTransaction?.filter(({ createdAt }) =>
-        lastSevenDates.includes(moment(createdAt).format("ddd,Do MMM"))
+      ecgTransaction?.filter(({ updatedAt }) =>
+        lastSevenDates.includes(moment(updatedAt).format("ddd,Do MMM"))
       )
     );
 
     const lastSevenDaysECGTransaction = lastSevenDatesECGTransactions.map(
       (transaction) => {
         return {
-          createdAt: moment(transaction?.createdAt).format("ddd,Do MMM"),
+          createdAt: moment(transaction?.updatedAt).format("ddd,Do MMM"),
           amount: Number(transaction?.info?.amount || transaction?.amount),
         };
       }
@@ -224,8 +224,8 @@ function getLastSevenDaysTransactionsArray(data) {
   const lastSevenDates = getDatesOfLastSevenDates();
 
   const lastSevenDatesTransactions = _.reverse(
-    data?.filter(({ createdAt }) =>
-      lastSevenDates.includes(moment(createdAt).format("ddd,Do MMM"))
+    data?.filter(({ updatedAt }) =>
+      lastSevenDates.includes(moment(updatedAt).format("ddd,Do MMM"))
     )
   );
 
@@ -269,14 +269,14 @@ function getTransactionsByMonth(vouchersTransaction, ecgTransaction) {
     const currentYearTransactions = _.reverse(
       vouchersTransaction?.filter(
         (transaction) =>
-          moment(transaction?.createdAt).year() === moment().year()
+          moment(transaction?.updatedAt).year() === moment().year()
       )
     );
 
     //Modified Date
     const modifiedTransaction = currentYearTransactions?.map((transaction) => {
       return {
-        createdAt: moment(transaction?.createdAt).format("MMMM"),
+        createdAt: moment(transaction?.updatedAt).format("MMMM"),
         amount: _.isNaN(
           Number(transaction?.info?.amount || transaction?.amount)
         )
@@ -299,14 +299,14 @@ function getTransactionsByMonth(vouchersTransaction, ecgTransaction) {
     const currentYearTransactions = _.reverse(
       ecgTransaction?.filter(
         (transaction) =>
-          moment(transaction?.createdAt).year() === moment().year()
+          moment(transaction?.updatedAt).year() === moment().year()
       )
     );
 
     //Modified Date
     const modifiedTransaction = currentYearTransactions?.map((transaction) => {
       return {
-        createdAt: moment(transaction?.createdAt).format("MMMM"),
+        createdAt: moment(transaction?.updatedAt).format("MMMM"),
         amount: _.isNaN(
           Number(transaction?.info?.amount || transaction?.amount)
         )
@@ -373,7 +373,7 @@ function getTransactionsArrayByMonth(data) {
     //Modified Date
     const modifiedTransaction = currentYearTransactions?.map((transaction) => {
       return {
-        createdAt: moment(transaction?.createdAt).format("MMMM"),
+        createdAt: moment(transaction?.updatedAt).format("MMMM"),
         amount: _.isNaN(
           Number(transaction?.info?.amount || transaction?.amount)
         )
@@ -406,7 +406,7 @@ function getTopCustomers(data) {
         item?.info?.mobileNo ||
         item?.phonenumber,
       amount: Number(item?.info?.amount || item?.amount),
-      createdAt: item?.createdAt,
+      createdAt: item?.updatedAt,
     };
   });
 
@@ -455,17 +455,20 @@ async function getTopSellingProducts(data) {
 }
 
 function getRangeTransactions(startDate, endDate, data) {
-  // console.log(data)
+
   const sDate = moment(startDate);
   const eDate = moment(endDate);
 
+
+
   const modifiedTransaction = data?.filter(({ createdAt }) => {
-    return moment(createdAt).isBetween(sDate, eDate, "days", "[]");
+    // return moment(updatedAt).isBetween(sDate, eDate, "days", "[]");
+    return moment(createdAt).isBetween(sDate, eDate, null, '[]')
   });
 
   const sortedTransaction = _.orderBy(
     modifiedTransaction,
-    ["createdAt"],
+    ["updatedAt"],
     ["desc"]
   );
 

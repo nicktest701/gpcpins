@@ -12,6 +12,7 @@ const verifyAdmin = require("../middlewares/verifyAdmin");
 const { isValidUUID2 } = require("../config/validation");
 
 const knex = require("../db/knex");
+const { getLastSevenDaysTransactionsArray } = require("../config/transactionSummary");
 
 const ALLOWED_CATEGORIES = [
   "waec",
@@ -110,6 +111,114 @@ router.get(
       sold: groupedStatus?.sold?.length ?? 0,
       used: groupedStatus?.used?.length ?? 0,
       expired: expired?.length ?? 0,
+    });
+  })
+);
+router.get(
+  "/tickets",
+  // verifyToken,
+  // verifyScanner,
+  asyncHandler(async (req, res) => {
+    const { id } = req.query;
+
+
+    if (!isValidUUID2(id)) {
+      return res.status(400).json("Invalid ID!");
+    }
+    const category = await knex("categories").where('_id', id).select("details")
+    const details = JSON.parse(category[0]?.details)
+    const pricingTypes = details?.pricing
+
+    const vouchers = await knex("vouchers")
+      .join("categories", "vouchers.category", "categories._id")
+      .where("vouchers.category", id)
+      .select(
+        "vouchers.type",
+        "vouchers.status",
+        "vouchers.createdAt",
+        "categories.category as category",
+        "categories.details as details"
+      );
+
+    if (_.isEmpty(vouchers)) {
+      return res.status(200).json({
+        total: 0,
+        sold: 0,
+        used: 0,
+        pricingTypes: _.map(pricingTypes, 'type'),
+        ticketTypes: {},
+        recent: [],
+        verifiers: []
+      });
+    }
+
+
+    // Recently Scanned Vouchers 
+    const scannedVouchers = await knex("scanned_tickets_vouchers_view")
+      .select("createdAt", 'voucherType', 'type', 'verifierName')
+      .where({ categoryId: id })
+      .limit(5)
+      .orderBy("createdAt", "desc");
+    // console.log(scannedVouchers)
+
+    //Assigned Verifiers
+    const assignedVerifiers = await knex("tickets_view").select("verifierId", "verifierName", 'type')
+      .where({ categoryId: id })
+      .orderBy("createdAt", "desc");
+
+    const modifiedVerifiers = assignedVerifiers.map(verifier => {
+      return {
+        verifierId: verifier?.verifierId,
+        verifierName: verifier.verifierName,
+        type: _.map(JSON.parse(verifier.type), 'type')
+      }
+    })
+
+    //Get last seven days scanned data
+    // const sevenDays = getLastSevenDaysTransactionsArray(scannedVouchers)
+    // console.log(sevenDays)
+
+
+
+
+
+    //GET ALL TICKET TYPES
+    const ticketTypes = pricingTypes?.map(({ type }) => {
+      const sold = vouchers?.filter(voucher => voucher?.status === "sold" && voucher?.type === type)?.length
+      const used = vouchers?.filter(voucher => voucher?.status === "used" && voucher?.type === type)?.length
+      return {
+        type,
+        sold,
+        used
+      }
+    })
+
+
+    const ticketPricingTypes = {
+      labels: _.map(ticketTypes, 'type'),
+      datasets: [
+        {
+          label: 'Sold/Unscanned', data: _.map(ticketTypes, 'sold'),
+          backgroundColor: '#031523',
+        },
+        {
+          label: 'Used/Scanned', data: _.map(ticketTypes, 'used'),
+          backgroundColor: '#155bca',
+
+        }
+      ]
+    }
+    const groupedStatus = _.groupBy(vouchers, "status");
+
+    // console.log(pricingTypes)
+    res.status(200).json({
+      total: groupedStatus?.sold?.length ?? 0,
+      sold: groupedStatus?.sold?.length ?? 0,
+      used: groupedStatus?.used?.length ?? 0,
+      pricingTypes: _.map(pricingTypes, 'type'),
+      ticketTypes: ticketPricingTypes,
+      recent: scannedVouchers,
+      verifiers: modifiedVerifiers
     });
   })
 );

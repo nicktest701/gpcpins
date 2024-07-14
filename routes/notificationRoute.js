@@ -110,6 +110,36 @@ router.get(
 );
 
 router.get(
+  "/verifier",
+  // verifyToken,
+  // verifyScanner,
+  asyncHandler(async (req, res) => {
+    const { id, createdAt: modifiedAt } = req.user;
+
+    if (!isValidUUID2(id)) {
+      return res.status(400).json("Invalid Request!");
+    }
+    const broadcastMessages = await knex("broadcast_messages")
+      .where("recipient", "Customers")
+      .select("*");
+
+    const verifierNotifications = await knex("verifier_notifications")
+      .select("*")
+      .where("verifier_id", id);
+
+    const recentNotifications = [
+      ...broadcastMessages,
+      ...verifierNotifications,
+    ].filter(({ createdAt }) =>
+      moment(createdAt).isSameOrAfter(moment(modifiedAt))
+    );
+
+    const notifications = _.orderBy(recentNotifications, "createdAt", "desc");
+    res.status(200).json(notifications);
+  })
+);
+
+router.get(
   "/:id",
   asyncHandler(async (req, res) => {
     const { id } = req.params;

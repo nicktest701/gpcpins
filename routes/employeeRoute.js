@@ -35,26 +35,43 @@ router.get(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const { search } = req.query
     const { email } = req.user
 
-    const employees = await knex("employees")
-      .select(
-        "_id",
-        "firstname",
-        "lastname",
-        "username",
-        knex.raw("CONCAT(firstname,' ',lastname) as name"),
-        "email",
-        "permissions",
-        "phonenumber",
-        "nid",
-        "dob",
-        "residence",
-        "role",
-        "profile",
-        "active"
-      ).where("isAdmin", 0)
-      .whereNot('email', email);
+    let employees = [];
+    if (search) {
+      employees = await knex("employees")
+        .select(
+          "_id as id",
+          knex.raw("CONCAT(firstname,' ',lastname) as name"),
+
+        )
+        // console.log(employees)
+
+      return res.status(200).json(employees);
+    } else {
+      employees = await knex("employees")
+        .select(
+          "_id",
+          "firstname",
+          "lastname",
+          "username",
+          knex.raw("CONCAT(firstname,' ',lastname) as name"),
+          "email",
+          "permissions",
+          "phonenumber",
+          "nid",
+          "dob",
+          "residence",
+          "role",
+          "profile",
+          "active"
+        ).where("isAdmin", 0)
+        .whereNot('email', email);
+
+    }
+
+
 
     const modifiedEmployees = employees.map(
       ({ role, permissions, ...rest }) => {
