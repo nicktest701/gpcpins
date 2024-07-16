@@ -53,7 +53,22 @@ router.get(
     // const { email } = req.user
 
     // Fetch all non-scanner verifiers from the database
-    const verifiers = await knex('verifiers').select("*", knex.raw("CONCAT(firstname,' ',lastname) as name"));
+    const verifiers = await knex("verifiers")
+      .select(
+        "_id",
+        "firstname",
+        "lastname",
+        "username",
+        knex.raw("CONCAT(firstname,' ',lastname) as name"),
+        "email",
+        "phonenumber",
+        "nid",
+        "dob",
+        "residence",
+        "role",
+        "profile",
+        "active"
+      );
     // const verifiers = await knex('verifiers').whereNot('email', email);
 
     // Map through the verifiers and modify the permissions property
@@ -61,7 +76,7 @@ router.get(
       // Parse the permissions string to a JSON object
       return {
         ...rest,
-        permissions: JSON.parse(permissions),
+        // permissions: JSON.parse(permissions),
       };
     });
 
@@ -132,7 +147,7 @@ router.get(
       createdAt,
     };
 
-    const accessToken = signMainToken(updatedVerifier, "30s");
+    const accessToken = signMainToken(updatedVerifier, "15m");
 
     res.status(200).json({
       accessToken,
@@ -490,12 +505,34 @@ router.post(
       .update({ active: 1 });
 
     const verifier = await knex("verifiers")
-      .select("*", knex.raw("CONCAT(firstname,' ',lastname) as name"))
+
+      .select("_id ",
+        "_id as id",
+        "firstname",
+        "lastname",
+        knex.raw("CONCAT(firstname,' ',lastname) as name"),
+        "email",
+        "role",
+        "phonenumber",
+        "profile",
+        "isAdmin",
+        "active",
+        'createdAt')
       .where("email", verifierToken[0]?.email);
 
     if (_.isEmpty(verifier)) {
       return res.status(401).json("Authentication Failed!");
+
     }
+
+    const { active, isAdmin, permissions, ...rests } = verifier[0];
+
+    const authVerifier = {
+      ...rests,
+      active: Boolean(active),
+      isAdmin: Boolean(isAdmin)
+
+    };
 
     const updatedVerifier = {
       id: verifier[0]?._id,
@@ -505,8 +542,8 @@ router.post(
       isActive: Boolean(verifier[0]?.isActive),
     };
 
-    const accessToken = signMainToken(updatedVerifier, "30s");
-    const refreshToken = signMainRefreshToken(updatedVerifier, "60s");
+    const accessToken = signMainToken(authVerifier, "15m");
+    const refreshToken = signMainRefreshToken(updatedVerifier, "24h");
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
 
@@ -531,7 +568,6 @@ router.post(
         email: verifier[0]?.email,
         phonenumber: verifier[0]?.phonenumber,
         role: verifier[0]?.role,
-        permissions: JSON.parse(verifier[0]?.permissions),
         profile: verifier[0]?.profile,
       },
       accessToken,
@@ -664,7 +700,7 @@ router.put(
       isScanner: Boolean(verifier[0]?.isScanner),
     };
 
-    const accessToken = signMainToken(updatedVerifier, "30s");
+    const accessToken = signMainToken(updatedVerifier, "15m");
 
     //logs
     await knex("verifier_activity_logs").insert({

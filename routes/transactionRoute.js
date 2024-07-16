@@ -1496,13 +1496,19 @@ router.put(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const { id, isAdmin } = req.user;
+    const { isAdmin } = req.user;
     const { logs } = req.body;
 
+    if (isAdmin) {
+      await knex('activity_logs').where("_id", "IN", logs).del()
 
-    await knex('activity_logs').where("_id", "IN", logs).update({
-      isActive: false
-    });
+    } else {
+      await knex('activity_logs').where("_id", "IN", logs).update({
+        isActive: false
+      });
+    }
+
+
     return res.sendStatus(204);
 
   })

@@ -39,14 +39,14 @@ router.get(
     const { email } = req.user
 
     let employees = [];
-    if (search) {
+    if (!_.isEmpty(search)) {
       employees = await knex("employees")
         .select(
           "_id as id",
           knex.raw("CONCAT(firstname,' ',lastname) as name"),
 
         )
-        // console.log(employees)
+      // console.log(employees)
 
       return res.status(200).json(employees);
     } else {

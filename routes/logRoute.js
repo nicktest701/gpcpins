@@ -3,8 +3,7 @@ const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
 const moment = require("moment");
 
-
-
+const knex = require("../db/knex");
 const { verifyToken } = require("../middlewares/verifyToken");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 
@@ -89,7 +88,7 @@ router.get(
 
 
 router.put(
-    "/logs",
+    "/",
     verifyToken,
     verifyAdmin,
     asyncHandler(async (req, res) => {
@@ -98,6 +97,21 @@ router.put(
 
 
         await knex('activity_logs').where("_id", "IN", logs).update({
+            isActive: false
+        });
+        return res.sendStatus(204);
+
+    })
+);
+router.put(
+    "/verifier",
+    verifyToken,
+    
+    asyncHandler(async (req, res) => {
+        const { logs } = req.body;
+        console.log(logs)
+
+        await knex('verifier_activity_logs').where("_id", "IN", logs).update({
             isActive: false
         });
         return res.sendStatus(204);
