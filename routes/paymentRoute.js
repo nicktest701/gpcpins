@@ -1439,10 +1439,9 @@ router.post(
 
 
 
-    const balance = await accountBalance();
-    console.log(balance , Number(amount))
-
-    if (Number(balance) < Number(amount)) {
+    const response = await accountBalance();
+   
+    if (Number(response?.balance) < Number(amount)) {
 
       const body = `
     Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(balance)}.
@@ -1755,10 +1754,9 @@ router.post(
     }
 
 
-    const balance = await accountBalance();
-
-    console.log(balance , Number(amount))
-    if (Number(balance) < Number(amount)) {
+    const response = await accountBalance();
+    
+    if (Number(response?.balance) < Number(amount)) {
 
 
       const body = `
