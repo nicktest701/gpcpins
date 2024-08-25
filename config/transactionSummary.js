@@ -502,7 +502,7 @@ function getLastSevenDaysTicketTransactions(data) {
   });
 
 
-
+let tickets=[]
   if (data?.length > 0) {
     const lastSevenDatesTransactions = _.reverse(
       data?.filter(({ updatedAt }) =>
@@ -540,16 +540,10 @@ function getLastSevenDaysTicketTransactions(data) {
     );
   }
 
-
   // const dataSet = _.zipWith(lastSevenDates, tickets, (date, value) => ({ date, value }));
-
-
-
-
-
   return {
     labels: lastSevenDates,
-    tickets,
+    tickets
     // dataSet
 
 

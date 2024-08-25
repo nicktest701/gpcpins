@@ -297,6 +297,7 @@ router.post(
 
     //logs
     await transx("verifier_activity_logs").insert({
+      _id: generateId(),
       verifier_id: id,
       title: "Created new verifier account.",
       severity: "info",
@@ -617,6 +618,7 @@ router.post(
 
     //logs
     await knex("verifier_activity_logs").insert({
+      // _id: generateId(),
       verifier_id: verifier[0]?._id,
       title: "Logged into account.",
       severity: "info",
@@ -642,6 +644,7 @@ router.post(
 
     //logs
     await knex("verifier_activity_logs").insert({
+      // _id: generateId(),
       verifier_id: id,
       title: "Logged out of account.",
       severity: "info",
@@ -677,6 +680,7 @@ router.put(
 
     //logs
     await knex("verifier_activity_logs").insert({
+      // _id: generateId(),
       verifier_id: id,
       title: "Updated account details.",
       severity: "info",
@@ -725,6 +729,7 @@ router.put(
 
     //logs
     await knex("verifier_activity_logs").insert({
+      // _id: generateId(),
       verifier_id: id,
       title: "Updated account password!",
       severity: "info",
@@ -801,6 +806,7 @@ router.put(
 
     //logs
     await knex("verifier_activity_logs").insert({
+      // _id: generateId(),
       verifier_id: id,
       title: "Updated account profile!",
       severity: "info",
@@ -830,6 +836,7 @@ router.put(
 
     //logs
     await knex("verifier_activity_logs").insert({
+      // _id: generateId(),
       verifier_id: _id,
       title: `${Boolean(active) === true
         ? "Activated an verifier account!"
@@ -867,6 +874,7 @@ router.delete(
 
     //logs
     await knex("verifier_activity_logs").insert({
+      // _id: generateId(),
       verifier_id: _id,
       title: "Deleted an verifier account!",
       severity: "error",
