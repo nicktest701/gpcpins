@@ -344,13 +344,13 @@ router.get(
     };
 
     const accessToken = signMainToken(accessData, "15m");
-  
-  
+
+
     res.status(200).json({
-   
+
       accessToken,
     });
-   
+
   })
 );
 
@@ -401,7 +401,7 @@ router.post(
         active: 1,
         ...rest,
         username: `${rest.username}@gpc`,
-        email:rest?.email?.toLowerCase()
+        email: rest?.email?.toLowerCase()
       });
 
       //Save Agent Business Information
@@ -1133,7 +1133,7 @@ router.put(
     };
 
     const accessToken = signMainToken(accessData, "15m");
-  
+
     //logs
     await knex("agent_activity_logs").insert({
       agent_id: agent[0]?._id,
@@ -1649,11 +1649,11 @@ router.post(
     const info = req.body;
     const { id } = req.user;
 
-    const balance = await accountBalance();
-    if (Number(balance) < Number(info?.amount)) {
-  
+    const response = await accountBalance();
+    if (Number(response?.balance) < Number(info?.amount)) {
+
       const body = `
-    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(balance)}.
+    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(response?.balance)}.
     Please recharge to avoid any inconveniences.
     Thank you.
               `;
@@ -1961,10 +1961,10 @@ router.post(
 
     Promise.all(transactions)
       .then(async (values) => {
-        const balance = await accountBalance();
-        if (balance < 1000) {
+        const response = await accountBalance();
+        if (response?.balance < 1000) {
           const body = `
-    Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.
+    Your one-4-all top up account balance is running low.Your remaining balance is GHS ${response?.balance}.
     Please recharge to avoid any inconveniences.
     Thank you.
           `;
@@ -2003,12 +2003,12 @@ router.post(
 
 
 
-    const balance = await accountBalance();
-    if (Number(balance) < Number(info?.amount)) {
-  
+    const response = await accountBalance();
+    if (Number(response?.balance) < Number(info?.amount)) {
+
 
       const body = `
-    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(balance)}.
+    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(response?.balance)}.
     Please recharge to avoid any inconveniences.
     Thank you.
               `;
@@ -2029,31 +2029,31 @@ router.post(
 
 
     const agentWallet = await knex("agent_wallets")
-    .select("_id", "agent_key", "amount", "active")
-    .where({
-      agent_id: id,
+      .select("_id", "agent_key", "amount", "active")
+      .where({
+        agent_id: id,
 
-    })
-    .limit(1);
-
-
-  if (_.isEmpty(agentWallet)) {
-    return res.status(401).json("Invalid pin!");
-  }
-
-  const isPinValid = await bcrypt.compare(info?.token, agentWallet[0]?.agent_key)
+      })
+      .limit(1);
 
 
-  if (!isPinValid) {
-    return res.status(401).json("Invalid pin!");
-  }
+    if (_.isEmpty(agentWallet)) {
+      return res.status(401).json("Invalid pin!");
+    }
+
+    const isPinValid = await bcrypt.compare(info?.token, agentWallet[0]?.agent_key)
 
 
-  if (
-    Number(agentWallet[0]?.amount) < Number(info?.amount)
-  ) {
-    return res.status(401).json("Insufficient wallet balance to complete transaction!");
-  }
+    if (!isPinValid) {
+      return res.status(401).json("Invalid pin!");
+    }
+
+
+    if (
+      Number(agentWallet[0]?.amount) < Number(info?.amount)
+    ) {
+      return res.status(401).json("Insufficient wallet balance to complete transaction!");
+    }
 
 
     //transaction reference
