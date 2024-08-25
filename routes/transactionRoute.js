@@ -96,6 +96,7 @@ router.get(
         "phonenumber",
         "info",
         "mode",
+        "partner",
         "amount",
         "domain",
         "domain as type",
@@ -109,9 +110,10 @@ router.get(
         "status", 'IN', ['completed', 'pending']
       );
 
-    const bundleTransactions = bundle_transactions.map(({ info, ...rest }) => {
+    const bundleTransactions = bundle_transactions.map(({ info, partner, ...rest }) => {
       return {
         ...rest,
+        partner: JSON.parse(partner),
         info: JSON.parse(info),
       };
     });
@@ -123,6 +125,7 @@ router.get(
         "recipient",
         "phonenumber",
         "info",
+        "partner",
         "amount",
         "mode",
         "domain",
@@ -140,11 +143,12 @@ router.get(
       );
 
     const airtimeTransactions = airtime_transactions.map(
-      ({ info, ...rest }) => {
+      ({ info, partner, ...rest }) => {
 
         return {
           ...rest,
           createdAt: rest?.updatedAt,
+          partner: JSON.parse(partner),
           info: JSON.parse(info),
         };
       }
@@ -154,7 +158,9 @@ router.get(
       .select(
         "_id",
         "info",
+        'partner',
         "mode",
+        "status",
         "reference",
         "createdAt",
         "updatedAt",
@@ -165,9 +171,10 @@ router.get(
       );
 
     //
-    const transactions = voucher_transactions.map(({ info, ...rest }) => {
+    const transactions = voucher_transactions.map(({ info, partner, ...rest }) => {
       return {
         ...rest,
+        partner: JSON.parse(partner),
         info: JSON.parse(info),
       };
     });
@@ -175,13 +182,15 @@ router.get(
     // return res.status(200).json(transactions);
 
     const prepaid_transactions = await knex("prepaid_transactions")
-      .join("meters", "prepaid_transactions.meter", "=", "meters._id")
+      .leftJoin("meters", "prepaid_transactions.meter", "=", "meters._id")
       .select(
         "prepaid_transactions._id as _id",
         "prepaid_transactions.reference as reference",
         "prepaid_transactions.info as info",
+        "prepaid_transactions.partner as partner",
         "prepaid_transactions.mode as mode",
         "prepaid_transactions.status as status",
+        "prepaid_transactions.processed as isProcessed",
         "prepaid_transactions.issuer as issuer",
         "prepaid_transactions.issuerName as issuerName",
         "prepaid_transactions.createdAt as createdAt",
@@ -201,8 +210,10 @@ router.get(
         _id: transaction?._id,
         reference: transaction?.reference,
         info: JSON.parse(transaction?.info),
+        partner: JSON.parse(transaction?.partner),
         mode: transaction?.mode,
-        status: transaction?.status,
+        isProcessed: transaction?.isProcessed,
+        status: Boolean(transaction?.isProcessed) ? 'completed' : 'pending',
         modifiedAt: transaction?.modifiedAt,
         createdAt: transaction?.updatedAt,
         issuer: transaction?.issuer,
@@ -378,6 +389,7 @@ router.get(
         createdAt: transaction?.updatedAt,
         updatedAt: transaction?.updatedAt,
         modifiedAt: transaction?.modifiedAt,
+        partner: transaction?.partner,
         mode: transaction?.mode,
         status: transaction?.status,
       };
@@ -401,10 +413,17 @@ router.get(
         createdAt: transaction?.updatedAt,
         updatedAt: transaction?.updatedAt,
         modifiedAt: transaction?.modifiedAt,
+        partner: transaction?.partner,
         mode: transaction?.mode,
         status: transaction?.status,
       };
     });
+    // console.log({
+    //   1: vouchers[0],
+    //   2: prepaids[0],
+    //   3: modifiedAirtimeTransaction[0],
+    //   4: modifiedBundleTransaction[0],
+    // })
 
     res
       .status(200)
@@ -1029,9 +1048,12 @@ router.get(
         "amount",
         "createdAt",
         "updatedAt",
-        "year"
+        "year",
+        'status'
       )
-      .where({ year: year, status: "completed" })
+      .where({ year: year })
+      .andWhere('status', "IN", ['completed', 'refunded'])
+
       .orderBy("updatedAt", "desc");
 
     const bundleTransaction = bundle_transactions.map(({ info, ...rest }) => {
@@ -1051,9 +1073,11 @@ router.get(
         "amount",
         "createdAt",
         "updatedAt",
-        "year"
+        "year",
+        'status'
       )
-      .where({ year: year, status: "completed" })
+      .where({ year: year })
+      .andWhere('status', "IN", ['completed', 'refunded'])
       .orderBy("updatedAt", "desc");
 
     const airtimeTransaction = airtime_transactions.map(({ info, ...rest }) => {
@@ -1066,7 +1090,8 @@ router.get(
     //Vouchers
     const voucher_transactions = await knex("voucher_transactions")
       .select("_id", "info", "createdAt", "updatedAt", "year")
-      .where({ year: year, status: "completed" })
+      .where({ year: year })
+      .andWhere('status', "IN", ['completed', 'refunded'])
       .orderBy("updatedAt", "desc");
 
     const transaction = voucher_transactions.map(({ info, ...rest }) => {
@@ -1077,7 +1102,8 @@ router.get(
     });
 
     const prepaid_transactions = await knex("prepaid_transactions")
-      .where({ year: year, status: "completed" })
+      .where({ year: year })
+      .andWhere('status', "IN", ['completed', 'refunded'])
       .select("_id", "info", "status", "year", "createdAt", "updatedAt")
       .orderBy("updatedAt", "desc");
 
@@ -1215,7 +1241,7 @@ router.get(
 
     const voucher_transactions = await knex("voucher_transactions")
       .select("*")
-      .where("status", "completed")
+      .where("status", "IN", ["completed", 'refunded'])
       .orderBy("createdAt", "desc");
 
     const transactions = voucher_transactions.map(({ info, ...rest }) => {
@@ -1375,7 +1401,8 @@ router.get(
     const meters = await knex("meters").select("*").count({ count: "*" });
 
     const prepaid_transactions = await knex("prepaid_transactions")
-      .where({ year: moment().year(), status: "completed" })
+      .where({ year: moment().year(), })
+      .andWhere('status', "IN", ['completed', 'refunded'])
       .select("_id", "info", "status", "processed", "year", "createdAt", "updatedAt")
       .orderBy("updatedAt", "desc");
 
@@ -1428,6 +1455,7 @@ router.get(
       status: [
         groupedTransactions["0"]?.length ?? 0,
         groupedTransactions["1"]?.length ?? 0,
+        groupedTransactions["1"]?.length ?? 0,
       ],
       topCustomers,
       meters: meters[0].count,
@@ -1441,7 +1469,8 @@ router.get(
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const airtime_transactions = await knex("airtime_transactions")
-      .where({ year: moment().year(), status: "completed" })
+      .where({ year: moment().year() })
+      .andWhere('status', "IN", ['completed', 'refunded'])
       .select(
         "_id",
         "amount",
@@ -1502,7 +1531,8 @@ router.get(
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const bundle_transactions = await knex("bundle_transactions")
-      .where({ year: moment().year(), status: "completed" })
+      .where({ year: moment().year() })
+      .andWhere('status', "IN", ['completed', 'refunded'])
       .select(
         "_id",
         "amount",
@@ -1699,20 +1729,20 @@ router.get(
       return res.status(400).json("Invalid Reference ID");
     }
 
-    let transaction = [];
+    let transaction = {};
 
     if (type === "Voucher" || type === "Ticket") {
       transaction = await knex("voucher_transactions")
         .select("reference")
         .where("reference", clientReference)
-        .limit(1);
+        .limit(1).first();
     }
 
     if (type === "Prepaid") {
       transaction = await knex("prepaid_transactions")
         .select("reference")
         .where("reference", clientReference)
-        .limit(1);
+        .limit(1).first();
     }
 
     //if creating new transaction fails
@@ -1785,7 +1815,7 @@ router.get(
     const voucherTransaction = await knex("voucher_transactions")
       .select("_id", 'phonenumber', 'mode', 'info', 'createdAt', 'status')
       .where({ _id: id, phonenumber: mobileNo })
-      .limit(1);
+      .limit(1).first();
 
     const prepaidTransaction = await knex("prepaid_transactions")
       .select("_id", 'mobileNo as phonenumber', 'mode', 'info', "amount", 'createdAt', 'status')
@@ -1831,7 +1861,8 @@ router.get(
 
     const transaction = await knex("voucher_transactions")
       .select("*")
-      .where({ _id: transactionId, status: "completed" })
+      .where({ _id: transactionId, })
+    andWhere('status', "IN", ['completed', 'refunded'])
       .limit(1);
 
     if (

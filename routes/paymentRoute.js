@@ -1441,7 +1441,7 @@ router.post(
 
     const balance = await accountBalance();
     if (Number(balance) < Number(amount)) {
-    
+
       const body = `
     Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(balance)}.
     Please recharge to avoid any inconveniences.
@@ -2473,10 +2473,10 @@ router.put(
         _id: _id,
         status: "completed",
       })
-      .select("_id", "number", "name", 'paymentId', "spn", 'email', 'mobileNo', 'info', 'topup', 'charges', 'amount')
-      .limit(1);
+      .select("_id", "number", "name", 'paymentId', "spn", 'email', 'mobileNo', 'info', 'topup', 'charges', 'amount', 'user')
+      .limit(1)?.first()
 
-    if (!transactions[0]) {
+    if (!transactions) {
       return res.status(404).json("Error updating request");
     }
 
@@ -2484,18 +2484,18 @@ router.put(
     //   .where("_id", id)
     //   .select("_id", knex.raw("CONCAT(firstname,' ',lastname) as name"));
 
-    const paymentInfo = JSON.parse(transactions[0]?.info);
+    const paymentInfo = JSON.parse(transactions?.info);
     const meterInfo = {
-      id: transactions[0]?._id,
-      number: transactions[0]?.number,
-      name: transactions[0]?.name,
-      paymentId: transactions[0]?.paymentId,
+      id: transactions?._id,
+      number: transactions?.number,
+      name: transactions?.name,
+      paymentId: transactions?.paymentId,
       email: paymentInfo?.email,
       mobileNo: paymentInfo?.mobileNo,
       spn: paymentInfo?.spn,
       orderNo: paymentInfo?.orderNo,
-      topup: currencyFormatter(transactions[0]?.topup),
-      charges: currencyFormatter(transactions[0]?.charges),
+      topup: currencyFormatter(transactions?.topup),
+      charges: currencyFormatter(transactions?.charges),
       amount: currencyFormatter(paymentInfo?.amount),
       // district: transactions[0]?.district,
       // name: transactions[0]?.name,
@@ -2522,6 +2522,17 @@ router.put(
       `You request to buy prepaid units has being completed.Transaction Details:Order No.:${meterInfo?.paymentId},-Token:${meterInfo?.orderNo},Meter No:${meterInfo?.number},Meter Name:${meterInfo?.name}-Amount Paid: ${meterInfo?.amount}.`,
       paymentInfo?.mobileNo
     );
+
+
+    // await trans("user_notifications").insert({
+    //   _id: generateId(),
+    //   user_id: transactions?.user,
+    //   type: "prepaid",
+    //   title: "Prepaid Units",
+    //   message: `You request to buy prepaid units has being completed.Click on the button below to download your receipt.`,
+
+    // });
+
 
     res
       .status(201)
@@ -2558,7 +2569,7 @@ router.put(
     if (downloadLink !== "") {
       await trans("user_notifications").insert({
         _id: generateId(),
-        user_id: transactions[0]?.userID,
+        user_id: transactions?.user,
         type: "prepaid",
         title: "Prepaid Units",
         message: `You request to buy prepaid units has being completed.Click on the button below to download your receipt.`,
@@ -2569,7 +2580,7 @@ router.put(
 
       await trans("user_notifications").insert({
         _id: generateId(),
-        user_id: transactions[0]?.userID,
+        user_id: transactions?.user,
         type: "prepaid",
         title: "Prepaid Units",
         message: `You request to buy prepaid units has being completed.`,
@@ -2582,7 +2593,7 @@ router.put(
 
 
     limit(() =>
-      sendElectricityMail(_id, paymentInfo?.email, transactions[0]?.status, url, meterInfo)
+      sendElectricityMail(_id, paymentInfo?.email, transactions?.status, url, meterInfo)
     );
 
 
