@@ -105,9 +105,9 @@ router.get(
         "updatedAt",
         knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt")
       )
-      .where({
-        status: "completed",
-      });
+      .where(
+        "status", 'IN', ['completed', 'pending']
+      );
 
     const bundleTransactions = bundle_transactions.map(({ info, ...rest }) => {
       return {
@@ -135,9 +135,9 @@ router.get(
         "updatedAt",
         knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt")
       )
-      .where({
-        status: "completed",
-      });
+      .where(
+        "status", 'IN', ['completed', 'pending']
+      );
 
     const airtimeTransactions = airtime_transactions.map(
       ({ info, ...rest }) => {
@@ -160,9 +160,9 @@ router.get(
         "updatedAt",
         knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt")
       )
-      .where({
-        status: "completed",
-      });
+      .where(
+        "status", 'IN', ['completed', 'pending']
+      );
 
     //
     const transactions = voucher_transactions.map(({ info, ...rest }) => {
@@ -192,9 +192,9 @@ router.get(
         "meters._id as meterId",
         "meters.number as number"
       )
-      .where({
-        status: "completed",
-      });
+      .where(
+        "status", 'IN', ['completed', 'pending']
+      );
 
     const ecgTransaction = prepaid_transactions.map((transaction) => {
       return {
@@ -379,7 +379,7 @@ router.get(
         updatedAt: transaction?.updatedAt,
         modifiedAt: transaction?.modifiedAt,
         mode: transaction?.mode,
-        status: "completed",
+        status: transaction?.status,
       };
     });
     const vouchers = await Promise.all(VoucherTransactions);
