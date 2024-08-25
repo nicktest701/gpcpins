@@ -2190,12 +2190,15 @@ router.post(
         ? "refunded"
         : ResponseCode === "0001"
           ? "pending"
-          : "failed";
+          : "completed";
 
 
-    if (['0000'].includes(ResponseCode)) {
+    const tranx = await knex.transaction();
+
+    try {
+
       if (category === "prepaid") {
-        await knex("prepaid_transactions")
+        await tranx("prepaid_transactions")
           .where("_id", id)
           .update({
             partner: JSON.stringify(Data),
@@ -2204,7 +2207,7 @@ router.post(
       }
 
       if (category === "voucher" || category === "ticket") {
-        await knex("voucher_transactions")
+        await tranx("voucher_transactions")
           .where("_id", id)
           .update({
             partner: JSON.stringify(Data),
@@ -2213,7 +2216,7 @@ router.post(
       }
 
       if (category === "airtime") {
-        await knex("airtime_transactions")
+        await tranx("airtime_transactions")
           .where("_id", id)
           .update({
             partner: JSON.stringify(Data),
@@ -2222,7 +2225,7 @@ router.post(
       }
 
       if (category === "bundle") {
-        await knex("bundle_transactions")
+        await tranx("bundle_transactions")
           .where("_id", id)
           .update({
             partner: JSON.stringify(Data),
@@ -2230,21 +2233,41 @@ router.post(
           });
       }
 
-      await knex("notifications").insert({
-        _id: generateId(),
-        title: "Money Refund Completed",
-        message: Data?.Description
-      });
+      if (status === 'refunded') {
+
+        await tranx("notifications").insert({
+          _id: generateId(),
+          title: "Money Refund Completed",
+          message: Data?.Description
+        });
+      }
 
 
-    } else {
+      if (status === 'pending') {
 
-      await knex("notifications").insert({
-        _id: generateId(),
-        title: "Money Refund Failed",
-        message: Data?.Description
-      });
+        await tranx("notifications").insert({
+          _id: generateId(),
+          title: "Money Refund Pending",
+          message: Data?.Description
+        });
+      }
+
+
+      if (status === 'completed') {
+
+        await tranx("notifications").insert({
+          _id: generateId(),
+          title: "Money Refund Failed",
+          message: Data?.Description
+        });
+      }
+      await tranx.commit();
+    } catch (error) {
+      await tranx.rollback();
+      return res.sendStatus(201);
+
     }
+
 
 
 
