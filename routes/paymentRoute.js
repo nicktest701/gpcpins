@@ -1440,7 +1440,7 @@ router.post(
 
 
     const balance = await accountBalance();
-    console.log(Number(balance) , Number(amount))
+    console.log(balance , Number(amount))
 
     if (Number(balance) < Number(amount)) {
 
@@ -1757,7 +1757,7 @@ router.post(
 
     const balance = await accountBalance();
 
-    console.log(Number(balance) , Number(amount))
+    console.log(balance , Number(amount))
     if (Number(balance) < Number(amount)) {
 
 
