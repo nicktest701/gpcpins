@@ -371,7 +371,7 @@ router.put(
         <p style="text-align:center;">-- Gab Powerful Team --</p>
     </div>
         `;
-    console.log(message_url)
+    // console.log(message_url)
 
     try {
       await sendMail(email, mailTextShell(message));

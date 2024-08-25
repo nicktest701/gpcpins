@@ -2271,6 +2271,24 @@ router.post(
           title: "Money Refund Completed",
           message: Data?.Description
         });
+
+
+
+        await tranx("user_notifications").insert({
+          _id: generateId(),
+          user_id: user,
+          type: "general",
+          title: "Money Refund",
+          message: `An amount of ${currencyFormatter(Data?.Amount)} has been refunded into your mobile money wallet .`,
+
+        });
+
+        await sendSMS(
+          `Dear Customer,An amount of ${currencyFormatter(Data?.Amount)} has been refunded into to your mobile money wallet.`,
+          phoneInfo.phoneNumber
+        );
+
+
       }
 
 

@@ -1440,6 +1440,8 @@ router.post(
 
 
     const balance = await accountBalance();
+    console.log(Number(balance) , Number(amount))
+
     if (Number(balance) < Number(amount)) {
 
       const body = `
@@ -1731,11 +1733,6 @@ router.post(
     }
 
 
-
-
-
-
-
     if (isWallet) {
       const userWallet = await knex("user_wallets")
         .select("_id", "user_key", "active")
@@ -1759,6 +1756,8 @@ router.post(
 
 
     const balance = await accountBalance();
+
+    console.log(Number(balance) , Number(amount))
     if (Number(balance) < Number(amount)) {
 
 
@@ -1777,8 +1776,6 @@ router.post(
 
       return res.status(401).json("Service Not Available.Try again later");
     }
-
-
 
 
 

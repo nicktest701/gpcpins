@@ -108,7 +108,7 @@ router.put(
     verifyToken, verifyScanner,
     asyncHandler(async (req, res) => {
         const { logs } = req.body;
-        console.log(logs)
+   
 
         await knex('verifier_activity_logs').where("_id", "IN", logs).update({
             isActive: false
