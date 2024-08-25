@@ -61,6 +61,7 @@ const whitelist = [
   "https://154.160.23.99:5002",
   "https://154.160.23.99:5003",
   "https://154.160.23.99:5004",
+  "http://172.20.10.4:5000",
   process.env.CLIENT_URL,
 ];
 const corsOptions = {
@@ -230,6 +231,7 @@ app.use(
   express.static(path.join(__dirname, "vouchers"))
 );
 app.use("/api/gabs/v1/images", express.static(path.join(__dirname, "images")));
+app.use("/api/gabs/v1/downloads", express.static(path.join(__dirname, "downloads")));
 
 app.use("/", express.static(path.join(__dirname, "public")));
 
@@ -247,9 +249,9 @@ app.use("/api/gabs/v1/employees", employeeRoute);
 app.use("/api/gabs/v1/meters", verifyToken, meterRoute);
 app.use("/api/gabs/v1/payment", paymentRoute);
 app.use("/api/gabs/v1/transaction", transactionRoute);
-app.use("/api/gabs/v1/notifications", verifyToken, notificationRoute);
+app.use("/api/gabs/v1/notifications", notificationRoute);
 app.use("/api/gabs/v1/messages", messageRoute);
-app.use("/api/gabs/v1/broadcast-messages", verifyToken, broadcastMessageRoute);
+app.use("/api/gabs/v1/broadcast-messages",verifyToken, broadcastMessageRoute);
 
 // app.use('/api/gabs/v1/clients', clientRoute);
 // app.use('/api/gabs/v1/clients-category', clientCategoryRoute);

@@ -8,6 +8,7 @@ const { isValidUUID2 } = require("../config/validation");
 const { verifyToken } = require("../middlewares/verifyToken");
 const verifyAgent = require("../middlewares/verifyAgent");
 const verifyAdmin = require("../middlewares/verifyAdmin");
+const verifyScanner = require("../middlewares/verifyScanner");
 
 router.get(
   "/",
@@ -111,28 +112,25 @@ router.get(
 
 router.get(
   "/verifier",
-  // verifyToken,
-  // verifyScanner,
+  verifyToken, verifyScanner,
   asyncHandler(async (req, res) => {
     const { id, createdAt: modifiedAt } = req.user;
+
 
     if (!isValidUUID2(id)) {
       return res.status(400).json("Invalid Request!");
     }
-    const broadcastMessages = await knex("broadcast_messages")
-      .where("recipient", "Customers")
-      .select("*");
 
     const verifierNotifications = await knex("verifier_notifications")
       .select("*")
       .where("verifier_id", id);
 
-    const recentNotifications = [
-      ...broadcastMessages,
-      ...verifierNotifications,
-    ].filter(({ createdAt }) =>
-      moment(createdAt).isSameOrAfter(moment(modifiedAt))
-    );
+
+
+    const recentNotifications =
+      verifierNotifications.filter(({ createdAt }) =>
+        moment(createdAt).isSameOrAfter(moment(modifiedAt))
+      );
 
     const notifications = _.orderBy(recentNotifications, "createdAt", "desc");
     res.status(200).json(notifications);
@@ -166,6 +164,31 @@ router.post(
       _id: generateId(),
       ...newNotification,
     });
+
+    if (_.isEmpty(notification)) {
+      return res.status(404).json("Error saving notification!");
+    }
+    res.status(201).json("Notification  saved!");
+  })
+);
+
+router.post(
+  "/verifier",
+  verifyToken, verifyScanner,
+  asyncHandler(async (req, res) => {
+    const newNotification = req.body;
+
+    const verifiers = await knex('verifiers').where('active', true).select('_id');
+
+    const newInsertNotifications = verifiers.map(verifier => {
+      return {
+        _id: generateId(),
+        verifier_id: verifier?._id,
+        ...newNotification
+      }
+    })
+
+    const notification = await knex("verifier_notifications").insert(newInsertNotifications);
 
     if (_.isEmpty(notification)) {
       return res.status(404).json("Error saving notification!");
@@ -232,6 +255,42 @@ router.put(
   })
 );
 
+//Mark all verifier notifications as read
+router.put(
+  "/verifier",
+  verifyToken, verifyScanner,
+  asyncHandler(async (req, res) => {
+    const { ids } = req.body
+
+
+    await knex("verifier_notifications")
+      .where("_id", "IN", ids)
+      .update({ active: false });
+
+    res.sendStatus(204);
+  })
+);
+
+
+
+//Mark agent notifications as read
+router.put(
+  "/verifier/remove",
+  verifyToken, verifyScanner,
+  asyncHandler(async (req, res) => {
+    const { ids } = req.body
+
+
+    await knex("verifier_notifications")
+      .where("_id", "IN", ids)
+      .del();
+
+
+    res.sendStatus(204);
+  })
+);
+
+
 
 
 // Delete a notification
@@ -283,6 +342,20 @@ router.delete(
 );
 
 
+router.delete(
+  "/agent",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+
+    await knex("verifier_notifications").where("verifier_id", id).del();
+
+
+    res.status(200).json("Notifications removed!");
+  })
+);
+
+
 
 router.delete(
   "/user/:id",
@@ -314,6 +387,9 @@ router.delete(
     res.status(200).json("Notification removed!");
   })
 );
+
+
+
 
 
 

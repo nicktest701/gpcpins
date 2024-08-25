@@ -6,6 +6,7 @@ const moment = require("moment");
 const knex = require("../db/knex");
 const { verifyToken } = require("../middlewares/verifyToken");
 const verifyAdmin = require("../middlewares/verifyAdmin");
+const verifyScanner = require("../middlewares/verifyScanner");
 
 
 // GET All Logs
@@ -51,8 +52,7 @@ router.get(
 //Verifier Logs
 router.get(
     "/verifier",
-    verifyToken,
-    // verifyAdmin,
+    verifyToken, verifyScanner,
     asyncHandler(async (req, res) => {
         const { id, isAdmin } = req.user;
         const { startDate, endDate } = req.query;
@@ -105,8 +105,7 @@ router.put(
 );
 router.put(
     "/verifier",
-    verifyToken,
-    
+    verifyToken, verifyScanner,
     asyncHandler(async (req, res) => {
         const { logs } = req.body;
         console.log(logs)

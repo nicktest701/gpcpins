@@ -1189,7 +1189,7 @@ router.post(
           _.isEmpty(user_balance) ||
           Number(user_balance[0]?.amount) < Number(totalAmount)
         ) {
-          return res.status(401).json("Insufficient wallet balance to complete transaction!");
+          return res.status(401).json("Insufficient wallet Fund to complete transaction!");
         }
 
         const user_deduction = await transx("user_wallets")
@@ -1437,6 +1437,28 @@ router.post(
       }
     }
 
+
+
+    const balance = await accountBalance();
+    if (Number(balance) < Number(amount)) {
+    
+      const body = `
+    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(balance)}.
+    Please recharge to avoid any inconveniences.
+    Thank you.
+              `;
+      await sendEMail(
+        process.env.MAIL_CLIENT_USER,
+        mailTextShell(`<p>${body}</p>`),
+        "LOW TOP UP ACCOUNT BALANCE"
+      );
+
+      await sendSMS(body, process.env.CLIENT_PHONENUMBER)
+
+      return res.status(401).json("Service Not Available.Try again later");
+    }
+
+
     const tranx = await knex.transaction();
 
     try {
@@ -1456,7 +1478,7 @@ router.post(
           _.isEmpty(user_balance) ||
           Number(user_balance[0]?.amount) < Number(amount)
         ) {
-          return res.status(401).json("Insufficient Wallet Balance!");
+          return res.status(401).json("Insufficient Wallet Fund!");
         }
 
         const user_deduction = await tranx("user_wallets")
@@ -1511,6 +1533,7 @@ router.post(
         };
         // console.log(transactionInfo)
       } else {
+
         const payment = {
           phonenumber,
           amount: Number(amount).toFixed(2),
@@ -1707,6 +1730,12 @@ router.post(
       return res.status(401).json("Invalid Request");
     }
 
+
+
+
+
+
+
     if (isWallet) {
       const userWallet = await knex("user_wallets")
         .select("_id", "user_key", "active")
@@ -1727,6 +1756,31 @@ router.post(
       }
 
     }
+
+
+    const balance = await accountBalance();
+    if (Number(balance) < Number(amount)) {
+
+
+      const body = `
+    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(balance)}.
+    Please recharge to avoid any inconveniences.
+    Thank you.
+              `;
+      await sendEMail(
+        process.env.MAIL_CLIENT_USER,
+        mailTextShell(`<p>${body}</p>`),
+        "LOW TOP UP ACCOUNT BALANCE"
+      );
+
+      await sendSMS(body, process.env.CLIENT_PHONENUMBER)
+
+      return res.status(401).json("Service Not Available.Try again later");
+    }
+
+
+
+
 
     const tranx = await knex.transaction();
 

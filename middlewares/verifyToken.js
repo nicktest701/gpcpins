@@ -1,5 +1,4 @@
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
 
 
 const knex = require("../db/knex");
@@ -7,16 +6,18 @@ const knex = require("../db/knex");
 const verifyToken = (req, res, next) => {
   req.user = null;
 
-
   const authHeader =
     req.headers["authorization"] || req.headers["Authorization"];
+
 
 
   if (!authHeader) {
     return res.status(401).json("Unauthorized Access");
   }
 
+
   const token = authHeader?.split(" ")[1];
+
 
   if (!token) {
     return res.status(401).json("Unauthorized Access");
@@ -24,6 +25,7 @@ const verifyToken = (req, res, next) => {
 
   jwt.verify(token, process.env.TOKEN, async (err, user) => {
     if (err) {
+
 
       return res.status(403).json("Session has expired.");
     }
@@ -60,7 +62,6 @@ const verifyToken = (req, res, next) => {
 
 
 
-
     if (Number(authUser[0]?.isEnabled) !== 1) {
       return res.status(403).json("Session has expired.");
     }
@@ -74,7 +75,8 @@ const verifyToken = (req, res, next) => {
       createdAt: authUser[0]?.createdAt,
     };
 
-    if (user?.role === process.env.ADMIN_ID) {
+    if (user?.role === process.env.ADMIN_ID || user?.role === Number(process.env.SCANNER_ID)) {
+
       newUser.profile = authUser[0]?.profile;
       newUser.firstname = authUser[0]?.firstname;
       newUser.lastname = authUser[0]?.lastname;
@@ -102,6 +104,7 @@ const verifyRefreshToken = (req, res, next) => {
     return res.status(401).json("Unauthorized Access");
   }
 
+
   const token = authHeader?.split(" ")[1];
 
   if (!token) {
@@ -111,6 +114,7 @@ const verifyRefreshToken = (req, res, next) => {
   jwt.verify(token, process.env.TOKEN_REFRESH, async (err, user) => {
 
     if (err) {
+
 
       return res.status(403).json("Session has expired.");
     }
@@ -146,6 +150,7 @@ const verifyRefreshToken = (req, res, next) => {
 
 
     if (Number(authUser[0]?.isEnabled) !== 1) {
+
       return res.status(403).json("Session has expired.");
     }
 
@@ -160,7 +165,8 @@ const verifyRefreshToken = (req, res, next) => {
       email: authUser[0]?.email,
     };
 
-    if (user?.role === process.env.ADMIN_ID) {
+    if (user?.role === process.env.ADMIN_ID || user?.role === Number(process.env.SCANNER_ID)) {
+
       newUser.profile = authUser[0]?.profile;
       newUser.firstname = authUser[0]?.firstname;
       newUser.lastname = authUser[0]?.lastname;

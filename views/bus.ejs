@@ -85,8 +85,8 @@
 
         .qrbox {
 
-            width: 150px;
-            height: 150px;
+            width: 200px;
+            height: 200px;
             border: 1px solid lightgray;
         }
 
@@ -218,6 +218,7 @@
 
 
                 <div class="qrbox">
+                    <p style="font-style: italic; text-align: center;"> <%= _id %></p>
                     <img src=<%=voucher?.qrCode %>
                     alt="code">
                     <p style="font-style: italic; text-align: center;"> <%= voucher?.serial %></p>

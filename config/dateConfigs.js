@@ -23,14 +23,14 @@ function getDatesInWeek(year, month, weekNumber) {
   return datesInWeek;
 }
 
-function getDatesOfLastSevenDates() {
+function getDatesOfLastSevenDates(pattern) {
   const firstDayOfWeek = moment();
 
   const datesInWeek = [];
 
   for (let i = 0; i < 7; i++) {
     const currentDay = moment(firstDayOfWeek).subtract(i, 'days');
-    datesInWeek.push(currentDay.format('ddd,Do MMM'));
+    datesInWeek.push(currentDay.format(pattern || 'ddd,Do MMM'));
   }
 
   return datesInWeek?.reverse();

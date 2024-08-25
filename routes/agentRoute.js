@@ -1649,6 +1649,26 @@ router.post(
     const info = req.body;
     const { id } = req.user;
 
+    const balance = await accountBalance();
+    if (Number(balance) < Number(info?.amount)) {
+  
+      const body = `
+    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(balance)}.
+    Please recharge to avoid any inconveniences.
+    Thank you.
+              `;
+      await sendEMail(
+        process.env.MAIL_CLIENT_USER,
+        mailTextShell(`<p>${body}</p>`),
+        "LOW TOP UP ACCOUNT BALANCE"
+      );
+
+      await sendSMS(body, process.env.CLIENT_PHONENUMBER)
+
+      return res.status(401).json("Service Not Available.Try again later");
+    }
+
+
 
     const agentWallet = await knex("agent_wallets")
       .select("_id", "agent_key", "amount", "active")
@@ -1980,6 +2000,33 @@ router.post(
   asyncHandler(async (req, res) => {
     const info = req.body;
     const { id } = req.user;
+
+
+
+    const balance = await accountBalance();
+    if (Number(balance) < Number(info?.amount)) {
+  
+
+      const body = `
+    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(balance)}.
+    Please recharge to avoid any inconveniences.
+    Thank you.
+              `;
+      await sendEMail(
+        process.env.MAIL_CLIENT_USER,
+        mailTextShell(`<p>${body}</p>`),
+        "LOW TOP UP ACCOUNT BALANCE"
+      );
+
+      await sendSMS(body, process.env.CLIENT_PHONENUMBER)
+
+      return res.status(401).json("Service Not Available.Try again later");
+    }
+
+
+
+
+
 
     const agentWallet = await knex("agent_wallets")
     .select("_id", "agent_key", "amount", "active")

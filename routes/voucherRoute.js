@@ -12,7 +12,6 @@ const verifyAdmin = require("../middlewares/verifyAdmin");
 const { isValidUUID2 } = require("../config/validation");
 
 const knex = require("../db/knex");
-const { getLastSevenDaysTransactionsArray } = require("../config/transactionSummary");
 
 const ALLOWED_CATEGORIES = [
   "waec",
@@ -143,6 +142,7 @@ router.get(
     if (_.isEmpty(vouchers)) {
       return res.status(200).json({
         total: 0,
+        new: 0,
         sold: 0,
         used: 0,
         pricingTypes: _.map(pricingTypes, 'type'),
@@ -151,8 +151,8 @@ router.get(
         verifiers: []
       });
     }
-
-
+    //Vew Vouchers
+    const newVouchers = vouchers?.filter(voucher => voucher?.status === "new")?.length
     // Recently Scanned Vouchers 
     const scannedVouchers = await knex("scanned_tickets_vouchers_view")
       .select("createdAt", 'voucherType', 'type', 'verifierName')
@@ -203,7 +203,7 @@ router.get(
         },
         {
           label: 'Used/Scanned', data: _.map(ticketTypes, 'used'),
-          backgroundColor: '#155bca',
+          backgroundColor: '#f78e2a',
 
         }
       ]
@@ -212,7 +212,8 @@ router.get(
 
     // console.log(pricingTypes)
     res.status(200).json({
-      total: groupedStatus?.sold?.length ?? 0,
+      total: vouchers?.length ?? 0,
+      new: newVouchers ?? 0,
       sold: groupedStatus?.sold?.length ?? 0,
       used: groupedStatus?.used?.length ?? 0,
       pricingTypes: _.map(pricingTypes, 'type'),

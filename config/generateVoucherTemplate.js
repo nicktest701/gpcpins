@@ -3,6 +3,8 @@ const fs = require("fs");
 const path = require("path");
 
 const generateVoucherTemplate = async (data) => {
+  // console.log(data)
+
   return new Promise((resolve, reject) => {
     fs.readFile(
       path.join(process.cwd(), "/views/", `${data?.info?.type}.ejs`),

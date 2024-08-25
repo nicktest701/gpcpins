@@ -16,6 +16,7 @@ const generateId = require("../config/generateId");
 
 router.get(
   "/",
+  
   asyncHandler(async (req, res) => {
     const { role, createdAt } = req.user;
 

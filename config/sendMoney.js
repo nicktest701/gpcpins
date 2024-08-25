@@ -21,9 +21,8 @@ async function sendMoney(info, type) {
             ? 0.1
             : Number(info?.amount),
           // Amount: info?.amount,
-          PrimaryCallbackUrl: `${
-            process.env.CALLBACK_URL
-          }/${type}/${randomUUID()}`,
+          PrimaryCallbackUrl: `${process.env.CALLBACK_URL
+            }/${type}/${randomUUID()}`,
           Description: "Vouchers",
           ClientReference: info?.transaction_reference,
         },
@@ -40,6 +39,55 @@ async function sendMoney(info, type) {
         ref: (transaction_reference = randomBytes(24).toString("hex")),
       },
     };
+  }
+}
+
+async function sendMoneyToCustomer(info) {
+  if (process.env.NODE_ENV === "production") {
+    try {
+      const res = await axios({
+        method: "POST",
+        url: process.env.MSDID_SEND_URL,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${process.env.MSDID_K}`,
+          "Cache-Control": "no-cache",
+        },
+        data: {
+          RecipientName: info?.phonenumber,
+          RecipientMsisdn: info?.phonenumber,
+          CustomerEmail: info?.email,
+          Channel: info?.provider,
+          Amount: ["+233543772591", "0543772591"].includes(info?.phonenumber)
+            ? 0.1
+            : Number(info?.amount),
+          // Amount: info?.amount,
+          PrimaryCallbackUrl: `${process.env.REFUND_CALLBACK_URL
+            }/${info?.category}/${info?.transactionId}`,
+          Description: info?.category,
+          ClientReference: info?.transaction_reference,
+        },
+      });
+
+      return res.data;
+    } catch (error) {
+      throw error;
+    }
+  } else {
+    return {
+      "ResponseCode": "0001",
+      "Data": {
+        "AmountDebited": 0.0,
+        "TransactionId": "09f84e20a283942e807128e8c21d0303",
+        "Description": "Your request has been accepted. We will notify you when the transaction is completed.",
+        "ClientReference": "pay101",
+        "ExternalTransactionId": "",
+        "Amount": 0.8,
+        "Charges": 0.0,
+        "Meta": null,
+        "RecipientName": null
+      }
+    }
   }
 }
 
@@ -216,6 +264,7 @@ async function getBundleList(network) {
 
 module.exports = {
   sendMoney,
+  sendMoneyToCustomer,
   moneyStatus,
 
   //Bundle

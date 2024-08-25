@@ -292,25 +292,6 @@ router.post(
     const accessToken = signSampleToken(updatedUser);
     const refreshToken = signSampleRefreshToken(updatedUser);
 
-    // res.cookie("_SSUID_kyfc", accessToken, {
-    //   maxAge: 10 * 60 * 1000,
-    //   httpOnly: true,
-    //   path: "/",
-    //   secure: true,
-    //   // domain:
-    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-    //   sameSite: "none",
-    // });
-
-    // res.cookie("_SSUID_X_ayd", refreshToken, {
-    //   maxAge: 10 * 60 * 1000,
-    //   httpOnly: true,
-    //   path: "/",
-    //   secure: true,
-    //   // domain:
-    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-    //   sameSite: "none",
-    // });
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
     await knex("users").where("_id", user[0]?._id).update({

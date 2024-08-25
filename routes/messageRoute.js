@@ -23,6 +23,7 @@ const {
   uploadWhatsappMedia,
   sendWhatsappMessageWithMedia,
 } = require("../config/sendWhatsapp");
+const verifyScanner = require("../middlewares/verifyScanner");
 
 // router.use(xhub({ algorithm: 'sha1', secret: process.env.APP_SECRET }));
 
@@ -34,7 +35,21 @@ router.get(
     const messages = await knex("messages")
       .select("_id", "body as message", "email as title", "createdAt")
       .orderBy("createdAt", "desc");
-   
+
+
+    res.status(200).json(messages);
+  })
+);
+
+
+router.get(
+  "/verifier",
+  verifyToken, verifyScanner,
+  asyncHandler(async (req, res) => {
+    const messages = await knex("verifier_messages")
+      .select("_id", "type", "message", "title", "createdAt", 'active')
+      .orderBy("createdAt", "desc");
+
 
     res.status(200).json(messages);
   })
@@ -54,6 +69,23 @@ router.get(
     if (_.isEmpty(message)) res.status(200).json({});
 
     res.status(200).json(message[0]);
+  })
+);
+
+
+router.get(
+  "/verifier/:id",
+  verifyToken, verifyScanner,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const message = await knex("verifier_messages")
+      .select("_id", "type", "message", "title", "createdAt", 'active')
+      .where("_id", id)
+      .limit(1).first()
+
+    if (_.isEmpty(message)) res.status(200).json({});
+
+    res.status(200).json(message);
   })
 );
 
@@ -89,6 +121,50 @@ router.post(
     );
 
     res.status(201).json("Message sent!!!");
+  })
+);
+router.post(
+  "/verifier",
+  verifyToken, verifyScanner,
+  asyncHandler(async (req, res) => {
+    const newInsertMessages = req.body;
+
+    const transx = await knex.transaction();
+
+    try {
+
+
+      await transx("verifier_messages").insert({
+        _id: generateId(),
+        ...newInsertMessages
+      });
+
+      const verifiers = await transx('verifiers').where('active', true).select('_id');
+
+      const newInsertNotifications = verifiers.map(verifier => {
+        return {
+          _id: generateId(),
+          verifier_id: verifier?._id,
+          ...newInsertMessages
+        }
+      })
+
+      const notification = await transx("verifier_notifications").insert(newInsertNotifications);
+
+      if (_.isEmpty(notification)) {
+        await transx.rollback();
+        return res.status(404).json("Error saving message!");
+      }
+
+      await transx.commit();
+
+
+      res.status(201).json("Message Sent!");
+    } catch (error) {
+      await transx.rollback();
+      return res.status(500).json("Error Processing your request! Please try again later.");
+
+    }
   })
 );
 
@@ -176,6 +252,50 @@ router.post(
   })
 );
 
+
+router.put(
+  "/verifier/delete-all",
+  verifyToken, verifyScanner,
+  asyncHandler(async (req, res) => {
+    const { messages } = req.body;
+
+    await knex("verifier_messages")
+      .where("_id", "IN", messages)
+      .del();
+
+    res.sendStatus(204)
+  })
+);
+
+
+router.delete(
+  "/verifier",
+  verifyToken, verifyScanner,
+  asyncHandler(async (req, res) => {
+    const { id } = req.query;
+
+
+    const verifierMessage = await knex("verifier_messages")
+      .where("_id", id)
+      .del();
+
+    if (verifierMessage !== 1) {
+      return res.status(404).json("An error has occurred!");
+    }
+    res.status(200).json("Message removed.");
+  })
+);
+
+
+
+
+
+
+
+
+
+
+
 function verifySignature(body, signature) {
   const digest = crypto
     .createHmac("sha1", WEBHOOK_SECRET)
@@ -233,7 +353,7 @@ router.get(
 router.post(
   "/whatsapp/callback/471045af9f65250818faa85d8d24912d7501d47114ff1841568267fed07f68dd",
   asyncHandler(async (req, res) => {
-  
+
     res.status(200).json('done');
   })
 );

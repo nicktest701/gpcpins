@@ -36,6 +36,7 @@ function getTodayTransactionArray(data) {
 
   return modifiedTodayTransaction;
 }
+
 function getTodayTransaction(data) {
   const modifiedTodayTransaction = data?.filter(
     (transaction) =>
@@ -475,6 +476,195 @@ function getRangeTransactions(startDate, endDate, data) {
   return sortedTransaction;
 }
 
+
+//TICKETS
+
+function getTodayScannedTicketsTransaction(data) {
+
+  const modifiedTodayTransaction = data?.filter(
+    (transaction) =>
+      moment(transaction?.updatedAt).format("l") === moment().format("l")
+  );
+
+  return modifiedTodayTransaction.length
+}
+
+
+function getLastSevenDaysTicketTransactions(data) {
+  const lastSevenDates = getDatesOfLastSevenDates("Do MMM");
+
+  const initData = lastSevenDates.map((date) => {
+    return {
+      createdAt: date,
+      value: 0,
+    };
+
+  });
+
+
+
+  if (data?.length > 0) {
+    const lastSevenDatesTransactions = _.reverse(
+      data?.filter(({ updatedAt }) =>
+        lastSevenDates.includes(moment(updatedAt).format("Do MMM"))
+      )
+    );
+
+    //Filter out only amount and group transactions by date
+    const lastSevenDaysTicketsTransaction = lastSevenDatesTransactions.map(
+      (transaction) => {
+        return {
+          createdAt: moment(transaction?.updatedAt).format("Do MMM"),
+          value: 1
+
+        };
+      }
+    );
+
+    const ticketsLast7 = _.groupBy(
+      [...initData, ...lastSevenDaysTicketsTransaction],
+      "createdAt"
+    );
+
+    tickets = Object.values(ticketsLast7).map((item, index) => {
+      const totalValue = _.sumBy(item, "value")
+
+      return {
+        date: lastSevenDates[index],
+        label: lastSevenDates[index],
+        value: totalValue,
+        dataPointText: totalValue?.toString()
+      }
+    }
+
+    );
+  }
+
+
+  // const dataSet = _.zipWith(lastSevenDates, tickets, (date, value) => ({ date, value }));
+
+
+
+
+
+  return {
+    labels: lastSevenDates,
+    tickets,
+    // dataSet
+
+
+  };
+}
+
+//GET Recent Ticket Transactions
+function getRecentTicketTransaction(data, quantity) {
+  const recentTransaction = _.orderBy(data, "updatedAt", "desc");
+
+
+  //GET Recent Transactions
+  return _.take(recentTransaction, quantity);
+}
+
+
+//Get total tickets by month
+function getScannedTicketsByMonth(data) {
+
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  const initData = [
+    { createdAt: "January", value: 0 },
+    { createdAt: "February", value: 0 },
+    { createdAt: "March", value: 0 },
+    { createdAt: "April", value: 0 },
+    { createdAt: "May", value: 0 },
+    { createdAt: "June", value: 0 },
+    { createdAt: "July", value: 0 },
+    { createdAt: "August", value: 0 },
+    { createdAt: "September", value: 0 },
+    { createdAt: "October", value: 0 },
+    { createdAt: "November", value: 0 },
+    { createdAt: "December", value: 0 },
+  ];
+  let items = [];
+
+  if (data?.length > 0) {
+    const currentYearTickets = _.reverse(data);
+
+    //Modified Date
+    const modifiedTicket = currentYearTickets?.map((ticket) => {
+      return {
+        createdAt: moment(ticket?.updatedAt).format("MMMM"),
+        value: 1
+      };
+    });
+
+    const groupedTickets = _.groupBy(
+      [...initData, ...modifiedTicket],
+      "createdAt"
+    );
+
+    items = Object.values(groupedTickets).map((item, index) => {
+      const totalValue = _.sumBy(item, "value");
+      return {
+        label: months[index],
+        value: totalValue,
+
+      }
+    }
+
+    );
+  }
+
+  return items;
+}
+
+
+function getTopScannedTickets(data) {
+  //GET Recent Transactions
+  const modifiedTickets = _.map(data, (item) => {
+    return {
+      _id: item?._id,
+      voucherType: item?.voucherType,
+      value: 1,
+      createdAt: item?.updatedAt,
+    };
+  });
+
+  const groupedTickets = _.groupBy(modifiedTickets, "voucherType");
+
+  const tickets = Object.entries(groupedTickets).map((ticket) => {
+    return {
+      voucherType: ticket[0],
+      value: _.sumBy(ticket[1], "value"),
+    };
+  });
+  const rankedTickets = _.take(_.orderBy(tickets, "value", "desc"), 5);
+
+  return {
+    labels: _.map(rankedTickets, 'voucherType'),
+    data: _.map(rankedTickets, 'value'),
+  }
+}
+
+
+
+
+
+
+
 module.exports = {
   getTopCustomers,
   getRecentTransaction,
@@ -493,4 +683,10 @@ module.exports = {
   getThisYearTransactionArray,
   getLastYearTransactionArray,
   getRangeTransactions,
+  //tickets
+  getTodayScannedTicketsTransaction,
+  getLastSevenDaysTicketTransactions,
+  getScannedTicketsByMonth,
+  getRecentTicketTransaction,
+  getTopScannedTickets
 };

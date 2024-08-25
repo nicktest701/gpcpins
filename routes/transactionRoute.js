@@ -1,10 +1,12 @@
 const router = require("express").Router();
 const asyncHandler = require("express-async-handler");
+const { randomBytes } = require("crypto");
 const _ = require("lodash");
 const moment = require("moment");
 const generateId = require("../config/generateId");
 const multer = require("multer");
 const pLimit = require("p-limit");
+const cors = require("cors");
 //model
 
 const currencyFormatter = require("../config/currencyFormatter");
@@ -35,13 +37,15 @@ const { rateLimit } = require("express-rate-limit");
 const { isValidUUID2 } = require("../config/validation");
 
 const knex = require("../db/knex");
-const { moneyStatus } = require("../config/sendMoney");
+const { moneyStatus, sendMoneyToCustomer } = require("../config/sendMoney");
 const verifyAgent = require("../middlewares/verifyAgent");
 const { uploadAttachment, uploadFiles } = require("../config/uploadFile");
 const { generateHTMLTemplate } = require("../config/generateVoucherTemplate");
 const { generateTransactionReport } = require("../config/generatePDF");
 const { sendReportMail } = require("../config/mail");
 const { mailTextShell } = require("../config/mailText");
+const { getInternationalMobileFormat, getPhoneNumberInfo } = require("../config/PhoneCode");
+const { sendSMS } = require("../config/sms");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
@@ -50,6 +54,12 @@ const limit = rateLimit({
 });
 
 const plimit = pLimit(3);
+
+const corsOptions = {
+  methods: "POST",
+  origin: process.env.CLIENT_URL,
+};
+
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -406,6 +416,352 @@ router.get(
       ]);
   })
 );
+router.get(
+  "/refund",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { sort, startDate, endDate } = req.query;
+
+    let modifiedTransaction = [];
+    let modifiedECGTransaction = [];
+    let modifiedAirtimeTransaction = [];
+    let modifiedBundleTransaction = [];
+
+    const bundle_transactions = await knex("bundle_transactions")
+      .select(
+        "_id",
+        "bundle_name as kind",
+        "bundle_volume as volume",
+        "reference",
+        "recipient",
+        "phonenumber",
+        "info",
+        "mode",
+        "amount",
+        "domain",
+        "domain as type",
+        "isProcessed",
+        "status",
+        "createdAt",
+        "updatedAt",
+        knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt")
+      )
+      .where({
+        status: "refunded",
+      });
+
+    const bundleTransactions = bundle_transactions.map(({ info, ...rest }) => {
+      return {
+        ...rest,
+        info: JSON.parse(info),
+      };
+    });
+    const airtime_transactions = await knex("airtime_transactions")
+      .select(
+        "_id",
+        "type as kind",
+        "reference",
+        "recipient",
+        "phonenumber",
+        "info",
+        "amount",
+        "mode",
+        "domain",
+        "domain as type",
+        "isProcessed",
+        "issuer",
+        "issuerName",
+        "status",
+        "createdAt",
+        "updatedAt",
+        knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt")
+      )
+      .where({
+        status: "refunded",
+      });
+
+    const airtimeTransactions = airtime_transactions.map(
+      ({ info, ...rest }) => {
+
+        return {
+          ...rest,
+          createdAt: rest?.updatedAt,
+          info: JSON.parse(info),
+        };
+      }
+    );
+
+    const voucher_transactions = await knex("voucher_transactions")
+      .select(
+        "_id",
+        "info",
+        "mode",
+        "reference",
+        "createdAt",
+        "updatedAt",
+        knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt")
+      )
+      .where({
+        status: "refunded",
+      });
+
+    //
+    const transactions = voucher_transactions.map(({ info, ...rest }) => {
+      return {
+        ...rest,
+        info: JSON.parse(info),
+      };
+    });
+
+    // return res.status(200).json(transactions);
+
+    const prepaid_transactions = await knex("prepaid_transactions")
+      .join("meters", "prepaid_transactions.meter", "=", "meters._id")
+      .select(
+        "prepaid_transactions._id as _id",
+        "prepaid_transactions.reference as reference",
+        "prepaid_transactions.info as info",
+        "prepaid_transactions.mode as mode",
+        "prepaid_transactions.processed as isProcessed",
+        "prepaid_transactions.status as status",
+        "prepaid_transactions.issuer as issuer",
+        "prepaid_transactions.issuerName as issuerName",
+        "prepaid_transactions.createdAt as createdAt",
+        "prepaid_transactions.updatedAt as updatedAt",
+        knex.raw(
+          "DATE_FORMAT(prepaid_transactions.updatedAt,'%D %M,%Y %r') as modifiedAt"
+        ),
+        "meters._id as meterId",
+        "meters.number as number"
+      )
+      .where({
+        status: "refunded",
+      });
+
+    const ecgTransaction = prepaid_transactions.map((transaction) => {
+      return {
+        _id: transaction?._id,
+        reference: transaction?.reference,
+        info: JSON.parse(transaction?.info),
+        mode: transaction?.mode,
+        isProcessed: transaction?.isProcessed,
+        status: transaction?.status,
+        modifiedAt: transaction?.modifiedAt,
+        createdAt: transaction?.updatedAt,
+        issuer: transaction?.issuer,
+        issuerName: transaction?.issuerName,
+        updatedAt: transaction?.updatedAt,
+        meter: {
+          _id: transaction?.meterId,
+          number: transaction?.number,
+        },
+      };
+    });
+
+    const modifiedTransactionWithRange = getRangeTransactions(
+      startDate,
+      endDate,
+      transactions
+    );
+    // console.log(modifiedTransactionWithRange)
+
+
+    const modifiedECGTransactionWithRange = getRangeTransactions(
+      startDate,
+      endDate,
+      ecgTransaction
+    );
+
+    const modifiedAirtimeTransactionWithRange = getRangeTransactions(
+      startDate,
+      endDate,
+      airtimeTransactions
+    );
+
+    const modifiedBundleTransactionWithRange = getRangeTransactions(
+      startDate,
+      endDate,
+      bundleTransactions
+    );
+
+    switch (sort) {
+      case "today":
+        modifiedTransaction = getTodayTransactionArray(
+          modifiedTransactionWithRange
+        );
+        modifiedECGTransaction = getTodayTransactionArray(
+          modifiedECGTransactionWithRange
+        );
+        modifiedAirtimeTransaction = getTodayTransactionArray(
+          modifiedAirtimeTransactionWithRange
+        );
+        modifiedBundleTransaction = getTodayTransactionArray(
+          modifiedBundleTransactionWithRange
+        );
+
+        break;
+      case "yesterday":
+        modifiedTransaction = getYesterdayTransactionArray(
+          modifiedTransactionWithRange
+        );
+        modifiedECGTransaction = getYesterdayTransactionArray(
+          modifiedECGTransactionWithRange
+        );
+        modifiedAirtimeTransaction = getYesterdayTransactionArray(
+          modifiedAirtimeTransactionWithRange
+        );
+        modifiedBundleTransaction = getYesterdayTransactionArray(
+          modifiedBundleTransactionWithRange
+        );
+        break;
+
+      case "week":
+        modifiedTransaction = getLastSevenDaysTransactionsArray(
+          modifiedTransactionWithRange
+        );
+        modifiedECGTransaction = getLastSevenDaysTransactionsArray(
+          modifiedECGTransactionWithRange
+        );
+        modifiedAirtimeTransaction = getLastSevenDaysTransactionsArray(
+          modifiedAirtimeTransactionWithRange
+        );
+        modifiedBundleTransaction = getLastSevenDaysTransactionsArray(
+          modifiedBundleTransactionWithRange
+        );
+
+        break;
+      case "month":
+        modifiedTransaction = getThisMonthTransactionArray(
+          modifiedTransactionWithRange
+        );
+        modifiedECGTransaction = getThisMonthTransactionArray(
+          modifiedECGTransactionWithRange
+        );
+        modifiedAirtimeTransaction = getThisMonthTransactionArray(
+          modifiedAirtimeTransactionWithRange
+        );
+        modifiedBundleTransaction = getThisMonthTransactionArray(
+          modifiedBundleTransactionWithRange
+        );
+        break;
+      case "lmonth":
+        modifiedTransaction = getLastMonthTransactionArray(
+          modifiedTransactionWithRange
+        );
+        modifiedECGTransaction = getLastMonthTransactionArray(
+          modifiedECGTransactionWithRange
+        );
+        modifiedAirtimeTransaction = getLastMonthTransactionArray(
+          modifiedAirtimeTransactionWithRange
+        );
+        modifiedBundleTransaction = getLastMonthTransactionArray(
+          modifiedBundleTransactionWithRange
+        );
+
+        break;
+      case "year":
+        modifiedTransaction = getThisYearTransactionArray(
+          modifiedTransactionWithRange
+        );
+        modifiedECGTransaction = getThisYearTransactionArray(
+          modifiedECGTransactionWithRange
+        );
+        modifiedAirtimeTransaction = getThisYearTransactionArray(
+          modifiedAirtimeTransactionWithRange
+        );
+        modifiedBundleTransaction = getThisYearTransactionArray(
+          modifiedBundleTransactionWithRange
+        );
+        break;
+      case "lyear":
+        modifiedTransaction = getLastYearTransactionArray(
+          modifiedTransactionWithRange
+        );
+        modifiedECGTransaction = getLastYearTransactionArray(
+          modifiedECGTransactionWithRange
+        );
+        modifiedAirtimeTransaction = getLastYearTransactionArray(
+          modifiedAirtimeTransactionWithRange
+        );
+        modifiedBundleTransaction = getLastYearTransactionArray(
+          modifiedBundleTransactionWithRange
+        );
+        break;
+
+      default:
+        modifiedTransaction = [...modifiedTransactionWithRange];
+        modifiedECGTransaction = [...modifiedECGTransactionWithRange];
+        modifiedAirtimeTransaction = [...modifiedAirtimeTransactionWithRange];
+        modifiedBundleTransaction = [...modifiedBundleTransactionWithRange];
+    }
+
+    const VoucherTransactions = modifiedTransaction.map(async (transaction) => {
+      const category = await knex("categories")
+        .where("_id", transaction?.info?.categoryId)
+        .select("voucherType")
+        .limit(1);
+
+      return {
+        _id: transaction?._id,
+        reference: transaction?.reference,
+        voucherType: category[0].voucherType,
+        domain: transaction?.info?.domain,
+        downloadLink: transaction?.info?.downloadLink,
+        phonenumber: transaction?.info?.agentPhoneNumber,
+        email: transaction?.info?.agentEmail,
+        type: _.upperCase(
+          `${category[0].voucherType} ${transaction?.info?.domain}`
+        ),
+        quantity:
+          transaction?.info?.quantity ||
+          transaction?.info?.paymentDetails?.quantity,
+        amount:
+          transaction?.info?.amount ||
+          transaction?.info?.paymentDetails?.totalAmount,
+        createdAt: transaction?.updatedAt,
+        updatedAt: transaction?.updatedAt,
+        modifiedAt: transaction?.modifiedAt,
+        mode: transaction?.mode,
+        isProcessed: 1,
+        status: "refunded",
+      };
+    });
+    const vouchers = await Promise.all(VoucherTransactions);
+
+    const prepaids = modifiedECGTransaction.map((transaction) => {
+
+      return {
+        _id: transaction?._id,
+        reference: transaction?.reference,
+        meter: transaction?.meter?.number,
+        type: `${transaction?.info?.domain} Units`,
+        domain: transaction?.info?.domain,
+        phonenumber: transaction?.info?.mobileNo,
+        email: transaction?.info?.email,
+        downloadLink: transaction?.info?.downloadLink,
+        amount: transaction?.info?.amount,
+        isProcessed: transaction?.isProcessed,
+        issuer: transaction?.issuer,
+        issuerName: transaction?.issuerName,
+        createdAt: transaction?.updatedAt,
+        updatedAt: transaction?.updatedAt,
+        modifiedAt: transaction?.modifiedAt,
+        mode: transaction?.mode,
+        status: transaction?.status,
+      };
+    });
+
+    res
+      .status(200)
+      .json([
+        ...vouchers,
+        ...prepaids,
+        ...modifiedAirtimeTransaction,
+        ...modifiedBundleTransaction,
+      ]);
+  })
+);
 
 router.get(
   "/report",
@@ -568,83 +924,6 @@ router.get(
       return res.status(200).json({
         report: bundleByMonth,
       });
-    }
-  })
-);
-router.post(
-  "/report/history",
-  verifyToken,
-  verifyAdmin,
-  asyncHandler(async (req, res) => {
-    const { startDate, endDate, transactions, type } = req.body;
-
-    let template = "";
-    switch (type) {
-      case "All":
-        template = await generateHTMLTemplate(transactions, "transactions.ejs");
-        break;
-      case "Voucher":
-        template = await generateHTMLTemplate(
-          transactions,
-          "voucher_transactions.ejs"
-        );
-        break;
-      case "Ticket":
-        template = await generateHTMLTemplate(
-          transactions,
-          "voucher_transactions.ejs"
-        );
-        break;
-      case "Prepaid":
-        template = await generateHTMLTemplate(
-          transactions,
-          "prepaid_transactions.ejs"
-        );
-        break;
-      case "Airtime":
-        template = await generateHTMLTemplate(
-          transactions,
-          "airtime_transactions.ejs"
-        );
-        break;
-      case "Bundle":
-        template = await generateHTMLTemplate(
-          transactions,
-          "bundle_transactions.ejs"
-        );
-        break;
-      default:
-        template = await generateHTMLTemplate(transactions, "transactions.ejs");
-    }
-
-    const id = generateId();
-
-    const result = await generateTransactionReport(
-      template,
-      id,
-      `${type}-report`
-    );
-    if (result) {
-      const body = ` <div class="container">
-  <h1>Transactional Report</h1>
-  <p>Dear Customer,</p>
-  <p>Attached is your wallet transactional report from the period ${startDate} to ${endDate}. Please review the details below:</p>
-  <p>If you have any questions or concerns regarding this report, please feel free to contact us.</p>
-  <p>Thank you for your business!</p>
-  <p>Sincerely,<br>Gab Powerful Consults</p>
-  </div>`;
-
-      const downloadLink = await uploadFiles(result, "reports");
-
-      await sendReportMail(
-        // 'nicktest701@gmail.com',
-        process.env.MAIL_CLIENT_USER,
-        mailTextShell(body),
-        result,
-        "Transaction Report"
-      );
-
-      return res.status(200).json(downloadLink);
     }
   })
 );
@@ -1293,9 +1572,10 @@ router.get(
           SELECT _id,user,email,phonenumber,info,createdAt,year,active,status,DATE(createdAt) AS purchaseDate
           FROM voucher_transactions
       ) AS voucher_transactions_ 
-      WHERE user=? AND active=1 and status='completed' AND purchaseDate BETWEEN ? AND ?;`,
+      WHERE user=? AND active=1 and (status IN ('completed','pending','refunded')) AND purchaseDate BETWEEN ? AND ?;`,
       [id, sDate, eDate]
     );
+    // console.log(voucher_transactions)
 
     const transactions = voucher_transactions[0]?.map(({ info, ...rest }) => {
       return {
@@ -1329,7 +1609,7 @@ router.get(
           transaction?.info?.paymentDetails?.totalAmount,
         createdAt: transaction?.createdAt,
         updatedAt: transaction?.updatedAt,
-        status: "completed",
+        status: transaction?.status,
       };
     });
 
@@ -1341,7 +1621,7 @@ router.get(
             SELECT *,DATE(createdAt) AS purchaseDate
             FROM meter_prepaid_transaction_view
         ) AS meter_prepaid_transaction_view_ 
-        WHERE user=? AND active=1 and status='completed' AND purchaseDate BETWEEN ? AND ?;`,
+        WHERE user=? AND active=1 AND (status IN ('completed','pending','refunded')) AND purchaseDate BETWEEN ? AND ?;`,
       [id, sDate, eDate]
     );
 
@@ -1361,7 +1641,7 @@ router.get(
           amount: transaction?.amount,
           createdAt: transaction?.createdAt,
           updatedAt: transaction?.updatedAt,
-          status: Boolean(transaction?.processed) ? "compeleted" : "pending",
+          status: Boolean(transaction?.processed) ? transaction?.status : "pending",
         };
       }
     );
@@ -1374,7 +1654,7 @@ router.get(
             SELECT _id,user,type as kind,recipient,amount,domain,domain as type,email,phonenumber,status,isProcessed,createdAt,active,DATE(createdAt) AS purchaseDate
             FROM airtime_transactions
         ) AS airtime_transactions_ 
-        WHERE user=? AND active=1 and status='completed' AND purchaseDate BETWEEN ? AND ?;`,
+        WHERE user=? AND active=1 and (status IN ('completed','pending','refunded')) AND purchaseDate BETWEEN ? AND ?;`,
       [id, sDate, eDate]
     );
 
@@ -1386,7 +1666,7 @@ router.get(
             SELECT _id,user,bundle_name as kind,bundle_volume as volume,recipient,amount,domain,domain as type,email,phonenumber,status,isProcessed,createdAt,active,DATE(createdAt) AS purchaseDate
             FROM bundle_transactions
         ) AS bundle_transactions_ 
-        WHERE user=? AND active=1 and status='completed' AND purchaseDate BETWEEN ? AND ?;`,
+        WHERE user=? AND active=1 and (status IN ('completed','pending','refunded')) AND purchaseDate BETWEEN ? AND ?;`,
       [id, sDate, eDate]
     );
 
@@ -1490,29 +1770,6 @@ router.get(
     return res.status(200).json(logs[0]);
   })
 );
-// PUT Remove All Selected Logs
-router.put(
-  "/logs",
-  verifyToken,
-  verifyAdmin,
-  asyncHandler(async (req, res) => {
-    const { isAdmin } = req.user;
-    const { logs } = req.body;
-
-    if (isAdmin) {
-      await knex('activity_logs').where("_id", "IN", logs).del()
-
-    } else {
-      await knex('activity_logs').where("_id", "IN", logs).update({
-        isActive: false
-      });
-    }
-
-
-    return res.sendStatus(204);
-
-  })
-);
 
 router.get(
   "/general",
@@ -1561,8 +1818,6 @@ router.get(
 
 
 
-
-
 router.get(
   "/:transactionId",
   limit,
@@ -1596,9 +1851,517 @@ router.get(
   })
 );
 
+router.get(
+  "/refund/:id",
+  limit,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params
+    const { category } = req.query;
+
+
+    if (!isValidUUID2(id) || !category) {
+      return res.status(400).json("No results match your search");
+    }
+    let transaction = {};
+    switch (category) {
+      case 'voucher':
+      case 'ticket':
+        const voucher_transaction = await knex("voucher_transactions")
+          .select(
+            "_id",
+            "info",
+            "mode",
+            "email",
+            "phonenumber",
+            "reference",
+            "createdAt",
+            "updatedAt",
+            "status",
+            "user",
+            knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt")
+          )
+          .where({ _id: id, status: "completed" })
+          .limit(1).first()
+
+        if (_.isEmpty(voucher_transaction)) return res.status(400).json("No results match your search!");
+
+
+        const info = JSON?.parse(voucher_transaction?.info);
+        transaction = {
+          ...voucher_transaction,
+          amount: info?.amount
+        }
+        break
+
+      case 'airtime':
+        airtime_transaction = await knex("airtime_transactions")
+          .select("_id",
+            "info",
+            "mode",
+            "email",
+            "phonenumber",
+            "reference",
+            "amount",
+            "createdAt",
+            "updatedAt",
+            "status",
+            "user",
+          )
+          .where({ _id: id, status: "completed" })
+          .limit(1).first()
+
+        if (_.isEmpty(airtime_transaction)) return res.status(400).json("No results match your search!");
+
+        transaction = {
+          ...airtime_transaction,
+          info: JSON?.parse(airtime_transaction?.info),
+        }
+        break
+
+      case 'bundle':
+        bundle_transaction = await knex("bundle_transactions")
+          .select("_id",
+            "reference",
+            "email",
+            "phonenumber",
+            "info",
+            "mode",
+            "amount",
+            "status",
+            "user",
+            "createdAt",
+            "updatedAt"
+          )
+          .where({ _id: id, status: "completed" })
+          .limit(1).first()
+
+        if (_.isEmpty(bundle_transaction)) return res.status(400).json("No results match your search!");
+
+
+        transaction = {
+          ...bundle_transaction,
+          info: JSON.parse(bundle_transaction?.info),
+        }
+        break
+      case 'prepaid':
+
+        const prepaid_transaction = await knex("prepaid_transactions")
+          .join("meters", "prepaid_transactions.meter", "=", "meters._id")
+          .select(
+            "prepaid_transactions._id as _id",
+            "prepaid_transactions.reference as reference",
+            "prepaid_transactions.info as info",
+            "prepaid_transactions.email as email",
+            "prepaid_transactions.mobileNo as phonenumber",
+            "prepaid_transactions.mode as mode",
+            "prepaid_transactions.amount as amount",
+            "prepaid_transactions.status as status",
+            "prepaid_transactions.user as user",
+            "prepaid_transactions.createdAt as createdAt",
+            "prepaid_transactions.updatedAt as updatedAt",
+          )
+          .where({ 'prepaid_transactions._id': id, status: "completed" })
+          .limit(1).first()
+
+        if (_.isEmpty(prepaid_transaction)) return res.status(400).json("No results match your search!");
+
+
+        transaction = prepaid_transaction
+
+        break
+
+      default:
+
+        transaction = {}
+
+    }
+
+    if (
+      _.isEmpty(transaction)
+    ) {
+      return res.status(400).json("No results match your search!");
+    }
+
+    res.status(200).json({
+      ...transaction
+    });
+  })
+);
+
+
+
+router.post(
+  "/refund",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { id: ISSUER_ID } = req.user
+    const { id, category, amount, mode, phonenumber, email, user } = req.body;
+
+
+    const phoneInfo = getPhoneNumberInfo(phonenumber)
+    const transaction_reference = randomBytes(24).toString("hex");
+
+    if (mode === 'Wallet') {
+      const tranx = await knex.transaction();
+
+      try {
+
+        const user_balance = await tranx("user_wallets")
+          .where("user_id", user)
+          .select("amount")
+          .limit(1).first()
+
+        const user_credit = await tranx("user_wallets")
+          .where("user_id", user)
+          .increment({
+            amount: amount,
+          });
+
+        const status = user_credit === 1 ? "refunded" : "completed"
+
+
+        if (category === "prepaid") {
+          await tranx("prepaid_transactions")
+            .where("_id", id)
+            .update({
+              status,
+            });
+        }
+
+        if (category === "voucher" || category === "ticket") {
+          await tranx("voucher_transactions")
+            .where("_id", id)
+            .update({
+
+              status,
+            });
+        }
+
+        if (category === "airtime") {
+
+          await tranx("airtime_transactions")
+            .where("_id", id)
+            .update({
+              status,
+            });
+
+        }
+
+        if (category === "bundle") {
+          await tranx("bundle_transactions")
+            .where("_id", id)
+            .update({
+              status,
+            });
+        }
+
+        if (status === 'refunded') {
+
+          await sendSMS(
+            `Dear Customer,An amount of ${currencyFormatter(amount)} has been refunded into to your wallet account.`,
+            phoneInfo.phoneNumber
+          );
+
+          await tranx("user_notifications").insert({
+            _id: generateId(),
+            user_id: user,
+            type: "general",
+            title: "Money Refund",
+            message: `An amount of ${currencyFormatter(amount)} has been refunded to your wallet account.`,
+
+          });
+        }
+
+        await tranx("user_wallet_transactions").insert({
+          _id: generateId(),
+          user_id: user,
+          issuer: ISSUER_ID,
+          type: 'deposit',
+          wallet: Number(user_balance?.amount),
+          amount,
+          comment: "Wallet Refund",
+          attachment: null,
+          status: 'completed'
+        });
+
+
+        await tranx.commit();
+        return res.status(200).json("Money has been refunded successfully");
+
+
+      } catch (error) {
+        await tranx.rollback();
+        console.log(error);
+        return res.status(500).json("An error has occurred.Could not refund money!");
+      }
+
+    }
+
+
+    const payment = {
+      transactionId: id,
+      category,
+      phonenumber: phoneInfo.phoneNumber,
+      email,
+      amount: Number(amount).toFixed(2),
+      provider: phoneInfo.providerName === 'MTN' ? 'mtn-gh' :
+        phoneInfo.providerName === 'Vodafone' ? 'vodafone-gh' :
+          phoneInfo.providerName === 'AirtelTigo' ? 'tigo-gh' : "",
+      transaction_reference,
+    };
+
+
+    const { ResponseCode, Data } = await sendMoneyToCustomer(payment);
+
+
+    const status =
+      ResponseCode === "0000"
+        ? "completed"
+        : ResponseCode === "0001"
+          ? "pending"
+          : "failed";
+    if (['0000', '0001'].includes(ResponseCode)) {
+
+      if (category === "prepaid") {
+        await knex("prepaid_transactions")
+          .where("_id", id)
+          .update({
+            partner: JSON.stringify(Data),
+            status,
+          });
+      }
+
+      if (category === "voucher" || category === "ticket") {
+        await knex("voucher_transactions")
+          .where("_id", id)
+          .update({
+            partner: JSON.stringify(Data),
+            status,
+          });
+      }
+
+      if (category === "airtime") {
+        await knex("airtime_transactions")
+          .where("_id", id)
+          .update({
+            partner: JSON.stringify(Data),
+            status,
+          });
+      }
+
+      if (category === "bundle") {
+        await knex("bundle_transactions")
+          .where("_id", id)
+          .update({
+            partner: JSON.stringify(Data),
+            status,
+          });
+      }
+
+      return res.status(200).json(Data?.Description);
+
+    } else {
+
+
+      return res.status(400).json(Data?.Description);
+
+    }
+
+
+
+  })
+);
+//@ Payment callback
+router.post(
+  "/feedback/callback/:category/:id",
+  cors(corsOptions),
+  limit,
+  asyncHandler(async (req, res) => {
+    const { id, category } = req.params;
+
+    if (!id || !category || !isValidUUID2(id) || _.isEmpty(req.body)) {
+      return res.sendStatus(204);
+    }
+    const { ResponseCode, Data } = req.body;
+
+    const status =
+      ResponseCode === "0000"
+        ? "refunded"
+        : ResponseCode === "0001"
+          ? "pending"
+          : "failed";
+
+
+    if (['0000'].includes(ResponseCode)) {
+      if (category === "prepaid") {
+        await knex("prepaid_transactions")
+          .where("_id", id)
+          .update({
+            partner: JSON.stringify(Data),
+            status,
+          });
+      }
+
+      if (category === "voucher" || category === "ticket") {
+        await knex("voucher_transactions")
+          .where("_id", id)
+          .update({
+            partner: JSON.stringify(Data),
+            status,
+          });
+      }
+
+      if (category === "airtime") {
+        await knex("airtime_transactions")
+          .where("_id", id)
+          .update({
+            partner: JSON.stringify(Data),
+            status,
+          });
+      }
+
+      if (category === "bundle") {
+        await knex("bundle_transactions")
+          .where("_id", id)
+          .update({
+            partner: JSON.stringify(Data),
+            status,
+          });
+      }
+
+      await knex("notifications").insert({
+        _id: generateId(),
+        title: "Money Refund Completed",
+        message: Data?.Description
+      });
+
+
+    } else {
+
+      await knex("notifications").insert({
+        _id: generateId(),
+        title: "Money Refund Failed",
+        message: Data?.Description
+      });
+    }
+
+
+
+    res.sendStatus(201);
+  })
+);
+
+
+router.post(
+  "/report/history",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { startDate, endDate, transactions, type } = req.body;
+
+    let template = "";
+    switch (type) {
+      case "All":
+        template = await generateHTMLTemplate(transactions, "transactions.ejs");
+        break;
+      case "Voucher":
+        template = await generateHTMLTemplate(
+          transactions,
+          "voucher_transactions.ejs"
+        );
+        break;
+      case "Ticket":
+        template = await generateHTMLTemplate(
+          transactions,
+          "voucher_transactions.ejs"
+        );
+        break;
+      case "Prepaid":
+        template = await generateHTMLTemplate(
+          transactions,
+          "prepaid_transactions.ejs"
+        );
+        break;
+      case "Airtime":
+        template = await generateHTMLTemplate(
+          transactions,
+          "airtime_transactions.ejs"
+        );
+        break;
+      case "Bundle":
+        template = await generateHTMLTemplate(
+          transactions,
+          "bundle_transactions.ejs"
+        );
+        break;
+      default:
+        template = await generateHTMLTemplate(transactions, "transactions.ejs");
+    }
+
+    const id = generateId();
+
+    const result = await generateTransactionReport(
+      template,
+      id,
+      `${type}-report`
+    );
+    if (result) {
+      const body = ` <div class="container">
+  <h1>Transactional Report</h1>
+  <p>Dear Customer,</p>
+  <p>Attached is your wallet transactional report from the period ${startDate} to ${endDate}. Please review the details below:</p>
+  <p>If you have any questions or concerns regarding this report, please feel free to contact us.</p>
+  <p>Thank you for your business!</p>
+  <p>Sincerely,<br>Gab Powerful Consults</p>
+  </div>`;
+
+      const downloadLink = await uploadFiles(result, "reports");
+
+      await sendReportMail(
+        // 'nicktest701@gmail.com',
+        process.env.MAIL_CLIENT_USER,
+        mailTextShell(body),
+        result,
+        "Transaction Report"
+      );
+
+      return res.status(200).json(downloadLink);
+    }
+  })
+);
+
+
+
+// PUT Remove All Selected Logs
+router.put(
+  "/logs",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { isAdmin } = req.user;
+    const { logs } = req.body;
+
+    if (isAdmin) {
+      await knex('activity_logs').where("_id", "IN", logs).del()
+
+    } else {
+      await knex('activity_logs').where("_id", "IN", logs).update({
+        isActive: false
+      });
+    }
+
+
+    return res.sendStatus(204);
+
+  })
+);
+
+
+
 router.put(
   "/delete",
-  // verifyToken,
+  verifyToken,
   asyncHandler(async (req, res) => {
     const { ids } = req.body;
 
@@ -1622,7 +2385,7 @@ router.put(
     //logs
     await knex("activity_logs").insert({
       employee_id: _id,
-      title: "Deleted multiple transactions!",
+      title: "Removed multiple transactions!",
       severity: "error",
     });
 
