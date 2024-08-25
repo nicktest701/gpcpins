@@ -1444,7 +1444,7 @@ router.post(
     if (Number(response?.balance) < Number(amount)) {
 
       const body = `
-    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(balance)}.
+    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(response?.balance)}.
     Please recharge to avoid any inconveniences.
     Thank you.
               `;
@@ -1760,7 +1760,7 @@ router.post(
 
 
       const body = `
-    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(balance)}.
+    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(response?.balance)}.
     Please recharge to avoid any inconveniences.
     Thank you.
               `;
