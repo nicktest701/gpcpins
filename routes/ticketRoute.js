@@ -37,7 +37,9 @@ router.get(
     if (verifier) {
       tickets = await knex("tickets_view")
         .select("*")
-        .where("verifierId", verifier)
+        .where({
+          "verifierId": verifier, active: 1
+        })
         .orderBy("createdAt", "desc");
 
 
@@ -749,7 +751,40 @@ router.post(
 
 
 
+//Enable or Disable User Ticket
+router.put(
+  "/account",
+  verifyToken,
+  verifyScanner,
+  asyncHandler(async (req, res) => {
+    const { id: _id } = req.user;
+    const { id, active } = req.body;
 
+    const updatedUser = await knex("tickets")
+      .where("_id", id)
+      .update({ active: active});
+
+    if (updatedUser !== 1) {
+      return res.status(400).json("Error updating user info");
+    }
+
+    //logs
+    await knex("verifier_activity_logs").insert({
+      verifier_id: _id,
+      title: `${Boolean(active) === true
+        ? "Activated a ticket!"
+        : "Disabled a ticket!"
+        }`,
+      severity: "warning",
+    });
+
+    res
+      .status(201)
+      .json(
+        Boolean(active) === true ? "Ticket enabled!" : "Ticket disabled!"
+      );
+  })
+);
 
 
 

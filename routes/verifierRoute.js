@@ -49,7 +49,7 @@ const Upload = multer({ storage: Storage });
 router.get(
   '/',
   verifyToken,
-   verifyScanner,
+  verifyScanner,
   // Handle async errors
   asyncHandler(async (req, res) => {
     const { id } = req.user
@@ -417,7 +417,7 @@ router.post(
       return res.status(400).json("An unknown error has occurred!");
     }
 
-    const verifierToken = await knex("tokens")
+    const verifierToken = await knex("verify_tokens")
       .where({
         _id: id,
         token,
@@ -743,27 +743,69 @@ router.put(
     });
   })
 );
+router.put(
+  "/password",
+  limit,
+  asyncHandler(async (req, res) => {
+    const { id, password, reset } = req.body;
+
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const modifiedVerifier = await knex("verifiers").where("_id", id).update({
+      password: hashedPassword,
+    });
+
+
+    if (modifiedVerifier !== 1) {
+      return res.status(404).json("Error updating verifier information.");
+
+    }
+    if (reset) {
+      return res.sendStatus(201)
+    }
+
+
+
+    const verifier = await getVerifier(_id);
+
+    if (_.isEmpty(verifier)) {
+      return res.status(404).json("Error! Could not save changes.");
+    }
+
+    const accessToken = signMainToken(verifier, "15m");
+
+
+    //logs
+    await knex("verifier_activity_logs").insert({
+      _id: generateId(),
+      verifier_id: id,
+      title: "Updated account password!",
+      severity: "info",
+    });
+
+    // if (isMobile(req)) {
+    res.status(201).json({
+      refreshToken,
+      accessToken,
+    });
+  })
+);
 
 
 router.put(
-  "/password-reset",
+  "/password/reset",
   limit,
   verifyToken,
   verifyScanner,
   asyncHandler(async (req, res) => {
-    const { id, oldPassword, password } = req.body;
+    const { id } = req.body;
 
-
-    const verifierPassword = await knex('verifiers').select('password').where('_id', id).limit(1);
-
-    const passwordIsValid = await bcrypt.compare(
-      oldPassword,
-      verifierPassword[0]?.password
-    );
-
-    if (!passwordIsValid) {
-      return res.status(400).json("Invalid Current Password!");
+    if (!id) {
+      return res.status(400).json("Invalid Request!");
     }
+
+    const password = generateRandomNumber(10);
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -775,7 +817,28 @@ router.put(
       return res.status(404).json("Error updating verifier information.");
     }
 
-    res.sendStatus(204)
+    const verifier = await getVerifier(id)
+
+    const message = `<div>
+    <h1 style='text-transform:uppercase;'>Welcome to GAB POWERFUL CONSULT.</h1><br/>
+    <div style='text-align:left;'>
+
+    <p><strong>Dear ${verifier?.firstname} ${verifier?.lastname},</strong></p>
+
+    <p>Your password has been changed!</p>
+    <p><strong>Your new Password is:</strong> ${password}</p>
+    <p>We recommend you change your <b>Your Password</b> when you log into your account.</p>
+
+    <p>Best regards,</p>
+    
+    <p>GAB Powerful Consult Team</p>
+ 
+    </div>
+
+    </div>`;
+  
+    await sendMail(verifier?.email, mailTextShell(message), "Password Reset");
+    res.status(200).send('Password reset complete!')
   })
 );
 

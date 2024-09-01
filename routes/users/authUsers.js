@@ -1,4 +1,4 @@
-const { signMainToken } = require("../../config/token");
+
 const knex = require("../../db/knex");
 
 
