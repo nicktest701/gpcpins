@@ -162,7 +162,30 @@ router.post(
       //   transaction: id,
       // }
 
-      await transx('scanned_tickets').insert(tickets)
+      //check if ticket has already been synced
+      const unSyncedTickets = tickets?.map(async (ticket) => {
+        const { verifier, voucher, category, } = ticket
+
+        const itExists = await transx('scanned_tickets').select('*').where({
+          verifier, voucher, category,
+        }).limit(1).first()
+        if (!_.isEmpty(itExists)) {
+          return null
+        } else {
+
+
+          return ticket
+        }
+
+      })
+
+
+      const rawTickets = await Promise.all(unSyncedTickets)
+
+
+      if (_.isEmpty(rawTickets)) {
+        await transx('scanned_tickets').insert(_.compact(rawTickets))
+      }
       await transx.commit();
 
       res.status(200).json({ message: "Synced successfully" })
@@ -458,21 +481,10 @@ router.get(
   "/:id/scanned_tickets",
   verifyToken, verifyScanner,
   asyncHandler(async (req, res) => {
-    const { id: userID } = req.user;
-    const { verifier } = req.query;
+    const { scanner } = req.query;
     const { id } = req.params;
 
-    if (verifier) {
 
-      const scannedTicketByVerifier = await knex("scanned_tickets_vouchers_view")
-        .select("_id", "createdAt", "type", 'pin', "serial", 'voucherType',)
-        .where({ ticketId: id, verifierId: verifier })
-        // .limit(5)
-        .orderBy("createdAt", "desc");
-      // console.log(scannedTicketByVerifier)
-
-      return res.status(200).json(scannedTicketByVerifier)
-    }
 
 
 
@@ -505,6 +517,7 @@ router.get(
 
     // GET ALL TICKETS ASSIGNED TO VERIFIER
     // const assignedVouchers = vouchers.filter(voucher => stripedTicketTypes.includes(voucher?.type))
+    //  console.log(assignedVouchers)
 
 
     //GET ALL TICKETS SCANNED  BY CATEGORY
@@ -516,7 +529,7 @@ router.get(
 
 
     //GET ALL TICKETS SCANNED BY VERIFIER
-    const scannedTickets = scannedTicketsByCategory?.filter(ticket => ticket?.verifierId === userID)
+    const scannedTickets = scannedTicketsByCategory?.filter(ticket => ticket?.verifierId === scanner)
 
 
     const totalUnscannedVouchers = vouchers?.length - scannedTicketsByCategory?.length
@@ -552,6 +565,7 @@ router.get(
     }
 
     const data = _.map(groupedScannedTickets, "value")
+    const unassigned = scannedTicketsByCategory?.length - _.sum(data)
 
     return res.status(200).json({
       totalSoldVouchers: vouchers?.length,
@@ -562,10 +576,32 @@ router.get(
       totalUnscannedVouchersPercent: formatPercentage(totalUnscannedVouchersPercent),
       totalScannedByVerifierPercent: formatPercentage(totalScannedByVerifierPercent),
       scanned: data,
-      groupedScannedTickets
+      groupedScannedTickets, unassigned
 
 
     })
+
+
+  })
+);
+router.get(
+  "/:id/scanned_tickets/verifier/:verifierId",
+  verifyToken, verifyScanner,
+  asyncHandler(async (req, res) => {
+    const { verifierId, id } = req.params;
+
+    if (verifierId) {
+
+      const scannedTicketByVerifier = await knex("scanned_tickets_vouchers_view")
+        .select("_id", "createdAt", "type", 'pin', "serial", 'voucherType',)
+        .where({ ticketId: id, verifierId: verifierId })
+        .orderBy("createdAt", "desc");
+
+      return res.status(200).json(scannedTicketByVerifier)
+    }
+
+
+    return res.status(200).json([])
 
 
   })
@@ -762,7 +798,7 @@ router.put(
 
     const updatedUser = await knex("tickets")
       .where("_id", id)
-      .update({ active: active});
+      .update({ active: active });
 
     if (updatedUser !== 1) {
       return res.status(400).json("Error updating user info");

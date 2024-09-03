@@ -1862,7 +1862,7 @@ router.get(
     const transaction = await knex("voucher_transactions")
       .select("*")
       .where({ _id: transactionId, })
-    andWhere('status', "IN", ['completed', 'refunded'])
+    .andWhere('status', "IN", ['completed', 'refunded'])
       .limit(1);
 
     if (

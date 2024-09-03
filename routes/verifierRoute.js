@@ -39,7 +39,7 @@ const Storage = multer.diskStorage({
   filename: function (req, file, cb) {
     const ext = file?.mimetype?.split("/")[1];
 
-    cb(null, `${generateId()}.${ext}`);
+    cb(null, `${generateId(10)}.${ext}`);
   },
 });
 
@@ -298,7 +298,7 @@ router.post(
 
     //logs
     await transx("verifier_activity_logs").insert({
-      _id: generateId(),
+      _id: generateId(10),
       verifier_id: id,
       title: "Created new verifier account.",
       severity: "info",
@@ -512,7 +512,7 @@ router.post(
       try {
         await sendMail(verifier?.email, mailTextShell(message));
       } catch (error) {
-        await knex("verify_tokens").where("_id", verifier?._id,).del();
+        await knex("tokens").where("_id", verifier?._id,).del();
 
         return res.status(500).json("An error has occurred!");
       }
@@ -532,7 +532,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const { email, token, type, reset } = req.body;
 
-
+    console.log(req.body)
     if (!email || !token) {
       return res.status(400).json("Invalid Code");
     }
@@ -619,7 +619,7 @@ router.post(
 
     //logs
     await knex("verifier_activity_logs").insert({
-      _id: generateId(),
+      _id: generateId(10),
       verifier_id: verifier[0]?._id,
       title: "Logged into account.",
       severity: "info",
@@ -645,7 +645,7 @@ router.post(
 
     //logs
     await knex("verifier_activity_logs").insert({
-      _id: generateId(),
+      _id: generateId(10),
       verifier_id: id,
       title: "Logged out of account.",
       severity: "info",
@@ -681,7 +681,7 @@ router.put(
 
     //logs
     await knex("verifier_activity_logs").insert({
-      _id: generateId(),
+      _id: generateId(10),
       verifier_id: id,
       title: "Updated account details.",
       severity: "info",
@@ -730,7 +730,7 @@ router.put(
 
     //logs
     await knex("verifier_activity_logs").insert({
-      _id: generateId(),
+      _id: generateId(10),
       verifier_id: id,
       title: "Updated account password!",
       severity: "info",
@@ -778,7 +778,7 @@ router.put(
 
     //logs
     await knex("verifier_activity_logs").insert({
-      _id: generateId(),
+      _id: generateId(10),
       verifier_id: id,
       title: "Updated account password!",
       severity: "info",
@@ -836,7 +836,7 @@ router.put(
     </div>
 
     </div>`;
-  
+
     await sendMail(verifier?.email, mailTextShell(message), "Password Reset");
     res.status(200).send('Password reset complete!')
   })
@@ -870,7 +870,7 @@ router.put(
 
     //logs
     await knex("verifier_activity_logs").insert({
-      _id: generateId(),
+      _id: generateId(10),
       verifier_id: id,
       title: "Updated account profile!",
       severity: "info",
@@ -900,7 +900,7 @@ router.put(
 
     //logs
     await knex("verifier_activity_logs").insert({
-      _id: generateId(),
+      _id: generateId(10),
       verifier_id: _id,
       title: `${Boolean(active) === true
         ? "Activated an verifier account!"
@@ -938,7 +938,7 @@ router.delete(
 
     //logs
     await knex("verifier_activity_logs").insert({
-      _id: generateId(),
+      _id: generateId(10),
       verifier_id: _id,
       title: "Deleted an verifier account!",
       severity: "error",

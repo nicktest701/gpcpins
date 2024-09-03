@@ -29,6 +29,7 @@ const verifyToken = (req, res, next) => {
 
       return res.status(403).json("Session has expired.");
     }
+    // console.log(user)
 
     const userRole = Number(user?.role)
 
@@ -61,7 +62,7 @@ const verifyToken = (req, res, next) => {
     }
 
 
-
+// console.log(authUser[0])
     if (Number(authUser[0]?.isEnabled) !== 1) {
       return res.status(403).json("Session has expired.");
     }

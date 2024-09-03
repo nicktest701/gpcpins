@@ -10,7 +10,7 @@ async function uploadVoucherFile(fileName) {
   const filePath = path.join(process.cwd(), "/vouchers/", fileName);
   const file = fs.readFileSync(filePath);
 
-  // if (process.env.NODE_ENV !== 'production') return filePath
+  if (process.env.NODE_ENV !== 'production') return filePath
 
   const storageRef = ref(storage, `vouchers/${fileName}`);
 

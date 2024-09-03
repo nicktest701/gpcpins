@@ -255,6 +255,7 @@ router.put(
   })
 );
 
+
 //Mark all verifier notifications as read
 router.put(
   "/verifier",
