@@ -2220,7 +2220,7 @@ router.post(
     console.log(req.params)
     console.log(req.body)
 
-    if (!id || !category || _.isEmpty(req.body)) {
+    if (!id || !category) {
       return res.sendStatus(204);
     }
     const { ResponseCode, Data } = req.body;
@@ -2238,6 +2238,7 @@ router.post(
 
     const tranx = await knex.transaction();
 
+    let phonenumber = '';
     try {
 
       if (category === "prepaid") {
@@ -2247,6 +2248,10 @@ router.post(
             partner: JSON.stringify(Data),
             status,
           });
+
+        const tx = await tranx("prepaid_transactions")
+          .where("_id", id).select('mobileNo as phonenumber').limit(1).first();
+        phonenumber = tx?.phonenumber
       }
 
       if (category === "voucher" || category === "ticket") {
@@ -2256,6 +2261,10 @@ router.post(
             partner: JSON.stringify(Data),
             status,
           });
+
+        const tx = await tranx("voucher_transactions")
+          .where("_id", id).select('phonenumber').limit(1).first();
+        phonenumber = tx?.phonenumber
       }
 
       if (category === "airtime") {
@@ -2265,6 +2274,10 @@ router.post(
             partner: JSON.stringify(Data),
             status,
           });
+
+        const tx = await tranx("airtime_transactions")
+          .where("_id", id).select('phonenumber').limit(1).first();
+        phonenumber = tx?.phonenumber
       }
 
       if (category === "bundle") {
@@ -2274,6 +2287,9 @@ router.post(
             partner: JSON.stringify(Data),
             status,
           });
+        const tx = await tranx("bundle_transactions")
+          .where("_id", id).select('phonenumber').limit(1).first();
+        phonenumber = tx?.phonenumber
       }
 
       if (status === 'refunded') {
@@ -2297,7 +2313,7 @@ router.post(
 
         await sendSMS(
           `Dear Customer,An amount of ${currencyFormatter(Data?.Amount)} has been refunded into to your mobile money wallet.`,
-          phoneInfo.phoneNumber
+          getInternationalMobileFormat(phonenumber)
         );
 
 
@@ -2325,14 +2341,14 @@ router.post(
       await tranx.commit();
     } catch (error) {
       await tranx.rollback();
-      return res.sendStatus(201);
+      return res.sendStatus(204);
 
     }
 
 
 
-
-    res.sendStatus(201);
+    console.log('completed')
+    res.sendStatus(204);
   })
 );
 
