@@ -2215,15 +2215,18 @@ router.post(
   limit,
   asyncHandler(async (req, res) => {
     const { id, category } = req.params;
+    console.log('Call back')
 
-    if (!id || !category || !isValidUUID2(id) || _.isEmpty(req.body)) {
+    console.log(req.params)
+    console.log(req.body)
+
+    if (!id || !category || _.isEmpty(req.body)) {
       return res.sendStatus(204);
     }
     const { ResponseCode, Data } = req.body;
 
-    console.log('Call back')
-    console.log(ResponseCode)
-    console.log(Data)
+    // console.log(ResponseCode)
+    // console.log(Data)
 
     const status =
       ResponseCode === "0000"
