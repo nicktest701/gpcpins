@@ -2218,26 +2218,22 @@ router.post(
     console.log('Call back')
 
 
-
     if (!id || !category) {
       return res.sendStatus(204);
     }
     const { ResponseCode, Data } = req.body;
 
-    // console.log(ResponseCode)
-    
+
     const status =
-    ResponseCode === "0000"
-    ? "refunded"
-    : ResponseCode === "0001"
-    ? "pending"
-    : "completed";
-    
-    console.log(status)
+      ResponseCode === "0000"
+        ? "refunded"
+        : ResponseCode === "0001"
+          ? "pending"
+          : "completed";
 
     const tranx = await knex.transaction();
 
-    let phonenumber = '';
+    let tx = { user: '', phonenumber: "" };
     try {
 
       if (category === "prepaid") {
@@ -2248,9 +2244,9 @@ router.post(
             status,
           });
 
-        const tx = await tranx("prepaid_transactions")
-          .where("_id", id).select('mobileNo as phonenumber').limit(1).first();
-        phonenumber = tx?.phonenumber
+        tx = await tranx("prepaid_transactions")
+          .where("_id", id).select('mobileNo as phonenumber', 'user').limit(1).first();
+
       }
 
       if (category === "voucher" || category === "ticket") {
@@ -2261,9 +2257,9 @@ router.post(
             status,
           });
 
-        const tx = await tranx("voucher_transactions")
-          .where("_id", id).select('phonenumber').limit(1).first();
-        phonenumber = tx?.phonenumber
+        tx = await tranx("voucher_transactions")
+          .where("_id", id).select('phonenumber', 'user').limit(1).first();
+
       }
 
       if (category === "airtime") {
@@ -2274,9 +2270,9 @@ router.post(
             status,
           });
 
-        const tx = await tranx("airtime_transactions")
-          .where("_id", id).select('phonenumber').limit(1).first();
-        phonenumber = tx?.phonenumber
+        tx = await tranx("airtime_transactions")
+          .where("_id", id).select('phonenumber', 'user').limit(1).first();
+
       }
 
       if (category === "bundle") {
@@ -2286,9 +2282,9 @@ router.post(
             partner: JSON.stringify(Data),
             status,
           });
-        const tx = await tranx("bundle_transactions")
-          .where("_id", id).select('phonenumber').limit(1).first();
-        phonenumber = tx?.phonenumber
+        tx = await tranx("bundle_transactions")
+          .where("_id", id).select('phonenumber', 'user').limit(1).first();
+
       }
 
       if (status === 'refunded') {
@@ -2303,7 +2299,7 @@ router.post(
 
         await tranx("user_notifications").insert({
           _id: generateId(),
-          user_id: user,
+          user_id: tx?.user,
           type: "general",
           title: "Money Refund",
           message: `An amount of ${currencyFormatter(Data?.Amount)} has been refunded into your mobile money wallet .`,
@@ -2312,7 +2308,7 @@ router.post(
 
         await sendSMS(
           `Dear Customer,An amount of ${currencyFormatter(Data?.Amount)} has been refunded into to your mobile money wallet.`,
-          getInternationalMobileFormat(phonenumber)
+          getInternationalMobileFormat(tx?.phonenumber)
         );
 
 
