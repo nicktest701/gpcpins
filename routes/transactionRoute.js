@@ -1862,7 +1862,7 @@ router.get(
     const transaction = await knex("voucher_transactions")
       .select("*")
       .where({ _id: transactionId, })
-    .andWhere('status', "IN", ['completed', 'refunded'])
+      .andWhere('status', "IN", ['completed', 'refunded'])
       .limit(1);
 
     if (
@@ -2145,6 +2145,11 @@ router.post(
 
     const { ResponseCode, Data } = await sendMoneyToCustomer(payment);
 
+    //
+    console.log('Begin')
+    console.log(ResponseCode)
+    console.log(Data)
+
 
     const status =
       ResponseCode === "0000"
@@ -2215,6 +2220,10 @@ router.post(
       return res.sendStatus(204);
     }
     const { ResponseCode, Data } = req.body;
+
+    console.log('Call back')
+    console.log(ResponseCode)
+    console.log(Data)
 
     const status =
       ResponseCode === "0000"

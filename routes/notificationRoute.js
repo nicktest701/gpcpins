@@ -112,7 +112,8 @@ router.get(
 
 router.get(
   "/verifier",
-  verifyToken, verifyScanner,
+  verifyToken,
+   verifyScanner,
   asyncHandler(async (req, res) => {
     const { id, createdAt: modifiedAt } = req.user;
 
