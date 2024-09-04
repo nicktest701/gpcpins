@@ -2217,8 +2217,7 @@ router.post(
     const { id, category } = req.params;
     console.log('Call back')
 
-    console.log(req.params)
-    console.log(req.body)
+
 
     if (!id || !category) {
       return res.sendStatus(204);
@@ -2226,15 +2225,15 @@ router.post(
     const { ResponseCode, Data } = req.body;
 
     // console.log(ResponseCode)
-    // console.log(Data)
-
+    
     const status =
-      ResponseCode === "0000"
-        ? "refunded"
-        : ResponseCode === "0001"
-          ? "pending"
-          : "completed";
-
+    ResponseCode === "0000"
+    ? "refunded"
+    : ResponseCode === "0001"
+    ? "pending"
+    : "completed";
+    
+    console.log(status)
 
     const tranx = await knex.transaction();
 
@@ -2340,6 +2339,7 @@ router.post(
       }
       await tranx.commit();
     } catch (error) {
+      console.log(error)
       await tranx.rollback();
       return res.sendStatus(204);
 
