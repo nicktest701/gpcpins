@@ -806,6 +806,7 @@ router.put(
 
     //logs
     await knex("verifier_activity_logs").insert({
+      _id: generateId(10),
       verifier_id: _id,
       title: `${Boolean(active) === true
         ? "Activated a ticket!"

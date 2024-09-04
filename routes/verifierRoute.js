@@ -804,10 +804,11 @@ router.put(
     if (!id) {
       return res.status(400).json("Invalid Request!");
     }
-
+    const code = await otpGen();
     const password = generateRandomNumber(10);
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const newPassword=`${password}${code}@gpc`
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     const modifiedVerifier = await knex("verifiers").where("_id", id).update({
       password: hashedPassword,
@@ -826,7 +827,7 @@ router.put(
     <p><strong>Dear ${verifier?.firstname} ${verifier?.lastname},</strong></p>
 
     <p>Your password has been changed!</p>
-    <p><strong>Your new Password is:</strong> ${password}</p>
+    <p>Your new Password is:<strong> ${newPassword}</strong></p>
     <p>We recommend you change your <b>Your Password</b> when you log into your account.</p>
 
     <p>Best regards,</p>
