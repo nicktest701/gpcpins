@@ -171,6 +171,7 @@ async function POS_Balance() {
         method: "GET",
         url: process.env.MSDID_POS_STATUS_URL,
         headers: {
+          "Accept": "application/json",
           "Content-Type": "application/json",
           Authorization: `Basic ${process.env.MSDID_K}`,
           "Cache-Control": "no-cache",
@@ -195,6 +196,7 @@ async function PREPAID_Balance() {
         method: "GET",
         url: process.env.MSDID_PREPAID_STATUS_URL,
         headers: {
+          "Accept": "application/json",
           "Content-Type": "application/json",
           Authorization: `Basic ${process.env.MSDID_K}`,
           "Cache-Control": "no-cache",
