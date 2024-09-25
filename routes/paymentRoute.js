@@ -19,6 +19,8 @@ const {
   getBundleList,
   sendBundle,
   sendAirtime,
+  POS_Balance,
+  PREPAID_Balance,
 } = require("../config/sendMoney");
 const sendEMail = require("../config/sendEmail");
 const {
@@ -1345,6 +1347,7 @@ router.get(
     const transactions = await knex("airtime_transactions")
       .select(
         "airtime_transactions._id as _id",
+        "airtime_transactions.orderId as orderId",
         "airtime_transactions.recipient as recipient",
         "airtime_transactions.email as email",
         "airtime_transactions.phonenumber as phonenumber",
@@ -1361,13 +1364,18 @@ router.get(
       .where({ "airtime_transactions.status": "completed", type: "bulk" });
 
     const modifiedTransactions = transactions.map(
-      ({ recipient, info, isProcessed, ...rest }) => {
-        // console.log(recipient)
+      async ({ recipient, issuer, info, isProcessed, ...rest }) => {
+        const employee = await knex("employees")
+          .where("_id", issuer)
+          .select("_id", knex.raw("CONCAT(firstname,' ',lastname) as name")).first();
+
         return {
+          ...rest,
           isProcessed: Boolean(isProcessed),
           recipient: JSON.parse(recipient),
           info: JSON.parse(info),
-          ...rest,
+          issuer: employee?.name
+
         };
       }
     );
@@ -1377,7 +1385,9 @@ router.get(
     const eDate = moment(endDate);
 
 
-    const modifiedPayments = modifiedTransactions?.filter(({ updatedAt }) => {
+    const availableTransactions = await Promise.all(modifiedTransactions);
+
+    const modifiedPayments = availableTransactions?.filter(({ updatedAt }) => {
       return moment(updatedAt).isBetween(sDate, eDate, "days", "[]");
     });
 
@@ -1440,7 +1450,7 @@ router.post(
 
 
     const response = await accountBalance();
-   
+
     if (Number(response?.balance) < Number(amount)) {
 
       const body = `
@@ -1602,7 +1612,7 @@ router.put(
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const { id: _id, name } = req.user;
-    const id = req.query.id;
+    const { id, orderId } = req.query;
 
     if (_.isEmpty(id) || !isValidUUID2(id)) {
       return res.status(401).json("Error Processing your request!");
@@ -1618,6 +1628,7 @@ router.put(
     }
 
     await knex("airtime_transactions").where("_id", id).update({
+      orderId,
       isProcessed: 1,
       issuer: _id,
       issuerName: name,
@@ -1755,7 +1766,7 @@ router.post(
 
 
     const response = await accountBalance();
-    
+
     if (Number(response?.balance) < Number(amount)) {
 
 
@@ -1908,6 +1919,37 @@ router.post(
 
 //Check Balance Status
 router.get(
+  "/hb/pos",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    try {
+      const response = await POS_Balance();
+
+      res.status(200).json(response?.amount);
+    } catch (error) {
+      res.status(401).json("Am unknown error has occurred!");
+    }
+  })
+);
+//Check Balance Status
+router.get(
+  "/hb/prepaid",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    try {
+      const response = await PREPAID_Balance();
+
+      res.status(200).json(response?.amount);
+    } catch (error) {
+      res.status(401).json("Am unknown error has occurred!");
+    }
+  })
+);
+
+//Check Balance Status
+router.get(
   "/top-up/balance",
   verifyToken,
   verifyAdmin,
@@ -1921,6 +1963,7 @@ router.get(
     }
   })
 );
+
 
 //Check Transaction Status
 router.post(

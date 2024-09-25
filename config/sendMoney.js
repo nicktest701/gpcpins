@@ -164,6 +164,56 @@ async function accountBalance() {
     throw error;
   }
 }
+async function POS_Balance() {
+  try {
+    if (process.env.NODE_ENV === "production") {
+      const res = await axios({
+        method: "GET",
+        url: process.env.MSDID_POS_STATUS_URL,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${process.env.MSDID_K}`,
+          "Cache-Control": "no-cache",
+        },
+      });
+
+      return res.data?.data;
+    } else {
+      return {
+        "amount": 100.50
+      }
+        ;
+    }
+  } catch (error) {
+    throw error;
+  }
+}
+async function PREPAID_Balance() {
+  try {
+    if (process.env.NODE_ENV === "production") {
+      const res = await axios({
+        method: "GET",
+        url: process.env.MSDID_PREPAID_STATUS_URL,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${process.env.MSDID_K}`,
+          "Cache-Control": "no-cache",
+        },
+      });
+
+      return res.data?.data;
+    } else {
+      return {
+        "amount": 123.50
+      }
+        ;
+    }
+  } catch (error) {
+    throw error;
+  }
+}
+
+
 
 async function sendAirtime(info) {
   try {
@@ -274,4 +324,7 @@ module.exports = {
   topUpStatus,
   accountBalance,
   sendAirtime,
+  //
+  POS_Balance,
+  PREPAID_Balance
 };

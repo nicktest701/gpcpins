@@ -2130,80 +2130,89 @@ router.post(
     }
 
 
-    const payment = {
-      transactionId: id,
-      category,
-      phonenumber: phoneInfo.phoneNumber,
-      email,
-      amount: Number(amount).toFixed(2),
-      provider: phoneInfo.providerName === 'MTN' ? 'mtn-gh' :
-        phoneInfo.providerName === 'Vodafone' ? 'vodafone-gh' :
-          phoneInfo.providerName === 'AirtelTigo' ? 'tigo-gh' : "",
-      transaction_reference,
-    };
 
 
-    const { ResponseCode, Data } = await sendMoneyToCustomer(payment);
 
-    //
-    console.log('Begin')
-    console.log(ResponseCode)
-    console.log(Data)
+    const tranx = await knex.transaction();
+    try {
 
 
-    const status =
-      ResponseCode === "0000"
-        ? "completed"
-        : ResponseCode === "0001"
-          ? "pending"
-          : "failed";
-    if (['0000', '0001'].includes(ResponseCode)) {
+      const payment = {
+        transactionId: id,
+        category,
+        phonenumber: phoneInfo.phoneNumber,
+        email,
+        amount: Number(amount).toFixed(2),
+        provider: phoneInfo.providerName === 'MTN' ? 'mtn-gh' :
+          phoneInfo.providerName === 'Vodafone' ? 'vodafone-gh' :
+            phoneInfo.providerName === 'AirtelTigo' ? 'tigo-gh' : "",
+        transaction_reference,
+      };
 
-      if (category === "prepaid") {
-        await knex("prepaid_transactions")
-          .where("_id", id)
-          .update({
-            partner: JSON.stringify(Data),
-            status,
-          });
+
+      const { ResponseCode, Data } = await sendMoneyToCustomer(payment);
+
+
+      const status =
+        ResponseCode === "0000"
+          ? "completed"
+          : ResponseCode === "0001"
+            ? "pending"
+            : "failed";
+      if (['0000', '0001'].includes(ResponseCode)) {
+
+        if (category === "prepaid") {
+          await tranx("prepaid_transactions")
+            .where("_id", id)
+            .update({
+              partner: JSON.stringify(Data),
+              status,
+            });
+        }
+
+        if (category === "voucher" || category === "ticket") {
+          await tranx("voucher_transactions")
+            .where("_id", id)
+            .update({
+              partner: JSON.stringify(Data),
+              status,
+            });
+        }
+
+        if (category === "airtime") {
+          await tranx("airtime_transactions")
+            .where("_id", id)
+            .update({
+              partner: JSON.stringify(Data),
+              status,
+            });
+        }
+
+        if (category === "bundle") {
+          await tranx("bundle_transactions")
+            .where("_id", id)
+            .update({
+              partner: JSON.stringify(Data),
+              status,
+            });
+        }
+        await tranx.commit();
+        return res.status(200).json(Data?.Description);
+
+      } else {
+
+        await tranx.commit();
+        return res.status(400).json(Data?.Description);
+
       }
 
-      if (category === "voucher" || category === "ticket") {
-        await knex("voucher_transactions")
-          .where("_id", id)
-          .update({
-            partner: JSON.stringify(Data),
-            status,
-          });
-      }
 
-      if (category === "airtime") {
-        await knex("airtime_transactions")
-          .where("_id", id)
-          .update({
-            partner: JSON.stringify(Data),
-            status,
-          });
-      }
-
-      if (category === "bundle") {
-        await knex("bundle_transactions")
-          .where("_id", id)
-          .update({
-            partner: JSON.stringify(Data),
-            status,
-          });
-      }
-
-      return res.status(200).json(Data?.Description);
-
-    } else {
-
-
-      return res.status(400).json(Data?.Description);
+    } catch (error) {
+      console.log(error)
+      await tranx.rollback();
+      return res.status(400).json("An unkonown error has occurred !Try again later.")
 
     }
-
 
 
   })
