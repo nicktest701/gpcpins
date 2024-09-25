@@ -211,7 +211,7 @@ router.get(
       .where("_id", id)
       .limit(1);
 
-    const accessToken = signMainToken(user[0], '15m');
+    const accessToken = signMainToken(user[0], '30d');
 
     res.status(200).json({
       accessToken,
@@ -481,7 +481,7 @@ router.post(
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signMainToken(accessData, '15m');
+    const accessToken = signMainToken(accessData, '30d');
     const refreshToken = signMainRefreshToken(updatedUser, '365d');
 
     // res.cookie("_SSUID_kyfc", accessToken, {
@@ -615,7 +615,7 @@ router.post(
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signMainToken(accessData, '15m');
+    const accessToken = signMainToken(accessData, '30d');
     const refreshToken = signMainRefreshToken(updatedUser, '365d');
 
     // res.cookie("_SSUID_kyfc", accessToken, {
@@ -841,7 +841,7 @@ router.post(
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signMainToken(accessData, '15m');
+    const accessToken = signMainToken(accessData, '30d');
     const refreshToken = signMainRefreshToken(updatedUser, '365d');
 
     // res.cookie("_SSUID_kyfc", accessToken, {
@@ -997,7 +997,7 @@ router.put(
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signMainToken(accessData, '15m');
+    const accessToken = signMainToken(accessData, '30d');
 
     if (register) {
 
