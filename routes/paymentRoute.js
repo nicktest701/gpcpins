@@ -1920,14 +1920,16 @@ router.post(
 //Check Balance Status
 router.get(
   "/hb/pos",
-  verifyToken,
-  verifyAdmin,
+  // verifyToken,
+  // verifyAdmin,
   asyncHandler(async (req, res) => {
     try {
       const response = await POS_Balance();
-
+      
+      console.log(response?.amount)
       res.status(200).json(response?.amount);
     } catch (error) {
+      console.log(error)
       res.status(401).json("Am unknown error has occurred!");
     }
   })
@@ -1935,14 +1937,15 @@ router.get(
 //Check Balance Status
 router.get(
   "/hb/prepaid",
-  verifyToken,
-  verifyAdmin,
+  // verifyToken,
+  // verifyAdmin,
   asyncHandler(async (req, res) => {
     try {
       const response = await PREPAID_Balance();
-
+      console.log(response?.amount)
       res.status(200).json(response?.amount);
     } catch (error) {
+      console.log(error)
       res.status(401).json("Am unknown error has occurred!");
     }
   })
