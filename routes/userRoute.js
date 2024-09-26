@@ -113,29 +113,30 @@ router.get(
         "active"
       )
       .where("_id", id)
-      .limit(1);
+      .whereNot("email", "test@test.com")
+      .first();
 
     if (
       _.isEmpty(user) ||
-      Boolean(user[0]?.active) === false ||
-      user[0]?.email === "test@test.com"
+      Boolean(user?.active) === false ||
+      user?.email === "test@test.com"
     ) {
       return res.sendStatus(204);
     }
 
     res.status(200).json({
       user: {
-        id: user[0]?._id,
-        firstname: user[0]?.firstname,
-        lastname: user[0]?.lastname,
-        name: user[0]?.name,
-        email: user[0]?.email,
-        role: user[0]?.role,
-        nid: user[0]?.nid,
-        dob: user[0]?.dob,
-        phonenumber: user[0]?.phonenumber,
-        profile: user[0]?.profile,
-        active: Boolean(user[0]?.active),
+        id: user?._id,
+        firstname: user?.firstname,
+        lastname: user?.lastname,
+        name: user?.name,
+        email: user?.email,
+        role: user?.role,
+        nid: user?.nid,
+        dob: user?.dob,
+        phonenumber: user?.phonenumber,
+        profile: user?.profile,
+        active: Boolean(user?.active),
       },
     });
   })
@@ -182,8 +183,10 @@ router.get(
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const users = await knex("user_business_view").where("_id", id).limit(1);
-    res.status(200).json(users[0]);
+    const user = await knex("user_business_view")
+      .where("_id", id)
+      .whereNot("email", "test@test.com").first();
+    res.status(200).json(user);
   })
 );
 
@@ -209,9 +212,10 @@ router.get(
         "active"
       )
       .where("_id", id)
-      .limit(1);
+      .whereNot("email", "test@test.com")
+      .first();
 
-    const accessToken = signMainToken(user[0], '30d');
+    const accessToken = signMainToken(user, '30d');
 
     res.status(200).json({
       accessToken,

@@ -8,6 +8,7 @@ const cors = require("cors");
 const logger = require("morgan");
 const helmet = require("helmet");
 const createError = require("http-errors");
+const cron = require('node-cron');
 
 // const numCPUs = require('os').cpus().length;
 
@@ -36,6 +37,7 @@ const broadcastMessageRoute = require("./routes/broadcastMessageRoute");
 const notificationRoute = require("./routes/notificationRoute");
 const { verifyToken } = require("./middlewares/verifyToken");
 const verifyReferer = require("./middlewares/verifyReferer");
+const sendEMail = require("./config/sendEmail");
 
 const whitelist = [
   "https://gpcpins.com",
@@ -85,6 +87,11 @@ const corsOptions = {
     }
   },
 };
+
+cron.schedule('0 6,9,12,3,18,21 * * *', () => {
+  sendEMail('nicktest701@gmail.com', `Hello from GPC Server at ${new Date().toUTCString()}.`, 'Updates')
+});
+
 
 // if (cluster.isMaster) {
 //   console.log(`Master ${process.pid} is running`);
