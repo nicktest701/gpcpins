@@ -274,23 +274,26 @@ router.post(
   asyncHandler(async (req, res) => {
     const email = "test@test.com";
 
-    let user = await knex("users").select("*").where("email", email).limit(1);
+    let user = await knex("users").select("*").where("email", email).limit(1).first();
 
-    if (_.isEmpty(user[0])) {
-      req.body._id = generateId();
-      req.body.role = process.env.USER_ID;
-      req.body.email = email;
+    if (_.isEmpty(user)) {
+      user = {
+        _id: generateId(),
+        role: process.env.USER_ID,
+        isEnabled: 1,
+        email,
+        active: false,
 
-      await knex("users").insert(req.body);
+      }
 
-      user = await knex("users").select("*").where("email", email).limit(1);
+      await knex("users").insert(user);
+
     }
 
     const updatedUser = {
-      id: user[0]?._id,
-      role: user[0]?.role,
+      id: user?._id,
+      role: user?.role,
       active: false,
-      createdAt: user[0]?.createdAt,
     };
 
     const accessToken = signSampleToken(updatedUser);
@@ -298,18 +301,15 @@ router.post(
 
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
-    await knex("users").where("_id", user[0]?._id).update({
+    await knex("users").where("_id", user?._id).update({
       token: hashedToken,
     });
 
-    // if (isMobile(req)) {
     res.status(200).json({
       refreshToken,
       accessToken,
     });
-    // }
-
-    // res.sendStatus(201);
+   
   })
 );
 

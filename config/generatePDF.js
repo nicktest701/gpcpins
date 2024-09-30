@@ -3,6 +3,7 @@ const puppeteer = require("puppeteer");
 const generateVoucher = async (htmltext, transaction_id) => {
   const browser = await puppeteer.launch({
     headless: "new",
+	  timeout: 0,
   });
 
   //page
@@ -55,7 +56,8 @@ const generateArrayVoucher = async (htmltextArray, transaction_id) => {
   try {
     const browser = await puppeteer.launch({
       headless: "new",
-      protocolTimeout: 0
+      protocolTimeout: 0,
+	    timeout: 0,
     });
 
     //page
@@ -94,6 +96,7 @@ const generateArrayVoucher = async (htmltextArray, transaction_id) => {
 const generateAgentTransactionRport = async (htmltext, transaction_id) => {
   const browser = await puppeteer.launch({
     headless: "new",
+	  timeout: 0,
   });
 
   //page
@@ -126,6 +129,7 @@ const generateAgentTransactionRport = async (htmltext, transaction_id) => {
 const generateTransactionReport = async (htmltext, transaction_id, type) => {
   const browser = await puppeteer.launch({
     headless: "new",
+	  timeout: 0,
   });
 
   //page

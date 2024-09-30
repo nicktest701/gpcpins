@@ -745,8 +745,9 @@ router.get(
         await transx.commit();
 
 
-
+     
         if (type === 'voucher' && confirm) {
+          // console.log(userInfo)
           const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
 
           const smsInfo = selectedVouchers.map((voucher) => {
@@ -1178,6 +1179,8 @@ router.post(
       const transaction_reference = randomBytes(24).toString("hex");
       const orderNo = randomBytes(20).toString("hex");
       let transactionInfo = {};
+
+     
 
       if (isWallet) {
         // Check wallet remaining balance
@@ -1925,8 +1928,8 @@ router.get(
   asyncHandler(async (req, res) => {
     try {
       const response = await POS_Balance();
-      
-      console.log(response?.amount)
+
+ 
       res.status(200).json(response?.amount);
     } catch (error) {
       console.log(error)
@@ -1942,7 +1945,7 @@ router.get(
   asyncHandler(async (req, res) => {
     try {
       const response = await PREPAID_Balance();
-      console.log(response?.amount)
+    
       res.status(200).json(response?.amount);
     } catch (error) {
       console.log(error)
@@ -1989,7 +1992,7 @@ router.post(
 //Get List of all bundles
 router.get(
   "/top-up/bundlelist",
-  verifyToken,
+  // verifyToken,
   asyncHandler(async (req, res) => {
     const network = req.query?.network;
     let response = [];

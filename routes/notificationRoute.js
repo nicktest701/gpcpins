@@ -229,6 +229,7 @@ router.put(
 //Mark user notifications as read
 router.put(
   "/user",
+  verifyToken,
   asyncHandler(async (req, res) => {
     const { id } = req.user;
 
