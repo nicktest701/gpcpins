@@ -215,7 +215,7 @@ router.get(
       .whereNot("email", "test@test.com")
       .first();
 
-    const accessToken = signMainToken(user, '30d');
+    const accessToken = signMainToken(user, '180d');
 
     res.status(200).json({
       accessToken,
@@ -309,7 +309,7 @@ router.post(
       refreshToken,
       accessToken,
     });
-   
+
   })
 );
 
@@ -485,7 +485,7 @@ router.post(
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signMainToken(accessData, '30d');
+    const accessToken = signMainToken(accessData, '180d');
     const refreshToken = signMainRefreshToken(updatedUser, '365d');
 
     // res.cookie("_SSUID_kyfc", accessToken, {
@@ -619,7 +619,7 @@ router.post(
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signMainToken(accessData, '30d');
+    const accessToken = signMainToken(accessData, '180d');
     const refreshToken = signMainRefreshToken(updatedUser, '365d');
 
     // res.cookie("_SSUID_kyfc", accessToken, {
@@ -845,7 +845,7 @@ router.post(
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signMainToken(accessData, '30d');
+    const accessToken = signMainToken(accessData, '180d');
     const refreshToken = signMainRefreshToken(updatedUser, '365d');
 
     // res.cookie("_SSUID_kyfc", accessToken, {
@@ -964,7 +964,7 @@ router.put(
         "_id as id",
         "firstname",
         "lastname",
-        knex.raw("CONCAT(firstname,'',lastname) as name"),
+        knex.raw("CONCAT(firstname,' ',lastname) as name"),
         "email",
         "role",
         "nid",
@@ -994,14 +994,9 @@ router.put(
       active: Boolean(user[0]?.active),
     };
 
-    const updatedUser = {
-      id: user[0]?.id,
-      role: user[0]?.role,
-      active: Boolean(user[0]?.active),
-      createdAt: user[0]?.createdAt,
-    };
 
-    const accessToken = signMainToken(accessData, '30d');
+
+    const accessToken = signMainToken(accessData, '180d');
 
     if (register) {
 

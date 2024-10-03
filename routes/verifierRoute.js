@@ -698,8 +698,22 @@ router.put(
 router.put(
   "/password",
   limit,
+  verifyToken,
+  verifyScanner,
   asyncHandler(async (req, res) => {
-    const { id, password, reset } = req.body;
+    const { id, oldPassword, password } = req.body;
+
+
+    const verifierPassword = await knex('verifiers').select('password').where('_id', id).first();
+
+    const passwordIsValid = await bcrypt.compare(
+      oldPassword,
+      verifierPassword?.password
+    );
+
+    if (!passwordIsValid) {
+      return res.status(400).json("Invalid Password!");
+    }
 
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -710,44 +724,26 @@ router.put(
 
 
     if (modifiedVerifier !== 1) {
-      return res.status(404).json("Error updating verifier information.");
-
-    }
-    if (reset) {
-      return res.sendStatus(201)
-    }
-
-
-
-    const verifier = await getVerifier(_id);
-
-    if (_.isEmpty(verifier)) {
       return res.status(404).json("Error! Could not save changes.");
+
     }
 
-    const accessToken = signMainToken(verifier, "15m");
+    res.status(201).json('Changes Saved!')
 
 
-    //logs
-    await knex("verifier_activity_logs").insert({
-      _id: generateId(10),
-      verifier_id: id,
-      title: "Updated account password!",
-      severity: "info",
-    });
 
-    // if (isMobile(req)) {
-    res.status(201).json({
-      refreshToken,
-      accessToken,
-    });
   })
 );
+
 router.put(
-  "/password",
+  "/password/update",
   limit,
   asyncHandler(async (req, res) => {
-    const { id, password, reset } = req.body;
+    const { id, password } = req.body;
+
+    if (!id) {
+      return res.status(400).json("Invalid Request!");
+    }
 
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -758,39 +754,18 @@ router.put(
 
 
     if (modifiedVerifier !== 1) {
-      return res.status(404).json("Error updating verifier information.");
+      return res.status(404).json("Failed! An unknown error has occurred.");
 
     }
-    if (reset) {
-      return res.sendStatus(201)
-    }
+
+    res.sendStatus(204)
 
 
 
-    const verifier = await getVerifier(_id);
-
-    if (_.isEmpty(verifier)) {
-      return res.status(404).json("Error! Could not save changes.");
-    }
-
-    const accessToken = signMainToken(verifier, "15m");
-
-
-    //logs
-    await knex("verifier_activity_logs").insert({
-      _id: generateId(10),
-      verifier_id: id,
-      title: "Updated account password!",
-      severity: "info",
-    });
-
-    // if (isMobile(req)) {
-    res.status(201).json({
-      refreshToken,
-      accessToken,
-    });
   })
 );
+
+
 
 
 router.put(
@@ -807,7 +782,7 @@ router.put(
     const code = await otpGen();
     const password = generateRandomNumber(10);
 
-    const newPassword=`${password}${code}@gpc`
+    const newPassword = `${password}${code}@gpc`
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     const modifiedVerifier = await knex("verifiers").where("_id", id).update({
@@ -842,6 +817,8 @@ router.put(
     res.status(200).send('Password reset complete!')
   })
 );
+
+
 
 router.put(
   "/profile",
