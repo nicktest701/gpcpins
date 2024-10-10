@@ -47,6 +47,8 @@ const sendElectricityMail = async (transaction_id, email_address, status, url, m
         <p>Meter Name:${meterInfo?.name}</p>
         <p>Amount Paid:${meterInfo?.amount}</p>
         </div>
+        <p>
+        In case units do not load automatically,Please enter the token on your meter to load your units.Thank you!</p>
         `
       ),
       attachments: [

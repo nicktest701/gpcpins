@@ -461,6 +461,7 @@ router.get(
         "domain",
         "domain as type",
         "isProcessed",
+        "refunder",
         "status",
         "createdAt",
         "updatedAt",
@@ -490,6 +491,7 @@ router.get(
         "domain as type",
         "isProcessed",
         "issuer",
+        "refunder",
         "issuerName",
         "status",
         "createdAt",
@@ -516,6 +518,7 @@ router.get(
         "_id",
         "info",
         "mode",
+        "refunder",
         "reference",
         "createdAt",
         "updatedAt",
@@ -545,6 +548,7 @@ router.get(
         "prepaid_transactions.processed as isProcessed",
         "prepaid_transactions.status as status",
         "prepaid_transactions.issuer as issuer",
+        "prepaid_transactions.refunder as refunder",
         "prepaid_transactions.issuerName as issuerName",
         "prepaid_transactions.createdAt as createdAt",
         "prepaid_transactions.updatedAt as updatedAt",
@@ -569,6 +573,7 @@ router.get(
         modifiedAt: transaction?.modifiedAt,
         createdAt: transaction?.updatedAt,
         issuer: transaction?.issuer,
+        refunder: transaction?.refunder,
         issuerName: transaction?.issuerName,
         updatedAt: transaction?.updatedAt,
         meter: {
@@ -741,6 +746,7 @@ router.get(
         createdAt: transaction?.updatedAt,
         updatedAt: transaction?.updatedAt,
         modifiedAt: transaction?.modifiedAt,
+        refunder: transaction?.refunder,
         mode: transaction?.mode,
         isProcessed: 1,
         status: "refunded",
@@ -762,6 +768,7 @@ router.get(
         amount: transaction?.info?.amount,
         isProcessed: transaction?.isProcessed,
         issuer: transaction?.issuer,
+        refunder: transaction?.refunder,
         issuerName: transaction?.issuerName,
         createdAt: transaction?.updatedAt,
         updatedAt: transaction?.updatedAt,
@@ -2026,7 +2033,7 @@ router.post(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const { id: ISSUER_ID } = req.user
+    const { id: ISSUER_ID, name } = req.user
     const { id, category, amount, mode, phonenumber, email, user } = req.body;
 
 
@@ -2057,6 +2064,7 @@ router.post(
             .where("_id", id)
             .update({
               status,
+              refunder: name
             });
         }
 
@@ -2066,6 +2074,7 @@ router.post(
             .update({
 
               status,
+              refunder: name
             });
         }
 
@@ -2075,6 +2084,7 @@ router.post(
             .where("_id", id)
             .update({
               status,
+              refunder: name
             });
 
         }
@@ -2084,6 +2094,7 @@ router.post(
             .where("_id", id)
             .update({
               status,
+              refunder: name
             });
         }
 
@@ -2147,6 +2158,7 @@ router.post(
           phoneInfo.providerName === 'Vodafone' ? 'vodafone-gh' :
             phoneInfo.providerName === 'AirtelTigo' ? 'tigo-gh' : "",
         transaction_reference,
+        refunder: ISSUER_ID
       };
 
 
@@ -2223,8 +2235,9 @@ router.post(
   cors(corsOptions),
   limit,
   asyncHandler(async (req, res) => {
+    const { uid } = req.query
     const { id, category } = req.params;
-    console.log('Call back')
+
 
 
     if (!id || !category) {
@@ -2241,7 +2254,9 @@ router.post(
           : "completed";
 
     const tranx = await knex.transaction();
-
+    const employee = await knex("employees")
+      .where("_id", uid)
+      .select("_id", knex.raw("CONCAT(firstname,' ',lastname) as name")).first();
     let tx = { user: '', phonenumber: "" };
     try {
 
@@ -2251,6 +2266,7 @@ router.post(
           .update({
             partner: JSON.stringify(Data),
             status,
+            refunder: employee?.name
           });
 
         tx = await tranx("prepaid_transactions")
@@ -2264,6 +2280,7 @@ router.post(
           .update({
             partner: JSON.stringify(Data),
             status,
+            refunder: employee?.name
           });
 
         tx = await tranx("voucher_transactions")
@@ -2277,6 +2294,7 @@ router.post(
           .update({
             partner: JSON.stringify(Data),
             status,
+            refunder: employee?.name
           });
 
         tx = await tranx("airtime_transactions")
@@ -2290,6 +2308,7 @@ router.post(
           .update({
             partner: JSON.stringify(Data),
             status,
+            refunder: employee?.name
           });
         tx = await tranx("bundle_transactions")
           .where("_id", id).select('phonenumber', 'user').limit(1).first();
@@ -2352,7 +2371,7 @@ router.post(
 
 
 
-    console.log('completed')
+   
     res.sendStatus(204);
   })
 );

@@ -30,11 +30,11 @@ const sendEMail = async (email_address, message, subject) => {
         }
       });
     }
-
+    
     const mailOptions = {
       from: `GPC ${process.env.MAIL_CLIENT_USER}`,
       sender: process.env.MAIL_CLIENT_USER,
-      to: [email_address],
+      to: typeof email_address === 'string' ? [email_address] : email_address,
       subject: subject || 'Gab Powerful Consult',
       text: '',
       html: message,

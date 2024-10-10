@@ -599,6 +599,7 @@ router.get(
         .join("meters", "prepaid_transactions.meter", "=", "meters._id")
         .where("prepaid_transactions._id", id)
         .limit(1);
+     
     }
 
     if (type === "airtime") {
@@ -745,7 +746,7 @@ router.get(
         await transx.commit();
 
 
-     
+
         if (type === 'voucher' && confirm) {
           // console.log(userInfo)
           const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
@@ -1180,7 +1181,7 @@ router.post(
       const orderNo = randomBytes(20).toString("hex");
       let transactionInfo = {};
 
-     
+
 
       if (isWallet) {
         // Check wallet remaining balance
@@ -1929,7 +1930,7 @@ router.get(
     try {
       const response = await POS_Balance();
 
- 
+
       res.status(200).json(response?.amount);
     } catch (error) {
       console.log(error)
@@ -1945,7 +1946,7 @@ router.get(
   asyncHandler(async (req, res) => {
     try {
       const response = await PREPAID_Balance();
-    
+
       res.status(200).json(response?.amount);
     } catch (error) {
       console.log(error)
@@ -2251,7 +2252,6 @@ router.post(
     const { id } = req.user;
     const { meter, info, charges, topup, amount, isWallet, token } = req.body;
 
-    // console.log(req.body)
 
     if (isWallet) {
       const userWallet = await knex("user_wallets")
@@ -2277,11 +2277,13 @@ router.post(
 
     let meterId = generateId();
     let newMeter;
-    if (!isValidUUID2(meter)) {
+    const userID = id ?? generateId()
+    // if (!isValidUUID2(meter)) {
+    if (typeof meter === 'object') {
       newMeter = {
         _id: meterId,
         ...meter,
-        user: id ?? generateId(),
+        user: userID,
       };
       await transx("meters").insert(newMeter);
     } else {
@@ -2378,7 +2380,7 @@ router.post(
 
         transactionInfo = {
           _id: transaction_id,
-          user: id,
+          user: userID,
           meter: meterId,
           email: info?.email,
           mobileNo: info?.mobileNo,
@@ -2391,6 +2393,7 @@ router.post(
           amount,
           partner: JSON.stringify(sendMoneyReponse?.Data),
           mode: "Mobile Money",
+          provider: info?.provider,
           status,
           reference: transaction_reference,
         };
@@ -2563,7 +2566,7 @@ router.put(
     await transx.commit();
 
     await sendSMS(
-      `You request to buy prepaid units has being completed.Transaction Details:Order No.:${meterInfo?.paymentId},-Token:${meterInfo?.orderNo},Meter No:${meterInfo?.number},Meter Name:${meterInfo?.name}-Amount Paid: ${meterInfo?.amount}.`,
+      `You request to buy prepaid units has being completed.Transaction Details:Order No.:${meterInfo?.paymentId},-Token:${meterInfo?.orderNo},Meter No:${meterInfo?.number},Meter Name:${meterInfo?.name}-Amount Paid: ${meterInfo?.amount}.In case units do not load automatically,Please enter the token on your meter to load your units.Thank you`,
       paymentInfo?.mobileNo
     );
 
@@ -2616,7 +2619,7 @@ router.put(
         user_id: transactions?.user,
         type: "prepaid",
         title: "Prepaid Units",
-        message: `You request to buy prepaid units has being completed.Click on the button below to download your receipt.`,
+        message: `You request to buy prepaid units has being completed.Click on the button below to download your receipt.In case units do not load automatically,Please enter the token on your meter to load your units.Thank you!`,
         link: downloadLink,
       });
 
@@ -2627,7 +2630,7 @@ router.put(
         user_id: transactions?.user,
         type: "prepaid",
         title: "Prepaid Units",
-        message: `You request to buy prepaid units has being completed.`,
+        message: `You request to buy prepaid units has being completed.In case units do not load automatically,Please enter the token on your meter to load your units.Thank you!`,
 
       });
 

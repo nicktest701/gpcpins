@@ -213,9 +213,10 @@ router.post(
 
     const message = `
         <div style="width:100%;max-width:500px;margin-inline:auto;">
-    
+      <p>Please ignore this message if you did not request the OTP.</p>
         <p>Your verification code is</p>
         <h1>${token}</h1>
+        <p>If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.</p>
 
         <p>-- Gab Powerful Team --</p>
     </div>
@@ -227,6 +228,13 @@ router.post(
 
     try {
       await sendMail(employee[0]?.email, mailTextShell(message));
+
+      // if (type === "phone") {
+      await sendOTPSMS(
+        `Please ignore this message if you did not request the OTP.Your verification code is ${token}.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`,
+        employee[0]?.phonenumber
+      );
+      // }
     } catch (error) {
       await knex("tokens").where("email", employee[0]?.email).del();
 

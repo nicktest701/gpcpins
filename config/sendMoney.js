@@ -63,7 +63,7 @@ async function sendMoneyToCustomer(info) {
             : Number(info?.amount),
           // Amount: info?.amount,
           PrimaryCallbackUrl: `${process.env.REFUND_CALLBACK_URL
-            }/${info?.category}/${info?.transactionId}`,
+            }/${info?.category}/${info?.transactionId}?uid=${info?.refunder}`,
           Description: info?.category,
           ClientReference: info?.transaction_reference,
         },

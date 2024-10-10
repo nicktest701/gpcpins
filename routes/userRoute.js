@@ -368,26 +368,29 @@ router.post(
         email: email,
       });
 
-      if (type === "email") {
-        const message = `
+      // if (type === "email") {
+      const message = `
         <div style="width:100%;max-width:500px;margin-inline:auto;">
         <h2>Gab Powerful Consult</h2>
+        <p>Please ignore this message if you did not request the OTP.</p>
         <p>Your verification code is</p>
         <h1>${token}</h1>
+<p>Don't share this code with anyone; Our employees will never ask for the code.</p>
+         <p>If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.</p>
 
         <p>-- Gab Powerful Team --</p>
     </div>
         `;
 
-        await sendMail(user[0]?.email, mailTextShell(message));
-      }
+      await sendMail(user[0]?.email, mailTextShell(message));
+      // }
 
-      if (type === "phone") {
-        await sendOTPSMS(
-          `Your verification code is ${token}`,
-          user[0]?.phonenumber
-        );
-      }
+      // if (type === "phone") {
+      await sendOTPSMS(
+        `Please ignore this message if you did not request the OTP.Your verification code is ${token}.Don't share this code with anyone; Our employees will never ask for the code.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`,
+        user[0]?.phonenumber
+      );
+      // }
 
       await transx.commit();
     } catch (error) {
@@ -488,27 +491,7 @@ router.post(
     const accessToken = signMainToken(accessData, '180d');
     const refreshToken = signMainRefreshToken(updatedUser, '365d');
 
-    // res.cookie("_SSUID_kyfc", accessToken, {
-    //   maxAge: 1 * 60 * 60 * 1000,
-    //   expires: ACCESS_EXPIRATION,
-    //   httpOnly: true,
-    //   path: "/",
-    //   secure: true,
-    //   // domain:
-    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-    //   sameSite: "none",
-    // });
-
-    // res.cookie("_SSUID_X_ayd", refreshToken, {
-    //   maxAge: 90 * 24 * 60 * 60 * 1000,
-    //   expires: REFRESH_EXPIRATION,
-    //   httpOnly: true,
-    //   path: "/",
-    //   secure: true,
-    //   // domain:
-    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-    //   sameSite: "none",
-    // });
+    
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
 
@@ -516,36 +499,13 @@ router.post(
       token: hashedToken,
     });
 
-    // if (register) {
-    //   await sendOTPSMS(
-    //     `Welcome to GPC,
-    //   Your wallet pin is ${user_key}.Your are recommended to change it at the wallet page of your account when you log into your account.Thank You!`,
-    //     user[0]?.phonenumber
-    //   );
-    // }
-
-    // if (isMobile(req)) {
+   
     res.status(201).json({
       refreshToken,
       accessToken,
       register,
     });
-    // }
-
-    // res.status(201).json({
-    //   user: {
-    //     id: user[0]?._id,
-    //     name: user[0]?.name,
-    //     firstname: user[0]?.firstname,
-    //     lastname: user[0]?.lastname,
-    //     email: user[0]?.email,
-    //     dob: user[0]?.dob,
-    //     nid: user[0]?.nid,
-    //     phonenumber: user[0]?.phonenumber,
-    //     role: user[0]?.role,
-    //     profile: user[0]?.profile,
-    //   },
-    // });
+  
   })
 );
 
