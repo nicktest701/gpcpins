@@ -378,7 +378,7 @@ router.get(
         phonenumber: transaction?.info?.agentPhoneNumber,
         email: transaction?.info?.agentEmail,
         type: _.upperCase(
-          `${category.voucherType} ${transaction?.info?.domain}`
+          `${category?.voucherType} ${transaction?.info?.domain}`
         ),
         quantity:
           transaction?.info?.quantity ||
