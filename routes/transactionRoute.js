@@ -367,18 +367,18 @@ router.get(
       const category = await knex("categories")
         .where("_id", transaction?.info?.categoryId)
         .select("voucherType")
-        .limit(1);
+        .first();
 
       return {
         _id: transaction?._id,
         reference: transaction?.reference,
-        voucherType: category[0].voucherType,
+        voucherType: category?.voucherType,
         domain: transaction?.info?.domain,
         downloadLink: transaction?.info?.downloadLink,
         phonenumber: transaction?.info?.agentPhoneNumber,
         email: transaction?.info?.agentEmail,
         type: _.upperCase(
-          `${category[0].voucherType} ${transaction?.info?.domain}`
+          `${category.voucherType} ${transaction?.info?.domain}`
         ),
         quantity:
           transaction?.info?.quantity ||
@@ -2371,7 +2371,7 @@ router.post(
 
 
 
-   
+
     res.sendStatus(204);
   })
 );

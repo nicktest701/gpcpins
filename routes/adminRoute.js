@@ -182,24 +182,24 @@ router.post(
     const { email, password } = req.body;
 
     const employee = await knex("employees")
-      .select("email", "password", "active")
+      .select("email", "phonenumber", "password", "active")
       .where("email", email)
-      .limit(1);
+      .first();
 
-    if (_.isEmpty(employee[0])) {
+    if (_.isEmpty(employee)) {
       return res.status(400).json("Invalid Email or Password!!");
     }
 
     const passwordIsValid = await bcrypt.compare(
       password,
-      employee[0]?.password
+      employee?.password
     );
 
     if (!passwordIsValid) {
       return res.status(400).json("Invalid Email or Password!");
     }
 
-    if (employee[0]?.active === 0) {
+    if (employee?.active === 0) {
       return res.status(400).json("Account disabled!");
     }
 
@@ -208,7 +208,7 @@ router.post(
     await knex("tokens").insert({
       _id: generateId(),
       token,
-      email: employee[0]?.email,
+      email: employee?.email,
     });
 
     const message = `
@@ -227,16 +227,16 @@ router.post(
     }
 
     try {
-      await sendMail(employee[0]?.email, mailTextShell(message));
+      await sendMail(employee?.email, mailTextShell(message));
 
       // if (type === "phone") {
       await sendOTPSMS(
         `Please ignore this message if you did not request the OTP.Your verification code is ${token}.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`,
-        employee[0]?.phonenumber
+        employee?.phonenumber
       );
       // }
     } catch (error) {
-      await knex("tokens").where("email", employee[0]?.email).del();
+      await knex("tokens").where("email", employee?.email).del();
 
       return res.status(500).json("An error has occurred!");
     }
