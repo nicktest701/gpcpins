@@ -253,7 +253,7 @@ app.use("/api/gabs/v1/category", categoryRoute);
 app.use("/api/gabs/v1/voucher", voucherRoute);
 app.use("/api/gabs/v1/employees", employeeRoute);
 
-app.use("/api/gabs/v1/meters", verifyToken, meterRoute);
+app.use("/api/gabs/v1/meters", meterRoute);
 app.use("/api/gabs/v1/payment", paymentRoute);
 app.use("/api/gabs/v1/transaction", transactionRoute);
 app.use("/api/gabs/v1/notifications", notificationRoute);

@@ -96,7 +96,7 @@ router.get(
     const { id } = req.user;
 
     const verifier = await getVerifier(id);
-    const accessToken = signMainToken(verifier, "15m");
+    const accessToken = signMainToken(verifier, "180d");
 
     res.status(200).json({
       accessToken,
@@ -352,24 +352,24 @@ router.post(
     const { email, password } = req.body;
 
     const verifier = await knex("verifiers")
-      .select("email", "password", "active")
+      .select("email", 'phonenumber', "password", "active")
       .where("email", email)
-      .limit(1);
+      .first();
 
-    if (_.isEmpty(verifier[0])) {
+    if (_.isEmpty(verifier)) {
       return res.status(400).json("Invalid Email or Password!!");
     }
 
     const passwordIsValid = await bcrypt.compare(
       password,
-      verifier[0]?.password
+      verifier?.password
     );
 
     if (!passwordIsValid) {
       return res.status(400).json("Invalid Email or Password!");
     }
 
-    if (verifier[0]?.active === 0) {
+    if (verifier?.active === 0) {
       return res.status(400).json("Account disabled!");
     }
 
@@ -378,14 +378,15 @@ router.post(
     await knex("tokens").insert({
       _id: generateId(),
       token,
-      email: verifier[0]?.email,
+      email: verifier?.email,
     });
 
     const message = `
         <div style="width:100%;max-width:500px;margin-inline:auto;">
-    
+      <p>Please ignore this message if you did not request the OTP.</p>
         <p>Your verification code is</p>
         <h1>${token}</h1>
+        <p>If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.</p>
 
         <p>-- Gab Powerful Team --</p>
     </div>
@@ -396,9 +397,15 @@ router.post(
     }
 
     try {
-      await sendMail(verifier[0]?.email, mailTextShell(message));
+      await sendMail(verifier?.email, mailTextShell(message));
+
+      await sendOTPSMS(
+        `Please ignore this message if you did not request the OTP.Your verification code is ${token}.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`,
+        verifier?.phonenumber
+      );
+
     } catch (error) {
-      await knex("tokens").where("email", verifier[0]?.email).del();
+      await knex("tokens").where("email", verifier?.email).del();
 
       return res.status(500).json("An error has occurred!");
     }
@@ -608,8 +615,8 @@ router.post(
       isActive: Boolean(verifier[0]?.isActive),
     };
 
-    const accessToken = signMainToken(authVerifier, "15m");
-    const refreshToken = signMainRefreshToken(updatedVerifier, "24h");
+    const accessToken = signMainToken(authVerifier, "180d");
+    const refreshToken = signMainRefreshToken(updatedVerifier, "365d");
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
 
@@ -687,7 +694,7 @@ router.put(
       severity: "info",
     });
 
-    const accessToken = signMainToken(verifier, "15m");
+    const accessToken = signMainToken(verifier, "180d");
 
     res.status(201).json({
       accessToken

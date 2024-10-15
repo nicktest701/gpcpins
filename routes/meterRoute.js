@@ -9,6 +9,7 @@ const { isValidUUID2 } = require("../config/validation");
 
 const knex = require("../db/knex");
 const verifyAdmin = require("../middlewares/verifyAdmin");
+const { verifyToken } = require("../middlewares/verifyToken");
 
 
 router.get(
@@ -76,6 +77,7 @@ router.get(
 
 router.post(
   "/",
+  verifyToken,
   asyncHandler(async (req, res) => {
     const newMeter = req.body;
 
@@ -121,6 +123,7 @@ router.put(
 
 router.delete(
   "/",
+  verifyToken,
   asyncHandler(async (req, res) => {
     const { id } = req.query;
 
