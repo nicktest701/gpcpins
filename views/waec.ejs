@@ -81,6 +81,7 @@
             display: flex;
             gap: 10px;
             padding-bottom: 4px;
+           
         }
 
         .voucher-cover p:first-child {
@@ -105,7 +106,7 @@
             <div
                 style="width: 180px;border:solid 1px black;padding:8px; background:linear-gradient(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.92)) no-repeat; background-position: center center; background-size: 100px 100px;">
                 <!-- url('<%=voucher?.logo %>') -->
-                <p style="text-align:center">
+                <p style="text-align:center;white-space:wrap;font-size: 10px;">
                     <%= voucher?.voucherType %>
                 </p>
                 <hr color="#000" />

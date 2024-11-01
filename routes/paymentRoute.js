@@ -1421,8 +1421,6 @@ router.post(
       return res.status(401).json("Error Processing your request!");
     }
 
-
-
     const {
       type,
       amount,
