@@ -142,7 +142,9 @@ router.get(
       //         userInfo?.agentPhoneNumber
       //       );
 
-      await sendTicketMail(id, userInfo?.agentEmail, "GPC Vouchers");
+      if (userInfo?.agentEmail) {
+        await sendTicketMail(id, userInfo?.agentEmail, "GPC Vouchers");
+      }
 
       return res.status(200).json({ id, downloadLink: userInfo?.downloadLink });
     }
@@ -232,12 +234,13 @@ router.get(
 
         res.status(200).json({ id: _id, downloadLink });
 
-
-        await sendTicketMail(
-          _id,
-          userInfo?.agentEmail,
-          modifiedVoucher[0]?.voucherType
-        );
+        if (userInfo?.agentEmail) {
+          await sendTicketMail(
+            _id,
+            userInfo?.agentEmail,
+            modifiedVoucher[0]?.voucherType
+          );
+        }
 
         // const smsData = modifiedVoucher.map((voucher) => {
         //   return `[${voucher?.pin}--${voucher?.serial}]`;
@@ -314,8 +317,10 @@ router.get(
       //  Download Tickets here: ${userInfo?.downloadLink}`,
       //       userInfo?.agentPhoneNumber
       //     );
+      if (userInfo?.agentEmail) {
 
-      await sendTicketMail(_id, userInfo?.agentEmail, "GPC Tickets");
+        await sendTicketMail(_id, userInfo?.agentEmail, "GPC Tickets");
+      }
 
       return res.status(200).json({ id, downloadLink: userInfo?.downloadLink });
     }
@@ -539,7 +544,9 @@ router.get(
 
         res.status(200).json({ id: _id, downloadLink });
 
-        await sendTicketMail(_id, userInfo?.agentEmail, "GPC Tickets");
+        if (userInfo?.agentEmail) {
+          await sendTicketMail(_id, userInfo?.agentEmail, "GPC Tickets");
+        }
 
         await sendSMS(
           `${userInfo?.agentEmail} ${userInfo?.agentPhoneNumber}
@@ -599,7 +606,7 @@ router.get(
         .join("meters", "prepaid_transactions.meter", "=", "meters._id")
         .where("prepaid_transactions._id", id)
         .limit(1);
-     
+
     }
 
     if (type === "airtime") {
@@ -761,7 +768,7 @@ router.get(
 [Pin--Serial]
 ${smsData.join(" ")},
 
-${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your vouchers.
+${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your vouchers.
 `,
             userInfo?.agentPhoneNumber
           );
@@ -783,7 +790,7 @@ ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.g
 ${smsData.join(" ")},  
 
 ${moment(detailsInfo?.date)?.format('dddd,Do MMMM,YYYY')},${moment(detailsInfo?.time).format('hh:mm a')},  
-${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your tickets.
+${userInfo?.agentEmail||""},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your tickets.
 `,
             userInfo?.agentPhoneNumber
           );
@@ -826,7 +833,7 @@ ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.g
       );
 
 
-      const message = `The number ${transaction[0]?.phonenumber} with Email Address ${transaction[0]?.email
+      const message = `The number ${transaction[0]?.phonenumber} with Email Address ${transaction[0]?.email||""
         } has successfully made payment to transfer bulk airtime to:
          ${formattedList}.`;
       // console.log(message)
@@ -988,11 +995,14 @@ ${userInfo?.agentEmail},${userInfo?.agentPhoneNumber}.Please visit https://www.g
         message,
       });
 
-      const userMail = await sendElectricityMail(
+      if(transaction[0]?.email){
+
+        const userMail = await sendElectricityMail(
         transaction[0]?._id,
         transaction[0]?.email,
         "pending"
       );
+    }
       // Send Mail and SMS to the User
       const userSMS = await sendSMS(
         `Thank you for your purchase! You will be notified shortly after your transaction is complete.Your transaction id is ${transaction[0]?._id}`,
