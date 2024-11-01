@@ -243,9 +243,9 @@ router.post(
   "/tawk",
   limit,
   asyncHandler(async (req, res) => {
-    if (!verifySignature(req.rawBody, req.headers["x-tawk-signature"])) {
+   // if (!verifySignature(req.rawBody, req.headers["x-tawk-signature"])) {
       // verification failed
-    }
+   // }
     // verification successfull
 
     res.status(201).json("Request received.We will contact you shortly!!!");

@@ -790,7 +790,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
 ${smsData.join(" ")},  
 
 ${moment(detailsInfo?.date)?.format('dddd,Do MMMM,YYYY')},${moment(detailsInfo?.time).format('hh:mm a')},  
-${userInfo?.agentEmail||""},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your tickets.
+${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your tickets.
 `,
             userInfo?.agentPhoneNumber
           );
@@ -833,7 +833,7 @@ ${userInfo?.agentEmail||""},${userInfo?.agentPhoneNumber}.Please visit https://w
       );
 
 
-      const message = `The number ${transaction[0]?.phonenumber} with Email Address ${transaction[0]?.email||""
+      const message = `The number ${transaction[0]?.phonenumber} with Email Address ${transaction[0]?.email || ""
         } has successfully made payment to transfer bulk airtime to:
          ${formattedList}.`;
       // console.log(message)
@@ -995,14 +995,14 @@ ${userInfo?.agentEmail||""},${userInfo?.agentPhoneNumber}.Please visit https://w
         message,
       });
 
-      if(transaction[0]?.email){
+      if (transaction[0]?.email) {
 
         const userMail = await sendElectricityMail(
-        transaction[0]?._id,
-        transaction[0]?.email,
-        "pending"
-      );
-    }
+          transaction[0]?._id,
+          transaction[0]?.email,
+          "pending"
+        );
+      }
       // Send Mail and SMS to the User
       const userSMS = await sendSMS(
         `Thank you for your purchase! You will be notified shortly after your transaction is complete.Your transaction id is ${transaction[0]?._id}`,
@@ -1344,7 +1344,141 @@ router.post(
   verifyToken,
   asyncHandler(async (req, res) => {
     const { id, email, downloadLink } = req.body;
-    await resendReceiptMail(id, email, downloadLink);
+
+    const transaction = await knex("voucher_transactions")
+      .select("*")
+      .where("_id", id)
+      .limit(1).first();
+
+
+    const { _id, info } = transaction
+
+    const userInfo = JSON.parse(info);
+
+    let selectedVouchers = [];
+
+    //Check if tickets are Stadium tickets or cinema
+
+    if (["stadium", "cinema"].includes(userInfo?.type)) {
+      const vouchers = await Promise.all(
+        userInfo?.paymentDetails.tickets.flatMap(async (ticket) => {
+          return await knex("vouchers")
+            .join("categories", "vouchers.category", "=", "categories._id")
+            .where({
+              "vouchers.category": userInfo?.categoryId,
+              "vouchers.type": ticket?.type,
+              "vouchers.status": "new",
+              "vouchers.active": 1,
+            })
+            .select("vouchers._id",
+              'vouchers.serial',
+              'vouchers.pin',
+              'vouchers.type',
+              "categories.details as details",
+              "categories.voucherType as voucherType",)
+            .limit(ticket?.quantity);
+        })
+      );
+
+      selectedVouchers = _.flatMap(vouchers);
+
+    }
+    //Check if tickets are bus
+    else if (["bus"].includes(userInfo?.type)) {
+      selectedVouchers = await knex("vouchers")
+        .join("categories", "vouchers.category", "=", "categories._id")
+        .whereIn("vouchers.type", userInfo?.paymentDetails?.tickets)
+        .andWhere({
+          "vouchers.category": userInfo?.categoryId,
+          "vouchers.status": "new",
+          "vouchers.active": 1,
+        })
+        .select("vouchers._id",
+          'vouchers.serial',
+          'vouchers.pin',
+          'vouchers.type',
+          "categories.details as details",
+          "categories.voucherType as voucherType",);
+
+
+    }
+    //Check if vouchers are waec,university or security
+    else {
+      selectedVouchers = await knex("vouchers")
+        .join("categories", "vouchers.category", "=", "categories._id")
+        .where({
+          "vouchers.category": userInfo?.categoryId,
+          "vouchers.status": "new",
+          "vouchers.active": 1,
+        })
+        .select("vouchers._id",
+          'vouchers.serial',
+          'vouchers.pin',
+          'vouchers.type',
+          "categories.voucherType as voucherType",
+          "categories.details as details"
+        )
+        .limit(userInfo?.quantity);
+    }
+
+
+    try {
+
+
+      if (["waec", 'security', 'university'].includes(userInfo?.type)) {
+
+        const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
+
+        const smsInfo = selectedVouchers.map((voucher) => {
+          return `[${voucher?.pin}--${voucher?.serial}]`;
+        });
+        const smsData = await Promise.all([smsInfo])
+
+        await sendSMS(
+          `${selectedVouchers[0]?.voucherType}  ${detailsInfo?.voucherURL}   
+[Pin--Serial]
+${smsData.join(" ")},
+
+${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your vouchers.
+`,
+          userInfo?.agentPhoneNumber
+        );
+
+
+
+      }
+
+      if (["bus", 'cinema', 'stadium'].includes(userInfo?.type)) {
+        const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
+        // console.log(selectedVouchers)
+
+        const smsInfo = selectedVouchers.map((voucher) => {
+          return `[${voucher?.type}--${voucher?.serial || voucher?.pin}]`;
+        });
+        const smsData = await Promise.all([smsInfo])
+
+        await sendSMS(
+          `${selectedVouchers[0]?.voucherType}   
+[Seat No./Type--Serial]
+${smsData.join(" ")},  
+
+${moment(detailsInfo?.date)?.format('dddd,Do MMMM,YYYY')},${moment(detailsInfo?.time).format('hh:mm a')},  
+${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your tickets.
+`,
+          userInfo?.agentPhoneNumber
+        );
+
+      }
+   
+      await resendReceiptMail(id, userInfo?.agentEmail, downloadLink);
+
+    } catch (error) {
+
+      console.log(error);
+      return res.status(500).json("Error Processing your request! Please try again later.");
+    }
+
+
     res.sendStatus(200);
   })
 );

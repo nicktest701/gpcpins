@@ -31,6 +31,7 @@ router.get(
       );
       return res.status(200).json(filteredMessages);
     }
+    // console.log(broadcastMessages)
 
     res.status(200).json(broadcastMessages);
   })
@@ -68,6 +69,8 @@ router.post(
     const transx = await knex.transaction()
     const _id = generateId();
     try {
+
+     
 
 
 

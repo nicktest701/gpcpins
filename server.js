@@ -258,10 +258,8 @@ app.use("/api/gabs/v1/payment", paymentRoute);
 app.use("/api/gabs/v1/transaction", transactionRoute);
 app.use("/api/gabs/v1/notifications", notificationRoute);
 app.use("/api/gabs/v1/messages", messageRoute);
-app.use("/api/gabs/v1/broadcast-messages",verifyToken, broadcastMessageRoute);
+app.use("/api/gabs/v1/broadcast-messages", verifyToken, broadcastMessageRoute);
 
-// app.use('/api/gabs/v1/clients', clientRoute);
-// app.use('/api/gabs/v1/clients-category', clientCategoryRoute);
 
 if (process.env.NODE_ENV === "production") {
   app.get("/*", function (req, res) {
@@ -306,7 +304,8 @@ app.use((err, req, res, next) => {
 app.listen(port, () => {
   console.log(`App listening on port ${port}!`);
 
+
   // const host = server.address();
   // console.log(host);
 });
-// }
+

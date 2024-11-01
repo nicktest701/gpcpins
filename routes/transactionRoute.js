@@ -954,88 +954,72 @@ router.get(
   })
 );
 
-// router.get(
-//   '/verify',
-//   limit,
-//   verifyToken,
-//   verifyAdmin,
+router.get(
+  '/verify',
+  limit,
+  asyncHandler(async (req, res) => {
+    const { id, ticket } = req.query;
 
-//   asyncHandler(async (req, res) => {
-//     const { id, ticket, token } = req.query;
+    //Check if ticket exists
+    if (!ticket || !id) {
+      return res.status(400).json('Error! Ticket not available.');
+    }
 
-//     //Check if ticket exists
-//     if (!ticket || !id) {
-//       return res.status(400).json('Error! Ticket not available.');
-//     }
+    const splittedTicket = ticket.split('_');
+    const voucherId = splittedTicket[0];
 
-//     const splittedTicket = ticket.split('_');
-//     const voucherId = splittedTicket[0];
+    ///Check if voucher id is a valid mongo db id
+    if (!isValidUUID2(id)) {
+      return res.status(400).json('Error! Ticket not available.');
+    }
 
-//     ///Check if voucher id is a valid mongo db id
-//     if (!isValidUUID2(id)) {
-//       return res.status(400).json('Error! Ticket not available.');
-//     }
+    //find tranasction with specific payment id
+    const transaction = await knex('voucher_transactions')
+      .select('*')
+      .where('_id', id)
+      .limit(1).first();
 
-//     //find tranasction with specific payment id
-//     const transaction = await knex('transactions')
-//       .select('*')
-//       .where('_id', id)
-//       .limit(1);
+    if (_.isEmpty(transaction)) {
+      return res.status(400).json('Couldnt Verify your ticket');
+    }
 
-//     if (_.isEmpty(transaction)) {
-//       return res.status(400).json('Couldnt Verify your ticket');
-//     }
+    // console.log(transaction)
 
-//     //find voucher with its id
-//     const vouchers = JSON.parse(transaction.vouchers);
-//     const voucher = vouchers.find((voucher) => voucher === _id);
+    //selectedVoucher
+    const selectedVoucher = await knex('vouchers').where('_id', voucherId).first()
 
-//     if (_.isEmpty(voucher)) {
-//       return res.status(400).json('Couldnt find your ticket!');
-//     }
+    if (_.isEmpty(selectedVoucher)) {
+      return res.status(400).json('Couldnt find your ticket!');
+    }
 
-//     const modifiedVoucher = {
-//       ...voucher,
-//       mobileNo: transaction.phonenumber,
-//       email: transaction.email,
-//     };
+    //category
+    const category = await knex('categories').where('_id', selectedVoucher.category).first()
 
-//     if (token) {
-//       await Voucher.findByIdAndUpdate(voucherId, {
-//         $set: {
-//           status: 'used',
-//         },
-//       });
 
-//       const modifiedVouchers = transaction.vouchers.map((voucher) => {
-//         if (voucher?._id.toString() === voucherId) {
-//           voucher.status = 'used';
 
-//           return voucher;
-//         } else {
-//           return voucher;
-//         }
-//       });
+    const info = JSON.parse(transaction?.info)
+    const details = JSON.parse(selectedVoucher?.details)
+    const modifiedVoucher = {
+      id: transaction?._id,
+      voucherType: category?.voucherType,
+      category: category?.category,
+      serial: selectedVoucher.serial,
+      pin: selectedVoucher.pin,
+      type: details?.type,
+      seatNo: details?.seatNo,
+      mode: transaction?.mode,
+      amount: info?.amount,
+      email: transaction.email,
+      phonenumber: transaction.phonenumber,
+      status: selectedVoucher?.status,
+      createdAt: transaction?.createdAt
+    };
 
-//       await Transaction.findOneAndUpdate(
-//         {
-//           paymentId: id,
-//         },
-//         {
-//           $set: {
-//             vouchers: modifiedVouchers,
-//           },
-//         }
-//       );
 
-//       modifiedVoucher.status = 'used';
 
-//       return res.status(200).json(modifiedVoucher);
-//     }
-
-//     res.status(200).json(modifiedVoucher);
-//   })
-// );
+    res.status(200).json(modifiedVoucher);
+  })
+);
 
 router.get(
   "/total-sales",
@@ -1822,7 +1806,7 @@ router.get(
     const voucherTransaction = await knex("voucher_transactions")
       .select("_id", 'phonenumber', 'mode', 'info', 'createdAt', 'status')
       .where({ _id: id, phonenumber: mobileNo })
-      .limit(1).first();
+      .limit(1);
 
     const prepaidTransaction = await knex("prepaid_transactions")
       .select("_id", 'mobileNo as phonenumber', 'mode', 'info', "amount", 'createdAt', 'status')
