@@ -549,7 +549,8 @@ router.get(
         }
 
         await sendSMS(
-          `${userInfo?.agentEmail} ${userInfo?.agentPhoneNumber}
+          `Transaction ID: ${id},
+${userInfo?.agentEmail} ${userInfo?.agentPhoneNumber}
 Download Ticket here: ${downloadLink}`,
           userInfo?.agentPhoneNumber
         );
@@ -764,7 +765,8 @@ router.get(
           const smsData = await Promise.all([smsInfo])
 
           await sendSMS(
-            `${selectedVouchers[0]?.voucherType}  ${detailsInfo?.voucherURL}   
+            `Transaction ID :${id},
+${selectedVouchers[0]?.voucherType}  ${detailsInfo?.voucherURL}   
 [Pin--Serial]
 ${smsData.join(" ")},
 
@@ -785,7 +787,8 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
           const smsData = await Promise.all([smsInfo])
 
           await sendSMS(
-            `${selectedVouchers[0]?.voucherType}   
+            `Transaction ID :${id},
+  ${selectedVouchers[0]?.voucherType}   
 [Seat No./Type--Serial]
 ${smsData.join(" ")},  
 
@@ -895,7 +898,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
             user_id: userID,
             type: "bundle",
             title: "Data Bundle Transfer",
-            message: `You have successfully recharged ${bundleInfo.recipient} with data bundle, "${bundleInfo.data_code}", you were charged GHS ${transaction[0]?.amount} .`,
+            message: `You have successfully recharged ${bundleInfo.recipient} with data bundle, "${bundleInfo.data_code}", you were charged GHS ${transaction[0]?.amount} .Transaction ID :${transaction[0]?._id}`,
           });
 
           const balance = Number(response?.balance_after);
@@ -958,7 +961,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
             user_id: userID,
             type: "airtime",
             title: "Airtime Transfer",
-            message: `You have successfully recharged ${airtimeInfo.recipient} with GHS ${airtimeInfo.amount} of airtime, you were charged GHS ${airtimeInfo.amount}`,
+            message: `You have successfully recharged ${airtimeInfo.recipient} with GHS ${airtimeInfo.amount} of airtime, you were charged GHS ${airtimeInfo.amount}.Transaction ID :${transaction[0]?._id},`,
           });
 
           const balance = Number(response?.balance_after);
@@ -1343,12 +1346,17 @@ router.post(
   "/resend",
   verifyToken,
   asyncHandler(async (req, res) => {
-    const { id, email, downloadLink } = req.body;
+    const { id, downloadLink } = req.body;
 
     const transaction = await knex("voucher_transactions")
       .select("*")
       .where("_id", id)
       .limit(1).first();
+
+
+      if (_.isEmpty(transaction)) {
+        return res.status(402).json("Transaction not found!");
+      }
 
 
     const { _id, info } = transaction
@@ -1435,7 +1443,8 @@ router.post(
         const smsData = await Promise.all([smsInfo])
 
         await sendSMS(
-          `${selectedVouchers[0]?.voucherType}  ${detailsInfo?.voucherURL}   
+          `Transaction ID :${id},
+${selectedVouchers[0]?.voucherType}  ${detailsInfo?.voucherURL}   
 [Pin--Serial]
 ${smsData.join(" ")},
 
@@ -1458,7 +1467,8 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
         const smsData = await Promise.all([smsInfo])
 
         await sendSMS(
-          `${selectedVouchers[0]?.voucherType}   
+            `Transaction ID :${id},
+  ${selectedVouchers[0]?.voucherType}   
 [Seat No./Type--Serial]
 ${smsData.join(" ")},  
 
@@ -2708,7 +2718,7 @@ router.put(
     await transx.commit();
 
     await sendSMS(
-      `You request to buy prepaid units has being completed.Transaction Details:Order No.:${meterInfo?.paymentId},-Token:${meterInfo?.orderNo},Meter No:${meterInfo?.number},Meter Name:${meterInfo?.name}-Amount Paid: ${meterInfo?.amount}.In case units do not load automatically,Please enter the token on your meter to load your units.Thank you`,
+      `You request to buy prepaid units has being completed.Transaction Details:Transaction ID: ${meterInfo.id},Order No.:${meterInfo?.paymentId},-Token:${meterInfo?.orderNo},Meter No:${meterInfo?.number},Meter Name:${meterInfo?.name}-Amount Paid: ${meterInfo?.amount}.In case units do not load automatically,Please enter the token on your meter to load your units.Thank you`,
       paymentInfo?.mobileNo
     );
 
