@@ -89,6 +89,7 @@ router.get(
     const bundle_transactions = await knex("bundle_transactions")
       .select(
         "_id",
+        "externalTransactionId",
         "bundle_name as kind",
         "bundle_volume as volume",
         "reference",
@@ -120,6 +121,7 @@ router.get(
     const airtime_transactions = await knex("airtime_transactions")
       .select(
         "_id",
+        "externalTransactionId",
         "type as kind",
         "reference",
         "recipient",
@@ -157,6 +159,7 @@ router.get(
     const voucher_transactions = await knex("voucher_transactions")
       .select(
         "_id",
+        "externalTransactionId",
         "info",
         'partner',
         "mode",
@@ -185,6 +188,7 @@ router.get(
       .leftJoin("meters", "prepaid_transactions.meter", "=", "meters._id")
       .select(
         "prepaid_transactions._id as _id",
+        "prepaid_transactions.externalTransactionId as externalTransactionId",
         "prepaid_transactions.reference as reference",
         "prepaid_transactions.info as info",
         "prepaid_transactions.partner as partner",
@@ -208,6 +212,7 @@ router.get(
     const ecgTransaction = prepaid_transactions.map((transaction) => {
       return {
         _id: transaction?._id,
+        externalTransactionId: transaction?.externalTransactionId,
         reference: transaction?.reference,
         info: JSON.parse(transaction?.info),
         partner: JSON.parse(transaction?.partner),
@@ -371,6 +376,7 @@ router.get(
 
       return {
         _id: transaction?._id,
+        externalTransactionId: transaction?.externalTransactionId,
         reference: transaction?.reference,
         voucherType: category?.voucherType,
         domain: transaction?.info?.domain,
@@ -400,6 +406,7 @@ router.get(
 
       return {
         _id: transaction?._id,
+        externalTransactionId: transaction?.externalTransactionId,
         reference: transaction?.reference,
         meter: transaction?.meter?.number,
         type: `${transaction?.info?.domain} Units`,
@@ -1806,16 +1813,19 @@ router.get(
     const voucherTransaction = await knex("voucher_transactions")
       .select("_id", 'phonenumber', 'mode', 'info', 'createdAt', 'status')
       .where({ _id: id, phonenumber: mobileNo })
+      .orWhere({ externalTransactionId: id, phonenumber: mobileNo })
       .limit(1);
 
     const prepaidTransaction = await knex("prepaid_transactions")
       .select("_id", 'mobileNo as phonenumber', 'mode', 'info', "amount", 'createdAt', 'status')
       .where({ _id: id, mobileNo: mobileNo })
+      .orWhere({ externalTransactionId: id, phonenumber: mobileNo })
       .limit(1);
 
     const airtimeTransaction = await knex("airtime_transactions")
       .select("_id", 'phonenumber', 'mode', 'info', "amount", 'createdAt', 'status')
       .where({ _id: id, phonenumber: mobileNo })
+      .orWhere({ externalTransactionId: id, phonenumber: mobileNo })
       .limit(1);
 
     const transaction = [...voucherTransaction, ...airtimeTransaction, ...prepaidTransaction]
@@ -1853,6 +1863,7 @@ router.get(
     const transaction = await knex("voucher_transactions")
       .select("*")
       .where({ _id: transactionId, })
+      .orWhere({ externalTransactionId: id })
       .andWhere('status', "IN", ['completed', 'refunded'])
       .limit(1);
 

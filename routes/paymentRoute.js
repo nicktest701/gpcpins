@@ -1354,9 +1354,9 @@ router.post(
       .limit(1).first();
 
 
-      if (_.isEmpty(transaction)) {
-        return res.status(402).json("Transaction not found!");
-      }
+    if (_.isEmpty(transaction)) {
+      return res.status(402).json("Transaction not found!");
+    }
 
 
     const { _id, info } = transaction
@@ -1467,7 +1467,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
         const smsData = await Promise.all([smsInfo])
 
         await sendSMS(
-            `Transaction ID :${id},
+          `Transaction ID :${id},
   ${selectedVouchers[0]?.voucherType}   
 [Seat No./Type--Serial]
 ${smsData.join(" ")},  
@@ -1479,7 +1479,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
         );
 
       }
-   
+
       await resendReceiptMail(id, userInfo?.agentEmail, downloadLink);
 
     } catch (error) {
@@ -2596,6 +2596,7 @@ router.post(
         .where("reference", Data?.ClientReference)
         .update({
           partner: JSON.stringify(Data),
+          externalTransactionId: Data?.ExternalTransactionId,
           status,
         });
     }
@@ -2605,6 +2606,7 @@ router.post(
         .where("reference", Data?.ClientReference)
         .update({
           partner: JSON.stringify(Data),
+          externalTransactionId: Data?.ExternalTransactionId,
           status,
         });
     }
@@ -2614,6 +2616,7 @@ router.post(
         .where("reference", Data?.ClientReference)
         .update({
           partner: JSON.stringify(Data),
+          externalTransactionId: Data?.ExternalTransactionId,
           status,
         });
     }
@@ -2623,6 +2626,7 @@ router.post(
         .where("reference", Data?.ClientReference)
         .update({
           partner: JSON.stringify(Data),
+          externalTransactionId: Data?.ExternalTransactionId,
           status,
         });
     }
