@@ -64,16 +64,12 @@ router.post(
   asyncHandler(async (req, res) => {
     const { id } = req.user;
     const { phoneNumber, email, group, ...newBroadcastMessage } = req.body;
-
-
+  
     const transx = await knex.transaction()
     const _id = generateId();
     try {
 
      
-
-
-
       const broadcastMessage = await knex("broadcast_messages").insert({
         _id,
         ...newBroadcastMessage,

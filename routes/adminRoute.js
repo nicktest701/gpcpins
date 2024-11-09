@@ -17,6 +17,8 @@ const verifyAdmin = require("../middlewares/verifyAdmin");
 const { uploadPhoto } = require("../config/uploadFile");
 const { mailTextShell } = require("../config/mailText");
 
+
+
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
   max: 20, // 5 requests per windowMs
@@ -29,6 +31,7 @@ const { hasTokenExpired } = require("../config/dateConfigs");
 const knex = require("../db/knex");
 const { sendOTPSMS } = require("../config/sms");
 const generateId = require("../config/generateId");
+const redisClient = require("../config/redisClient");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -69,6 +72,10 @@ router.get(
     res.status(200).json(modifiedEmployees);
   })
 );
+
+
+
+
 
 
 
@@ -400,6 +407,43 @@ router.post(
     res.sendStatus(204);
   })
 );
+
+
+
+router.get('/sms',
+  // verifyToken,
+  // verifyAdmin,
+  asyncHandler(async (req, res) => {
+    try {
+    
+      const sms = await redisClient.get('sms');
+      res.json({ sms });
+    } catch (error) {
+      console.log(error)
+      res.status(500).json({ error: 'Error fetching from Redis' });
+    } 
+  })
+);
+
+router.post(
+  '/sms',
+  // verifyToken,
+  // verifyAdmin,
+
+  asyncHandler(async (req, res) => {
+    const { api } = req.body;
+
+    try {
+      
+      await redisClient.set('sms', api);
+      res.json('SMS API saved successfully');
+    } catch (error) {
+
+      res.status(500).json('Error saving to Redis');
+    } 
+  })
+);
+
 
 router.put(
   "/",

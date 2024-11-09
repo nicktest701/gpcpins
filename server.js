@@ -258,7 +258,8 @@ app.use("/api/gabs/v1/payment", paymentRoute);
 app.use("/api/gabs/v1/transaction", transactionRoute);
 app.use("/api/gabs/v1/notifications", notificationRoute);
 app.use("/api/gabs/v1/messages", messageRoute);
-app.use("/api/gabs/v1/broadcast-messages", verifyToken, broadcastMessageRoute);
+app.use("/api/gabs/v1/broadcast-messages",
+  verifyToken, broadcastMessageRoute);
 
 
 if (process.env.NODE_ENV === "production") {
