@@ -173,8 +173,9 @@ router.get(
         "status", 'IN', ['completed', 'pending']
       );
 
-    //
+
     const transactions = voucher_transactions.map(({ info, partner, ...rest }) => {
+
       return {
         ...rest,
         partner: JSON.parse(partner),
@@ -1093,9 +1094,10 @@ router.get(
       .orderBy("updatedAt", "desc");
 
     const transaction = voucher_transactions.map(({ info, ...rest }) => {
+   
       return {
         ...rest,
-        info: JSON.parse(info),
+        // info: JSON.parse(info),
       };
     });
 
@@ -1817,13 +1819,13 @@ router.get(
       .limit(1);
 
     const prepaidTransaction = await knex("prepaid_transactions")
-      .select("_id","externalTransactionId", 'mobileNo as phonenumber', 'mode', 'info', "amount", 'createdAt', 'status')
+      .select("_id", "externalTransactionId", 'mobileNo as phonenumber', 'mode', 'info', "amount", 'createdAt', 'status')
       .where({ _id: id, mobileNo: mobileNo })
       .orWhere({ externalTransactionId: id, mobileNo: mobileNo })
       .limit(1);
 
     const airtimeTransaction = await knex("airtime_transactions")
-      .select("_id","externalTransactionId", 'phonenumber', 'mode', 'info', "amount", 'createdAt', 'status')
+      .select("_id", "externalTransactionId", 'phonenumber', 'mode', 'info', "amount", 'createdAt', 'status')
       .where({ _id: id, phonenumber: mobileNo })
       .orWhere({ externalTransactionId: id, phonenumber: mobileNo })
       .limit(1);

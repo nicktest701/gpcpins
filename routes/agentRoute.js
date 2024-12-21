@@ -115,27 +115,27 @@ router.get(
         "business_description"
       )
       .where("_id", id)
-      .limit(1);
+      .limit(1).first();
 
-    if (_.isEmpty(agent) || agent[0]?.active === 0) {
+    if (_.isEmpty(agent) || agent?.active === 0) {
       return res.sendStatus(204);
     }
 
     res.status(200).json({
       user: {
-        id: agent[0]?._id,
-        firstname: agent[0]?.firstname,
-        lastname: agent[0]?.lastname,
-        username: agent[0]?.username,
-        name: agent[0]?.name,
-        email: agent[0]?.email,
-        role: agent[0]?.role,
-        phonenumber: agent[0]?.phonenumber,
-        profile: agent[0]?.profile,
+        id: agent?._id,
+        firstname: agent?.firstname,
+        lastname: agent?.lastname,
+        username: agent?.username,
+        name: agent?.name,
+        email: agent?.email,
+        role: agent?.role,
+        phonenumber: agent?.phonenumber,
+        profile: agent?.profile,
         //business
-        businessName: agent[0]?.business_name,
-        businessLocation: agent[0]?.business_location,
-        businessDescription: agent[0]?.business_description,
+        businessName: agent?.business_name,
+        businessLocation: agent?.business_location,
+        businessDescription: agent?.business_description,
       },
     });
   })
@@ -324,26 +324,26 @@ router.get(
         "business_description"
       )
       .where("_id", id)
-      .limit(1);
+      .limit(1).first();
 
     const accessData = {
-      id: agent[0]?._id,
-      name: agent[0]?.name,
-      firstname: agent[0]?.firstname,
-      lastname: agent[0]?.lastname,
-      username: agent[0]?.username,
-      email: agent[0]?.email,
-      phonenumber: agent[0]?.phonenumber,
-      role: agent[0]?.role,
-      profile: agent[0]?.profile,
-      active: agent[0]?.active,
+      id: agent?._id,
+      name: agent?.name,
+      firstname: agent?.firstname,
+      lastname: agent?.lastname,
+      username: agent?.username,
+      email: agent?.email,
+      phonenumber: agent?.phonenumber,
+      role: agent?.role,
+      profile: agent?.profile,
+      active: agent?.active,
       //business
-      businessName: agent[0]?.business_name,
-      businessLocation: agent[0]?.business_location,
-      businessDescription: agent[0]?.business_description,
+      businessName: agent?.business_name,
+      businessLocation: agent?.business_location,
+      businessDescription: agent?.business_description,
     };
 
-    const accessToken = signMainToken(accessData, "15m");
+    const accessToken = signMainToken(accessData, "180d");
 
 
     res.status(200).json({
@@ -618,61 +618,63 @@ router.post(
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
-    const agentExists = await knex("agents")
-      .select("email", 'username', "password", "active", 'isEnabled')
-      .where("email", email)
-      .orWhere('username', email)
-      .limit(1);
 
-    if (_.isEmpty(agentExists[0])) {
+    const agentExists = await knex("agents")
+      .select("email", 'phonenumber', "password", "active", 'isEnabled')
+      .where("email", email)
+      .orWhere('phonenumber', email)
+      .limit(1).first();
+
+
+    if (_.isEmpty(agentExists)) {
+      return res.status(400).json("User does not exist!");
+    }
+
+    const passwordIsValid = await bcrypt.compare(password, agentExists?.password);
+
+    if (!passwordIsValid) {
       return res.status(400).json("Invalid login credentials!");
     }
 
-    const passwordIsValid = await bcrypt.compare(password, agentExists[0]?.password);
 
-    if (!passwordIsValid) {
-      return res.status(400).json("Invalid Email or Password!");
-    }
-
-
-    if (Boolean(agentExists[0]?.active) === false || Boolean(agentExists[0]?.isEnabled) === false) {
+    if (Boolean(agentExists?.active) === false || Boolean(agentExists?.isEnabled) === false) {
       return res.status(400).json("Account disabled! Please try again later.");
     }
 
     //
     const agent = await knex("agent_business_view")
       .select("*")
-      .where("email", agentExists[0]?.email);
+      .where("email", agentExists?.email).first();
 
     if (_.isEmpty(agent)) {
       return res.status(401).json("Authentication Failed!");
     }
 
     const accessData = {
-      id: agent[0]?._id,
-      name: agent[0]?.name,
-      firstname: agent[0]?.firstname,
-      lastname: agent[0]?.lastname,
-      username: agent[0]?.username,
-      email: agent[0]?.email,
-      phonenumber: agent[0]?.phonenumber,
-      role: agent[0]?.role,
-      profile: agent[0]?.profile,
-      active: agent[0]?.active,
+      id: agent?._id,
+      name: agent?.name,
+      firstname: agent?.firstname,
+      lastname: agent?.lastname,
+      username: agent?.username,
+      email: agent?.email,
+      phonenumber: agent?.phonenumber,
+      role: agent?.role,
+      profile: agent?.profile,
+      active: agent?.active,
       //business
-      businessName: agent[0]?.business_name,
-      businessLocation: agent[0]?.business_location,
-      businessDescription: agent[0]?.business_description,
+      businessName: agent?.business_name,
+      businessLocation: agent?.business_location,
+      businessDescription: agent?.business_description,
     };
 
     const updatedAgent = {
-      id: agent[0]?._id,
-      role: agent[0]?.role,
-      active: agent[0]?.active,
+      id: agent?._id,
+      role: agent?.role,
+      active: agent?.active,
     };
 
-    const accessToken = signMainToken(accessData, "15m");
-    const refreshToken = signMainRefreshToken(updatedAgent, "24h");
+    const accessToken = signMainToken(accessData, "180d");
+    const refreshToken = signMainRefreshToken(updatedAgent, "600d");
 
     // res.cookie("_SSUID_kyfc", accessToken, {
     //   maxAge: 1 * 60 * 60 * 1000,
@@ -696,13 +698,13 @@ router.post(
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
 
-    await knex("agents").where("_id", agent[0]?._id).update({
+    await knex("agents").where("_id", agent?._id).update({
       token: hashedToken,
     });
 
     //logs
     await knex("agent_activity_logs").insert({
-      agent_id: agent[0]?._id,
+      agent_id: agent?._id,
       title: "Logged into account.",
       severity: "info",
     });
@@ -862,8 +864,8 @@ router.post(
       active: agent[0]?.active,
     };
 
-    const accessToken = signMainToken(accessData, "15m");
-    const refreshToken = signMainRefreshToken(updatedAgent, "24h");
+    const accessToken = signMainToken(accessData, "180d");
+    const refreshToken = signMainRefreshToken(updatedAgent, "600d");
 
     // res.cookie("_SSUID_kyfc", accessToken, {
     //   maxAge: 1 * 60 * 60 * 1000,
@@ -1014,7 +1016,7 @@ router.put(
       businessDescription: agent[0]?.business_description,
     };
 
-    const accessToken = signMainToken(accessData, "15m");
+    const accessToken = signMainToken(accessData, "180d");
 
     //logs
     await knex("agent_activity_logs").insert({
@@ -1095,58 +1097,16 @@ router.put(
       return res.status(200).json("Changes Saved");
     }
 
-    const agent = await knex("agent_business_view")
-      .select(
-        "_id",
-        "firstname",
-        "lastname",
-        "username",
-        "name",
-        "email",
-        "role",
-        "phonenumber",
-        "profile",
-        "business_name",
-        "business_location",
-        "business_description"
-      )
-      .where("_id", id);
 
-    if (_.isEmpty(agent)) {
-      return res.status(404).json("Error! Could not save changes.");
-    }
-
-    const accessData = {
-      id: agent[0]?._id,
-      firstname: agent[0]?.firstname,
-      lastname: agent[0]?.lastname,
-      username: agent[0]?.username,
-      name: agent[0]?.name,
-      email: agent[0]?.email,
-      phonenumber: agent[0]?.phonenumber,
-      role: agent[0]?.role,
-      profile: agent[0]?.profile,
-      //business
-      businessName: agent[0]?.business_name,
-      businessLocation: agent[0]?.business_location,
-      businessDescription: agent[0]?.business_description,
-    };
-
-    const accessToken = signMainToken(accessData, "15m");
 
     //logs
     await knex("agent_activity_logs").insert({
-      agent_id: agent[0]?._id,
+      agent_id: id,
       title: "Modified your account password.",
       severity: "info",
     });
 
-    // if (isMobile(req)) {
-    res.status(201).json({
-      refreshToken,
-      accessToken,
-    });
-    // }
+    return res.status(200).json("Changes Saved");
   })
 );
 

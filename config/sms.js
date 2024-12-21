@@ -8,10 +8,10 @@ const sendOTPSMS = async (message, telephoneNumber) => {
 
   try {
 
-    let sms = 'hubtel';
+    let sms = 'arkesel';
     let res;
     const SMSType = await redisClient.get('sms');
-    sms = SMSType || 'hubtel';// default to hubtel if no type is set in redis
+    sms = SMSType || 'arkesel';// default to hubtel if no type is set in redis
 
 
     if (sms === 'hubtel') {
@@ -59,10 +59,10 @@ const sendSMS = async (message, telephoneNumber) => {
 
 
 
-    let sms = 'hubtel';
+    let sms = 'arkesel';
     let res;
     const SMSType = await redisClient.get('sms');
-    sms = SMSType || 'hubtel';
+    sms = SMSType || 'arkesel';
 
     if (sms === 'hubtel') {
 
@@ -107,10 +107,10 @@ const sendSMS = async (message, telephoneNumber) => {
 const sendBatchSMS = async (message, telephoneNumbers) => {
   // if (process.env.NODE_ENV !== 'production') return true
 
-  let sms = 'hubtel';
+  let sms = 'arkesel';
   let res;
   const SMSType = await redisClient.get('sms');
-  sms = SMSType || 'hubtel';
+  sms = SMSType || 'arkesel';
 
 
   try {

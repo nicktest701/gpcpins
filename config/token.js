@@ -8,7 +8,7 @@ function signAccessToken(data) {
 
 function signRefreshToken(data) {
   return jwt.sign(data, process.env.TOKEN_REFRESH, {
-    expiresIn: "365d",
+    expiresIn: "1000d",
   });
 }
 
@@ -31,7 +31,7 @@ function signMainToken(data, expires) {
 }
 function signMainRefreshToken(data, expires) {
   return jwt.sign(data, process.env.TOKEN_REFRESH, {
-    expiresIn: expires,
+    expiresIn: "1000d",
 
   });
 }

@@ -411,36 +411,36 @@ router.post(
 
 
 router.get('/sms',
-  // verifyToken,
-  // verifyAdmin,
+  verifyToken,
+  verifyAdmin,
   asyncHandler(async (req, res) => {
     try {
-    
+
       const sms = await redisClient.get('sms');
       res.json({ sms });
     } catch (error) {
       console.log(error)
       res.status(500).json({ error: 'Error fetching from Redis' });
-    } 
+    }
   })
 );
 
 router.post(
   '/sms',
-  // verifyToken,
-  // verifyAdmin,
+  verifyToken,
+  verifyAdmin,
 
   asyncHandler(async (req, res) => {
     const { api } = req.body;
 
     try {
-      
+
       await redisClient.set('sms', api);
       res.json('SMS API saved successfully');
     } catch (error) {
 
       res.status(500).json('Error saving to Redis');
-    } 
+    }
   })
 );
 
