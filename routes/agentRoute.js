@@ -389,7 +389,7 @@ router.post(
 
 
       const agent_id = generateId();
-      const password = generateRandomNumber(10);
+      const password = generateRandomNumber(8);
       const hashedPassword = await bcrypt.hash(password, 10);
 
 
@@ -474,13 +474,8 @@ router.post(
       </div>`;
 
       const smsMessage=`We are delighted to inform you that your application to become an agent at GAB POWERFUL CONSULT has been accepted!
-      Details
-      Login URL:https://agent.gpcpins.com
-      Username: ${rest?.phonenumber}
-      Default Password:${password}
-      Email Address:${rest?.email}
-     Wallet PIN: ${agent_key}
-     We recommend you change your <b>Default Password</b> and <b>Wallet Pin</b> when you log into your account.
+      Login URL:https://agent.gpcpins.com,Username: ${rest?.phonenumber},Default Password:${password},Email Address:${rest?.email},Wallet PIN: ${agent_key}.
+     We recommend you change your Default Password and Wallet Pin when you log into your account.
       `
 
       //logs
