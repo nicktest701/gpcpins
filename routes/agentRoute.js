@@ -377,13 +377,13 @@ router.post(
       const doesUserNameExists = await transaction("agents")
         .select("username", 'email')
         .where("email", rest?.email)
-        .orWhere("username", rest?.username)
+        .orWhere("phonenumber", rest?.phonenumber)
         .limit(1);
 
       if (!_.isEmpty(doesUserNameExists)) {
         return res
           .status(400)
-          .json("Username or Email Address already exists!");
+          .json("Phone Number / Email Address already exists!");
       }
 
 
@@ -400,7 +400,7 @@ router.post(
         password: hashedPassword,
         active: 1,
         ...rest,
-        username: `${rest.username}@gpc`,
+        username: `${rest.username}`,
         email: rest?.email?.toLowerCase()
       });
 
@@ -450,7 +450,7 @@ router.post(
       const admin = await knex("employees")
         .where("_id", id)
         .select("email", knex.raw("CONCAT(firstname,'',lastname) as name"))
-        .limit(1);
+        .limit(1).first();
 
       const message = `<div>
       <h1 style='text-transform:uppercase;'>Welcome to GAB POWERFUL CONSULT.</h1><br/>
@@ -466,7 +466,7 @@ router.post(
 
       <p><strong>Details:</strong></p>
       <p><strong>Login URL:</strong> <a href='https://agent.gpcpins.com'>https://agent.gpcpins.com</a></p>
-      <p><strong>Username:</strong> ${rest?.username}@gpc</p>
+      <p><strong>Username:</strong> ${rest?.phonenumber}</p>
       <p><strong>Default Password:</strong> ${password}</p>
       <p><strong>Email Address:</strong> ${rest?.email}</p>
       <p><strong>Wallet PIN:</strong> ${agent_key}</p>
@@ -475,12 +475,22 @@ router.post(
       <p>Best regards,</p>
       
       <p>GAB Powerful Consult Team</p>
-      <p>${admin[0]?.name}</p>
-      <p>${admin[0]?.email}</p>
+      <p>${admin?.name}</p>
+      <p>${admin?.email}</p>
    
       </div>
 
       </div>`;
+
+      const smsMessage=`We are delighted to inform you that your application to become an agent at GAB POWERFUL CONSULT has been accepted!
+      Details
+      Login URL:https://agent.gpcpins.com
+      Username: ${rest?.phonenumber}
+      Default Password:${password}
+      Email Address:${rest?.email}
+     Wallet PIN: ${agent_key}
+     We recommend you change your <b>Default Password</b> and <b>Wallet Pin</b> when you log into your account.
+      `
 
       //logs
       await knex("activity_logs").insert({
@@ -494,6 +504,8 @@ router.post(
         mailTextShell(message),
         "Welcome to GAB POWERFUL CONSULT."
       );
+
+      await sendSMS(smsMessage,res.phonenumber)
 
       res.sendStatus(201);
     } catch (error) {

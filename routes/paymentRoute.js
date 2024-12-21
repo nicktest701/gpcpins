@@ -765,14 +765,9 @@ router.get(
           const smsData = await Promise.all([smsInfo])
 
           await sendSMS(
-            `Transaction ID :${id},
-${selectedVouchers[0]?.voucherType}  ${detailsInfo?.voucherURL}   
+            `${selectedVouchers[0]?.voucherType} ${detailsInfo?.voucherURL}   
 [Pin--Serial]
-${smsData.join(" ")},
-
-${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your vouchers.
-`,
-            userInfo?.agentPhoneNumber
+${smsData.join(" ")}`
           );
 
         }
@@ -2865,40 +2860,40 @@ router.delete(
   })
 );
 
-router.get(
-  "/test/puppeteer",
+// router.get(
+//   "/test/puppeteer",
 
-  asyncHandler(async (req, res) => {
-    // await sendBirthdayWishes();
+//   asyncHandler(async (req, res) => {
+//     // await sendBirthdayWishes();
 
-    const transactions = await knex("agent_transactions")
-      .where("agent_id", "d9bc3351-d703-45a5-9b8b-b9ec5d74268c")
-      .select("*", knex.raw("DATE_FORMAT(createdAt,'%M %d %Y 🔸 %r') AS date"))
-      .orderBy("createdAt", "desc");
+//     const transactions = await knex("agent_transactions")
+//       .where("agent_id", "d9bc3351-d703-45a5-9b8b-b9ec5d74268c")
+//       .select("*", knex.raw("DATE_FORMAT(createdAt,'%M %d %Y 🔸 %r') AS date"))
+//       .orderBy("createdAt", "desc");
 
-    const template = await generateAgentTransactionTemplate({ transactions });
+//     const template = await generateAgentTransactionTemplate({ transactions });
 
-    const result = limit(() => generateAgentTransactionRport(template, "134"));
-    if (result) {
-      const body = ` <div class="container">
-<h1>Transactional Report</h1>
-<p>Dear [Customer Name],</p>
-<p>Attached is your transactional report for the period [Period]. Please review the details below:</p>
-<p>If you have any questions or concerns regarding this report, please feel free to contact us.</p>
-<p>Thank you for your business!</p>
-<p>Sincerely,<br>Gab Powerful Consults</p>
-</div>`;
+//     const result = limit(() => generateAgentTransactionRport(template, "134"));
+//     if (result) {
+//       const body = ` <div class="container">
+// <h1>Transactional Report</h1>
+// <p>Dear [Customer Name],</p>
+// <p>Attached is your transactional report for the period [Period]. Please review the details below:</p>
+// <p>If you have any questions or concerns regarding this report, please feel free to contact us.</p>
+// <p>Thank you for your business!</p>
+// <p>Sincerely,<br>Gab Powerful Consults</p>
+// </div>`;
 
-      await sendReportMail(
-        "nicktest701@gmail.com",
-        mailTextShell(body),
-        "134",
-        " Transaction Report"
-      );
-    }
+//       await sendReportMail(
+//         "nicktest701@gmail.com",
+//         mailTextShell(body),
+//         "134",
+//         " Transaction Report"
+//       );
+//     }
 
-    res.status(200).json("Transaction removed!");
-  })
-);
+//     res.status(200).json("Transaction removed!");
+//   })
+// );
 
 module.exports = router;

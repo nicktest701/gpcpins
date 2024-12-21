@@ -1094,7 +1094,7 @@ router.get(
       .orderBy("updatedAt", "desc");
 
     const transaction = voucher_transactions.map(({ info, ...rest }) => {
-   
+
       return {
         ...rest,
         // info: JSON.parse(info),
@@ -2431,7 +2431,7 @@ router.post(
       const body = ` <div class="container">
   <h1>Transactional Report</h1>
   <p>Dear Customer,</p>
-  <p>Attached is your wallet transactional report from the period ${startDate} to ${endDate}. Please review the details below:</p>
+  <p>Attached is your wallet transactional report from the period ${moment(startDate).format("lll")} to ${moment(endDate).format("lll")}. Please review the details below:</p>
   <p>If you have any questions or concerns regarding this report, please feel free to contact us.</p>
   <p>Thank you for your business!</p>
   <p>Sincerely,<br>Gab Powerful Consults</p>
