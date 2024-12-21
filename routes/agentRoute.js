@@ -447,11 +447,6 @@ router.post(
       ]);
       await transaction.commit();
 
-      const admin = await knex("employees")
-        .where("_id", id)
-        .select("email", knex.raw("CONCAT(firstname,'',lastname) as name"))
-        .limit(1).first();
-
       const message = `<div>
       <h1 style='text-transform:uppercase;'>Welcome to GAB POWERFUL CONSULT.</h1><br/>
       <div style='text-align:left;'>
@@ -473,11 +468,7 @@ router.post(
       <p>We recommend you change your <b>Default Password</b> and <b>Wallet Pin</b> when you log into your account.</p>
 
       <p>Best regards,</p>
-      
       <p>GAB Powerful Consult Team</p>
-      <p>${admin?.name}</p>
-      <p>${admin?.email}</p>
-   
       </div>
 
       </div>`;
@@ -505,7 +496,7 @@ router.post(
         "Welcome to GAB POWERFUL CONSULT."
       );
 
-      await sendSMS(smsMessage,res.phonenumber)
+      await sendSMS(smsMessage,rest?.phonenumber)
 
       res.sendStatus(201);
     } catch (error) {
