@@ -389,7 +389,7 @@ router.post(
 
 
       const agent_id = generateId();
-      const password = generateRandomNumber(8);
+      const password = generateRandomNumber(10);
       const hashedPassword = await bcrypt.hash(password, 10);
 
 
