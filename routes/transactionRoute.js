@@ -2899,6 +2899,20 @@ router.get(
   })
 );
 router.get(
+  "/agents/transactions",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const id = req.query.id;
+    const agentsWallets = await knex("agent_transactions")
+      .select(
+        "*"
+      ).where('agent_id', id).orderBy('createdAt', 'desc')
+
+    return res.status(200).json(agentsWallets);
+  })
+);
+router.get(
   "/agents/wallet",
   verifyToken,
   verifyAdmin,
@@ -3060,6 +3074,140 @@ router.get(
   })
 );
 //....................users..................//
+
+
+
+
+router.get(
+  "/users/transactions",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.query;
+
+
+    const sDate = moment().format("YYYY-MM-DD");
+    const eDate = moment(new Date()).format("YYYY-MM-DD");
+
+    const voucher_transactions = await knex.raw(
+      `SELECT *
+      FROM (
+          SELECT _id,user,email,phonenumber,info,createdAt,year,active,status,DATE(createdAt) AS purchaseDate
+          FROM voucher_transactions
+      ) AS voucher_transactions_ 
+      WHERE user=? AND active=1 and (status IN ('completed','pending','refunded')) AND purchaseDate BETWEEN ? AND ?;`,
+      [id, sDate, eDate]
+    );
+    // console.log(voucher_transactions)
+
+    const transactions = voucher_transactions[0]?.map(({ info, ...rest }) => {
+      return {
+        ...rest,
+        info: info ? JSON.parse(info) : {},
+      };
+    });
+
+    const modifiedTransaction = transactions.map(async (transaction) => {
+
+      const category = await knex("categories")
+        .select("voucherType")
+        .where("_id", transaction?.info?.categoryId)
+        .limit(1);
+
+      return {
+        _id: transaction?._id,
+        voucherType: category[0].voucherType,
+        domain: transaction?.info?.domain,
+        downloadLink: transaction?.info?.downloadLink,
+        phonenumber: transaction?.info?.agentPhoneNumber,
+        email: transaction?.info?.agentEmail,
+        type: _.upperCase(
+          `${category[0].voucherType} ${transaction?.info?.domain}`
+        ),
+        quantity:
+          transaction?.info?.quantity ||
+          transaction?.info?.paymentDetails?.quantity,
+        amount:
+          transaction?.info?.amount ||
+          transaction?.info?.paymentDetails?.totalAmount,
+        createdAt: transaction?.createdAt,
+        updatedAt: transaction?.updatedAt,
+        status: transaction?.status,
+      };
+    });
+
+    const vouchers = await Promise.all(modifiedTransaction);
+
+    const prepaid_transactions = await knex.raw(
+      `SELECT *
+        FROM (
+            SELECT *,DATE(createdAt) AS purchaseDate
+            FROM meter_prepaid_transaction_view
+        ) AS meter_prepaid_transaction_view_ 
+        WHERE user=? AND active=1 AND (status IN ('completed','pending','refunded')) AND purchaseDate BETWEEN ? AND ?;`,
+      [id, sDate, eDate]
+    );
+
+    const modifiedECGTransaction = prepaid_transactions[0].map(
+      (transaction) => {
+        const transInfo = JSON.parse(transaction?.info);
+        return {
+          _id: transaction?._id,
+          meter: transaction?.number,
+          type: `${transInfo?.domain} Units`,
+          domain: transInfo?.domain,
+          phonenumber: transInfo?.mobileNo,
+          email: transInfo?.email,
+          downloadLink: transInfo?.downloadLink,
+          topup: transaction?.topup,
+          charges: transaction?.charges,
+          amount: transaction?.amount,
+          createdAt: transaction?.createdAt,
+          updatedAt: transaction?.updatedAt,
+          status: Boolean(transaction?.processed) ? transaction?.status : "pending",
+        };
+      }
+    );
+
+    //Airtime
+
+    const airtime_transactions = await knex.raw(
+      `SELECT *
+        FROM (
+            SELECT _id,user,type as kind,recipient,amount,domain,domain as type,email,phonenumber,status,isProcessed,createdAt,active,DATE(createdAt) AS purchaseDate
+            FROM airtime_transactions
+        ) AS airtime_transactions_ 
+        WHERE user=? AND active=1 and (status IN ('completed','pending','refunded')) AND purchaseDate BETWEEN ? AND ?;`,
+      [id, sDate, eDate]
+    );
+
+    //Bundle
+
+    const bundle_transactions = await knex.raw(
+      `SELECT *
+        FROM (
+            SELECT _id,user,bundle_name as kind,bundle_volume as volume,recipient,amount,domain,domain as type,email,phonenumber,status,isProcessed,createdAt,active,DATE(createdAt) AS purchaseDate
+            FROM bundle_transactions
+        ) AS bundle_transactions_ 
+        WHERE user=? AND active=1 and (status IN ('completed','pending','refunded')) AND purchaseDate BETWEEN ? AND ?;`,
+      [id, sDate, eDate]
+    );
+
+    res
+      .status(200)
+      .json(
+        _.orderBy(
+          [
+            ...vouchers,
+            ...modifiedECGTransaction,
+            ...airtime_transactions[0],
+            ...bundle_transactions[0],
+          ],
+          "createdAt", "updatedAt",
+          "desc"
+        )
+      );
+  })
+);
 
 router.get(
   "/users/wallet",

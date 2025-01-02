@@ -883,7 +883,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
       try {
         const response = await sendBundle(bundleInfo);
 
-        if (response["status-code"] === "00") {
+        if (['00', '09'].includes(response["status-code"])) {
           await knex("bundle_transactions").where("_id", id).update({
             isProcessed: 1,
           });
@@ -916,6 +916,8 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
           }
         }
       } catch (error) {
+
+
         // console.log(error?.response?.data);
         return res.status(401).json("An error has occured");
       }
@@ -946,7 +948,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
         const response = await sendAirtime(airtimeInfo);
         // res.status(200).json(response);
         // console.log(response);
-        if (response["status-code"] === "00") {
+        if (['00', '09'].includes(response["status-code"])) {
           await knex("airtime_transactions").where("_id", id).update({
             isProcessed: 1,
           });
@@ -995,7 +997,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
 
       if (transaction[0]?.email) {
 
-        const userMail = await sendElectricityMail(
+        await sendElectricityMail(
           transaction[0]?._id,
           transaction[0]?.email,
           "pending"
