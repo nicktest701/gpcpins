@@ -45,6 +45,7 @@ const verifyAdminORAgent = require("../middlewares/verifyAdminORAgent");
 const sendEMail = require("../config/sendEmail");
 const generateRandomNumber = require("../config/generateRandomCode");
 const { sendSMS, sendOTPSMS } = require("../config/sms");
+const currencyFormatter = require("../config/currencyFormatter");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -1800,6 +1801,8 @@ router.post(
     }
   })
 );
+
+
 //Send airtime to recipient
 router.post(
   "/top-up/bulk/airtime",
@@ -1808,6 +1811,30 @@ router.post(
   asyncHandler(async (req, res) => {
     const data = req.body;
     const { id } = req.user;
+
+
+    const totalAmount = _.sumBy(data?.content, (info) => Number(info?.amount));
+    const response = await accountBalance();
+    if (Number(response?.balance) < Number(totalAmount)) {
+
+      const body = `
+    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(response?.balance)}.
+    Please recharge to avoid any inconveniences.
+    Thank you.
+              `;
+      await sendEMail(
+        process.env.MAIL_CLIENT_USER,
+        mailTextShell(`<p>${body}</p>`),
+        "LOW TOP UP ACCOUNT BALANCE"
+      );
+
+      await sendSMS(body, process.env.CLIENT_PHONENUMBER)
+
+      return res.status(401).json("Service Not Available.Try again later");
+    }
+
+
+
 
     const transx = await knex.transaction();
 
@@ -1818,6 +1845,7 @@ router.post(
 
       })
       .limit(1);
+    // console.log(agentWallet)
 
 
     if (_.isEmpty(agentWallet)) {
@@ -1825,21 +1853,18 @@ router.post(
     }
 
     const isPinValid = await bcrypt.compare(data?.token, agentWallet[0]?.agent_key)
-
-
     if (!isPinValid) {
       return res.status(401).json("Invalid pin!");
     }
 
 
-    const totalAmount = _.sumBy(data?.content, (info) => Number(info?.amount));
 
 
     if (
       Number(agentWallet[0]?.amount) < Number(totalAmount)
     ) {
 
-      await knex("agent_notifications").insert({
+      await transx("agent_notifications").insert({
         _id: generateId(),
         agent_id: id,
         type: "airtime",
@@ -1869,7 +1894,7 @@ router.post(
         transaction_reference,
       };
 
-      const commissionRate = await knex("agent_commissions")
+      const commissionRate = await transx("agent_commissions")
         .select("rate")
         .where({ agent_id: id, provider: providerName })
         .limit(1);
@@ -1903,70 +1928,60 @@ router.post(
       };
 
 
-      try {
-        const response = await sendAirtime(airtimeInfo);
 
-        if (['00', '09'].includes(response["status-code"])) {
-          try {
-            // insert transaction into database
-            await transx("agent_transactions").insert({
-              ...transactionInfo,
-              status: "completed",
-            });
-
-            // Update agent wallet and record the transaction in database
-            await transx("agent_wallets").where("agent_id", id).decrement({
-              amount: transactionInfo?.amount,
-            });
-
-            //send notiication to agent about the transaction
-            await transx("agent_notifications").insert({
-              _id: generateId(),
-              agent_id: id,
-              type: "airtime",
-              title: "Airtime Transfer",
-              message: `You have successfully recharged ${airtimeInfo?.recipient} with ${currencyFormatter(airtimeInfo.amount)} of airtime, you were charged GHS ${airtimeInfo?.amount} with a commission of GHS ${transactionInfo?.commission}`,
-            });
-            await transx.commit();
-
-            return {
-              ...transactionInfo,
-              status: "completed",
-            };
-          } catch (error) {
-            await transx.rollback();
-            return res
-              .status(401)
-              .json("Transaction failed! An error has occurred.");
-          }
-        } else {
-          // insert transaction into database
-          await knex("agent_transactions").insert({
-            ...transactionInfo,
-            status: "failed",
-          });
+      const response = await sendAirtime(airtimeInfo);
 
 
-          await knex("agent_notifications").insert({
-            _id: generateId(),
-            agent_id: id,
-            type: "airtime",
-            title: "Airtime Transfer Failed!",
-            message: `Your airtime transfer of ${currencyFormatter(airtimeInfo.amount)} to ${airtimeInfo.recipient} failed.Please Try again later.`,
-          });
+      if (['00', '09'].includes(response["status-code"])) {
 
-          return {
-            ...transactionInfo,
-            status: "failed",
-          };
-        }
-      } catch (error) {
+        // insert transaction into database
+        await transx("agent_transactions").insert({
+          ...transactionInfo,
+          status: "completed",
+        });
+
+        // Update agent wallet and record the transaction in database
+        await transx("agent_wallets").where("agent_id", id).decrement({
+          amount: transactionInfo?.amount,
+        });
+
+        //send notiication to agent about the transaction
+        await transx("agent_notifications").insert({
+          _id: generateId(),
+          agent_id: id,
+          type: "airtime",
+          title: "Airtime Transfer",
+          message: `You have successfully recharged ${airtimeInfo?.recipient} with ${currencyFormatter(airtimeInfo.amount)} of airtime, you were charged GHS ${airtimeInfo?.amount} with a commission of GHS ${transactionInfo?.commission}`,
+        });
 
 
-        return res
-          .status(401)
-          .json("Transaction failed! An error has occurred.");
+        return {
+          ...transactionInfo,
+          status: "completed",
+        };
+
+      } else {
+        // insert transaction into database
+        await transx("agent_transactions").insert({
+          ...transactionInfo,
+          status: "failed",
+        });
+
+
+        await transx("agent_notifications").insert({
+          _id: generateId(),
+          agent_id: id,
+          type: "airtime",
+          title: "Airtime Transfer Failed!",
+          message: `Your airtime transfer of ${currencyFormatter(airtimeInfo.amount)} to ${airtimeInfo.recipient} failed.Please Try again later.`,
+        });
+
+        return {
+          ...transactionInfo,
+          status: "failed",
+        };
       }
+
     });
 
     Promise.all(transactions)
@@ -1986,15 +2001,17 @@ router.post(
           await sendSMS(body, process.env.CLIENT_PHONENUMBER);
         }
         //logs
-        await knex("agent_activity_logs").insert({
+        await transx("agent_activity_logs").insert({
           agent_id: id,
           title: "Transferred bulk airtime to Customers.",
           severity: "info",
         });
-
+        await transx.commit();
         return res.status(200).json("Airtime transfer was successful!");
       })
-      .catch((error) => {
+      .catch(async (error) => {
+
+        await transx.rollback();
         return res
           .status(401)
           .json("Transaction failed! An error has occurred.");
@@ -2011,10 +2028,9 @@ router.post(
     const info = req.body;
     const { id } = req.user;
 
-    const transx = await knex.transaction();
 
     const response = await accountBalance();
-    if (Number(response?.balance) < Number(info?.amount)) {
+    if (Number(response?.balance) < Number(info?.bundle?.price)) {
 
 
       const body = `
@@ -2034,11 +2050,9 @@ router.post(
     }
 
 
+    const transx = await knex.transaction();
 
-
-
-
-    const agentWallet = await knex("agent_wallets")
+    const agentWallet = await transx("agent_wallets")
       .select("_id", "agent_key", "amount", "active")
       .where({
         agent_id: id,
@@ -2060,8 +2074,15 @@ router.post(
 
 
     if (
-      Number(agentWallet[0]?.amount) < Number(info?.amount)
+      Number(agentWallet[0]?.amount) < Number(info?.bundle?.price)
     ) {
+      await knex("agent_notifications").insert({
+        _id: generateId(),
+        agent_id: id,
+        type: "bundle",
+        title: "Data Bundle Transfer Failed",
+        message: "Insufficient wallet balance to complete transaction!"
+      });
       return res.status(401).json("Insufficient wallet balance to complete transaction!");
     }
 
@@ -2133,12 +2154,12 @@ router.post(
           await sendSMS(body, process.env.CLIENT_PHONENUMBER);
         }
       } else {
-        await knex("agent_transactions").insert({
+        await transx("agent_transactions").insert({
           ...transactionInfo,
           status: "failed",
         });
 
-        await knex("agent_notifications").insert({
+        await transx("agent_notifications").insert({
           _id: generateId(),
           agent_id: id,
           type: "bundle",
@@ -2148,14 +2169,15 @@ router.post(
 
       }
 
-      await transx.commit();
 
       //logs
-      await knex("agent_activity_logs").insert({
+      await transx("agent_activity_logs").insert({
         agent_id: id,
-        title: "Transferred data bundle to Customers.",
+        title: `Transferred data bundle, ${bundleInfo.data_code} to ${bundleInfo.recipient}.`,
         severity: "info",
       });
+      await transx.commit();
+
       return res.status(200).json("Bundle transfer was successful!");
     } catch (error) {
       await transx.rollback();
