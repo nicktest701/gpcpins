@@ -31,7 +31,7 @@ const limit = rateLimit({
 
 //model
 const { hasTokenExpired } = require("../config/dateConfigs");
-// const isMobile = require("../config/isMobile");
+
 
 //db
 const knex = require("../db/knex");
@@ -39,7 +39,7 @@ const { isValidUUID2, isValidEmail } = require("../config/validation");
 const sendEMail = require("../config/sendEmail");
 const { sendBirthdayWishes } = require("../config/cronMessages");
 const currencyFormatter = require("../config/currencyFormatter");
-const { sendSMS, sendOTPSMS } = require("../config/sms");
+const { sendOTPSMS } = require("../config/sms");
 const { calculateTimeDifference } = require("../config/timeHelper");
 const { mailTextShell } = require("../config/mailText");
 const { getInternationalMobileFormat } = require("../config/PhoneCode");
@@ -260,7 +260,8 @@ router.get(
       });
       console.log(code);
 
-      sendOTPSMS(`Your verification code is ${code}.`, user[0]?.phonenumber);
+      await sendOTPSMS(`Please ignore this message if you did not request the OTP.Your verification code is ${code}.Don't share this code with anyone; Our employees will never ask for the code.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`,
+        user[0]?.phonenumber);
     }
 
     res.sendStatus(201);
@@ -491,7 +492,7 @@ router.post(
     const accessToken = signMainToken(accessData, '180d');
     const refreshToken = signMainRefreshToken(updatedUser, '365d');
 
-    
+
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
 
@@ -499,13 +500,13 @@ router.post(
       token: hashedToken,
     });
 
-   
+
     res.status(201).json({
       refreshToken,
       accessToken,
       register,
     });
-  
+
   })
 );
 
@@ -704,19 +705,19 @@ router.post(
         email: userData[0]?.phonenumber,
       });
 
-      const message = `
-        <div style="width:100%;max-width:500px;margin-inline:auto;">
-        
-        <p>Your verification code is</p>
-        <h1>${token}</h1>
+      //   const message = `
+      //     <div style="width:100%;max-width:500px;margin-inline:auto;">
 
-        <p>-- Gab Powerful Team --</p>
-    </div>
-        `;
+      //     <p>Your verification code is</p>
+      //     <h1>${token}</h1>
+
+      //     <p>-- Gab Powerful Team --</p>
+      // </div>
+      //     `;
       //   Send SMS to the User with Verification Code
       if (newUser?.phonenumber) {
         await sendOTPSMS(
-          `Your verification code is ${token}`,
+          `Please ignore this message if you did not request the OTP.Your verification code is ${token}.Don't share this code with anyone; Our employees will never ask for the code.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`,
           newUser?.phonenumber
         );
       }
@@ -1236,11 +1237,13 @@ router.post(
         message,
       });
 
-      // await sendEMail(
-      //   process.env.MAIL_CLIENT_USER,
-      //   mailTextShell(body),
-      //   "Wallet Top Up Request"
-      // );
+      await sendOTPSMS(`Your request has been received.We'll get back to you shortly.`, user[0]?.phonenumber);
+
+      await sendEMail(
+        process.env.MAIL_CLIENT_USER,
+        mailTextShell(body),
+        "Wallet Top Up Request"
+      );
 
 
       res.status(200).json("Request Sent!");
@@ -1288,6 +1291,7 @@ router.put(
     `;
 
     await sendEMail(emailAddress, message, "Profile Update Notification");
+
 
     res.status(200).json("Wallet Pin Changed!");
   })

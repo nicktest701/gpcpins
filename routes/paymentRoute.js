@@ -26,20 +26,11 @@ const sendEMail = require("../config/sendEmail");
 const {
   sendTicketMail,
   resendReceiptMail,
-  sendReportMail,
 } = require("../config/mail");
 const { sendSMS } = require("../config/sms");
 const generateQRCode = require("../config/qrcode");
 const currencyFormatter = require("../config/currencyFormatter");
 const sendElectricityMail = require("../config/ecgMail");
-const {
-
-  generateAgentTransactionRport,
-} = require("../config/generatePDF");
-const {
-
-  generateAgentTransactionTemplate,
-} = require("../config/generateVoucherTemplate");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const {
   uploadVoucherFile,
@@ -274,8 +265,8 @@ router.get(
 
 router.get(
   "/tickets",
-  verifyToken,
   rlimit,
+  verifyToken,
   asyncHandler(async (req, res) => {
     const { id: userID } = req.user;
     const { id } = req?.query;
@@ -287,15 +278,15 @@ router.get(
     const trans = await knex("voucher_transactions")
       .where("_id", id)
       .select("*")
-      .limit(1);
+      .limit(1).first();
 
     if (_.isEmpty(trans)) {
       return res.status(404).json("Invalid request.Try again later");
     }
 
-    const { _id, info, vouchers, status, createdAt, updatedAt } = trans[0];
+    const { _id, info, vouchers, status, createdAt, updatedAt } = trans;
 
-    if (status === "pending" || status == "failed") {
+    if (["pending", "failed"].includes(status)) {
       return res.status(404).json("Payment not completed.!");
     }
 
@@ -549,8 +540,7 @@ router.get(
         }
 
         await sendSMS(
-          `Transaction ID: ${id},
-${userInfo?.agentEmail} ${userInfo?.agentPhoneNumber}
+          `${userInfo?.agentEmail} ${userInfo?.agentPhoneNumber}
 Download Ticket here: ${downloadLink}`,
           userInfo?.agentPhoneNumber
         );
@@ -588,7 +578,7 @@ router.get(
       transaction = await knex("voucher_transactions")
         .select("*")
         .where("_id", id)
-        .limit(1);
+        .first();
     }
 
     if (type === "prepaid") {
@@ -606,7 +596,7 @@ router.get(
         )
         .join("meters", "prepaid_transactions.meter", "=", "meters._id")
         .where("prepaid_transactions._id", id)
-        .limit(1);
+        .first();
 
     }
 
@@ -626,7 +616,7 @@ router.get(
           "status"
         )
         .where("_id", id)
-        .limit(1);
+        .first();
     }
 
     if (type === "bundle") {
@@ -644,7 +634,7 @@ router.get(
           "status"
         )
         .where("_id", id)
-        .limit(1);
+        .first();
     }
 
     //if creating new transaction fails
@@ -652,19 +642,19 @@ router.get(
       return res.status(402).json("Error Processing your request!");
     }
 
-    if (transaction[0].status === "failed") {
+    if (transaction.status === "failed") {
       return res.status(402).json("Payment Cancelled!");
     }
 
-    if (transaction[0].status !== "completed") {
+    if (transaction.status !== "completed") {
       return res.status(402).json("Payment not completed!");
     }
 
-    const info = transaction[0]?.info ? JSON.parse(transaction[0]?.info) : "";
+    const info = transaction?.info ? JSON.parse(transaction?.info) : "";
 
 
     if (["voucher", 'ticket'].includes(type) && confirm) {
-      const { _id, info } = transaction[0]
+      const { _id, info } = transaction
 
       const userInfo = JSON.parse(info);
 
@@ -767,8 +757,9 @@ router.get(
           await sendSMS(
             `${selectedVouchers[0]?.voucherType} ${detailsInfo?.voucherURL}   
 [Pin--Serial]
-${smsData.join(" ")}`
+${smsData.join(" ")}`, userInfo?.agentPhoneNumber
           );
+
 
         }
 
@@ -782,8 +773,7 @@ ${smsData.join(" ")}`
           const smsData = await Promise.all([smsInfo])
 
           await sendSMS(
-            `Transaction ID :${id},
-  ${selectedVouchers[0]?.voucherType}   
+            `${selectedVouchers[0]?.voucherType}   
 [Seat No./Type--Serial]
 ${smsData.join(" ")},  
 
@@ -808,13 +798,13 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
 
     if (
       ["airtime"].includes(type) &&
-      transaction[0].type === "bulk" &&
-      Boolean(transaction[0].isProcessed) === false &&
+      transaction.type === "bulk" &&
+      Boolean(transaction.isProcessed) === false &&
       confirm
     ) {
 
 
-      const recipients = JSON.parse(transaction[0]?.recipient)
+      const recipients = JSON.parse(transaction?.recipient)
       const recipientList = recipients?.map(recipient => {
         return `${recipient?.type}(${recipient?.recipient}) at an amount of ${currencyFormatter(
           recipient?.price
@@ -826,12 +816,12 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
 
 
       await sendSMS(
-        `Your request to buy bulk ${type} has been received.Your transaction id is ${transaction[0]?._id}.Thank you for your business with us!`,
-        transaction[0]?.phonenumber
+        `Your request to buy bulk ${type} has been received.Your transaction id is ${transaction?._id}.Thank you for your business with us!`,
+        transaction?.phonenumber
       );
 
 
-      const message = `The number ${transaction[0]?.phonenumber} with Email Address ${transaction[0]?.email || ""
+      const message = `The number ${transaction?.phonenumber} with Email Address ${transaction?.email || ""
         } has successfully made payment to transfer bulk airtime to:
          ${formattedList}.`;
       // console.log(message)
@@ -844,7 +834,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
           mailTextShell(`<p>${message}</p>`),
           "REQUEST FOR BULK AIRTIME TRANSFER"
         );
-        // const SMSPrompt = await sendSMS(message, '+233543772591');
+
         const SMSPrompt = await sendSMS(message, process.env.CLIENT_PHONENUMBER);
 
         await Promise.all([emailPrompt, SMSPrompt])
@@ -860,21 +850,21 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
     }
 
     if (
-      transaction[0].status === "completed" &&
+      transaction?.status === "completed" &&
       type === "bundle" &&
-      Boolean(transaction[0].isProcessed) === false &&
+      Boolean(transaction?.isProcessed) === false &&
       confirm
     ) {
       const transaction_reference = randomBytes(24).toString("hex");
       const bundleInfo = {
-        recipient: transaction[0]?.recipient,
-        data_code: transaction[0]?.data_code,
+        recipient: transaction?.recipient,
+        data_code: transaction?.data_code,
         network:
-          transaction[0]?.network === "mtn-gh"
+          transaction?.network === "mtn-gh"
             ? 4
-            : transaction[0]?.network === "vodafone-gh"
+            : transaction?.network === "vodafone-gh"
               ? 6
-              : transaction[0]?.network === "tigo-gh"
+              : transaction?.network === "tigo-gh"
                 ? 1
                 : 0,
         transaction_reference,
@@ -893,7 +883,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
             user_id: userID,
             type: "bundle",
             title: "Data Bundle Transfer",
-            message: `You have successfully recharged ${bundleInfo.recipient} with data bundle, "${bundleInfo.data_code}", you were charged GHS ${transaction[0]?.amount} .Transaction ID :${transaction[0]?._id}`,
+            message: `You have successfully recharged ${bundleInfo.recipient} with data bundle, "${bundleInfo.data_code}", you were charged GHS ${transaction?.amount} .Transaction ID :${transaction?._id}`,
           });
 
           const balance = Number(response?.balance_after);
@@ -919,27 +909,27 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
 
 
         // console.log(error?.response?.data);
-        return res.status(401).json("An error has occured");
+        return res.status(401).json("An error has occurred");
       }
     }
 
     //Send airtime to customer if transaction is completed!
     if (
-      transaction[0].status === "completed" &&
+      transaction.status === "completed" &&
       type === "airtime" &&
-      transaction[0].type === "single" &&
+      transaction.type === "single" &&
       confirm
     ) {
       const transaction_reference = randomBytes(24).toString("hex");
       const airtimeInfo = {
-        recipient: transaction[0]?.recipient,
-        amount: transaction[0]?.amount,
+        recipient: transaction?.recipient,
+        amount: transaction?.amount,
         network:
-          transaction[0]?.network === "mtn-gh"
+          transaction?.network === "mtn-gh"
             ? 4
-            : transaction[0]?.network === "vodafone-gh"
+            : transaction?.network === "vodafone-gh"
               ? 6
-              : transaction[0]?.network === "tigo-gh"
+              : transaction?.network === "tigo-gh"
                 ? 1
                 : 0,
         transaction_reference,
@@ -958,7 +948,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
             user_id: userID,
             type: "airtime",
             title: "Airtime Transfer",
-            message: `You have successfully recharged ${airtimeInfo.recipient} with GHS ${airtimeInfo.amount} of airtime, you were charged GHS ${airtimeInfo.amount}.Transaction ID :${transaction[0]?._id},`,
+            message: `You have successfully recharged ${airtimeInfo.recipient} with GHS ${airtimeInfo.amount} of airtime, you were charged GHS ${airtimeInfo.amount}.Transaction ID :${transaction?._id},`,
           });
 
           const balance = Number(response?.balance_after);
@@ -986,7 +976,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
 
     if (type === "prepaid" && confirm) {
 
-      const message = `The number ${transaction[0]?.mobileNo} with METER NO. '${transaction[0]?.number
+      const message = `The number ${transaction?.mobileNo} with METER NO. '${transaction?.number
         }' has successfully made payment to buy PREPAID UNITS at an amount of ${currencyFormatter(info?.amount)}.`;
 
       await knex("notifications").insert({
@@ -995,18 +985,18 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
         message,
       });
 
-      if (transaction[0]?.email) {
+      if (transaction?.email) {
 
         await sendElectricityMail(
-          transaction[0]?._id,
-          transaction[0]?.email,
+          transaction?._id,
+          transaction?.email,
           "pending"
         );
       }
       // Send Mail and SMS to the User
       const userSMS = await sendSMS(
-        `Thank you for your purchase! You will be notified shortly after your transaction is complete.Your transaction id is ${transaction[0]?._id}`,
-        transaction[0]?.mobileNo
+        `Thank you for your purchase! You will be notified shortly after your transaction is complete.Your transaction id is ${transaction?._id}`,
+        transaction?.mobileNo
       );
 
       const agentMail = await sendEMail(
@@ -1015,23 +1005,18 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
         "Prepaid Units"
       );
 
-      // await sendWhatsappMessage({
-      //   user: getInternationalMobileFormat(transaction[0]?.mobileNo),
-      //   message:
-      //     "Thank you for your purchase!You will be notified shortly after your transaction is complete",
-      // });
       limit(() => Promise.all([userMail, userSMS, agentMail]));
     }
 
     const successfulTransaction = {
-      _id: transaction[0]?._id,
+      _id: transaction?._id,
       info,
-      paymentMode: transaction[0]?.mode,
-      createdAt: transaction[0]?.createdAt,
-      formattedDate: moment(transaction[0].createdAt).format(
+      paymentMode: transaction?.mode,
+      createdAt: transaction?.createdAt,
+      formattedDate: moment(transaction.createdAt).format(
         "Do MMMM YYYY,h:mm a"
       ),
-      status: transaction[0].status,
+      status: transaction.status,
     };
     // console.log(successfulTransaction);
 
@@ -1440,14 +1425,9 @@ router.post(
         const smsData = await Promise.all([smsInfo])
 
         await sendSMS(
-          `Transaction ID :${id},
-${selectedVouchers[0]?.voucherType}  ${detailsInfo?.voucherURL}   
+          `${selectedVouchers[0]?.voucherType}  ${detailsInfo?.voucherURL}   
 [Pin--Serial]
-${smsData.join(" ")},
-
-${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your vouchers.
-`,
-          userInfo?.agentPhoneNumber
+${smsData.join(" ")}`, userInfo?.agentPhoneNumber
         );
 
 
@@ -1464,8 +1444,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
         const smsData = await Promise.all([smsInfo])
 
         await sendSMS(
-          `Transaction ID :${id},
-  ${selectedVouchers[0]?.voucherType}   
+          `${selectedVouchers[0]?.voucherType}   
 [Seat No./Type--Serial]
 ${smsData.join(" ")},  
 

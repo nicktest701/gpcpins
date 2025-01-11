@@ -173,7 +173,7 @@ router.get(
       });
       console.log(code);
 
-      sendOTPSMS(`Your verification code is ${code}.`, employee[0]?.phonenumber);
+     await sendOTPSMS(  `Please ignore this message if you did not request the OTP.Your verification code is ${code}.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`, employee[0]?.phonenumber);
     }
 
     res.sendStatus(201);

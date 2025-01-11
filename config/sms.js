@@ -8,43 +8,35 @@ const sendOTPSMS = async (message, telephoneNumber) => {
 
   try {
 
-    let sms = 'arkesel';
-    let res;
     const SMSType = await redisClient.get('sms');
-    sms = SMSType || 'arkesel';// default to hubtel if no type is set in redis
+    const sms = SMSType || 'arkesel';// default to hubtel if no type is set in redis
 
 
-    if (sms === 'hubtel') {
-      const data = {
+    const config = sms === 'hubtel' ? {
+      method: "GET",
+      url: `${BASE_URL}/send`,
+      params: {
         From: "GPC",
         To: telephoneNumber,
         Content: message,
         clientid: process.env.SMS_CLIENT_ID,
         clientsecret: process.env.SMS_CLIENT_SECRET,
-      };
+      }
 
-      res = await axios({
-        method: "GET",
-        url: `${BASE_URL}/send`,
-        params: data,
-      });
-
+    } : {
+      method: 'post',
+      url: process.env.ARKESEL_SMS_CLIENT,
+      headers: {
+        'api-key': process.env.ARKESEL_SMS_KEY
+      },
+      data: {
+        "sender": "GPC",
+        "message": message,
+        "recipients": [telephoneNumber],
+      }
     }
 
-    if (sms === 'arkesel') {
-      res = await axios({
-        method: 'post',
-        url: process.env.ARKESEL_SMS_CLIENT,
-        headers: {
-          'api-key': process.env.ARKESEL_SMS_KEY
-        },
-        data: {
-          "sender": "GPC",
-          "message": message,
-          "recipients": [telephoneNumber],
-        }
-      });
-    }
+    const res = await axios(config);
 
     return res.data;
   } catch (error) {
@@ -57,46 +49,37 @@ const sendSMS = async (message, telephoneNumber) => {
   try {
     // SEND SMS
 
-
-
-    let sms = 'arkesel';
-    let res;
     const SMSType = await redisClient.get('sms');
-    sms = SMSType || 'arkesel';
+    const sms = SMSType || 'arkesel';
 
-    if (sms === 'hubtel') {
 
-      res = await axios({
-        method: "POST",
-        url: `${BASE_URL}/send`,
-        headers: {
-          Authorization: `Basic ${process.env.SMS_API_KEY}`,
-        },
-        data: {
-          From: "GPC",
-          To: telephoneNumber,
-          Content: message,
-        }
-      });
 
-    }
-
-    if (sms === 'arkesel') {
-      res = await axios({
-        method: 'post',
-        url: process.env.ARKESEL_SMS_CLIENT,
-        headers: {
-          'api-key': process.env.ARKESEL_SMS_KEY
-        },
-        data: {
-          "sender": "GPC",
-          "message": message,
-          "recipients": [telephoneNumber],
-        }
-      });
+    const config = sms === 'hubtel' ? {
+      method: "POST",
+      url: `${BASE_URL}/send`,
+      headers: {
+        Authorization: `Basic ${process.env.SMS_API_KEY}`,
+      },
+      data: {
+        From: "GPC",
+        To: telephoneNumber,
+        Content: message,
+      }
+    } : {
+      method: 'POST',
+      url: process.env.ARKESEL_SMS_CLIENT,
+      headers: {
+        'api-key': process.env.ARKESEL_SMS_KEY
+      },
+      data: {
+        "sender": "GPC",
+        "message": message,
+        "recipients": [telephoneNumber],
+      }
     }
 
 
+    const res = await axios(config);
 
     return res?.data;
   } catch (error) {
@@ -104,50 +87,43 @@ const sendSMS = async (message, telephoneNumber) => {
     // throw error.message;
   }
 };
+
 const sendBatchSMS = async (message, telephoneNumbers) => {
   // if (process.env.NODE_ENV !== 'production') return true
 
-  let sms = 'arkesel';
-  let res;
   const SMSType = await redisClient.get('sms');
-  sms = SMSType || 'arkesel';
+  const sms = SMSType || 'arkesel';
 
 
   try {
     // SEND SMS
 
-    if (sms === 'hubtel') {
 
-      res = await axios({
-        method: "POST",
-        url: `${BASE_URL}/batch/simple/send`,
-        headers: {
-          Authorization: `Basic ${process.env.SMS_API_KEY}`,
-        },
-        data: {
-          From: "GPC",
-          Recipients: [...telephoneNumbers],
-          Content: message,
-        },
-      });
+    const config = sms === 'hubtel' ? {
+      method: "POST",
+      url: `${BASE_URL}/batch/simple/send`,
+      headers: {
+        Authorization: `Basic ${process.env.SMS_API_KEY}`,
+      },
+      data: {
+        From: "GPC",
+        Recipients: [...telephoneNumbers],
+        Content: message,
+      },
+    } : {
+      method: 'post',
+      url: process.env.ARKESEL_SMS_CLIENT,
+      headers: {
+        'api-key': process.env.ARKESEL_SMS_KEY
+      },
+      data: {
+        "sender": "GPC",
+        "message": message,
+        "recipients": [...telephoneNumbers],
+      }
     }
 
-    if (sms === 'arkesel') {
-      res = await axios({
-        method: 'post',
-        url: process.env.ARKESEL_SMS_CLIENT,
-        headers: {
-          'api-key': process.env.ARKESEL_SMS_KEY
-        },
-        data: {
-          "sender": "GPC",
-          "message": message,
-          "recipients": [...telephoneNumbers],
-        }
-      });
-    }
-
-
+    const res = await axios(config);
 
     return res.data;
   } catch (error) {

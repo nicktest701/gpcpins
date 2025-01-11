@@ -277,7 +277,7 @@ router.get(
       });
       console.log(code);
 
-      sendOTPSMS(`Your verification code is ${code}.`, agent[0]?.phonenumber);
+    await  sendOTPSMS(`Please ignore this message if you did not request the OTP.Your verification code is ${code}.Don't share this code with anyone; Our employees will never ask for the code.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`, agent[0]?.phonenumber);
     }
 
     res.sendStatus(201);
@@ -1039,6 +1039,8 @@ router.put(
     `;
 
     await sendEMail(accessData?.email, message, "Profile Update Notification");
+    const smsMessage=`Your profile information has been updated.For security purposes, we wanted to ensure that you are aware of these changes. If you did not make these adjustments yourself or if you believe your account may have been compromised, please take immediate action by contacting our support team.If you have made these changes intentionally, please disregard this message.`
+    await sendOTPSMS(smsMessage, agent[0]?.phonenumber);
 
     res.status(201).json({
       user: accessToken,
@@ -1467,6 +1469,8 @@ router.post(
         mailTextShell(body),
         "Wallet Top Up Request"
       );
+
+      await sendOTPSMS(`Your request has been received.We'll get back to you shortly.`, agent[0]?.phonenumber);
 
       //logs
       await knex("agent_activity_logs").insert({
