@@ -13,13 +13,6 @@ const cron = require('node-cron');
 // const numCPUs = require('os').cpus().length;
 
 //
-
-//Default server port
-const port = process.env.PORT || 5000;
-
-//initialize express
-const app = express();
-
 const logRoute = require("./routes/logRoute");
 const userRoute = require("./routes/userRoute");
 const ticketRoute = require("./routes/ticketRoute");
@@ -38,6 +31,15 @@ const notificationRoute = require("./routes/notificationRoute");
 const { verifyToken } = require("./middlewares/verifyToken");
 const verifyReferer = require("./middlewares/verifyReferer");
 const sendEMail = require("./config/sendEmail");
+
+//Default server port
+const port = process.env.PORT || 5000;
+
+//initialize express
+const app = express();
+app.timeout = 300000;
+
+
 
 const whitelist = [
   "https://gpcpins.com",

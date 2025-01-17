@@ -568,6 +568,8 @@ router.get(
     const { id, type } = req.params;
     const confirm = req.query?.confirm;
 
+    const transx = await knex.transaction();
+
     if (!isValidUUID2(id) || !type) {
       return res.status(402).send("Invalid Request");
     }
@@ -575,14 +577,14 @@ router.get(
     let transaction = [];
 
     if (type === "voucher" || type === "ticket") {
-      transaction = await knex("voucher_transactions")
+      transaction = await transx("voucher_transactions")
         .select("*")
         .where("_id", id)
         .first();
     }
 
     if (type === "prepaid") {
-      transaction = await knex("prepaid_transactions")
+      transaction = await transx("prepaid_transactions")
         .select(
           "prepaid_transactions._id as _id",
           "info",
@@ -601,7 +603,7 @@ router.get(
     }
 
     if (type === "airtime") {
-      transaction = await knex("airtime_transactions")
+      transaction = await transx("airtime_transactions")
         .select(
           "_id",
           "type",
@@ -620,7 +622,7 @@ router.get(
     }
 
     if (type === "bundle") {
-      transaction = await knex("bundle_transactions")
+      transaction = await transx("bundle_transactions")
         .select(
           "_id",
           "recipient",
@@ -639,14 +641,17 @@ router.get(
 
     //if creating new transaction fails
     if (_.isEmpty(transaction)) {
+      await transx.rollback()
       return res.status(402).json("Error Processing your request!");
     }
 
     if (transaction.status === "failed") {
+      await transx.rollback()
       return res.status(402).json("Payment Cancelled!");
     }
 
     if (transaction.status !== "completed") {
+      await transx.rollback()
       return res.status(402).json("Payment not completed!");
     }
 
@@ -665,7 +670,7 @@ router.get(
       if (["stadium", "cinema"].includes(userInfo?.type)) {
         const vouchers = await Promise.all(
           userInfo?.paymentDetails.tickets.flatMap(async (ticket) => {
-            return await knex("vouchers")
+            return await transx("vouchers")
               .join("categories", "vouchers.category", "=", "categories._id")
               .where({
                 "vouchers.category": userInfo?.categoryId,
@@ -688,7 +693,7 @@ router.get(
       }
       //Check if tickets are bus
       else if (["bus"].includes(userInfo?.type)) {
-        selectedVouchers = await knex("vouchers")
+        selectedVouchers = await transx("vouchers")
           .join("categories", "vouchers.category", "=", "categories._id")
           .whereIn("vouchers.type", userInfo?.paymentDetails?.tickets)
           .andWhere({
@@ -707,7 +712,7 @@ router.get(
       }
       //Check if vouchers are waec,university or security
       else {
-        selectedVouchers = await knex("vouchers")
+        selectedVouchers = await transx("vouchers")
           .join("categories", "vouchers.category", "=", "categories._id")
           .where({
             "vouchers.category": userInfo?.categoryId,
@@ -727,7 +732,7 @@ router.get(
 
 
       const soldVouchers_ids = _.map(selectedVouchers, '_id');
-      const transx = await knex.transaction();
+   
 
       try {
 
@@ -741,7 +746,7 @@ router.get(
           active: 0,
           status: "sold",
         });
-        await transx.commit();
+        // await transx.commit();
 
 
 
@@ -840,7 +845,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
         await Promise.all([emailPrompt, SMSPrompt])
       }
 
-      await knex("notifications").insert({
+      await transx("notifications").insert({
         _id: generateId(),
         title: "Bulk Airtime Transfer",
         message,
@@ -874,11 +879,11 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
         const response = await sendBundle(bundleInfo);
 
         if (['00', '09'].includes(response["status-code"])) {
-          await knex("bundle_transactions").where("_id", id).update({
+          await transx("bundle_transactions").where("_id", id).update({
             isProcessed: 1,
           });
 
-          await knex("user_notifications").insert({
+          await transx("user_notifications").insert({
             _id: generateId(),
             user_id: userID,
             type: "bundle",
@@ -906,7 +911,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
           }
         }
       } catch (error) {
-
+        await transx.rollback()
 
         // console.log(error?.response?.data);
         return res.status(401).json("An error has occurred");
@@ -936,14 +941,13 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
       };
       try {
         const response = await sendAirtime(airtimeInfo);
-        // res.status(200).json(response);
-        // console.log(response);
+     
         if (['00', '09'].includes(response["status-code"])) {
-          await knex("airtime_transactions").where("_id", id).update({
+          await transx("airtime_transactions").where("_id", id).update({
             isProcessed: 1,
           });
 
-          await knex("user_notifications").insert({
+          await transx("user_notifications").insert({
             _id: generateId(),
             user_id: userID,
             type: "airtime",
@@ -970,6 +974,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
           }
         }
       } catch (error) {
+        await transx.rollback()
         return res.status(401).json("An error has occurred");
       }
     }
@@ -979,7 +984,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
       const message = `The number ${transaction?.mobileNo} with METER NO. '${transaction?.number
         }' has successfully made payment to buy PREPAID UNITS at an amount of ${currencyFormatter(info?.amount)}.`;
 
-      await knex("notifications").insert({
+      await transx("notifications").insert({
         _id: generateId(),
         title: "Prepaid Units",
         message,
@@ -1008,6 +1013,8 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
       limit(() => Promise.all([userMail, userSMS, agentMail]));
     }
 
+
+    await transx.commit();
     const successfulTransaction = {
       _id: transaction?._id,
       info,

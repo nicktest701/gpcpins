@@ -21,7 +21,7 @@ if (process.env.NODE_ENV !== 'production') {
 
     },
     pool: {
-      max: 50,
+      max: 10,
       min: 2,
       "createTimeoutMillis": 3000,
       "acquireTimeoutMillis": 30000,
@@ -58,7 +58,7 @@ if (process.env.NODE_ENV !== 'production') {
     },
     // pool: { min: 0, max: 10 },
     pool: {
-      max: 50,
+      max: 10,
       min: 2,
       "createTimeoutMillis": 3000,
       "acquireTimeoutMillis": 30000,

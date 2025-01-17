@@ -277,7 +277,7 @@ router.get(
       });
       console.log(code);
 
-    await  sendOTPSMS(`Please ignore this message if you did not request the OTP.Your verification code is ${code}.Don't share this code with anyone; Our employees will never ask for the code.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`, agent[0]?.phonenumber);
+      await sendOTPSMS(`Please ignore this message if you did not request the OTP.Your verification code is ${code}.Don't share this code with anyone; Our employees will never ask for the code.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`, agent[0]?.phonenumber);
     }
 
     res.sendStatus(201);
@@ -1039,7 +1039,7 @@ router.put(
     `;
 
     await sendEMail(accessData?.email, message, "Profile Update Notification");
-    const smsMessage=`Your profile information has been updated.For security purposes, we wanted to ensure that you are aware of these changes. If you did not make these adjustments yourself or if you believe your account may have been compromised, please take immediate action by contacting our support team.If you have made these changes intentionally, please disregard this message.`
+    const smsMessage = `Your profile information has been updated.For security purposes, we wanted to ensure that you are aware of these changes. If you did not make these adjustments yourself or if you believe your account may have been compromised, please take immediate action by contacting our support team.If you have made these changes intentionally, please disregard this message.`
     await sendOTPSMS(smsMessage, agent[0]?.phonenumber);
 
     res.status(201).json({
@@ -1635,7 +1635,7 @@ router.post(
 
 
 
-    const agentWallet = await knex("agent_wallets")
+    const agentWallet = await transx("agent_wallets")
       .select("_id", "agent_key", "amount", "active")
       .where({
         agent_id: id,
@@ -1691,7 +1691,7 @@ router.post(
       transaction_reference,
     };
 
-    const commissionRate = await knex("agent_commissions")
+    const commissionRate = await transx("agent_commissions")
       .select("rate")
       .where({ agent_id: id, provider: info?.network })
       .limit(1);
@@ -1725,17 +1725,20 @@ router.post(
     };
 
 
+
+    // Update agent wallet and record the transaction in database
+    await transx("agent_wallets").where("agent_id", id).decrement({
+      amount: transactionInfo?.amount,
+    });
+
+
     try {
       const response = await sendAirtime(airtimeInfo);
-      if (response["status-code"] === "00") {
+      if (['00', '09'].includes(response["status-code"])) {
+
         await transx("agent_transactions").insert({
           ...transactionInfo,
           status: "completed",
-        });
-
-        // Update agent wallet and record the transaction in database
-        await transx("agent_wallets").where("agent_id", id).decrement({
-          amount: transactionInfo?.amount,
         });
 
         const balance = Number(response?.balance_after);
@@ -1789,16 +1792,21 @@ router.post(
 
       return res.status(200).json("Airtime transfer was successful!");
     } catch (error) {
-      await transx.rollback();
+
+      await transx("agent_transactions").insert({
+        ...transactionInfo,
+        status: "failed",
+      });
 
       //
-      await knex("agent_notifications").insert({
+      await transx("agent_notifications").insert({
         _id: generateId(),
         agent_id: id,
         type: "airtime",
         title: "Airtime Transfer Failed!",
         message: `Your airtime transfer of ${currencyFormatter(airtimeInfo.amount)} to ${airtimeInfo.recipient} failed.Please Try again later.`,
       });
+      await transx.commit();
 
       //
       return res.status(401).json("Transaction failed! An error has occurred.");
@@ -1931,7 +1939,10 @@ router.post(
         totalAmount: info?.amount,
       };
 
-
+      // Update agent wallet and record the transaction in database
+      await transx("agent_wallets").where("agent_id", id).decrement({
+        amount: transactionInfo?.amount,
+      });
 
       const response = await sendAirtime(airtimeInfo);
 
@@ -1944,10 +1955,7 @@ router.post(
           status: "completed",
         });
 
-        // Update agent wallet and record the transaction in database
-        await transx("agent_wallets").where("agent_id", id).decrement({
-          amount: transactionInfo?.amount,
-        });
+
 
         //send notiication to agent about the transaction
         await transx("agent_notifications").insert({
@@ -2015,7 +2023,7 @@ router.post(
       })
       .catch(async (error) => {
 
-        await transx.rollback();
+        await transx.commit();
         return res
           .status(401)
           .json("Transaction failed! An error has occurred.");
@@ -2122,6 +2130,11 @@ router.post(
     };
 
 
+       // Update agent wallet and record the transaction in database
+       await transx("agent_wallets").where("agent_id", id).decrement({
+        amount: transactionInfo?.amount,
+      });
+
     try {
       const response = await sendBundle(bundleInfo);
       if (['00', '09'].includes(response["status-code"])) {
@@ -2130,10 +2143,7 @@ router.post(
           status: "completed",
         });
 
-        // Update agent wallet and record the transaction in database
-        await transx("agent_wallets").where("agent_id", id).decrement({
-          amount: transactionInfo?.amount,
-        });
+     
 
         await transx("agent_notifications").insert({
           _id: generateId(),
@@ -2184,15 +2194,15 @@ router.post(
 
       return res.status(200).json("Bundle transfer was successful!");
     } catch (error) {
-      await transx.rollback();
-
-      await knex("agent_notifications").insert({
+     
+      await transx("agent_notifications").insert({
         _id: generateId(),
         agent_id: id,
         type: "bundle",
         title: "Data Bundle Transfer Failed",
         message: `Could not process your request.Try again later !`,
       });
+      await transx.commit();
       return res.status(401).json("Transaction failed! An error has occurred.");
     }
   })
