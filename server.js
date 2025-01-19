@@ -31,13 +31,14 @@ const notificationRoute = require("./routes/notificationRoute");
 const { verifyToken } = require("./middlewares/verifyToken");
 const verifyReferer = require("./middlewares/verifyReferer");
 const sendEMail = require("./config/sendEmail");
+const knex = require("./db/knex");
 
 //Default server port
 const port = process.env.PORT || 5000;
 
 //initialize express
 const app = express();
-app.timeout = 300000;
+
 
 
 
@@ -304,11 +305,50 @@ app.use((err, req, res, next) => {
   }
 });
 
-app.listen(port, () => {
+
+process.on('uncaughtException', (err) => {
+  console.error('Unhandled Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection:', reason);
+});
+
+
+process.on('SIGINT', async () => {
+  // console.log('Closing database connection...');
+  try {
+    await knex.destroy();
+    console.log('Database connection closed.');
+    process.exit(0);
+  } catch (err) {
+    console.error('Error closing database connection:', err.message);
+    process.exit(1);
+  }
+});
+
+process.on('SIGTERM', async () => {
+  // console.log('Terminating process...');
+  try {
+    await knex.destroy();
+    console.log('Database connection terminated.');
+    process.exit(0);
+  } catch (err) {
+    console.error('Error terminating database connection:', err.message);
+    process.exit(1);
+  }
+});
+
+
+
+const server = app.listen(port, () => {
   console.log(`App listening on port ${port}!`);
 
 
   // const host = server.address();
   // console.log(host);
 });
+
+
+server.setTimeout(120000);
 

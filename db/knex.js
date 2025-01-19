@@ -21,7 +21,7 @@ if (process.env.NODE_ENV !== 'production') {
 
     },
     pool: {
-      max: 10,
+      max: 50,
       min: 2,
       "createTimeoutMillis": 3000,
       "acquireTimeoutMillis": 30000,
@@ -58,7 +58,7 @@ if (process.env.NODE_ENV !== 'production') {
     },
     // pool: { min: 0, max: 10 },
     pool: {
-      max: 10,
+      max: 50,
       min: 2,
       "createTimeoutMillis": 3000,
       "acquireTimeoutMillis": 30000,
@@ -70,5 +70,19 @@ if (process.env.NODE_ENV !== 'production') {
     },
   });
 }
+
+// Log pool activity
+knex.on('query', (query) => {
+  // console.log(`SQL Query: ${query.sql}`);
+});
+
+knex.on('query-error', (error, obj) => {
+  console.error(`Query Error: ${error.message}`);
+});
+
+knex.on('query-response', (response, obj, builder) => {
+  // console.log('Query Response:', response);
+});
+
 
 module.exports = knex;

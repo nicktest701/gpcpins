@@ -16,8 +16,8 @@ function getRecentTransaction(data, quantity) {
       phonenumber:
         item?.info?.agentPhoneNumber ||
         item?.info?.mobileNo ||
-        item?.phonenumber,
-      amount: item?.info?.amount || item?.amount,
+        item?.phonenumber || item?.recipient,
+      amount: item?.info?.amount || Number(item?.amount),
       issuer: item?.issuer || "N/A",
       domain: item?.info?.domain || item?.domain,
       createdAt: item?.updatedAt,
@@ -502,7 +502,7 @@ function getLastSevenDaysTicketTransactions(data) {
   });
 
 
-let tickets=[]
+  let tickets = []
   if (data?.length > 0) {
     const lastSevenDatesTransactions = _.reverse(
       data?.filter(({ updatedAt }) =>

@@ -1346,7 +1346,7 @@ router.get(
     const transactions = await knex.raw(
       `SELECT *
           FROM (
-              SELECT _id,agent_id,amount,status,createdAt,DATE(createdAt) AS purchaseDate
+              SELECT _id,agent_id,amount,type,comment,status,createdAt,DATE(createdAt) AS purchaseDate
               FROM agent_wallet_transactions
           ) AS agent_wallet_transactions_ 
           WHERE agent_id=? AND purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,
@@ -1499,10 +1499,24 @@ router.get(
 
     const transactions = await knex.raw(
       `SELECT *
-            FROM (
-                SELECT *,DATE(createdAt) AS purchaseDate
-                FROM agent_transactions
-            ) AS agent_transactions_ 
+        FROM (
+            SELECT _id,
+agent_id,
+reference,
+type,
+recipient,
+provider,
+info,
+commission,
+amount as amt,
+totalAmount as amount,
+year,
+active,
+status,
+createdAt,
+updatedAt ,DATE(createdAt) AS purchaseDate
+            FROM agent_transactions
+        ) AS agent_transactions_ 
             WHERE agent_id=? AND type=? AND purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,
       [id, type, sDate, eDate]
     );

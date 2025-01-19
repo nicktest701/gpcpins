@@ -81,9 +81,9 @@
             <span> <%= transaction?.info?.plan_name %> </span>
             <span> <%= transaction?.info?.volume %> </span>
           </td>
-          <td>GHS <%= transaction?.totalAmount %></td>
-          <td>GHS <%= transaction?.commission %></td>
           <td>GHS <%= transaction?.amount %></td>
+          <td>GHS <%= transaction?.commission %></td>
+          <td>GHS <%= transaction?.amt %></td>
           <td><%= transaction?.status %></td>
         </tr>
         <% }) %>

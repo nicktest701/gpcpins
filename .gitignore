@@ -36,10 +36,10 @@ yarn-error.log*
 /build
 /dist
 *.txt
-/app
-/admin
-/agent
-/scanner
+app
+admin
+agent
+scanner
 *.pdf
 *.webp
 *.png
