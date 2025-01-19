@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+        <loc>https://gpcpins.com/</loc>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://gpcpins.com/evoucher/</loc>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://gpcpins.com/airtime/</loc>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://gpcpins.com/evoucher/waec-checker</loc>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://gpcpins.com/evoucher/university-form</loc>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://gpcpins.com/evoucher/security-service</loc>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://gpcpins.com/evoucher/cinema-ticket</loc>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://gpcpins.com/evoucher/bus-ticket</loc>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://gpcpins.com/evoucher/stadia-ticket</loc>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://gpcpins.com/hosting/</loc>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>https://gpcpins.com/business/</loc>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://gpcpins.com/electricity/</loc>
+        <priority>0.8</priority>
+    </url>
+ 
+
+</urlset>
