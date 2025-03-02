@@ -17,8 +17,10 @@ import { Container, Typography } from "@mui/material";
 import { AuthContext } from "../../context/providers/AuthProvider";
 import PayLoading from "../../components/PayLoading";
 import PaymentOption from "../../components/PaymentOption";
+import { useNavigate } from "react-router-dom";
 
 function WAECChecker() {
+  const navigate = useNavigate();
   const { user } = useContext(AuthContext);
   const { customDispatch } = useContext(CustomContext);
   const [paymentMethod, setPaymentMethod] = useState("");
@@ -36,7 +38,7 @@ function WAECChecker() {
   });
 
   const [mobilePartner, setMobilePartner] = useState("");
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [confirmPhonenumber, setConfirmPhonenumber] = useState("");
   ///Get All waec categories
@@ -77,7 +79,12 @@ function WAECChecker() {
 
     customDispatch({
       type: "getVoucherPaymentDetails",
-      payload: { open: true, data: paymentInfo },
+      payload: { data: paymentInfo },
+      // payload: { open: true, data: paymentInfo },
+    });
+
+    navigate(`/evoucher/voucher-payment`, {
+      replace: true,
     });
   };
 
@@ -222,7 +229,7 @@ function WAECChecker() {
                   inputMode="email"
                   variant="outlined"
                   label="Email Address(optional)"
-                  fullWidth  
+                  fullWidth
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   error={Boolean(touched.email && errors.email)}

@@ -62,6 +62,7 @@ import AirtimeBuy from "../airtime/AirtimeBuy";
 import BulkAirtimeBuy from "../airtime/BulkAirtimeBuy";
 import GetStarted from "../GetStarted";
 import Error from "../Error";
+import VoucherPayment from "../payment/voucherPayment";
 
 function Shell() {
   const { customDispatch } = useContext(CustomContext);
@@ -281,6 +282,14 @@ function Shell() {
                 <Suspense fallback={<PayLoading />}>
                   <LostVoucher />
                 </Suspense>
+              }
+            />
+            <Route
+              path="voucher-payment"
+              element={
+                // <Suspense fallback={<PayLoading />}>
+                <VoucherPayment />
+                // </Suspense>
               }
             />
           </Route>

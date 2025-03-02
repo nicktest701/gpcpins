@@ -1869,15 +1869,30 @@ export const AGENT_TRANSACTIONS = [
     render: ({ status }) => (
       <Button
         size="small"
-        label={status === "failed" ? "Failed" : "Completed"}
+        label={
+          status === "completed"
+            ? "Completed"
+            : status === "refunded"
+            ? "Refunded"
+            : "Failed"
+        }
         sx={{
           color: "white",
-          bgcolor: status === "completed" ? "success.darker" : "error.darker",
+          bgcolor:
+            status === "completed"
+              ? "success.darker"
+              : status === "refunded"
+              ? "#000"
+              : "error.darker",
           borderRadius: 1,
           p: 1,
         }}
       >
-        {status === "failed" ? "Failed" : "Completed"}
+        {status === "completed"
+          ? "Completed"
+          : status === "refunded"
+          ? "Refunded"
+          : "Failed"}
       </Button>
     ),
   },
@@ -1925,6 +1940,7 @@ export const WALLET_TOPUP_TRANSACTIONS = [
       color: "green",
     },
   },
+  { title: "Comment", field: "comment" },
   {
     title: "Details",
     export: false,
@@ -1942,6 +1958,7 @@ export const WALLET_TOPUP_TRANSACTIONS = [
     },
   },
   { title: "Issued By", field: "issuerName" },
+  
   {
     title: "Status",
     field: "status",
@@ -2067,15 +2084,30 @@ export const WALLET_TRANSACTIONS = (type) => [
     render: ({ status }) => (
       <Button
         size="small"
-        label={status === "failed" ? "Failed" : "Completed"}
+        label={
+          status === "completed"
+            ? "Completed"
+            : status === "refunded"
+            ? "Refunded"
+            : "Failed"
+        }
         sx={{
           color: "white",
-          bgcolor: status === "completed" ? "success.darker" : "error.darker",
+          bgcolor:
+            status === "completed"
+              ? "success.darker"
+              : status === "refunded"
+              ? "#000"
+              : "error.darker",
           borderRadius: 1,
           p: 1,
         }}
       >
-        {status === "failed" ? "Failed" : "Completed"}
+        {status === "completed"
+          ? "Completed"
+          : status === "refunded"
+          ? "Refunded"
+          : "Failed"}
       </Button>
     ),
   },

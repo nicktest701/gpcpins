@@ -195,7 +195,8 @@ router.get(
   limit,
   verifyRefreshToken,
   asyncHandler(async (req, res) => {
-    const { id, active, role, createdAt } = req.user;
+    const { id } = req.user;
+
 
     const user = await knex("users")
       .select(
@@ -212,7 +213,7 @@ router.get(
         "active"
       )
       .where("_id", id)
-      .whereNot("email", "test@test.com")
+      // .whereNot("email", "test@test.com")
       .first();
 
     const accessToken = signMainToken(user, '180d');
