@@ -108,8 +108,8 @@ function CustomProvider({ children }) {
     queryFn: () => getAllNotifications(),
     enabled: !!user?.id,
     initialData: [],
-    refetchIntervalInBackground: true,
-    refetchInterval: 10000,
+    // refetchIntervalInBackground: true,
+    // refetchInterval: 10000,
     onSuccess: (data) => {
       const unReadNotifications = data?.filter((item) => item?.active === 1);
 

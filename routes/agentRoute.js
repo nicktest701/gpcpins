@@ -355,6 +355,7 @@ router.get(
   })
 );
 
+
 // @POST Agent
 router.post(
   "/",
@@ -1330,8 +1331,6 @@ router.get(
 );
 
 
-
-
 router.get(
   "/wallet/transactions",
   verifyToken,
@@ -1531,6 +1530,8 @@ updatedAt ,DATE(createdAt) AS purchaseDate
     res.status(200).json(transaction);
   })
 );
+
+
 router.delete(
   "/top-up/transaction",
   verifyToken,
@@ -1543,6 +1544,8 @@ router.delete(
     res.sendStatus(204);
   })
 );
+
+
 
 //Check Transaction Status
 router.get(
@@ -1745,12 +1748,16 @@ router.post(
       amount: transactionInfo?.amount,
     });
 
+    await transx.commit();
 
+
+    const tranx = await knex.transaction();
     try {
+
       const response = await sendAirtime(airtimeInfo);
       if (['00', '09'].includes(response["status-code"])) {
 
-        await transx("agent_transactions").insert({
+        await tranx("agent_transactions").insert({
           ...transactionInfo,
           status: "completed",
         });
@@ -1771,7 +1778,7 @@ router.post(
         }
 
         //send notiication to agent about the transaction
-        await transx("agent_notifications").insert({
+        await tranx("agent_notifications").insert({
           _id: generateId(),
           agent_id: id,
           type: "airtime",
@@ -1781,12 +1788,12 @@ router.post(
       } else {
 
 
-        await transx("agent_transactions").insert({
+        await tranx("agent_transactions").insert({
           ...transactionInfo,
           status: "failed",
         });
 
-        await transx("agent_notifications").insert({
+        await tranx("agent_notifications").insert({
           _id: generateId(),
           agent_id: id,
           type: "airtime",
@@ -1795,7 +1802,7 @@ router.post(
         });
       }
 
-      await transx.commit();
+      await tranx.commit();
 
       //logs
       await knex("agent_activity_logs").insert({
@@ -1807,20 +1814,20 @@ router.post(
       return res.status(200).json("Airtime transfer was successful!");
     } catch (error) {
 
-      await transx("agent_transactions").insert({
+      await tranx("agent_transactions").insert({
         ...transactionInfo,
         status: "failed",
       });
 
       //
-      await transx("agent_notifications").insert({
+      await tranx("agent_notifications").insert({
         _id: generateId(),
         agent_id: id,
         type: "airtime",
         title: "Airtime Transfer Failed!",
         message: `Your airtime transfer of ${currencyFormatter(airtimeInfo.amount)} to ${airtimeInfo.recipient} failed.Please Try again later.`,
       });
-      await transx.commit();
+      await tranx.commit();
 
       //
       return res.status(401).json("Transaction failed! An error has occurred.");
@@ -2144,10 +2151,10 @@ router.post(
     };
 
 
-       // Update agent wallet and record the transaction in database
-       await transx("agent_wallets").where("agent_id", id).decrement({
-        amount: transactionInfo?.amount,
-      });
+    // Update agent wallet and record the transaction in database
+    await transx("agent_wallets").where("agent_id", id).decrement({
+      amount: transactionInfo?.amount,
+    });
 
     try {
       const response = await sendBundle(bundleInfo);
@@ -2157,7 +2164,7 @@ router.post(
           status: "completed",
         });
 
-     
+
 
         await transx("agent_notifications").insert({
           _id: generateId(),
@@ -2208,7 +2215,7 @@ router.post(
 
       return res.status(200).json("Bundle transfer was successful!");
     } catch (error) {
-     
+
       await transx("agent_notifications").insert({
         _id: generateId(),
         agent_id: id,

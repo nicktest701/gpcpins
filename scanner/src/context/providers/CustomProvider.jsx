@@ -44,7 +44,7 @@ function CustomProvider({ children }) {
     // enabled: !!user?.id,
     initialData: [],
     // refetchIntervalInBackground: true,
-    refetchInterval: 5000,
+    // refetchInterval: 5000,
     onSuccess: (data) => {
       const unReadNotifications = data?.filter((item) => item?.active === 1);
 
