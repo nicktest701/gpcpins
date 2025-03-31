@@ -1788,7 +1788,7 @@ router.get(
     // console.log(voucher_transactions)
 
     const transactions = voucher_transactions[0]?.map(({ info, ...rest }) => {
-      const d = info ? JSON.parse(info) : {},
+      const d = info ? JSON.parse(info) : { amount: 0 };
       return {
         ...rest,
         info: d,
@@ -1817,7 +1817,7 @@ router.get(
           transaction?.info?.quantity ||
           transaction?.info?.paymentDetails?.quantity,
         amount:
-          transaction?.info?.amount || transaction?.amount
+          transaction?.info?.amount || transaction?.amount ||
           transaction?.info?.paymentDetails?.totalAmount,
         createdAt: transaction?.createdAt,
         updatedAt: transaction?.updatedAt,
