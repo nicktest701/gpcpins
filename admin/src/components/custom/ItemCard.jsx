@@ -45,10 +45,10 @@ const ItemCard = ({ title, value, icon }) => {
   );
 };
 
-ItemCard.propTypes = {
-  title: PropTypes.string,
-  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-  icon: PropTypes.node,
-};
+// ItemCard.propTypes = {
+//   title: PropTypes.string,
+//   value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+//   icon: PropTypes.node,
+// };
 
 export default ItemCard;

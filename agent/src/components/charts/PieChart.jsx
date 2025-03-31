@@ -21,9 +21,9 @@ const PieChart = ({ height, labels, data }) => {
             {
               data: data ?? [],
               backgroundColor: [
+                palette.success.main,
                 palette.secondary.main,
                 palette.info.main,
-                palette.success.main,
                 palette.warning.main,
               ],
             },

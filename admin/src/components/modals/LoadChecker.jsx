@@ -276,7 +276,7 @@ const LoadChecker = ({ open, setOpen }) => {
                     size="small"
                     value={searchParams.get("data_path") ?? ""}
                     fullWidth
-                    helperText="e.g. *.csv,*.xlsx"
+                    helperText="e.g. *.csv,*.xlsx,*.xls,"
                     InputProps={{
                       sx: { padding: "6px" },
                     }}
@@ -310,6 +310,9 @@ const LoadChecker = ({ open, setOpen }) => {
                       onClick={(e) => {
                         e.target.value = null;
                         e.currentTarget.value = null;
+                      }}
+                      inputProps={{
+                        accept: ".xlsx,.xls,.csv",
                       }}
                       sx={{
                         visibility: "collapse",

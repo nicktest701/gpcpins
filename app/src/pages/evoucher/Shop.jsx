@@ -18,14 +18,8 @@ function Shop() {
       </Alert>
       <Container
         sx={{
-          //   backgroundImage: ` linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0, 0,0, 0.1)),
-          // url(${IMAGES.main}); `,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundAttachment: "fixed",
-          minHeight: "100%",
+          minHeight: "10svh",
           py: 4,
-          px: 2,
         }}
       >
         <Typography className="content-subtitle" variant="h2">

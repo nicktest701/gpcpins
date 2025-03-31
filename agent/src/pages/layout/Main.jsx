@@ -11,17 +11,15 @@ function Main() {
       <HideSidebar />
 
       <Header />
-      <Box
-      // maxWidth='md'
+      <Container
+        maxWidth="lg"
         sx={{
-          maxWidth: "1000px",
-          marginInline: "auto",
-          paddingInline: "16px",
+          p: 1,
           minHeight: "90svh",
         }}
       >
         <Outlet />
-      </Box>
+      </Container>
       <Footer />
     </Box>
   );

@@ -4,10 +4,10 @@ import Typography from '@mui/material/Typography';
 function VoucherPlaceHolderItem({ title, value, img }) {
   return (
     <Stack direction='row' justifyContent='space-between'>
-      <Typography fontWeight='bold' variant='caption'>
+      <Typography fontWeight='bold' variant='body2'>
         {title}
       </Typography>
-      <Typography variant='caption' sx={{ display: 'flex', gap: 2 }}>
+      <Typography variant='body2' sx={{ display: 'flex', gap: 2 }}>
         {img}
         {value}
       </Typography>

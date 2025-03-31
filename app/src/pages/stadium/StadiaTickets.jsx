@@ -89,7 +89,7 @@ function StadiaTickets() {
         </div>
       </Box>
 
-      <Container maxWidth='md' sx={{ paddingY: 5 }}>
+      <Container sx={{ paddingY: 5 }}>
         <Stack
           width='100%'
           direction='row'

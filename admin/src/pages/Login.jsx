@@ -101,7 +101,6 @@ const Login = () => {
         xs={12}
         sm={8}
         md={5}
-        square
         sx={{
           bgcolor: "#fff",
         }}

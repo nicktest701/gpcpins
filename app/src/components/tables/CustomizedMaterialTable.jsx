@@ -72,7 +72,7 @@ const CustomizedMaterialTable = ({
           columnsButton: true,
           columnResizable: true,
           paging: data?.length !== 0 ? true : false,
-          pageSize: 5,
+          pageSize: 10,
           paginationType: "stepped",
           exportAllData: true,
           exportFileName: title,

@@ -14,22 +14,22 @@ import Swal from "sweetalert2";
 import Autocomplete from "@mui/material/Autocomplete";
 import LoadingButton from "@mui/lab/LoadingButton";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
+import CustomDialogTitle from "@/components/dialogs/CustomDialogTitle";
 import { useSearchParams } from "react-router-dom";
 import { useContext, useState } from "react";
 import {
   getInternationalMobileFormat,
   isValidPartner,
-} from "../../constants/PhoneCode";
-import ServiceProvider from "../../components/ServiceProvider";
-import { disableWallet, getWalletStatus, sendBundle } from "../../api/agentAPI";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import { globalAlertType } from "../../components/alert/alertType";
-import { getBundleList } from "../../api/paymentAPI";
-import { currencyFormatter } from "../../constants";
+} from "@/constants/PhoneCode";
+import ServiceProvider from "@/components/ServiceProvider";
+import { disableWallet, getWalletStatus, sendBundle } from "@/api/agentAPI";
+import { CustomContext } from "@/context/providers/CustomProvider";
+import { globalAlertType } from "@/components/alert/alertType";
+import { getBundleList } from "@/api/paymentAPI";
+import { currencyFormatter } from "@/constants";
 import { useEffect } from "react";
-import { AuthContext } from "../../context/providers/AuthProvider";
-import { verifyPin } from "../../config/validation";
+import { AuthContext } from "@/context/providers/AuthProvider";
+import { verifyPin } from "@/config/validation";
 
 const NewBundleTransfer = () => {
   const { customDispatch } = useContext(CustomContext);
@@ -186,7 +186,6 @@ const NewBundleTransfer = () => {
             queryClient.invalidateQueries(["notifications"]);
           },
           onSuccess: (data) => {
-            // customDispatch(globalAlertType("info", "Transaction Completed!"));
             handleClearFields();
 
             Swal.fire({
@@ -216,6 +215,7 @@ const NewBundleTransfer = () => {
                 setErr(error);
               }
             } else {
+              handleClearFields();
               Swal.fire({
                 icon: "error",
                 title: "Transfer Failed!",
@@ -251,6 +251,12 @@ const NewBundleTransfer = () => {
   const handleGoback = () => setShowPinPage(false);
 
   const handleClearFields = () => {
+    setShowPinPage(false);
+    setSearchParams((params) => {
+      params.delete("data");
+      params.delete("bundle-prompt");
+      return params;
+    });
     setPhoneNumber("");
     setConfirmPhoneNumber("");
     setProvider("");
@@ -264,7 +270,6 @@ const NewBundleTransfer = () => {
       volume: "",
       price: "",
     });
-    setShowPinPage();
   };
   return (
     <Dialog

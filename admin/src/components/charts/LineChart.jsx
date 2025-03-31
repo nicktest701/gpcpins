@@ -1,7 +1,10 @@
-import { Line } from 'react-chartjs-2';
-import Box from '@mui/material/Box';
-
+import { Line } from "react-chartjs-2";
+import Box from "@mui/material/Box";
+import { useTheme, useMediaQuery } from "@mui/material";
+import { currencyFormatter } from "@/constants";
 const LineChart = ({ height, labels, datasets }) => {
+  const { breakpoints } = useTheme();
+  const matches = useMediaQuery(breakpoints.down("md"));
   return (
     <Box
       sx={{
@@ -35,6 +38,7 @@ const LineChart = ({ height, labels, datasets }) => {
               },
             },
             y: {
+              beginAtZero: 0,
               ticks: {
                 // display: false,
               },
@@ -46,6 +50,18 @@ const LineChart = ({ height, labels, datasets }) => {
           plugins: {
             legend: {
               // display: false,
+            },
+            datalabels: {
+              display: true,
+              color: "white",
+              anchor: "center",
+              align: "end",
+              font: {
+                size: matches ? "14px" : "18px",
+              },
+              backgroundColor: "#000",
+              // borderRadius:'40px',
+              formatter: (value) => currencyFormatter(value || 0), // Display the data value directly
             },
           },
         }}

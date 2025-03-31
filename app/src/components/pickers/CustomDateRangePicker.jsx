@@ -8,7 +8,7 @@ function CustomDateRangePicker({ open, setOpen, date, setDate, refetchData }) {
     setOpen(false);
   };
   return (
-    <Dialog open={open} maxWidth='md' hideBackdrop>
+    <Dialog open={open} fullWidth hideBackdrop>
       <DialogContent>
         <DateRangePicker
           onChange={(item) => setDate([item.selection])}
@@ -16,7 +16,7 @@ function CustomDateRangePicker({ open, setOpen, date, setDate, refetchData }) {
           moveRangeOnFirstSelection={false}
           months={2}
           ranges={date}
-          direction='horizontal'
+          // direction='horizontal'
         />
       </DialogContent>
       <DialogActions>

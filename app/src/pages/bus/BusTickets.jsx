@@ -6,6 +6,8 @@ import {
   Button,
   IconButton,
   Avatar,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import moment from "moment";
 
@@ -16,6 +18,8 @@ import BusSearch from "../../components/inputs/BusSearch";
 import CustomDatePicker from "../../components/inputs/CustomDatePicker";
 
 function BusTickets() {
+  const { breakpoints } = useTheme();
+  const matches = useMediaQuery(breakpoints.down("sm"));
   const navigate = useNavigate();
 
   const [origin, setOrigin] = useState("");
@@ -40,17 +44,19 @@ function BusTickets() {
   };
 
   return (
-    <div
-      style={{
-        backgroundImage: `linear-gradient(to bottom,rgba(0,0,0,0.2),rgba(0,0,0,0.5)),url(${IMAGES.bus_background})`,
+    <Box
+      sx={{
+        backgroundImage: `linear-gradient(to bottom,rgba(0,0,0,0.6),rgba(0,0,0,0.8)),url(${IMAGES.bus_background})`,
         backgroundRepeat: "no-repeat",
         backgroundSize: "cover",
         backgroundPosition: "center",
         minHeight: "100svh",
-        width: "100swv",
+        // width: "100svw",
         flexDirection: "column",
         display: "flex",
-        justifyContent: "center",
+        justifyContent: matches ? "flex-start" : "center",
+        padding: 4,
+        paddingTop: matches ? "32px" : "1px",
         alignItems: "center",
       }}
     >
@@ -63,80 +69,74 @@ function BusTickets() {
       >
         Bus Tickets
       </Typography>
-      <Box
+
+      <Typography
+        variant="body2"
+        paragraph
         sx={{
-          gap: 4,
-          width: "100%",
-          height: "100%",
-          p:4
+          textAlign: "center",
+          color: "white",
+          textShadow: "0px 2px 5px rgba(0,0,0,0.2)",
+          pb: 4,
+          // fontSize: { xs: 16, sm: 24, md: 32 },
         }}
       >
-        <Typography
-          variant="h3"
-          sx={{
-            textAlign: "center",
-            color: "white",
-            textShadow: "0px 2px 5px rgba(0,0,0,0.2)",
-            // fontSize: { xs: 16, sm: 24, md: 32 },
-          }}
-        >
-          Get your tickets and travel to your destination !
-        </Typography>
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={2}
-          justifyContent="center"
-          alignItems="center"
-          sx={{
-            maxWidth: "1080px",
-            mx: "auto",
-            backgroundColor: "rgba(255,255,255,0.1)",
-            padding: 2,
-            backdropFilter: "blur(5px)",
-            WebkitBackdropFilter: "blur(5px)",
-          }}
-        >
-          <BusSearch
-            label="Origin"
-            value={origin}
-            setValue={setOrigin}
-            icon={<Avatar src={IMAGES.origin} sx={{ width: 24, height: 24 }} />}
-          />
-          <IconButton
-            size="small"
-            sx={{ display: { xs: "none", md: "block" } }}
-          >
-            <SyncAltSharpIcon color="dark" />
-          </IconButton>
+        Get your tickets and travel to your destination !
+      </Typography>
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        spacing={2}
+        justifyContent="center"
+        alignItems="center"
+        width={{ xs: "100%", md: "80%" }}
+        sx={{
+          // maxWidth: "1080px",
+          mx: "auto",
+          backgroundColor: "rgba(255,255,255,0.1)",
+          padding: 2,
+          backdropFilter: "blur(5px)",
+          WebkitBackdropFilter: "blur(5px)",
+          borderRadius: 2,
+        }}
+      >
+        <BusSearch
+          label="Origin"
+          value={origin}
+          setValue={setOrigin}
+          icon={<Avatar src={IMAGES.origin} sx={{ width: 24, height: 24 }} />}
+        />
+        <IconButton size="small" sx={{ display: { xs: "none", md: "block" } }}>
+          <SyncAltSharpIcon color="dark" />
+        </IconButton>
 
-          <BusSearch
-            label="Destination"
-            value={destination}
-            setValue={setDestination}
-            icon={
-              <Avatar src={IMAGES.destination} sx={{ width: 24, height: 24 }} />
-            }
-          />
+        <BusSearch
+          label="Destination"
+          value={destination}
+          setValue={setDestination}
+          icon={
+            <Avatar src={IMAGES.destination} sx={{ width: 24, height: 24 }} />
+          }
+        />
 
-          <CustomDatePicker
-            label="Date"
-            value={date}
-            setValue={setDate}
-            borderRadius={5}
-            size="large"
-            inputColor='#fff'
-          />
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleSearch}
-            sx={{ minWidth: 150, py: 2 }}
-          >
-            Find Tickets
-          </Button>
-        </Stack>
-      </Box>
-    </div>
+        <CustomDatePicker
+          label="Date"
+          value={date}
+          setValue={setDate}
+          borderRadius={5}
+          size="small"
+          inputColor="#fff"
+        />
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleSearch}
+          fullWidth
+          // sx={{ minWidth: 150, py: 2 }}
+        >
+          Find Ticket
+        </Button>
+      </Stack>
+    </Box>
   );
 }
 

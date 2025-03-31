@@ -9,7 +9,7 @@ export default function Button(theme) {
         disableElevation: true,
         sx: {
           borderRadius: 1,
-          paddingY: '12px',
+          paddingY: '8px',
           paddingX: 2,
           boxShadow: 'none',
           textTransform:'uppercase'
@@ -25,7 +25,7 @@ export default function Button(theme) {
           whiteSpace: 'noWrap',
         },
         sizeLarge: {
-          py: '16px',
+          py: '12px',
           borderRadius: 1,
         },
         containedInherit: {

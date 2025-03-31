@@ -22,6 +22,7 @@
     "@tawk.to/tawk-messenger-react": "^2.0.2",
     "axios": "^1.6.8",
     "chart.js": "^4.4.0",
+    "chartjs-plugin-datalabels": "^2.2.0",
     "compressorjs": "^1.2.1",
     "date-fns": "^2.29.3",
     "dompurify": "^3.0.8",

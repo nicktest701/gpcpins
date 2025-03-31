@@ -118,7 +118,7 @@ function BusTicketCheckout() {
 
   return (
     <>
-      <Container maxWidth="md" sx={{ pb: 4, pt: { xs: 0, md: 2 } }}>
+      <Container sx={{ pb: 4, pt: { xs: 0, md: 2 } }}>
         <Back />
         <Typography
           variant="h6"
@@ -152,11 +152,12 @@ function BusTicketCheckout() {
               sx={{
                 display: "flex",
                 justifyContent: "flex-start",
+                alignItems: "start",
                 flexWrap: "wrap",
                 gap: 4,
                 p: 1,
-                height: "300px",
-                overflowY: "auto",
+                // height: "300px",
+                // overflowY: "auto",
               }}
             >
               {busVouchers?.data?.map(({ seatNo, active }) => {
@@ -167,6 +168,7 @@ function BusTicketCheckout() {
                       disabled={!active}
                       sx={{
                         position: "relative",
+                        width: "fit-content",
                       }}
                       onClick={() => handleSelectTicket(seatNo)}
                     >
@@ -247,9 +249,11 @@ function BusTicketCheckout() {
                   loading="lazy"
                   src={bus?.data?.details?.logo}
                   style={{
-                    width: "200px",
-                    height: "200px",
+                    // width: "200px",
+                    // height: "200px",
+                    maxWidth: "100%",
                     objectFit: "contain",
+                    aspectRatio: "1/1",
                   }}
                   alt="bus_image"
                 />

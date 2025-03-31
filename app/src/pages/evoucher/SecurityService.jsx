@@ -15,13 +15,13 @@ import { universityValidationSchema } from "../../config/validationSchema";
 import CustomWrapper from "../../components/custom/CustomWrapper";
 import { useGetCategoryByType } from "../../hooks/useGetCategoryByType";
 import { AuthContext } from "../../context/providers/AuthProvider";
-import PayLoading from "../../components/PayLoading";
 import { LoadingButton } from "@mui/lab";
 import DOMPurify from "dompurify";
-// import MobilePartner from "../../components/MobilePartner";
 import PaymentOption from "../../components/PaymentOption";
+import { useNavigate } from "react-router-dom";
 
 function SecurityService() {
+  const navigate = useNavigate();
   const { user } = useContext(AuthContext);
   const { customDispatch } = useContext(CustomContext);
 
@@ -32,18 +32,13 @@ function SecurityService() {
   });
   const [paymentMethod, setPaymentMethod] = useState("");
   const [mobilePartner, setMobilePartner] = useState("");
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
   const [quantity, setQuantity] = useState(0);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [confirmPhonenumber, setConfirmPhonenumber] = useState("");
   ///Get All waec categories
   const { categories, loading } = useGetCategoryByType("security");
-
-  ///Service Provider Info
-  // const getServiceProviderInfo = useMemo(() => {
-  //   return getCode(phoneNumber);
-  // }, [phoneNumber]);
 
   //Calculate total amount
   const grandTotal = useMemo(() => {
@@ -75,7 +70,7 @@ function SecurityService() {
       user: {
         name: DOMPurify.sanitize(values.fullName),
         email: DOMPurify.sanitize(email),
-        phoneNumber: DOMPurify.sanitize(phoneNumber)||user?.phonenumber,
+        phoneNumber: DOMPurify.sanitize(phoneNumber) || user?.phonenumber,
         provider: values?.mobilePartner,
       },
       isWallet: paymentMethod === "wallet",
@@ -83,17 +78,14 @@ function SecurityService() {
 
     customDispatch({
       type: "getVoucherPaymentDetails",
-      payload: { open: true, data: paymentInfo },
+      payload: { data: paymentInfo },
+    });
+
+    navigate(`/evoucher/voucher-payment`, {
+      replace: true,
     });
   };
 
-  if (loading) {
-    return <PayLoading />;
-  }
-
-  // if (isError) {
-  //   showBoundary(error);
-  // }
   return (
     <>
       <Helmet>
@@ -144,6 +136,8 @@ function SecurityService() {
 
                       <Autocomplete
                         options={categories}
+                        loading={loading}
+                        loadingText="Loading Forms.Please Wait.."
                         size="small"
                         disableClearable
                         clearText=" "

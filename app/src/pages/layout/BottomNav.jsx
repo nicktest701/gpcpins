@@ -41,11 +41,11 @@ function BottomNav() {
       sx={{
         // display: 'none',
         display: { xs: "block", md: "none" },
-
+        // px:7,
         position: "fixed",
         bottom: 0,
-        left: 0,
-        right: 0,
+        left: 2,
+        right: 2,
         zIndex: 100,
       }}
       elevation={3}
@@ -55,6 +55,10 @@ function BottomNav() {
         value={value}
         onChange={(event, newValue) => {
           setValue(newValue);
+        }}
+        sx={{
+          borderTopRightRadius: 8,
+          borderTopLeftRadius: 8,
         }}
       >
         <BottomNavigationAction

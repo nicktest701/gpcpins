@@ -135,7 +135,7 @@ function VoucherPayment() {
             setFailCount((prevState) => prevState - 1);
 
             if (failureCount <= 3) {
-              setErr(`${error} .${failureCount - 1} attempt(s) left.`);
+              setErr(`${error} ${failureCount - 1} attempt(s) left.`);
               if (failureCount <= 1) {
                 await disableWallet();
               }

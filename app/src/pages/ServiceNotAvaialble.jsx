@@ -19,17 +19,19 @@ function ServiceNotAvaialble({ open, message }) {
           <Typography variant="h5" textAlign="center" paragraph>
             Service currently not available!
           </Typography>
-          {message ? (
+          {message && (
             <Typography variant="caption" textAlign="center" paragraph>
               {message}
             </Typography>
-          ) : (
-            <Typography variant="caption" textAlign="center" paragraph>
-              We could not establish a connection to the server at the moment.
-              Please try again between the hours of <b>07:00AM</b> and{" "}
-              <b>10:00PM</b>.
-            </Typography>
           )}
+
+          {/* ) : ( */}
+          {/* <Typography variant="caption" textAlign="center" paragraph> */}
+          {/* We could not establish a connection to the server at the moment. */}
+          {/* Please try again between the hours of <b>07:00AM</b> and{" "} */}
+          {/* <b>10:00PM</b>. */}
+          {/* </Typography> */}
+          {/* )} */}
 
           <Link
             to="/"

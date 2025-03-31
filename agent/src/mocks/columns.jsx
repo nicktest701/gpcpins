@@ -190,6 +190,47 @@ export const transactionsColumns = (type, airtimeType) => [
     },
   },
   {
+    title: "Status",
+    field: "status",
+    render: ({ domain, status, isProcessed }) =>
+      domain === "Airtime" ? (
+        <Button
+          size="small"
+          label={
+            status === "completed" && Boolean(isProcessed)
+              ? "Completed"
+              : "Pending"
+          }
+          sx={{
+            color:
+              status === "completed" && Boolean(isProcessed)
+                ? "success.darker"
+                : "warning.darker",
+            bgcolor:
+              status === "completed" && Boolean(isProcessed)
+                ? "success.light"
+                : "warning.light",
+          }}
+        >
+          {status === "completed" && Boolean(isProcessed)
+            ? "Completed"
+            : "Pending"}
+        </Button>
+      ) : (
+        <Button
+          size="small"
+          label={status === "pending" ? "Pending" : "Completed"}
+          sx={{
+            color: status === "pending" ? "warning.darker" : "success.darker",
+            bgcolor:
+              status === "pending" ? "warning.lighter" : "success.lighter",
+          }}
+        >
+          {status === "pending" ? "Pending" : "Completed"}
+        </Button>
+      ),
+  },
+  {
     title: "Id",
     field: "_id",
     // hidden: true,
@@ -292,47 +333,6 @@ export const transactionsColumns = (type, airtimeType) => [
       maximumFractionDigits: 2,
     },
   },
-  {
-    title: "Status",
-    field: "status",
-    render: ({ domain, status, isProcessed }) =>
-      domain === "Airtime" ? (
-        <Button
-          size="small"
-          label={
-            status === "completed" && Boolean(isProcessed)
-              ? "Completed"
-              : "Pending"
-          }
-          sx={{
-            color:
-              status === "completed" && Boolean(isProcessed)
-                ? "success.darker"
-                : "warning.darker",
-            bgcolor:
-              status === "completed" && Boolean(isProcessed)
-                ? "success.light"
-                : "warning.light",
-          }}
-        >
-          {status === "completed" && Boolean(isProcessed)
-            ? "Completed"
-            : "Pending"}
-        </Button>
-      ) : (
-        <Button
-          size="small"
-          label={status === "pending" ? "Pending" : "Completed"}
-          sx={{
-            color: status === "pending" ? "warning.darker" : "success.darker",
-            bgcolor:
-              status === "pending" ? "warning.lighter" : "success.lighter",
-          }}
-        >
-          {status === "pending" ? "Pending" : "Completed"}
-        </Button>
-      ),
-  },
 ];
 
 export const airtimeTransactionsColumns = [
@@ -345,6 +345,39 @@ export const airtimeTransactionsColumns = [
       const date = moment(rowData.createdAt).format("LLL");
       return date.toLowerCase().lastIndexOf(data.toLowerCase()) > -1;
     },
+  },
+  {
+    title: "Status",
+    field: "status",
+    render: ({ status }) => (
+      <Button
+        size="small"
+        label={
+          status === "completed"
+            ? "Completed"
+            : status === "refunded"
+            ? "Refunded"
+            : "Failed"
+        }
+        sx={{
+          color: "white",
+          bgcolor:
+            status === "completed"
+              ? "success.darker"
+              : status === "refunded"
+              ? "#000"
+              : "error.darker",
+          borderRadius: 1,
+          p: 1,
+        }}
+      >
+        {status === "completed"
+          ? "Completed"
+          : status === "refunded"
+          ? "Refunded"
+          : "Failed"}
+      </Button>
+    ),
   },
   {
     title: "Id",
@@ -423,40 +456,6 @@ export const airtimeTransactionsColumns = [
       maximumFractionDigits: 3,
     },
   },
-
-  {
-    title: "Status",
-    field: "status",
-    render: ({ status }) => (
-      <Button
-        size="small"
-        label={
-          status === "completed"
-            ? "Completed"
-            : status === "refunded"
-            ? "Refunded"
-            : "Failed"
-        }
-        sx={{
-          color: "white",
-          bgcolor:
-            status === "completed"
-              ? "success.darker"
-              : status === "refunded"
-              ? "#000"
-              : "error.darker",
-          borderRadius: 1,
-          p: 1,
-        }}
-      >
-        {status === "completed"
-          ? "Completed"
-          : status === "refunded"
-          ? "Refunded"
-          : "Failed"}
-      </Button>
-    ),
-  },
 ];
 
 export const MOBILE_PROVIDER = [
@@ -508,11 +507,6 @@ export const SERVICE_PROVIDER = [
 
 export const WALLET_TOPUP_TRANSACTIONS = [
   {
-    title: "TRANSACTION ID",
-    field: "_id",
-    export: true,
-  },
-  {
     title: "DATE",
     field: "createdAt",
     export: true,
@@ -532,6 +526,29 @@ export const WALLET_TOPUP_TRANSACTIONS = [
     ),
   },
   {
+    title: "Status",
+    field: "status",
+    render: ({ status }) => (
+      <Button
+        size="small"
+        label={status === "failed" ? "Failed" : "Completed"}
+        sx={{
+          color: "white",
+          bgcolor: status === "completed" ? "success.darker" : "error.darker",
+          borderRadius: 1,
+          p: 1,
+        }}
+      >
+        {status === "failed" ? "Failed" : "Completed"}
+      </Button>
+    ),
+  },
+  {
+    title: "TRANSACTION ID",
+    field: "_id",
+    export: true,
+  },
+  {
     title: "TYPE",
     field: null,
     render: (data) => _.capitalize(data?.type) || "Deposit",
@@ -549,24 +566,6 @@ export const WALLET_TOPUP_TRANSACTIONS = [
       minimumFractionDigits: 3,
       maximumFractionDigits: 3,
     },
-  },
-  {
-    title: "Status",
-    field: "status",
-    render: ({ status }) => (
-      <Button
-        size="small"
-        label={status === "failed" ? "Failed" : "Completed"}
-        sx={{
-          color: "white",
-          bgcolor: status === "completed" ? "success.darker" : "error.darker",
-          borderRadius: 1,
-          p: 1,
-        }}
-      >
-        {status === "failed" ? "Failed" : "Completed"}
-      </Button>
-    ),
   },
 ];
 

@@ -3,8 +3,8 @@ import { Box, Container, TextField, Typography, MenuItem } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { IMAGES } from "../../constants";
 import AnimatedContainer from "../../components/animations/AnimatedContainer";
-import ServiceNotAvaialble from "../ServiceNotAvaialble";
-import { serviceAvailable } from "../../config/serviceAvailable";
+// import ServiceNotAvaialble from "../ServiceNotAvaialble";
+// import { serviceAvailable } from "../../config/serviceAvailable";
 import { Formik } from "formik";
 import DOMPurify from "dompurify";
 import { prepaidMeterValidationSchema } from "../../config/validationSchema";
@@ -201,7 +201,7 @@ function Prepaid() {
         </AnimatedContainer>
       </Container>
 
-      <ServiceNotAvaialble open={serviceAvailable()} />
+      {/* <ServiceNotAvaialble open={serviceAvailable()} /> */}
     </Container>
   );
 }

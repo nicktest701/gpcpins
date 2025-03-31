@@ -233,7 +233,7 @@ function Header() {
       }}
       color="inherit"
     >
-      <Container sx={{ p: 1 }}>
+      <Container sx={{ py: 1 }}>
         {showAlert && (
           <Box
             sx={{
@@ -271,7 +271,7 @@ function Header() {
             display: { xs: "none", md: "flex" },
             justifyContent: "space-between",
             alignItems: "center",
-            paddingBlock: "24px",
+            paddingBlock: "8px",
           }}
         >
           <Avatar
@@ -522,6 +522,7 @@ function Header() {
                     className="primary-btn"
                     style={{
                       // borderRadius: '8px',
+                      paddingBlock: "8px",
                       textTransform: "uppercase",
                     }}
                     end

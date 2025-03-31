@@ -22,34 +22,35 @@ import { TabContext, TabList, TabPanel } from "@mui/lab";
 import Swal from "sweetalert2";
 import LoadingButton from "@mui/lab/LoadingButton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
-import { useSearchParams } from "react-router-dom";
+import CustomDialogTitle from "@/components/dialogs/CustomDialogTitle";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useContext, useState } from "react";
 import {
   getInternationalMobileFormat,
   isValidPartner,
-} from "../../constants/PhoneCode";
-import ServiceProvider from "../../components/ServiceProvider";
+} from "@/constants/PhoneCode";
+import ServiceProvider from "@/components/ServiceProvider";
 import {
   getWalletStatus,
   disableWallet,
   sendAirtime,
   downloadAirtimeTemplate,
-} from "../../api/agentAPI";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import { globalAlertType } from "../../components/alert/alertType";
-import { readXLSX } from "../../config/readXLSX";
-import { readCSV } from "../../config/readCSV";
-import { currencyFormatter } from "../../constants";
+} from "@/api/agentAPI";
+import { CustomContext } from "@/context/providers/CustomProvider";
+import { globalAlertType } from "@/components/alert/alertType";
+import { readXLSX } from "@/config/readXLSX";
+import { readCSV } from "@/config/readCSV";
+import { currencyFormatter } from "@/constants";
 import { useEffect } from "react";
-import { AuthContext } from "../../context/providers/AuthProvider";
-import { verifyPin } from "../../config/validation";
+import { AuthContext } from "@/context/providers/AuthProvider";
+import { verifyPin } from "@/config/validation";
 
 const CSV_FILE_TYPE = "text/csv";
 const XLSX_FILE_TYPE =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const XLS_FILE_TYPE = "application/vnd.ms-excel";
 const NewTransfer = () => {
+  const navigate = useNavigate();
   const [dataPath, setDataPath] = useState("");
   const [content, setContent] = useState([]);
   const [contentErr, setContentErr] = useState("");
@@ -266,6 +267,12 @@ const NewTransfer = () => {
           },
           onSuccess: (data) => {
             handleClearFields();
+            setSearchParams((params) => {
+              params.delete("data");
+              params.delete("airtime-prompt");
+              return params;
+            });
+            setShowPinPage(false);
 
             Swal.fire({
               icon: "success",
@@ -277,12 +284,7 @@ const NewTransfer = () => {
             //   globalAlertType("info", data || "Transaction Completed!")
             // );
 
-            setSearchParams((params) => {
-              params.delete("data");
-              params.delete("airtime-prompt");
-              return params;
-            });
-            setShowPinPage(false);
+           
           },
           onError: async (error) => {
             if (error === "Invalid pin!") {
@@ -297,13 +299,22 @@ const NewTransfer = () => {
                 setErr(error);
               }
             } else {
+              setSearchParams((params) => {
+                params.delete("data");
+                params.delete("airtime-prompt");
+                return params;
+              });
+              setShowPinPage(false);
+              handleClearFields();
+              //
               Swal.fire({
                 icon: "error",
                 title: "Transfer Failed!",
                 text: error || "An unknown error has occurred!",
                 showCancelButton: false,
               });
-              // customDispatch(globalAlertType("error", error));
+
+              //
             }
           },
         });

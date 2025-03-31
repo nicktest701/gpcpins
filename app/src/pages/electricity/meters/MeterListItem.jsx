@@ -48,18 +48,18 @@ function MeterListItem({ _id, spn, number, name, type }) {
         secondary={name || "N/A"}
         sx={{ display: { xs: "block", md: "none" } }}
       />
-    
+
       <ListItemText
         primary={number}
         primaryTypographyProps={itemStyle}
         secondary="Meter No."
         sx={{ display: { xs: "none", md: "block" } }}
       />
-        {spn && (
+      {spn && (
         <ListItemText
           primary={spn}
           primaryTypographyProps={itemStyle}
-          secondary='SPN Number'
+          secondary="SPN Number"
           sx={{ display: { xs: "none", md: "block" } }}
         />
       )}
@@ -76,8 +76,8 @@ function MeterListItem({ _id, spn, number, name, type }) {
         secondary="Type"
         sx={{ display: { xs: "none", md: "block" } }}
       />
-      <ListItemSecondaryAction color="primary">
-        <ArrowForward />
+      <ListItemSecondaryAction color="secondary">
+        Buy Prepaid
       </ListItemSecondaryAction>
     </ListItemButton>
   );

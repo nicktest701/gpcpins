@@ -9,6 +9,7 @@ import { CancelPayment, ConfirmPayment } from "../api/paymentAPI";
 import { globalAlertType } from "../components/alert/alertType";
 import { useLocation, useNavigate, Navigate, Link } from "react-router-dom";
 import Swal from "sweetalert2";
+import GlobalSpinner from "../components/GlobalSpinner";
 
 function Pending() {
   const navigate = useNavigate();
@@ -26,8 +27,12 @@ function Pending() {
     refetchIntervalInBackground: true,
     retry: true,
     enabled: !!state?._id && !!state?.type,
+    onSuccess: (data) => {
+      if (data && data?.status === "completed") {
+        handleConfirmPayment();
+      }
+    },
   });
- 
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
@@ -120,6 +125,7 @@ function Pending() {
     });
   };
 
+
   if (!state?._id) {
     return <Navigate to="/" />;
   }
@@ -202,23 +208,23 @@ function Pending() {
             {confirmPayment.data && (
               <>
                 <Typography
-                  variant="body2"
+                  variant="h6"
                   color="secondary"
                   textAlign="center"
                   paragraph
                   // pb={4}
                 >
-                  Confirm your payment by pressing on the button below!
+                  Payment done!
                 </Typography>
 
-                <LoadingButton
+                {/* <LoadingButton
                   variant="contained"
                   loading={isLoading}
                   onClick={handleConfirmPayment}
                   sx={{ width: 300 }}
                 >
                   Confirm Payment
-                </LoadingButton>
+                </LoadingButton> */}
               </>
             )}
           </>
@@ -282,6 +288,7 @@ function Pending() {
           Copyright &copy; {new Date().getFullYear()} | Gab Powerful Consult
         </Typography>
       </Box>
+      {isLoading && <GlobalSpinner />}
     </div>
   );
 }

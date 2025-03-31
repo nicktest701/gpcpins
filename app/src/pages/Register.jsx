@@ -103,9 +103,6 @@ const Register = () => {
     onError: () => setErr("Error. Authentication Failed"),
   });
 
-
-
-  
   const { mutateAsync: googleMutate, isLoading: googleIsLoading } = useMutation(
     {
       mutationFn: loginGoogleUser,
@@ -131,7 +128,6 @@ const Register = () => {
             },
           });
         } else {
-     
           goHome();
         }
       },
@@ -149,25 +145,17 @@ const Register = () => {
         display: "grid",
         placeItems: "center",
         height: "100svh",
-        px: 4,
       }}
     >
       <IconButton onClick={goHome}>
-        <Avatar src={IMAGES.coat_of_arms} sx={{ width: 100, height: 100 }} />
+        <Avatar src={IMAGES.coat_of_arms} sx={{ width: 80, height: 80 }} />
       </IconButton>
       <Formik
         initialValues={initValues}
         validationSchema={registerUserValidationSchema}
         onSubmit={onSubmit}
       >
-        {({
-          touched,
-          values,
-          errors,
-          handleSubmit,
-          handleChange,
-        
-        }) => {
+        {({ touched, values, errors, handleSubmit, handleChange }) => {
           return (
             <Stack spacing={2} width="100%">
               <Typography variant="h5">Create a new account</Typography>
@@ -177,7 +165,7 @@ const Register = () => {
                 label="Email Address"
                 required
                 fullWidth
-                // size="small"
+                size="small"
                 value={values.email}
                 onChange={handleChange("email")}
                 error={Boolean(touched.email && errors.email)}
@@ -188,7 +176,7 @@ const Register = () => {
                 label="Telephone Number"
                 required
                 fullWidth
-                // size="small"
+                size="small"
                 value={values.phonenumber}
                 onChange={handleChange("phonenumber")}
                 error={Boolean(touched.phonenumber && errors.phonenumber)}
@@ -196,15 +184,18 @@ const Register = () => {
               />
               <FormControlLabel
                 label={
-                  <Typography variant="body2">
+                  <Typography variant="caption">
                     Agree to our
-                    <i>
-                      <Link to="/terms-and-conditions"> terms & conditions </Link>
-                    </i>{" "}
+                    <Typography component="span">
+                      <Link to="/terms-and-conditions">
+                        {" "}
+                        terms & conditions{" "}
+                      </Link>
+                    </Typography>{" "}
                     and
-                    <i>
+                    <Typography component="span">
                       <Link to="/privacy-policy"> privacy policy.</Link>
-                    </i>
+                    </Typography>
                   </Typography>
                 }
                 control={

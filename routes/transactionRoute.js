@@ -1107,10 +1107,6 @@ router.get(
     let logs = [];
 
 
-
-
-
-
     const transx = await knex.transaction();
 
     try {
@@ -1196,10 +1192,11 @@ router.get(
         .orderBy("updatedAt", "desc");
 
       const transaction = voucher_transactions.map(({ info, ...rest }) => {
-
+        const d = info ? JSON.parse(info) : {}
         return {
           ...rest,
-          // info: JSON.parse(info),
+          info: d,
+          amount: d?.amount
         };
       });
 
@@ -1261,7 +1258,7 @@ router.get(
 
       //Get Voucher & Ticket Total Amount
       const voucherTotal = _.sum(
-        _.map(transaction, (item) => Number(item?.info?.amount))
+        _.map(transaction, (item) => Number(item?.amount))
       );
 
       //Get Airtime Total Amount

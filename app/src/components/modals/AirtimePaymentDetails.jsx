@@ -251,13 +251,7 @@ function AirtimePaymentDetails() {
                     <VoucherPlaceHolderItem
                       title="Recipient Number"
                       value={searchParams.get("recipient")}
-                      img={
-                        <Avatar
-                          src={getCode(searchParams.get("recipient")).image}
-                          variant="square"
-                          sx={{ width: 40, height: 20, alignSelf: "center" }}
-                        />
-                      }
+                     
                     />
                   )}
                   {searchParams.get("plan_name") && (
@@ -314,7 +308,7 @@ function AirtimePaymentDetails() {
 
                     <TextField
                       size="small"
-                      type="number"
+                      type="password"
                       inputMode="numeric"
                       placeholder="Enter 4-digit pin"
                       value={token}
@@ -322,7 +316,7 @@ function AirtimePaymentDetails() {
                       error={Boolean(err)}
                       helperText={err}
                       margin="dense"
-                      sx={{ textAlign: "center", width: 200 }}
+                      sx={{ textAlign: "center", width: 100 }}
                     />
                   </Stack>
                 )}

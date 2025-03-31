@@ -1,29 +1,22 @@
 import { useContext, useMemo, useState } from "react";
 import _ from "lodash";
-import {
-  Box,
-  Button,
-  Container,
-  MenuItem,
-  Stack,
-  TextField,
-} from "@mui/material";
+import { Box, Button, MenuItem, Stack, TextField } from "@mui/material";
 
-import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
-import CustomDateRangePicker from "../../components/pickers/CustomDateRangePicker";
+import CustomizedMaterialTable from "@/components/tables/CustomizedMaterialTable";
+import CustomDateRangePicker from "@/components/pickers/CustomDateRangePicker";
 import { PaymentsRounded } from "@mui/icons-material";
 import { useQuery } from "@tanstack/react-query";
 
-import CustomTitle from "../../components/custom/CustomTitle";
-import { AuthContext } from "../../context/providers/AuthProvider";
-import { airtimeTransactionsColumns } from "../../mocks/columns";
+import CustomTitle from "@/components/custom/CustomTitle";
+import { AuthContext } from "@/context/providers/AuthProvider";
+import { airtimeTransactionsColumns } from "@/mocks/columns";
 import { useSearchParams } from "react-router-dom";
-import { getAgentTransactions } from "../../api/agentAPI";
+import { getAgentTransactions } from "@/api/agentAPI";
 
-import { currencyFormatter } from "../../constants";
-import CustomRangePicker from "../../components/pickers/CustomRangePicker";
+import { currencyFormatter } from "@/constants";
+import CustomRangePicker from "@/components/pickers/CustomRangePicker";
 import NewBundleTransfer from "./NewBundleTransfer";
-import CustomTotal from "../../components/custom/CustomTotal";
+import CustomTotal from "@/components/custom/CustomTotal";
 
 function BundleTransaction() {
   const [searchParams, setSearchParams] = useSearchParams();

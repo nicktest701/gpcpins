@@ -49,7 +49,7 @@ function BusPreview() {
   };
 
   return (
-    <Container sx={{ minHeight: "100vh", pt: 4, bgcolor: "#fff" }}>
+    <Container sx={{ minHeight: "100svh", bgcolor: "#fff" }}>
       {origin && destination && (
         <Stack direction="row" spacing={2} pb={2} mt={3}>
           <Typography variant="h6" color="primary">
@@ -103,7 +103,7 @@ function BusPreview() {
         <Button
           variant="contained"
           onClick={handleSearch}
-          sx={{ minWidth: 150, py: 2 }}
+          fullWidth
           // endIcon={<Avatar src={IMAGES.bus} sx={{ width: 32, height: 24 }} />}
         >
           Find Tickets

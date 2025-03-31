@@ -1,7 +1,10 @@
-import { Bar } from 'react-chartjs-2';
-import Box from '@mui/material/Box';
-import _ from 'lodash';
+import { Bar } from "react-chartjs-2";
+import Box from "@mui/material/Box";
+import { useTheme, useMediaQuery } from "@mui/material";
+import { currencyFormatter } from "@/constants";
 const BarChart = ({ labels, datasets }) => {
+  const { breakpoints } = useTheme();
+  const matches = useMediaQuery(breakpoints.down("md"));
   return (
     <Box
       sx={{
@@ -43,6 +46,19 @@ const BarChart = ({ labels, datasets }) => {
           plugins: {
             legend: {
               display: true,
+            },
+            datalabels: {
+              display: true,
+              color: "black",
+              anchor: "end",
+              align: "end",
+              font: {
+                size: matches ? "14px" : "18px",
+              },
+              // backgroundColor: "#000",
+              // borderRadius:'40px',
+              formatter: (value) =>
+                Number(value) === 0 ? "" : currencyFormatter(value || 0), // Display the data value directly
             },
           },
         }}

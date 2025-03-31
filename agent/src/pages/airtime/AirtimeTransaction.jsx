@@ -1,31 +1,24 @@
 import { useContext, useMemo, useState } from "react";
 import _ from "lodash";
-import {
-  Box,
-  Button,
-  Container,
-  MenuItem,
-  Stack,
-  TextField,
-} from "@mui/material";
+import { Box, Button, MenuItem, Stack, TextField } from "@mui/material";
 
 // import Swal from "sweetalert2";
-import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
-import CustomDateRangePicker from "../../components/pickers/CustomDateRangePicker";
+import CustomizedMaterialTable from "@/components/tables/CustomizedMaterialTable";
+import CustomDateRangePicker from "@/components/pickers/CustomDateRangePicker";
 import { PaymentsRounded } from "@mui/icons-material";
 import { useQuery } from "@tanstack/react-query";
-// import { CustomContext } from "../../context/providers/CustomProvider";
+// import { CustomContext } from "@/context/providers/CustomProvider";
 
-import CustomTitle from "../../components/custom/CustomTitle";
-import { AuthContext } from "../../context/providers/AuthProvider";
-import { airtimeTransactionsColumns } from "../../mocks/columns";
+import CustomTitle from "@/components/custom/CustomTitle";
+import { AuthContext } from "@/context/providers/AuthProvider";
+import { airtimeTransactionsColumns } from "@/mocks/columns";
 import NewTransfer from "./NewTransfer";
 import { useSearchParams } from "react-router-dom";
-import { getAgentTransactions } from "../../api/agentAPI";
+import { getAgentTransactions } from "@/api/agentAPI";
 
-import { currencyFormatter } from "../../constants";
-import CustomRangePicker from "../../components/pickers/CustomRangePicker";
-import CustomTotal from "../../components/custom/CustomTotal";
+import { currencyFormatter } from "@/constants";
+import CustomRangePicker from "@/components/pickers/CustomRangePicker";
+import CustomTotal from "@/components/custom/CustomTotal";
 
 function AirtimeTransaction() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -199,7 +192,7 @@ function AirtimeTransaction() {
 
   return (
     <>
-      <Box sx={{ paddingY: 2 }}>
+      <Box sx={{ py: 2 }}>
         <CustomTitle
           title="Airtime Transfer"
           subtitle="View and Manage all your bulk airtime and EVD transactions request"

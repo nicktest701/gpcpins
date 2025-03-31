@@ -232,10 +232,15 @@ export const voucherCategoryColumns = [
     field: "logo",
     render: ({ logo }) => {
       return (
-        <Avatar
-          variant="square"
+        <img
           src={logo || null}
-          sx={{ width: 30, height: 30 }}
+          width="100px"
+          height="100px"
+          style={{
+            maxWidth: "100%",
+            objectFit: "contain",
+            aspectRatio: "1/1",
+          }}
         />
       );
     },
@@ -273,10 +278,15 @@ export const waecCategoryColumns = [
     field: "logo",
     render: ({ logo }) => {
       return (
-        <Avatar
-          variant="square"
+        <img
           src={logo}
-          sx={{ width: { xs: 48, md: 100 }, height: { xs: 48, md: 100 } }}
+          width="100px"
+          height="100px"
+          style={{
+            maxWidth: "100%",
+            objectFit: "contain",
+            aspectRatio: "1/1",
+          }}
         />
       );
     },
@@ -352,21 +362,6 @@ export const VOUCHER_COLUMNS = [
     hidden: true,
   },
   {
-    title: "Voucher",
-    field: "voucher",
-  },
-  {
-    title: "Pin",
-    field: "pin",
-    render: ({ pin }) => hidePin(pin),
-  },
-  {
-    title: "Serial",
-    field: "serial",
-    render: ({ serial }) => hidePin(serial),
-  },
-
-  {
     title: "Status",
     field: "status",
     render: ({ status }) => (
@@ -381,6 +376,20 @@ export const VOUCHER_COLUMNS = [
       />
     ),
   },
+  {
+    title: "Voucher",
+    field: "voucher",
+  },
+  {
+    title: "Pin",
+    field: "pin",
+    render: ({ pin }) => hidePin(pin),
+  },
+  {
+    title: "Serial",
+    field: "serial",
+    render: ({ serial }) => hidePin(serial),
+  },
 ];
 
 export const TICKETS_COLUMNS = [
@@ -389,27 +398,6 @@ export const TICKETS_COLUMNS = [
     field: "_id",
     hidden: true,
   },
-  {
-    title: "Voucher",
-    field: "voucher",
-  },
-  {
-    title: "Pin/Serial",
-    field: "pin",
-    render: ({ pin }) => hidePin(pin),
-  },
-  {
-    title: "Type/Seat No.",
-
-    render: ({ category, details }) => {
-      return category === "bus"
-        ? details?.seatNo
-        : ["stadium", "cinema"].includes(category)
-        ? details?.type
-        : null;
-    },
-  },
-
   {
     title: "Status",
     field: "status",
@@ -431,6 +419,26 @@ export const TICKETS_COLUMNS = [
       />
     ),
   },
+  {
+    title: "Voucher",
+    field: "voucher",
+  },
+  {
+    title: "Pin/Serial",
+    field: "pin",
+    render: ({ pin }) => hidePin(pin),
+  },
+  {
+    title: "Type/Seat No.",
+
+    render: ({ category, details }) => {
+      return category === "bus"
+        ? details?.seatNo
+        : ["stadium", "cinema"].includes(category)
+        ? details?.type
+        : null;
+    },
+  },
 ];
 
 export const universityCategoryColumns = [
@@ -444,10 +452,15 @@ export const universityCategoryColumns = [
     field: "logo",
     render: ({ logo }) => {
       return (
-        <Avatar
-          variant="square"
+        <img
           src={logo || null}
-          sx={{ width: { xs: 48, md: 100 }, height: { xs: 48, md: 100 } }}
+          width="100px"
+          height="100px"
+          style={{
+            maxWidth: "80%",
+            objectFit: "contain",
+            aspectRatio: "1/1",
+          }}
         />
       );
     },
@@ -495,10 +508,15 @@ export const busTicketColumns = [
     field: "logo",
     render: ({ logo }) => {
       return (
-        <Avatar
-          variant="square"
+        <img
           src={logo || null}
-          sx={{ width: { xs: 48, md: 100 }, height: { xs: 48, md: 100 } }}
+          width="100px"
+          height="100px"
+          style={{
+            maxWidth: "80%",
+            objectFit: "contain",
+            aspectRatio: "1/1",
+          }}
         />
       );
     },
@@ -695,18 +713,31 @@ export const stadiumTicketColumns = [
         <Stack rowGap={1} justifyContent="center" alignItems="center">
           <Stack
             direction="row"
-            spacing={2}
             alignItems="center"
             justifyContent="center"
+            px={4}
+            gap={3}
           >
-            <Avatar
+            <img
               src={rowData?.details?.homeImage}
-              sx={{ width: { xs: 48, md: 100 }, height: { xs: 48, md: 100 } }}
+              width="100px"
+              height="100px"
+              style={{
+                maxWidth: "100%",
+                objectFit: "contain",
+                aspectRatio: "1/1",
+              }}
             />
             <Typography>VS</Typography>
-            <Avatar
+            <img
               src={rowData?.details?.awayImage}
-              sx={{ width: { xs: 48, md: 100 }, height: { xs: 48, md: 100 } }}
+              width="100px"
+              height="100px"
+              style={{
+                maxWidth: "80%",
+                objectFit: "contain",
+                aspectRatio: "1/1",
+              }}
             />
           </Stack>
           <Typography
@@ -835,6 +866,21 @@ export const CATEGORY_LIST = [
 
 export const USERS_COLUMNS = [
   {
+    title: "Created At",
+    field: "createdAt",
+    type: "datetime",
+    // type: "date",
+    // dateSetting: {
+    //   format: "YYYY-MM-DD",
+    // },
+  },
+  {
+    field: "active",
+    title: "Status",
+    export: false,
+    render: ({ active }) => <Active active={active} />,
+  },
+  {
     title: "id",
     field: "_id",
     hidden: true,
@@ -930,27 +976,18 @@ export const USERS_COLUMNS = [
     hidden: true,
     export: true,
   },
-  {
-    title: "Created At",
-    field: "createdAt",
-    type: "datetime",
-    // type: "date",
-    // dateSetting: {
-    //   format: "YYYY-MM-DD",
-    // },
-  },
-  {
-    field: "active",
-    title: "Status",
-    export: false,
-    render: ({ active }) => <Active active={active} />,
-  },
 ];
 export const EMPLOYEES_COLUMNS = [
   {
     title: "id",
     field: "_id",
     hidden: true,
+  },
+  {
+    field: "active",
+    title: "Status",
+    export: false,
+    render: ({ active }) => <Active active={active} />,
   },
   {
     title: "Firstname",
@@ -1048,18 +1085,18 @@ export const EMPLOYEES_COLUMNS = [
     title: "Role",
     field: "role",
   },
-  {
-    field: "active",
-    title: "Status",
-    export: false,
-    render: ({ active }) => <Active active={active} />,
-  },
 ];
 export const AGENTS_COLUMNS = [
   {
     title: "id",
     field: "_id",
     hidden: true,
+  },
+  {
+    field: "active",
+    title: "Status",
+    export: false,
+    render: ({ active }) => <Active active={active} />,
   },
   {
     title: "Firstname",
@@ -1145,12 +1182,7 @@ export const AGENTS_COLUMNS = [
     hidden: true,
     export: true,
   },
-  {
-    field: "active",
-    title: "Status",
-    export: false,
-    render: ({ active }) => <Active active={active} />,
-  },
+
   // {
   //   field: '',
   //   title: 'Action',
@@ -1186,6 +1218,18 @@ export const BROADCAST_MESSAGES_COLUMNS = [
         />
       );
     },
+  },
+  {
+    title: "Status",
+    field: "isDelivered",
+    export: false,
+    render: ({ isDelivered }) => (
+      <Active
+        active={isDelivered}
+        activeMsg="Delivered"
+        inActiveMsg="Not Delivered"
+      />
+    ),
   },
   {
     title: "Recipient",
@@ -1246,18 +1290,6 @@ export const BROADCAST_MESSAGES_COLUMNS = [
         </>
       );
     },
-  },
-  {
-    title: "Status",
-    field: "isDelivered",
-    export: false,
-    render: ({ isDelivered }) => (
-      <Active
-        active={isDelivered}
-        activeMsg="Delivered"
-        inActiveMsg="Not Delivered"
-      />
-    ),
   },
 ];
 
@@ -1379,6 +1411,69 @@ export const transactionsColumns = (type, refund) => [
       const date = moment(rowData.createdAt).format("LLL");
       return date.toLowerCase().lastIndexOf(data.toLowerCase()) > -1;
     },
+  },
+  {
+    title: "Status",
+    field: "status",
+    customFilterAndSearch: (data, { status }) => {
+      return status?.toLowerCase().lastIndexOf(data?.toLowerCase()) > -1;
+    },
+    render: ({ domain, status, isProcessed }) =>
+      domain === "Airtime" ? (
+        <Button
+          size="small"
+          label={
+            status === "completed" && Boolean(isProcessed)
+              ? "Completed"
+              : status === "refunded" && Boolean(isProcessed)
+              ? "Refunded"
+              : "Pending"
+          }
+          sx={{
+            color: "#fff",
+            bgcolor:
+              status === "completed" && Boolean(isProcessed)
+                ? "success.darker"
+                : status === "refunded" && Boolean(isProcessed)
+                ? "secondary.darker"
+                : "warning.darker",
+            borderRadius: 1,
+          }}
+        >
+          {status === "completed" && Boolean(isProcessed)
+            ? "Completed"
+            : status === "refunded" && Boolean(isProcessed)
+            ? "Refunded"
+            : "Pending"}
+        </Button>
+      ) : (
+        <Button
+          size="small"
+          label={
+            status === "completed"
+              ? "Completed"
+              : status === "refunded"
+              ? "Refunded"
+              : "Pending"
+          }
+          sx={{
+            color: "#fff",
+            bgcolor:
+              status === "completed"
+                ? "success.darker"
+                : status === "pending"
+                ? "warning.darker"
+                : "secondary.darker",
+            borderRadius: 1,
+          }}
+        >
+          {status === "completed"
+            ? "Completed"
+            : status === "refunded"
+            ? "Refunded"
+            : "Pending"}
+        </Button>
+      ),
   },
   {
     title: "Id",
@@ -1532,70 +1627,6 @@ export const transactionsColumns = (type, refund) => [
   //       <></>
   //     ),
   // },
-
-  {
-    title: "Status",
-    field: "status",
-    customFilterAndSearch: (data, { status }) => {
-      return status?.toLowerCase().lastIndexOf(data?.toLowerCase()) > -1;
-    },
-    render: ({ domain, status, isProcessed }) =>
-      domain === "Airtime" ? (
-        <Button
-          size="small"
-          label={
-            status === "completed" && Boolean(isProcessed)
-              ? "Completed"
-              : status === "refunded" && Boolean(isProcessed)
-              ? "Refunded"
-              : "Pending"
-          }
-          sx={{
-            color: "#fff",
-            bgcolor:
-              status === "completed" && Boolean(isProcessed)
-                ? "success.darker"
-                : status === "refunded" && Boolean(isProcessed)
-                ? "secondary.darker"
-                : "warning.darker",
-            borderRadius: 1,
-          }}
-        >
-          {status === "completed" && Boolean(isProcessed)
-            ? "Completed"
-            : status === "refunded" && Boolean(isProcessed)
-            ? "Refunded"
-            : "Pending"}
-        </Button>
-      ) : (
-        <Button
-          size="small"
-          label={
-            status === "completed"
-              ? "Completed"
-              : status === "refunded"
-              ? "Refunded"
-              : "Pending"
-          }
-          sx={{
-            color: "#fff",
-            bgcolor:
-              status === "completed"
-                ? "success.darker"
-                : status === "pending"
-                ? "warning.darker"
-                : "secondary.darker",
-            borderRadius: 1,
-          }}
-        >
-          {status === "completed"
-            ? "Completed"
-            : status === "refunded"
-            ? "Refunded"
-            : "Pending"}
-        </Button>
-      ),
-  },
 ];
 
 export const bulkAirtimeTransactionsColumns = [
@@ -1613,6 +1644,33 @@ export const bulkAirtimeTransactionsColumns = [
     title: "UpdatedAt",
     field: "updatedAt",
     hidden: true,
+  },
+  {
+    title: "Status",
+    field: "status",
+    render: ({ status, isProcessed }) => (
+      <Button
+        size="small"
+        label={
+          status === "completed" && Boolean(isProcessed)
+            ? "Completed"
+            : "Pending"
+        }
+        sx={{
+          color: "#fff",
+
+          bgcolor:
+            status === "completed" && Boolean(isProcessed)
+              ? "success.darker"
+              : "info.light",
+          borderRadius: 1,
+        }}
+      >
+        {status === "completed" && Boolean(isProcessed)
+          ? "Completed"
+          : "Pending"}
+      </Button>
+    ),
   },
   {
     title: "Id",
@@ -1679,33 +1737,6 @@ export const bulkAirtimeTransactionsColumns = [
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     },
-  },
-  {
-    title: "Status",
-    field: "status",
-    render: ({ status, isProcessed }) => (
-      <Button
-        size="small"
-        label={
-          status === "completed" && Boolean(isProcessed)
-            ? "Completed"
-            : "Pending"
-        }
-        sx={{
-          color: "#fff",
-
-          bgcolor:
-            status === "completed" && Boolean(isProcessed)
-              ? "success.darker"
-              : "info.light",
-          borderRadius: 1,
-        }}
-      >
-        {status === "completed" && Boolean(isProcessed)
-          ? "Completed"
-          : "Pending"}
-      </Button>
-    ),
   },
 ];
 export const USERS_WALLET = (type) => [
@@ -1797,6 +1828,39 @@ export const AGENT_TRANSACTIONS = [
     ),
   },
   {
+    title: "Status",
+    field: "status",
+    render: ({ status }) => (
+      <Button
+        size="small"
+        label={
+          status === "completed"
+            ? "Completed"
+            : status === "refunded"
+            ? "Refunded"
+            : "Failed"
+        }
+        sx={{
+          color: "white",
+          bgcolor:
+            status === "completed"
+              ? "success.darker"
+              : status === "refunded"
+              ? "#000"
+              : "error.darker",
+          borderRadius: 1,
+          p: 1,
+        }}
+      >
+        {status === "completed"
+          ? "Completed"
+          : status === "refunded"
+          ? "Refunded"
+          : "Failed"}
+      </Button>
+    ),
+  },
+  {
     title: "TYPE",
     field: "type",
     cellStyle: {
@@ -1863,46 +1927,8 @@ export const AGENT_TRANSACTIONS = [
   //     color: "black",
   //   },
   // },
-  {
-    title: "Status",
-    field: "status",
-    render: ({ status }) => (
-      <Button
-        size="small"
-        label={
-          status === "completed"
-            ? "Completed"
-            : status === "refunded"
-            ? "Refunded"
-            : "Failed"
-        }
-        sx={{
-          color: "white",
-          bgcolor:
-            status === "completed"
-              ? "success.darker"
-              : status === "refunded"
-              ? "#000"
-              : "error.darker",
-          borderRadius: 1,
-          p: 1,
-        }}
-      >
-        {status === "completed"
-          ? "Completed"
-          : status === "refunded"
-          ? "Refunded"
-          : "Failed"}
-      </Button>
-    ),
-  },
 ];
 export const WALLET_TOPUP_TRANSACTIONS = [
-  {
-    title: "TRANSACTION ID",
-    field: "_id",
-    export: true,
-  },
   {
     title: "DATE",
     field: "createdAt",
@@ -1919,6 +1945,29 @@ export const WALLET_TOPUP_TRANSACTIONS = [
         }}
       />
     ),
+  },
+  {
+    title: "Status",
+    field: "status",
+    render: ({ status }) => (
+      <Button
+        size="small"
+        label={status === "failed" ? "Failed" : "Completed"}
+        sx={{
+          color: "white",
+          bgcolor: status === "completed" ? "success.darker" : "error.darker",
+          borderRadius: 1,
+          p: 1,
+        }}
+      >
+        {status === "failed" ? "Failed" : "Completed"}
+      </Button>
+    ),
+  },
+  {
+    title: "TRANSACTION ID",
+    field: "_id",
+    export: true,
   },
   {
     title: "TYPE",
@@ -1958,25 +2007,6 @@ export const WALLET_TOPUP_TRANSACTIONS = [
     },
   },
   { title: "Issued By", field: "issuerName" },
-  
-  {
-    title: "Status",
-    field: "status",
-    render: ({ status }) => (
-      <Button
-        size="small"
-        label={status === "failed" ? "Failed" : "Completed"}
-        sx={{
-          color: "white",
-          bgcolor: status === "completed" ? "success.darker" : "error.darker",
-          borderRadius: 1,
-          p: 1,
-        }}
-      >
-        {status === "failed" ? "Failed" : "Completed"}
-      </Button>
-    ),
-  },
 ];
 export const SERVICE_PROVIDER = [
   {
@@ -2010,6 +2040,39 @@ export const WALLET_TRANSACTIONS = (type) => [
     title: "DATE",
     field: "modifiedAt",
     export: true,
+  },
+  {
+    title: "STATUS",
+    field: "status",
+    render: ({ status }) => (
+      <Button
+        size="small"
+        label={
+          status === "completed"
+            ? "Completed"
+            : status === "refunded"
+            ? "Refunded"
+            : "Failed"
+        }
+        sx={{
+          color: "white",
+          bgcolor:
+            status === "completed"
+              ? "success.darker"
+              : status === "refunded"
+              ? "#000"
+              : "error.darker",
+          borderRadius: 1,
+          p: 1,
+        }}
+      >
+        {status === "completed"
+          ? "Completed"
+          : status === "refunded"
+          ? "Refunded"
+          : "Failed"}
+      </Button>
+    ),
   },
   {
     title: "DATE",
@@ -2078,39 +2141,6 @@ export const WALLET_TRANSACTIONS = (type) => [
     },
   },
   { title: "Issued By", field: "issuerName" },
-  {
-    title: "STATUS",
-    field: "status",
-    render: ({ status }) => (
-      <Button
-        size="small"
-        label={
-          status === "completed"
-            ? "Completed"
-            : status === "refunded"
-            ? "Refunded"
-            : "Failed"
-        }
-        sx={{
-          color: "white",
-          bgcolor:
-            status === "completed"
-              ? "success.darker"
-              : status === "refunded"
-              ? "#000"
-              : "error.darker",
-          borderRadius: 1,
-          p: 1,
-        }}
-      >
-        {status === "completed"
-          ? "Completed"
-          : status === "refunded"
-          ? "Refunded"
-          : "Failed"}
-      </Button>
-    ),
-  },
 ];
 
 export const EMPLOYEES_ROLES = [
@@ -2364,6 +2394,11 @@ export const LOGS_COLUMNS = [
 
 export const METERS_COLUMNS = [
   { title: "ID", field: "_id", hidden: true },
+  {
+    title: "Status",
+    field: "active",
+    render: ({ active }) => <Active active={Boolean(active)} />,
+  },
   { title: "Created ON", field: "modifiedAt" },
   { title: "Number", field: "number" },
   { title: "Name", field: "name" },
@@ -2371,12 +2406,6 @@ export const METERS_COLUMNS = [
   { title: "Type", field: "type" },
   { title: "District", field: "district" },
   { title: "Address", field: "address" },
-
-  {
-    title: "Status",
-    field: "active",
-    render: ({ active }) => <Active active={Boolean(active)} />,
-  },
 ];
 
 export const PROCESSED_TRANSACTIONS = [
@@ -2391,6 +2420,21 @@ export const PROCESSED_TRANSACTIONS = [
     },
   },
   { title: "Id", field: "_id", hidden: true },
+  {
+    title: "Status",
+    field: "status",
+    render: ({ isProcessed }) => (
+      <Button
+        sx={{
+          color: isProcessed ? "#fff" : "info.darker",
+          bgcolor: isProcessed ? "success.darker" : "info.lighter",
+          borderRadius: 1,
+        }}
+      >
+        {isProcessed ? "Completed" : "Pending"}
+      </Button>
+    ),
+  },
   { title: "Order ID", field: "paymentId" },
   { title: "Transaction Token", field: "info.orderNo" },
   { title: "Meter No.", field: "meter.number" },
@@ -2445,21 +2489,6 @@ export const PROCESSED_TRANSACTIONS = [
     field: "info.lastMonthConsumption",
     hidden: true,
   },
-  {
-    title: "Status",
-    field: "status",
-    render: ({ isProcessed }) => (
-      <Button
-        sx={{
-          color: isProcessed ? "#fff" : "info.darker",
-          bgcolor: isProcessed ? "success.darker" : "info.lighter",
-          borderRadius: 1,
-        }}
-      >
-        {isProcessed ? "Completed" : "Pending"}
-      </Button>
-    ),
-  },
 ];
 
 export const airtimeTransactionsColumns = (type) => [
@@ -2472,6 +2501,43 @@ export const airtimeTransactionsColumns = (type) => [
       const date = moment(rowData.createdAt).format("LLL");
       return date.toLowerCase().lastIndexOf(data.toLowerCase()) > -1;
     },
+  },
+  {
+    title: "Status",
+    field: "status",
+    customFilterAndSearch: (data, rowData) => {
+      return (
+        rowData?.status?.toLowerCase().lastIndexOf(data.toLowerCase()) > -1
+      );
+    },
+    render: ({ status, isProcessed }) => (
+      <Button
+        size="small"
+        label={
+          status === "completed" && Boolean(isProcessed)
+            ? "Completed"
+            : status === "refunded" && Boolean(isProcessed)
+            ? "Refunded"
+            : "Pending"
+        }
+        sx={{
+          color: "#fff",
+          bgcolor:
+            status === "completed" && Boolean(isProcessed)
+              ? "success.darker"
+              : status === "refunded" && Boolean(isProcessed)
+              ? "secondary.main"
+              : "warning.darker",
+          borderRadius: 1,
+        }}
+      >
+        {status === "completed" && Boolean(isProcessed)
+          ? "Completed"
+          : status === "refunded" && Boolean(isProcessed)
+          ? "Refunded"
+          : "Pending"}
+      </Button>
+    ),
   },
   {
     title: "TRANSACTION Id",
@@ -2528,43 +2594,6 @@ export const airtimeTransactionsColumns = (type) => [
       maximumFractionDigits: 2,
     },
   },
-  {
-    title: "Status",
-    field: "status",
-    customFilterAndSearch: (data, rowData) => {
-      return (
-        rowData?.status?.toLowerCase().lastIndexOf(data.toLowerCase()) > -1
-      );
-    },
-    render: ({ status, isProcessed }) => (
-      <Button
-        size="small"
-        label={
-          status === "completed" && Boolean(isProcessed)
-            ? "Completed"
-            : status === "refunded" && Boolean(isProcessed)
-            ? "Refunded"
-            : "Pending"
-        }
-        sx={{
-          color: "#fff",
-          bgcolor:
-            status === "completed" && Boolean(isProcessed)
-              ? "success.darker"
-              : status === "refunded" && Boolean(isProcessed)
-              ? "secondary.main"
-              : "warning.darker",
-          borderRadius: 1,
-        }}
-      >
-        {status === "completed" && Boolean(isProcessed)
-          ? "Completed"
-          : status === "refunded" && Boolean(isProcessed)
-          ? "Refunded"
-          : "Pending"}
-      </Button>
-    ),
-  },
 ];
 
 export const userTransactionsColumns = (type) => [
@@ -2577,6 +2606,38 @@ export const userTransactionsColumns = (type) => [
       const date = moment(rowData.createdAt).format("LLL");
       return date.toLowerCase().lastIndexOf(data.toLowerCase()) > -1;
     },
+  },
+  {
+    title: "Status",
+    field: "status",
+    render: ({ status }) => (
+      <Button
+        size="small"
+        label={
+          status === "completed"
+            ? "Completed"
+            : status === "refunded"
+            ? "Refunded"
+            : "Pending"
+        }
+        sx={{
+          color: "#fff",
+          bgcolor:
+            status === "completed"
+              ? "success.darker"
+              : status === "refunded"
+              ? "secondary.main"
+              : "warning.darker",
+          borderRadius: 1,
+        }}
+      >
+        {status === "completed"
+          ? "Completed"
+          : status === "refunded"
+          ? "Refunded"
+          : "Pending"}
+      </Button>
+    ),
   },
   {
     title: "TRANSACTION Id",
@@ -2637,38 +2698,6 @@ export const userTransactionsColumns = (type) => [
       maximumFractionDigits: 2,
     },
   },
-  {
-    title: "Status",
-    field: "status",
-    render: ({ status }) => (
-      <Button
-        size="small"
-        label={
-          status === "completed"
-            ? "Completed"
-            : status === "refunded"
-            ? "Refunded"
-            : "Pending"
-        }
-        sx={{
-          color: "#fff",
-          bgcolor:
-            status === "completed"
-              ? "success.darker"
-              : status === "refunded"
-              ? "secondary.main"
-              : "warning.darker",
-          borderRadius: 1,
-        }}
-      >
-        {status === "completed"
-          ? "Completed"
-          : status === "refunded"
-          ? "Refunded"
-          : "Pending"}
-      </Button>
-    ),
-  },
 ];
 
 export const airtimeTransactionsByColumns = [
@@ -2681,6 +2710,39 @@ export const airtimeTransactionsByColumns = [
       const date = moment(rowData.createdAt).format("LLL");
       return date.toLowerCase().lastIndexOf(data.toLowerCase()) > -1;
     },
+  },
+  {
+    title: "Status",
+    field: "status",
+    render: ({ status }) => (
+      <Button
+        size="small"
+        label={
+          status === "completed"
+            ? "Completed"
+            : status === "refunded"
+            ? "Refunded"
+            : "Failed"
+        }
+        sx={{
+          color: "white",
+          bgcolor:
+            status === "completed"
+              ? "success.darker"
+              : status === "refunded"
+              ? "#000"
+              : "error.darker",
+          borderRadius: 1,
+          p: 1,
+        }}
+      >
+        {status === "completed"
+          ? "Completed"
+          : status === "refunded"
+          ? "Refunded"
+          : "Failed"}
+      </Button>
+    ),
   },
   {
     title: "Id",
@@ -2758,39 +2820,5 @@ export const airtimeTransactionsByColumns = [
       minimumFractionDigits: 3,
       maximumFractionDigits: 3,
     },
-  },
-
-  {
-    title: "Status",
-    field: "status",
-    render: ({ status }) => (
-      <Button
-        size="small"
-        label={
-          status === "completed"
-            ? "Completed"
-            : status === "refunded"
-            ? "Refunded"
-            : "Failed"
-        }
-        sx={{
-          color: "white",
-          bgcolor:
-            status === "completed"
-              ? "success.darker"
-              : status === "refunded"
-              ? "#000"
-              : "error.darker",
-          borderRadius: 1,
-          p: 1,
-        }}
-      >
-        {status === "completed"
-          ? "Completed"
-          : status === "refunded"
-          ? "Refunded"
-          : "Failed"}
-      </Button>
-    ),
   },
 ];

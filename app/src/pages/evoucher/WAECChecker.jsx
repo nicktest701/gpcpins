@@ -15,7 +15,6 @@ import CustomWrapper from "../../components/custom/CustomWrapper";
 import { Helmet } from "react-helmet-async";
 import { Container, Typography } from "@mui/material";
 import { AuthContext } from "../../context/providers/AuthProvider";
-import PayLoading from "../../components/PayLoading";
 import PaymentOption from "../../components/PaymentOption";
 import { useNavigate } from "react-router-dom";
 
@@ -76,6 +75,7 @@ function WAECChecker() {
       },
       isWallet: paymentMethod === "wallet",
     };
+    
 
     customDispatch({
       type: "getVoucherPaymentDetails",
@@ -98,12 +98,12 @@ function WAECChecker() {
         <title>WAEC & School Placement Checkers | Gab Powerful Consult</title>
         <meta
           name="description"
-          content="Buy WAEC  and School Placement Checkers with ease and just a single click."
+          content="Buy WAEC and School Placement Checkers with ease and just a single click."
         />
 
         <link
           rel="canonical"
-          href="https://gpcpins.com/evoucher/waec-checker"
+          href="https://www.gpcpins.com/evoucher/waec-checker"
         />
       </Helmet>
       <CustomWrapper img={IMAGES.main} title="WAEC CHECKERS" item=" WAEC">
@@ -113,7 +113,7 @@ function WAECChecker() {
           enableReinitialize={true}
           onSubmit={onSubmit}
         >
-          {({ errors, values, touched, handleSubmit }) => {
+          {({ errors, touched, handleSubmit }) => {
             return (
               <Container
                 maxWidth="xs"

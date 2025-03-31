@@ -1,5 +1,5 @@
-import { serviceAvailable } from "../../config/serviceAvailable";
-import ServiceNotAvaialble from "../ServiceNotAvaialble";
+// import { serviceAvailable } from "../../config/serviceAvailable";
+// import ServiceNotAvaialble from "../ServiceNotAvaialble";
 import AddBulk from "./AddBulk";
 import Typography from '@mui/material/Typography'
 
@@ -16,7 +16,7 @@ function Bulk() {
       </marquee>
   
       <AddBulk />
-      <ServiceNotAvaialble open={serviceAvailable()} />
+      {/* <ServiceNotAvaialble open={serviceAvailable()} /> */}
     </div>
   );
 }

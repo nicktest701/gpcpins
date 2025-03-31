@@ -32,7 +32,7 @@ function AgentWallet() {
   };
   return (
     <>
-      <Container sx={{ paddingY: 2, bgcolor: "#fff" }}>
+      <Container maxWidth='lg' sx={{ paddingY: 2, bgcolor: "#fff" }}>
         <CustomizedMaterialTable
           title="Wallet Deposits"
           isLoading={transactions.isLoading}

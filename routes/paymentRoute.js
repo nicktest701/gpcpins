@@ -83,6 +83,7 @@ const rlimit = rateLimit({
 
 const limit = pLimit(3);
 
+
 router.get(
   "/vouchers",
   verifyToken,
@@ -732,7 +733,7 @@ router.get(
 
 
       const soldVouchers_ids = _.map(selectedVouchers, '_id');
-   
+
 
       try {
 
@@ -941,7 +942,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
       };
       try {
         const response = await sendAirtime(airtimeInfo);
-     
+
         if (['00', '09'].includes(response["status-code"])) {
           await transx("airtime_transactions").where("_id", id).update({
             isProcessed: 1,
@@ -1010,7 +1011,7 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
         "Prepaid Units"
       );
 
-      limit(() => Promise.all([userMail, userSMS, agentMail]));
+      limit(() => Promise.all([userSMS, agentMail]));
     }
 
 
@@ -1141,6 +1142,7 @@ router.post(
 
       selectedVouchers = _.flatMap(vouchers);
     }
+
     //Check if tickets are bus
     else if (["bus"].includes(category)) {
       selectedVouchers = await knex("vouchers")
@@ -1172,7 +1174,7 @@ router.post(
     ) {
       return res
         .status(404)
-        .json("Requested Item not available!.Try again later.");
+        .json(`${["stadium", "cinema", "bus"].includes(category) ? 'Ticket' : 'Voucher'} not available! Try again later.`);
     }
 
     const transx = await knex.transaction();

@@ -16,7 +16,6 @@ import {
   recentTransactionColumns,
   topCustomersColumns,
 } from "../../mocks/columns";
-import PayLoading from "../../components/PayLoading";
 import LoadingSpinner from "../../components/spinners/LoadingSpinner";
 import CustomTitle from "../../components/custom/CustomTitle";
 

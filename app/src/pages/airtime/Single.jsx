@@ -117,7 +117,7 @@ const Single = () => {
 
               <ServiceProvider
                 label="Network Type"
-                size="small"
+                size="large"
                 value={provider}
                 setValue={setProvider}
                 error={Boolean(touched.provider && errors.provider)}

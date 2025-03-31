@@ -15,22 +15,25 @@ import {
   PhoneInTalk,
 } from "@mui/icons-material";
 import { useQuery } from "@tanstack/react-query";
-import ItemCard from "../../components/custom/ItemCard";
-import CustomCard from "../../components/custom/CustomCard";
-import PieChart from "../../components/charts/PieChart";
-import PlainTable from "../../components/tables/PlainTable";
-import BarChart from "../../components/charts/BarChart";
-import { getTotalSales } from "../../api/transactionAPI";
-import LineChart from "../../components/charts/LineChart";
+import ItemCard from "@/components/custom/ItemCard";
+import CustomCard from "@/components/custom/CustomCard";
+import PieChart from "@/components/charts/PieChart";
+import PlainTable from "@/components/tables/PlainTable";
+import BarChart from "@/components/charts/BarChart";
+import { getTotalSales } from "@/api/transactionAPI";
+import LineChart from "@/components/charts/LineChart";
 import { useTheme } from "@emotion/react";
-import { recentTransactionColumns } from "../../mocks/columns";
-import PayLoading from "../../components/PayLoading";
-import CustomTitle from "../../components/custom/CustomTitle";
-import { IMAGES } from "../../constants";
+import { recentTransactionColumns } from "@/mocks/columns";
+import PayLoading from "@/components/PayLoading";
+import CustomTitle from "@/components/custom/CustomTitle";
+import { IMAGES } from "@/constants";
 import CountUp from "react-countup";
-import Community from "../../components/home/Community";
+import Community from "@/components/home/Community";
+import { AuthContext } from "@/context/providers/AuthProvider";
+import { useContext } from "react";
 
 function Overall() {
+  const { user } = useContext(AuthContext);
   const { palette } = useTheme();
   const summary = useQuery({
     queryKey: ["total-sales"],
@@ -42,19 +45,19 @@ function Overall() {
   }
 
   return (
-    <Container>
+    <Container maxWidth="lg">
       <Box
         sx={{
           width: "100%",
           display: "flex",
           justifyContent: "flex-end",
           alignItems: "center",
-          pt:2
+          pt: 2,
         }}
       >
         <Box>
-          <Typography variant="h4" textAlign="right">
-            Welcome,
+          <Typography variant="h4" textAlign={{ xs: "left", md: "right" }}>
+            Welcome,{user?.firstname || ""}
           </Typography>
           <Typography>Your current dashboard for today!</Typography>
         </Box>
@@ -138,7 +141,7 @@ function Overall() {
             value={
               <CountUp
                 start={0}
-                end={summary?.data?.totalSales?.total}
+                end={summary?.data?.totalSales?.total || 0}
                 prefix="GHS "
                 decimals={3}
               />
@@ -152,7 +155,7 @@ function Overall() {
             value={
               <CountUp
                 start={0}
-                end={summary?.data?.totalSales?.bundle}
+                end={summary?.data?.totalSales?.bundle || 0}
                 prefix="GHS "
                 decimals={3}
               />
@@ -166,7 +169,7 @@ function Overall() {
             value={
               <CountUp
                 start={0}
-                end={summary?.data?.totalSales?.airtime}
+                end={summary?.data?.totalSales?.airtime || 0}
                 prefix="GHS "
                 decimals={3}
                 enableScrollSpy={true}

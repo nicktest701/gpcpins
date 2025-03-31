@@ -28,7 +28,7 @@ const BusSearch = ({ label, value, setValue, icon, inputColor }) => {
             label={label}
             placeholder={label}
             fullWidth
-            // size='small'
+            size='small'
             InputProps={{
               ...params.InputProps,
               sx: { color: inputColor || "#fff" },

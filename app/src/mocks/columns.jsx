@@ -447,19 +447,6 @@ export const VOUCHER_COLUMNS = [
     hidden: true,
   },
   {
-    title: "Voucher",
-    field: "voucher",
-  },
-  {
-    title: "Pin",
-    field: "pin",
-  },
-  {
-    title: "Serial",
-    field: "serial",
-  },
-
-  {
     title: "Status",
     field: "status",
     render: ({ status }) => (
@@ -474,6 +461,18 @@ export const VOUCHER_COLUMNS = [
       />
     ),
   },
+  {
+    title: "Voucher",
+    field: "voucher",
+  },
+  {
+    title: "Pin",
+    field: "pin",
+  },
+  {
+    title: "Serial",
+    field: "serial",
+  },
 ];
 
 export const TICKETS_COLUMNS = [
@@ -482,26 +481,6 @@ export const TICKETS_COLUMNS = [
     field: "_id",
     hidden: true,
   },
-  {
-    title: "Voucher",
-    field: "voucher",
-  },
-  {
-    title: "Pin/Serial",
-    field: "pin",
-  },
-  {
-    title: "Type/Seat No.",
-
-    render: ({ category, details }) => {
-      return category === "bus"
-        ? details?.seatNo
-        : ["stadium", "cinema"].includes(category)
-        ? details?.type
-        : null;
-    },
-  },
-
   {
     title: "Status",
     field: "status",
@@ -522,6 +501,25 @@ export const TICKETS_COLUMNS = [
         sx={{ color: "white" }}
       />
     ),
+  },
+  {
+    title: "Voucher",
+    field: "voucher",
+  },
+  {
+    title: "Pin/Serial",
+    field: "pin",
+  },
+  {
+    title: "Type/Seat No.",
+
+    render: ({ category, details }) => {
+      return category === "bus"
+        ? details?.seatNo
+        : ["stadium", "cinema"].includes(category)
+        ? details?.type
+        : null;
+    },
   },
 ];
 
@@ -946,6 +944,29 @@ export const EMPLOYEES_COLUMNS = [
     hidden: true,
   },
   {
+    field: "active",
+    title: "Status",
+    export: false,
+    render: ({ active }) => (
+      <Button
+        startIcon={
+          <CircleRounded
+            sx={{ color: active ? "green" : "red", width: 10, height: 10 }}
+          />
+        }
+        sx={{
+          backgroundColor: `color-mix(in oklab,${
+            active ? "green" : "red"
+          },white 85%)`,
+          color: `color-mix(in oklab,${active ? "green" : "red"},black 15%)`,
+        }}
+      >
+        {active ? "Active" : "Disabled"}
+      </Button>
+    ),
+  },
+
+  {
     title: "Name",
     field: "fullname",
     hidden: true,
@@ -979,29 +1000,6 @@ export const EMPLOYEES_COLUMNS = [
   {
     title: "Username",
     field: "username",
-  },
-
-  {
-    field: "active",
-    title: "Status",
-    export: false,
-    render: ({ active }) => (
-      <Button
-        startIcon={
-          <CircleRounded
-            sx={{ color: active ? "green" : "red", width: 10, height: 10 }}
-          />
-        }
-        sx={{
-          backgroundColor: `color-mix(in oklab,${
-            active ? "green" : "red"
-          },white 85%)`,
-          color: `color-mix(in oklab,${active ? "green" : "red"},black 15%)`,
-        }}
-      >
-        {active ? "Active" : "Disabled"}
-      </Button>
-    ),
   },
 
   {
@@ -1192,6 +1190,43 @@ export const airtimeTransactionsColumns = (type) => [
     },
   },
   {
+    title: "Status",
+    field: "status",
+    customFilterAndSearch: (data, rowData) => {
+      return (
+        rowData?.status?.toLowerCase().lastIndexOf(data.toLowerCase()) > -1
+      );
+    },
+    render: ({ status, isProcessed }) => (
+      <Button
+        size="small"
+        label={
+          status === "completed" && Boolean(isProcessed)
+            ? "Completed"
+            : status === "refunded" && Boolean(isProcessed)
+            ? "Refunded"
+            : "Pending"
+        }
+        sx={{
+          color: "#fff",
+          bgcolor:
+            status === "completed" && Boolean(isProcessed)
+              ? "success.darker"
+              : status === "refunded" && Boolean(isProcessed)
+              ? "secondary.main"
+              : "warning.darker",
+          borderRadius: 1,
+        }}
+      >
+        {status === "completed" && Boolean(isProcessed)
+          ? "Completed"
+          : status === "refunded" && Boolean(isProcessed)
+          ? "Refunded"
+          : "Pending"}
+      </Button>
+    ),
+  },
+  {
     title: "TRANSACTION Id",
     field: "_id",
     // hidden: true,
@@ -1246,43 +1281,6 @@ export const airtimeTransactionsColumns = (type) => [
       maximumFractionDigits: 2,
     },
   },
-  {
-    title: "Status",
-    field: "status",
-    customFilterAndSearch: (data, rowData) => {
-      return (
-        rowData?.status?.toLowerCase().lastIndexOf(data.toLowerCase()) > -1
-      );
-    },
-    render: ({ status, isProcessed }) => (
-      <Button
-        size="small"
-        label={
-          status === "completed" && Boolean(isProcessed)
-            ? "Completed"
-            : status === "refunded" && Boolean(isProcessed)
-            ? "Refunded"
-            : "Pending"
-        }
-        sx={{
-          color: "#fff",
-          bgcolor:
-            status === "completed" && Boolean(isProcessed)
-              ? "success.darker"
-              : status === "refunded" && Boolean(isProcessed)
-              ? "secondary.main"
-              : "warning.darker",
-          borderRadius: 1,
-        }}
-      >
-        {status === "completed" && Boolean(isProcessed)
-          ? "Completed"
-          : status === "refunded" && Boolean(isProcessed)
-          ? "Refunded"
-          : "Pending"}
-      </Button>
-    ),
-  },
 ];
 export const transactionsColumns = (type) => [
   {
@@ -1294,6 +1292,38 @@ export const transactionsColumns = (type) => [
       const date = moment(rowData.createdAt).format("LLL");
       return date.toLowerCase().lastIndexOf(data.toLowerCase()) > -1;
     },
+  },
+  {
+    title: "Status",
+    field: "status",
+    render: ({ status }) => (
+      <Button
+        size="small"
+        label={
+          status === "completed"
+            ? "Completed"
+            : status === "refunded"
+            ? "Refunded"
+            : "Pending"
+        }
+        sx={{
+          color: "#fff",
+          bgcolor:
+            status === "completed"
+              ? "success.darker"
+              : status === "refunded"
+              ? "secondary.main"
+              : "warning.darker",
+          borderRadius: 1,
+        }}
+      >
+        {status === "completed"
+          ? "Completed"
+          : status === "refunded"
+          ? "Refunded"
+          : "Pending"}
+      </Button>
+    ),
   },
   {
     title: "TRANSACTION Id",
@@ -1354,38 +1384,6 @@ export const transactionsColumns = (type) => [
       maximumFractionDigits: 2,
     },
   },
-  {
-    title: "Status",
-    field: "status",
-    render: ({ status }) => (
-      <Button
-        size="small"
-        label={
-          status === "completed"
-            ? "Completed"
-            : status === "refunded"
-            ? "Refunded"
-            : "Pending"
-        }
-        sx={{
-          color: "#fff",
-          bgcolor:
-            status === "completed"
-              ? "success.darker"
-              : status === "refunded"
-              ? "secondary.main"
-              : "warning.darker",
-          borderRadius: 1,
-        }}
-      >
-        {status === "completed"
-          ? "Completed"
-          : status === "refunded"
-          ? "Refunded"
-          : "Pending"}
-      </Button>
-    ),
-  },
 ];
 
 export const MOBILE_PROVIDER = [
@@ -1434,11 +1432,6 @@ export const SERVICE_PROVIDER = [
 
 export const WALLET_TOPUP_TRANSACTIONS = [
   {
-    title: "ID",
-    field: "_id",
-    export: true,
-  },
-  {
     title: "DATE",
     field: "createdAt",
     export: true,
@@ -1456,6 +1449,29 @@ export const WALLET_TOPUP_TRANSACTIONS = [
         }}
       />
     ),
+  },
+  {
+    title: "STATUS",
+    field: "status",
+    render: ({ status }) => (
+      <Button
+        size="small"
+        label={status === "failed" ? "Failed" : "Completed"}
+        sx={{
+          color: "white",
+          bgcolor: status === "completed" ? "success.darker" : "error.darker",
+          borderRadius: 1,
+          p: 1,
+        }}
+      >
+        {status === "failed" ? "Failed" : "Completed"}
+      </Button>
+    ),
+  },
+  {
+    title: "ID",
+    field: "_id",
+    export: true,
   },
   { title: "COMMENT", field: "comment", hidden: true },
   {
@@ -1507,23 +1523,5 @@ export const WALLET_TOPUP_TRANSACTIONS = [
         </Box>
       );
     },
-  },
-  {
-    title: "STATUS",
-    field: "status",
-    render: ({ status }) => (
-      <Button
-        size="small"
-        label={status === "failed" ? "Failed" : "Completed"}
-        sx={{
-          color: "white",
-          bgcolor: status === "completed" ? "success.darker" : "error.darker",
-          borderRadius: 1,
-          p: 1,
-        }}
-      >
-        {status === "failed" ? "Failed" : "Completed"}
-      </Button>
-    ),
   },
 ];

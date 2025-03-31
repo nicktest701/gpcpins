@@ -1,5 +1,5 @@
 :root {
-  --currentcolor: #083d77;
+  --currentcolor: #0d1012;
 }
 .rdrCalendarWrapper {
   font-family: 'Questrial', 'Poppins', 'Roboto', Verdana, 'Helvetica Neue',
@@ -196,7 +196,7 @@
 }
 
 .rdrDefinedRangesWrapper {
-  display: none;
+  /* display: none; */
 }
 
 .rdrStaticRanges {

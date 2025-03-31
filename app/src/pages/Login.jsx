@@ -148,11 +148,10 @@ const Login = () => {
         display: "grid",
         placeItems: "center",
         height: "100svh",
-        px: 4,
       }}
     >
       <IconButton onClick={goHome}>
-        <Avatar src={IMAGES.coat_of_arms} sx={{ width: 100, height: 100 }} />
+        <Avatar src={IMAGES.coat_of_arms} sx={{ width: 80, height: 80 }} />
       </IconButton>
       <Formik
         initialValues={initValues}
@@ -168,7 +167,7 @@ const Login = () => {
 
               <TextField
                 label="Email Address or Phone Number"
-                // size="small"
+                size="small"
                 required
                 fullWidth
                 value={values.email}

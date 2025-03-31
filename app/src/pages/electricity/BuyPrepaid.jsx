@@ -21,8 +21,8 @@ import NonUserPayment from "./meters/NonUserPayment";
 import AnimatedContainer from "../../components/animations/AnimatedContainer";
 import PaymentOption from "../../components/PaymentOption";
 import { AuthContext } from "../../context/providers/AuthProvider";
-import { serviceAvailable } from "../../config/serviceAvailable";
-import ServiceNotAvaialble from "../ServiceNotAvaialble";
+// import { serviceAvailable } from "../../config/serviceAvailable";
+// import ServiceNotAvaialble from "../ServiceNotAvaialble";
 import { isBetween50And99 } from "../../config/validation";
 
 function BuyPrepaid() {
@@ -329,7 +329,7 @@ function BuyPrepaid() {
       </Container>
       <NonUserPayment />
 
-      <ServiceNotAvaialble open={serviceAvailable()} />
+      {/* <ServiceNotAvaialble open={serviceAvailable()} /> */}
     </Container>
   );
 }

@@ -96,11 +96,7 @@ const RetrieveVoucher = ({ general }) => {
           onChange={(e) => setMobileNo(e.target.value)}
           helperText={mobileNoErr !== "" ? mobileNoErr : ""}
           margin="dense"
-          inputProps={{
-            style: {
-           
-            },
-          }}
+        
           InputProps={{
             sx: {
               borderRadius: 1,

@@ -237,7 +237,7 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
                 <Box
                   display="flex"
                   flexDirection={{ xs: "column", sm: "row" }}
-                  justifyContent="space-between"
+                  justifyContent="flex-end"
                   alignItems="center"
                   gap={2}
                   py={4}
@@ -247,6 +247,7 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
                       variant="contained"
                       startIcon={<Add />}
                       onClick={handleOpenCategory}
+                      sx={{ textTransform: "uppercase", py: 1.5 }}
                     >
                       New {pageInfo.category}
                     </Button>

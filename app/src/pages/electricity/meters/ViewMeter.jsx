@@ -26,8 +26,8 @@ import { globalAlertType } from "../../../components/alert/alertType";
 // import { AuthContext } from "../../../context/providers/AuthProvider";
 import DOMPurify from "dompurify";
 import PaymentOption from "../../../components/PaymentOption";
-import ServiceNotAvaialble from "../../ServiceNotAvaialble";
-import { serviceAvailable } from "../../../config/serviceAvailable";
+// import ServiceNotAvaialble from "../../ServiceNotAvaialble";
+// import { serviceAvailable } from "../../../config/serviceAvailable";
 import { isBetween50And99 } from "../../../config/validation";
 
 function ViewMeter() {
@@ -44,7 +44,7 @@ function ViewMeter() {
   const [amount, setAmount] = useState(0);
   const [mobilePartner, setMobilePartner] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
-  const [openNotAvailable, setOpenNotAvailable] = useState(false);
+  // const [openNotAvailable, setOpenNotAvailable] = useState(false);
 
   //initialState
   const initialValues = {
@@ -104,11 +104,11 @@ function ViewMeter() {
   };
 
   const handleBuyCredit = () => {
-    if (serviceAvailable()) {
-      setOpenNotAvailable(true);
-    } else {
-      setShowFields(!showFields);
-    }
+    setShowFields(!showFields);
+    // if (serviceAvailable()) {
+    //   setOpenNotAvailable(true);
+    // } else {
+    // }
   };
 
   //DELETE meter
@@ -330,7 +330,7 @@ function ViewMeter() {
           </Button>
         </DialogActions>
       </Dialog>
-      <ServiceNotAvaialble open={openNotAvailable} />
+      {/* <ServiceNotAvaialble open={openNotAvailable} /> */}
     </>
   );
 }

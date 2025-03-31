@@ -27,6 +27,7 @@ function CustomTitle({ title, icon, titleVariant, subtitle, divider }) {
           <Typography
             color="secondary"
             textAlign="left"
+            textTransform='uppercase'
             variant={titleVariant || "h4"}
           >
             {title}

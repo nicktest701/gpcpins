@@ -19,8 +19,10 @@ import PayLoading from "../../components/PayLoading";
 import { Tooltip } from "@mui/material";
 import DOMPurify from "dompurify";
 import PaymentOption from "../../components/PaymentOption";
+import { useNavigate } from "react-router-dom";
 
 function UniversityForms() {
+  const navigate = useNavigate();
   const { user } = useContext(AuthContext);
   const { customDispatch } = useContext(CustomContext);
 
@@ -30,9 +32,9 @@ function UniversityForms() {
     price: 0,
   });
   const [mobilePartner, setMobilePartner] = useState("");
-  const [fullName, setFullName] = useState('');
+  const [fullName, setFullName] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [quantity, setQuantity] = useState(0);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [confirmPhonenumber, setConfirmPhonenumber] = useState("");
@@ -69,7 +71,7 @@ function UniversityForms() {
       user: {
         name: DOMPurify.sanitize(values.fullName),
         email: DOMPurify.sanitize(email),
-        phoneNumber: DOMPurify.sanitize(phoneNumber)||user?.phonenumber,
+        phoneNumber: DOMPurify.sanitize(phoneNumber) || user?.phonenumber,
         provider: values?.mobilePartner,
       },
       isWallet: paymentMethod === "wallet",
@@ -77,13 +79,14 @@ function UniversityForms() {
 
     customDispatch({
       type: "getVoucherPaymentDetails",
-      payload: { open: true, data: paymentInfo },
+      payload: { data: paymentInfo },
+    });
+
+    navigate(`/evoucher/voucher-payment`, {
+      replace: true,
     });
   };
 
-  if (loading) {
-    return <PayLoading />;
-  }
 
   return (
     <>
@@ -95,7 +98,7 @@ function UniversityForms() {
         />
         <link
           rel="canonical"
-          href="https://gpcpins.com/evoucher/university-form"
+          href="https://www.gpcpins.com/evoucher/university-form"
         />
       </Helmet>
 
@@ -136,6 +139,8 @@ function UniversityForms() {
 
                       <Autocomplete
                         options={categories}
+                        loading={loading}
+                        loadingText="Loading Forms.Please Wait.."
                         size="small"
                         disableClearable
                         clearText=" "

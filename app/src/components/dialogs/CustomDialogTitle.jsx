@@ -27,7 +27,7 @@ function CustomDialogTitle({ title, subtitle, onClose }) {
             >
               {title}
             </Typography>
-            <Typography variant="caption" color="primary">
+            <Typography variant="body2" color="primary">
               {subtitle}
             </Typography>
           </Box>

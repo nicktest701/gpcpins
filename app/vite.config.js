@@ -6,6 +6,15 @@ export default defineConfig({
   server: {
     port: 5002,
   },
-  plugins: [react()],
+  plugins: [
+    react(),
+
+
+  ],
+  resolve: {
+    alias: {
+      '@': '/src', // Add this alias
+    },
+  },
 
 });
