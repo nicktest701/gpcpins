@@ -424,7 +424,10 @@ function getTopCustomers(data) {
 }
 
 async function getTopSellingProducts(data) {
+
+
   //GET Recent Transactions
+
   const cummulativeVouchers = data.flatMap(({ vouchers }) =>
     JSON.parse(vouchers)
   );
@@ -451,8 +454,9 @@ async function getTopSellingProducts(data) {
       count: voucher[1]?.length,
     };
   });
+  
 
-  return _.orderBy(topVouchers, "count", "desc");
+  return _.orderBy(_.filter(topVouchers, (item) => item.type !== 'undefined'), "count", "desc");
 }
 
 function getRangeTransactions(startDate, endDate, data) {

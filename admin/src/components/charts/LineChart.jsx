@@ -57,9 +57,9 @@ const LineChart = ({ height, labels, datasets }) => {
               anchor: "center",
               align: "end",
               font: {
-                size: matches ? "14px" : "18px",
+                size: matches ? "12px" : "14px",
               },
-              backgroundColor: "#000",
+              backgroundColor: "#333",
               // borderRadius:'40px',
               formatter: (value) => currencyFormatter(value || 0), // Display the data value directly
             },

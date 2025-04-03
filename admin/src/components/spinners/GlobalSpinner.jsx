@@ -2,14 +2,14 @@ function GlobalSpinner() {
   return (
     <div
       style={{
-        position: "absolute",
+        position: "fixed",
         inset: 0,
         backgroundColor: "rgba(0,0,0,0.2)",
-        zIndex: "9999999",
+        zIndex: "99999999999",
         display: "grid",
         placeItems: "center",
         minWidth: "100svw",
-        // height: "100svh",
+         height: "100svh",
         overflow: "hidden",
       }}
     >

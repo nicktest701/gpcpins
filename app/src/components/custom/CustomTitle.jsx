@@ -1,26 +1,17 @@
-import {  Stack, Typography } from '@mui/material';
-
+import { Box, Stack, Typography } from "@mui/material";
 
 function CustomTitle({ title, subtitle }) {
   return (
-    <>
-      <Stack
-        direction='row'
- 
-        justifyContent='flex-start'
-        alignItems='center'
-        py={3}
-      >
-        {/* {icon} */}
-        <Stack>
-          <Typography variant='h4' color='primary'>{title}</Typography>
-          <Typography  variant='body2' color='secondary'>
-            {subtitle}
-          </Typography>
-        </Stack>
+    <Box py={2}>
+      <Stack>
+        <Typography variant="h3" color="primary">
+          {title}
+        </Typography>
+        <Typography variant="body2" color="secondary">
+          {subtitle}
+        </Typography>
       </Stack>
-      {/* <Divider /> */}
-    </>
+    </Box>
   );
 }
 

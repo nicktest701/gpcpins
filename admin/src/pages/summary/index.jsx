@@ -1,11 +1,7 @@
 import { Outlet } from "react-router-dom";
 
 function Summary() {
-  return (
-    <>
-      <Outlet />
-    </>
-  );
+  return ( <Outlet />);
 }
 
 export default Summary;

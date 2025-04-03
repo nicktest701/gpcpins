@@ -88,7 +88,7 @@ router.get(
     let modifiedAirtimeTransaction = [];
     let modifiedBundleTransaction = [];
 
-    const bundle_transactions = await transx("bundle_transactions")
+    const bundle_transactions = await knex("bundle_transactions")
       .select(
         "_id",
         "externalTransactionId",
@@ -1348,17 +1348,13 @@ router.get(
   verifyAdmin,
 
   asyncHandler(async (req, res) => {
-
-    const transx = await knex.transaction();
-
+    const transx = await knex.transaction()
     try {
 
+      const categories = await transx("categories").select("*").where("active", 1);
+      const vouchers = await transx("vouchers").select("category", "status");
 
-
-      const categories = await knex("categories").select("*").where("active", 1);
-      const vouchers = await knex("vouchers").select("category", "status");
-
-      const voucher_transactions = await knex("voucher_transactions")
+      const voucher_transactions = await transx("voucher_transactions")
         .select("*")
         .where("status", "IN", ["completed", 'refunded'])
         .orderBy("createdAt", "desc");
@@ -1452,7 +1448,7 @@ router.get(
         ticketTransactions
       );
 
-      await transx.commit()
+   await transx.commit()
 
       res.status(200).json({
         category: {
@@ -1525,8 +1521,6 @@ router.get(
   verifyAdmin,
 
   asyncHandler(async (req, res) => {
-
-
 
     const transx = await knex.transaction();
 
@@ -1610,6 +1604,8 @@ router.get(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+   
+
     const agent_airtime_transactions = await knex("agent_transactions")
       .where({ year: moment().year(), type: 'airtime' })
       .andWhere('status', "IN", ['completed', 'refunded'])
@@ -1692,8 +1688,9 @@ router.get(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
+    const transx=await knex.transaction()
 
-    const agent_bundle_transactions = await knex("agent_transactions")
+    const agent_bundle_transactions = await transx("agent_transactions")
       .where({ year: moment().year(), type: 'bundle' })
       .andWhere('status', "IN", ['completed', 'refunded'])
       .select(
@@ -1710,7 +1707,7 @@ router.get(
       .orderBy("createdAt", "desc");
 
 
-    const bundle_transactions = await knex("bundle_transactions")
+    const bundle_transactions = await transx("bundle_transactions")
       .where({ year: moment().year() })
       .andWhere('status', "IN", ['completed', 'refunded'])
       .select(
@@ -1746,6 +1743,8 @@ router.get(
     const thisYear = getTransactionsByMonth([], transaction);
 
     const topCustomers = getTopCustomers(transaction);
+
+    await transx.commit()
 
     res.status(200).json({
       recent,
@@ -2784,8 +2783,6 @@ router.post(
   })
 );
 
-
-
 // PUT Remove All Selected Logs
 router.put(
   "/logs",
@@ -2809,7 +2806,6 @@ router.put(
 
   })
 );
-
 
 
 router.put(
@@ -3798,10 +3794,6 @@ router.get(
         id,
         "wallet-report"
       );
-
-      // const result = plimit(() =>
-      //   generateTransactionReport(walletTemplate, id, "wallet-report")
-      // );
 
       if (result) {
         const body = ` <div class="container">
