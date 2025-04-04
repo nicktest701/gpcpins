@@ -461,12 +461,12 @@ router.post(
       <p>Once again, welcome to the team! We look forward to working with you and witnessing your contributions to our company's success.</p>
       
 
-      <p><strong>Details:</strong></p>
-      <p><strong>Login URL:</strong> <a href='https://agent.gpcpins.com'>https://agent.gpcpins.com</a></p>
-      <p><strong>Username:</strong> ${rest?.phonenumber}</p>
-      <p><strong>Default Password:</strong> ${password}</p>
-      <p><strong>Email Address:</strong> ${rest?.email}</p>
-      <p><strong>Wallet PIN:</strong> ${agent_key}</p>
+      <p><strong>Details:</strong></p><br/>
+      <p><strong>Login URL:</strong> <a href='https://agent.gpcpins.com'>https://agent.gpcpins.com</a></p><br/>
+      <p><strong>Username:</strong> ${rest?.phonenumber}</p><br/>
+      <p><strong>Default Password:</strong> ${password}</p><br/>
+      <p><strong>Email Address:</strong> ${rest?.email}</p><br/>
+      <p><strong>Wallet PIN:</strong> ${agent_key}</p><br/>
       <p>We recommend you change your <b>Default Password</b> and <b>Wallet Pin</b> when you log into your account.</p>
 
       <p>Best regards,</p>

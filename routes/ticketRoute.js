@@ -153,14 +153,6 @@ router.post(
       }).where('_id', "IN", vouchers)
 
 
-      // {
-      //   _id: generateId(),
-      //   ticket: ticketID,
-      //   verifier: userID,
-      //   voucher,
-      //   category: categoryId,
-      //   transaction: id,
-      // }
 
       //check if ticket has already been synced
       const unSyncedTickets = tickets?.map(async (ticket) => {
@@ -231,13 +223,13 @@ router.get(
   verifyToken, verifyScanner,
   asyncHandler(async (req, res) => {
     const { verifierId: id } = req.params
-
+    const transx = await knex.transaction()
 
     //GET ALL ASSIGNED TICKETS
-    const assignedTickets = await knex('tickets').where('verifier', id).select("*")
+    const assignedTickets = await transx('tickets').where('verifier', id).select("*")
 
     // GET ALL SCANNED TICKETS
-    const scannedTickets = await knex('scanned_tickets_vouchers_view').where('verifierId', id).select("*")
+    const scannedTickets = await transx('scanned_tickets_vouchers_view').where('verifierId', id).select("*")
 
 
     //GET RECENT TRANSACTIONS
@@ -255,7 +247,7 @@ router.get(
     //GET TOTAL SCAN BY MONTH
     const totalScanByMonth = getScannedTicketsByMonth(scannedTickets)
 
-
+    await transx.commit()
 
     res.status(200).json({
       assignedTickets: assignedTickets.length,
@@ -275,25 +267,26 @@ router.get(
     const user = req.user
     const { verifier } = req.query
 
+    const transx = await knex.transaction()
 
     let assignedTickets = []
     let scannedTickets = []
 
     if (verifier) {
       //GET ALL ASSIGNED TICKETS BY VERIFIER
-      assignedTickets = await knex('tickets').where('verifier', verifier).select("*")
+      assignedTickets = await transx('tickets').where('verifier', verifier).select("*")
 
       // GET ALL SCANNED TICKETS BY VERIFIER
-      scannedTickets = await knex('scanned_tickets_vouchers_view').where('verifierId', verifier).select("*")
+      scannedTickets = await transx('scanned_tickets_vouchers_view').where('verifierId', verifier).select("*")
     } else {
 
       if (user?.isAdmin) {
 
         //GET ALL ASSIGNED TICKETS
-        assignedTickets = await knex('tickets').select("*")
+        assignedTickets = await transx('tickets').select("*")
 
         // GET ALL SCANNED TICKETS
-        scannedTickets = await knex('scanned_tickets_vouchers_view').select("*")
+        scannedTickets = await transx('scanned_tickets_vouchers_view').select("*")
       }
     }
 
@@ -316,6 +309,7 @@ router.get(
     const topScannedTickets = getTopScannedTickets(scannedTickets)
 
 
+    await transx.commit()
 
     res.status(200).json({
       assignedTickets: assignedTickets.length,
@@ -485,11 +479,11 @@ router.get(
     const { id } = req.params;
 
 
+    const transx = await knex.transaction()
 
 
 
-
-    const ticket = await knex("tickets")
+    const ticket = await transx("tickets")
       .select("type", 'category')
       .where({ _id: id }).limit(1)
 
@@ -505,11 +499,11 @@ router.get(
     }
 
     const ticketTypes = JSON.parse(ticket[0].type)
-    const stripedTicketTypes = _.map(ticketTypes, 'type')
+
 
 
     //TOTAL TICKETS IN SYSTEM
-    const vouchers = await knex("vouchers")
+    const vouchers = await transx("vouchers")
       .select("_id", 'type')
       .where({ category: ticket[0]?.category, status: 'sold' })
       .orWhere({ category: ticket[0]?.category, status: 'used' })
@@ -521,7 +515,7 @@ router.get(
 
 
     //GET ALL TICKETS SCANNED  BY CATEGORY
-    const scannedTicketsByCategory = await knex("scanned_tickets_vouchers_view")
+    const scannedTicketsByCategory = await transx("scanned_tickets_vouchers_view")
       .select("*")
       .where({ ticketId: id, categoryId: ticket[0]?.category })
       .orderBy("createdAt", "desc");
@@ -566,6 +560,8 @@ router.get(
 
     const data = _.map(groupedScannedTickets, "value")
     const unassigned = scannedTicketsByCategory?.length - _.sum(data)
+
+    await transx.commit()
 
     return res.status(200).json({
       totalSoldVouchers: vouchers?.length,
@@ -658,9 +654,10 @@ router.post(
       return res.status(400).json('Error! Ticket not available.');
     }
 
+    const transx = await knex.transaction();
 
     //find transaction with  id
-    const transaction = await knex('voucher_transactions')
+    const transaction = await transx('voucher_transactions')
       .select('_id', 'email', 'phonenumber', 'vouchers', 'info')
       .where('_id', id)
       .limit(1).first()
@@ -679,7 +676,6 @@ router.post(
 
     const vouchers = JSON.parse(transaction?.vouchers);
 
-    const transx = await knex.transaction();
     try {
       let voucherId = '';
 
@@ -722,7 +718,7 @@ router.post(
       }
 
 
-      const ticketData = await knex("scanned_tickets_vouchers_view")
+      const ticketData = await transx("scanned_tickets_vouchers_view")
         .where({ voucherId }).first();
 
 
