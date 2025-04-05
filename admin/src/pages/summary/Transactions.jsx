@@ -34,6 +34,8 @@ import CustomTitle from "../../components/custom/CustomTitle";
 import { getAllEmployees } from "../../api/employeeAPI";
 import LoadingSpinner from "../../components/spinners/LoadingSpinner";
 
+const startDate = moment("2024-01-01").format("YYYY-MM-DD");
+const endDate = moment().format("YYYY-MM-DD");
 function Transactions() {
   const { user } = useContext(AuthContext);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -47,8 +49,8 @@ function Transactions() {
   const [airtimeType, setAirtimeType] = useState("single");
   const [date, setDate] = useState([
     {
-      startDate: new Date("2023-01-01"),
-      endDate: new Date(),
+      startDate,
+      endDate,
       key: "selection",
     },
   ]);
@@ -59,8 +61,8 @@ function Transactions() {
     } else {
       setDate([
         {
-          startDate: new Date("2024-01-01"),
-          endDate: new Date(),
+          startDate,
+          endDate,
           key: "selection",
         },
       ]);

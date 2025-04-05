@@ -4,6 +4,7 @@ import {
   useQueryErrorResetBoundary,
 } from '@tanstack/react-query';
 import { Chart, registerables } from 'chart.js';
+import ChartDataLabels from "chartjs-plugin-datalabels";
 import CustomProvider from './context/providers/CustomProvider';
 import ThemeProvider from './theme';
 import Shell from './pages/layout/Shell';
@@ -16,7 +17,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 
 
 Chart.register(...registerables);
-
+Chart.register(ChartDataLabels);
 const CLIENT_ID = import.meta.env.VITE_CLIENT_ID;
 
 function App() {

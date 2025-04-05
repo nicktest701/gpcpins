@@ -27,7 +27,6 @@ import { getTotalSales } from "../../api/transactionAPI";
 import LineChart from "../../components/charts/LineChart";
 import { useTheme } from "@emotion/react";
 import { recentTransactionColumns } from "../../mocks/columns";
-import PayLoading from "../../components/PayLoading";
 import CustomTitle from "../../components/custom/CustomTitle";
 import { currencyFormatter, IMAGES } from "../../constants";
 import CountUp from "react-countup";
@@ -37,10 +36,9 @@ import { useNavigate } from "react-router-dom";
 import { useContext, useState } from "react";
 import { AuthContext } from "../../context/providers/AuthProvider";
 import {
-  getPOS_Balance,
-  getPREPAID_Balance,
-  getTopUpBalance,
+  allBalance,
 } from "../../api/paymentAPI";
+import DashboardSkeleton from "@/components/skeletons/DashboardSkeleton";
 
 function Overall() {
   const { user } = useContext(AuthContext);
@@ -53,47 +51,37 @@ function Overall() {
     queryFn: () => getTotalSales(),
   });
 
-  const balance = useQuery({
-    queryKey: ["top-up-balance"],
-    queryFn: () => getTopUpBalance(),
-    initialData: 0.0,
-    enabled: !!user?.id,
-    retry: 1,
-  });
-  const posBalance = useQuery({
-    queryKey: ["hb-pos-balance"],
-    queryFn: () => getPOS_Balance(),
-    initialData: 0.0,
-    enabled: !!user?.id,
-    retry: 1,
-  });
-  const prepaidBalance = useQuery({
-    queryKey: ["hb-prepaid-balance"],
-    queryFn: () => getPREPAID_Balance(),
-    initialData: 0.0,
+  const {data:balances,isLoading} = useQuery({
+    queryKey: ["all-balance"],
+    queryFn: () => allBalance(),
+    initialData:{
+      pos:0.0,
+      pre:0.0,
+      balance:0.0
+    },
     enabled: !!user?.id,
     retry: 1,
   });
 
-  if (summary?.isLoading) {
-    return <PayLoading />;
-  }
-
+ 
   const handleOnSearchClicked = () => {
     navigate(
       `/summary/transactions?YixHy=a34cdd3543&_pid=423423&1=&_search=${searchValue}`
     );
   };
-
+  
   const handlOnChange = (e) => {
     // startTransition(() => {
     setSearchValue(e.target?.value);
     // });
   };
-
+  
+  if (summary?.isLoading||isLoading) {
+    return <DashboardSkeleton />;
+  }
   return (
     <>
-      {!balance.isLoading && Number(balance?.data) < 1000 && showAlert && (
+      { Number(balances?.balance) < 1000 && showAlert && (
         <Alert
           variant="filled"
           severity="warning"
@@ -101,11 +89,11 @@ function Overall() {
           onClose={() => setShowAlert(false)}
         >
           Your one-4-all top up account balance is running low.Your remaining
-          balance is {currencyFormatter(balance?.data)} . Please recharge to
+          balance is {currencyFormatter(balances?.balance)} . Please recharge to
           avoid any inconveniences.
         </Alert>
       )}
-      {Number(prepaidBalance?.data) < 1000 && showAlert && (
+      {Number(balances?.pre) < 1000 && showAlert && (
         <Alert
           variant="filled"
           severity="warning"
@@ -113,7 +101,7 @@ function Overall() {
           onClose={() => setShowAlert(false)}
         >
           Your Hubtel Prepaid balance is running low.Your remaining balance is{" "}
-          {currencyFormatter(prepaidBalance?.data)} .Please note that refund
+          {currencyFormatter(balances?.pre)} .Please note that refund
           cannot be completed with low prepaid balance.
         </Alert>
       )}
@@ -204,7 +192,7 @@ function Overall() {
               <Typography variant="h4">
                 <b>ONE4ALL Top Up Balance: </b>
                 <i style={{ color: "var(--secondary)" }}>
-                  {currencyFormatter(balance?.data)}
+                  {currencyFormatter(balances?.balance)}
                 </i>
               </Typography>
               <Divider />
@@ -217,7 +205,7 @@ function Overall() {
               <Typography variant="h4">
                 <b>HUBTEL POS Balance: </b>
                 <i style={{ color: "var(--secondary)" }}>
-                  {currencyFormatter(posBalance?.data)}
+                  {currencyFormatter(balances?.pos)}
                 </i>
               </Typography>
               <Divider />
@@ -228,7 +216,7 @@ function Overall() {
               <Typography variant="h4">
                 <b>HUBTEL PREPAID Balance: </b>
                 <i style={{ color: "var(--secondary)" }}>
-                  {currencyFormatter(prepaidBalance?.data)}
+                  {currencyFormatter(balances?.pre)}
                 </i>
               </Typography>
               <Divider />

@@ -25,7 +25,7 @@ const { uploadPhoto } = require("../config/uploadFile");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 20, // 5 requests per windowMs
+  max: 50, // 5 requests per windowMs
   message: "Too many requests!. please try again later.",
 });
 
@@ -43,6 +43,7 @@ const { sendOTPSMS } = require("../config/sms");
 const { calculateTimeDifference } = require("../config/timeHelper");
 const { mailTextShell } = require("../config/mailText");
 const { getInternationalMobileFormat } = require("../config/PhoneCode");
+const redisClient = require("../config/redisClient");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -210,13 +211,13 @@ router.get(
         "dob",
         "phonenumber",
         "role",
-        "active"
+        "active",
+        'createdAt'
       )
       .where("_id", id)
-      // .whereNot("email", "test@test.com")
       .first();
 
-    const accessToken = signMainToken(user, '180d');
+    const accessToken = await signMainToken(user, '180d');
 
     res.status(200).json({
       accessToken,
@@ -282,7 +283,7 @@ router.post(
       user = {
         _id: generateId(),
         role: process.env.USER_ID,
-        isEnabled: 1,
+        isEnabled: true,
         email,
         active: false,
 
@@ -298,7 +299,7 @@ router.post(
       active: false,
     };
 
-    const accessToken = signSampleToken(updatedUser);
+    const accessToken = await signSampleToken(updatedUser);
     const refreshToken = signSampleRefreshToken(updatedUser);
 
 
@@ -481,6 +482,7 @@ router.post(
       role: user[0]?.role,
       profile: user[0]?.profile,
       active: Boolean(user[0]?.active),
+      createdAt: Boolean(user[0]?.createdAt),
     };
 
     const updatedUser = {
@@ -490,7 +492,7 @@ router.post(
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signMainToken(accessData, '180d');
+    const accessToken = await signMainToken(accessData, '180d');
     const refreshToken = signMainRefreshToken(updatedUser, '365d');
 
 
@@ -572,6 +574,7 @@ router.post(
       role: user[0]?.role,
       profile: user[0]?.profile,
       active: Boolean(user[0]?.active),
+      createdAt: user[0]?.createdAt,
     };
 
     const updatedUser = {
@@ -581,7 +584,7 @@ router.post(
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signMainToken(accessData, '180d');
+    const accessToken = await signMainToken(accessData, '180d');
     const refreshToken = signMainRefreshToken(updatedUser, '365d');
 
     // res.cookie("_SSUID_kyfc", accessToken, {
@@ -798,6 +801,7 @@ router.post(
       role: user[0]?.role,
       profile: user[0]?.profile,
       active: Boolean(user[0]?.active),
+      createdAt: user[0]?.createdAt,
     };
 
     const updatedUser = {
@@ -807,7 +811,7 @@ router.post(
       createdAt: user[0]?.createdAt,
     };
 
-    const accessToken = signMainToken(accessData, '180d');
+    const accessToken = await signMainToken(accessData, '180d');
     const refreshToken = signMainRefreshToken(updatedUser, '365d');
 
     // res.cookie("_SSUID_kyfc", accessToken, {
@@ -866,7 +870,7 @@ router.post(
   "/logout",
   verifyToken,
   asyncHandler(async (req, res) => {
-    const id = req.user?.id;
+    const { id, jti } = req.user;
 
     await knex("users").where("_id", id).update({
       active: false,
@@ -885,6 +889,7 @@ router.post(
     // });
     // res.clearCookie("_SSUID_kyfc");
     // res.clearCookie("_SSUID_X_ayd");
+    await redisClient.del(`user:${jti}`)
     req.user = null;
     delete req.user;
 
@@ -933,7 +938,8 @@ router.put(
         "dob",
         "phonenumber",
         "profile",
-        "active"
+        "active",
+        'createdAt'
       )
       .where("_id", id)
       .limit(1);
@@ -953,12 +959,13 @@ router.put(
       dob: user[0]?.dob,
       phonenumber: user[0]?.phonenumber,
       profile: user[0]?.profile,
+      createdAt: user[0]?.createdAt,
       active: Boolean(user[0]?.active),
     };
 
 
 
-    const accessToken = signMainToken(accessData, '180d');
+    const accessToken = await signMainToken(accessData, '180d');
 
     if (register) {
 

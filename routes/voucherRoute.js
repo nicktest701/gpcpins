@@ -343,7 +343,7 @@ router.post(
 
     const modifiedVouchers = newVouchers.map((voucher) => {
       return {
-        _id: generateId(),
+        _id: generateId(4),
         category: voucher?.category,
         type: voucher?.type,
         serial: voucher?.serial,

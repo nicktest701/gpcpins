@@ -8,7 +8,7 @@ function PlainTable({ isLoading, columns, data, options }) {
   });
 
   return (
-    <Box height={300}>
+    <Box height={400}>
       <MaterialTable
         isLoading={isLoading}
         icons={tableIcons}

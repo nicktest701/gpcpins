@@ -398,7 +398,7 @@ router.get(
           );
 
 
-          const code = await generateQRCode(id, _id, serial || pin);
+          const code = await generateQRCode(id, _id);
 
           if (type === "cinema") {
             return {
@@ -465,7 +465,7 @@ router.get(
         }) => {
           const detailsInfo = JSON.parse(details);
 
-          const code = await generateQRCode(id, _id, pin || serial);
+          const code = await generateQRCode(id, _id);
           return {
             _id,
             category: "bus",
@@ -1096,247 +1096,247 @@ router.post(
 
 
     if (Number(totalAmount) <= 0) {
-  return res.status(401).json("Please enter a valid amount.");
-}
+      return res.status(401).json("Please enter a valid amount.");
+    }
 
 
     if (isWallet) {
-  const userWallet = await knex("user_wallets")
-    .select("_id", "user_key", "active")
-    .where({
-      user_id: id,
+      const userWallet = await knex("user_wallets")
+        .select("_id", "user_key", "active")
+        .where({
+          user_id: id,
 
-    })
-    .limit(1);
+        })
+        .limit(1);
 
-  if (_.isEmpty(userWallet)) {
-    return res.status(401).json("Invalid pin!");
-  }
+      if (_.isEmpty(userWallet)) {
+        return res.status(401).json("Invalid pin!");
+      }
 
-  const isPinValid = await bcrypt.compare(token, userWallet[0]?.user_key)
-
-
-  if (!isPinValid) {
-    return res.status(401).json("Invalid pin!");
-  }
+      const isPinValid = await bcrypt.compare(token, userWallet[0]?.user_key)
 
 
-}
+      if (!isPinValid) {
+        return res.status(401).json("Invalid pin!");
+      }
 
-if (!category || !ALLOWED_CATEGORIES.includes(category)) {
-  return res.status(400).json("An unknown error has occurred");
-}
 
-let selectedVouchers = [];
+    }
 
-//Check if tickets are Stadium tickets or cinema
+    if (!category || !ALLOWED_CATEGORIES.includes(category)) {
+      return res.status(400).json("An unknown error has occurred");
+    }
 
-if (["stadium", "cinema"].includes(category)) {
-  const vouchers = await Promise.all(
-    paymentDetails.tickets.flatMap(async (ticket) => {
-      return await knex("vouchers")
+    let selectedVouchers = [];
+
+    //Check if tickets are Stadium tickets or cinema
+
+    if (["stadium", "cinema"].includes(category)) {
+      const vouchers = await Promise.all(
+        paymentDetails.tickets.flatMap(async (ticket) => {
+          return await knex("vouchers")
+            .join("categories", "vouchers.category", "=", "categories._id")
+            .where({
+              "vouchers.category": categoryId,
+              "vouchers.type": ticket?.type,
+              "vouchers.status": "new",
+              "vouchers.active": 1,
+            })
+            .select("vouchers._id")
+            .limit(ticket?.quantity);
+        })
+      );
+
+      selectedVouchers = _.flatMap(vouchers);
+    }
+
+    //Check if tickets are bus
+    else if (["bus"].includes(category)) {
+      selectedVouchers = await knex("vouchers")
+        .join("categories", "vouchers.category", "=", "categories._id")
+        .whereIn("vouchers.type", paymentDetails?.tickets)
+        .andWhere({
+          "vouchers.category": categoryId,
+          "vouchers.status": "new",
+          "vouchers.active": 1,
+        })
+        .select("vouchers._id");
+    }
+    //Check if vouchers are waec,university or security
+    else {
+      selectedVouchers = await knex("vouchers")
         .join("categories", "vouchers.category", "=", "categories._id")
         .where({
           "vouchers.category": categoryId,
-          "vouchers.type": ticket?.type,
           "vouchers.status": "new",
           "vouchers.active": 1,
         })
         .select("vouchers._id")
-        .limit(ticket?.quantity);
-    })
-  );
-
-  selectedVouchers = _.flatMap(vouchers);
-}
-
-//Check if tickets are bus
-else if (["bus"].includes(category)) {
-  selectedVouchers = await knex("vouchers")
-    .join("categories", "vouchers.category", "=", "categories._id")
-    .whereIn("vouchers.type", paymentDetails?.tickets)
-    .andWhere({
-      "vouchers.category": categoryId,
-      "vouchers.status": "new",
-      "vouchers.active": 1,
-    })
-    .select("vouchers._id");
-}
-//Check if vouchers are waec,university or security
-else {
-  selectedVouchers = await knex("vouchers")
-    .join("categories", "vouchers.category", "=", "categories._id")
-    .where({
-      "vouchers.category": categoryId,
-      "vouchers.status": "new",
-      "vouchers.active": 1,
-    })
-    .select("vouchers._id")
-    .limit(quantity);
-}
-
-if (
-  _.isEmpty(selectedVouchers) ||
-  selectedVouchers?.length < Number(quantity)
-) {
-  return res
-    .status(404)
-    .json(`${["stadium", "cinema", "bus"].includes(category) ? 'Ticket' : 'Voucher'} not available! Try again later.`);
-}
-
-const transx = await knex.transaction();
-
-try {
-  const transaction_id = generateId();
-  const transaction_reference = randomBytes(24).toString("hex");
-  const orderNo = randomBytes(20).toString("hex");
-  let transactionInfo = {};
-
-
-
-  if (isWallet) {
-    // Check wallet remaining balance
-    const user_balance = await transx("user_wallets")
-      .where("user_id", id)
-      .select("amount")
-      .limit(1);
-
-
-    if (
-      _.isEmpty(user_balance) ||
-      Number(user_balance[0]?.amount) < Number(totalAmount)
-    ) {
-      return res.status(401).json("Insufficient wallet Fund to complete transaction!");
+        .limit(quantity);
     }
 
-    const user_deduction = await transx("user_wallets")
-      .where("user_id", id)
-      .decrement({
-        amount: totalAmount,
-      });
+    if (
+      _.isEmpty(selectedVouchers) ||
+      selectedVouchers?.length < Number(quantity)
+    ) {
+      return res
+        .status(404)
+        .json(`${["stadium", "cinema", "bus"].includes(category) ? 'Ticket' : 'Voucher'} not available! Try again later.`);
+    }
 
+    const transx = await knex.transaction();
 
-    await transx("user_wallet_transactions")
-      .insert({
-        _id: generateId(),
-        user_id: id,
-        issuer: id,
-        type: 'purchase',
-        wallet: user_balance[0]?.amount,
-        amount: totalAmount,
-        comment: 'Voucher',
-        attachment: null,
-        status: user_deduction === 1 ? "completed" : "failed",
-
-      })
+    try {
+      const transaction_id = generateId(6);
+      const transaction_reference = randomBytes(24).toString("hex");
+      const orderNo = randomBytes(20).toString("hex");
+      let transactionInfo = {};
 
 
 
+      if (isWallet) {
+        // Check wallet remaining balance
+        const user_balance = await transx("user_wallets")
+          .where("user_id", id)
+          .select("amount")
+          .limit(1);
 
 
-    transactionInfo = {
-      _id: transaction_id,
-      user: id,
-      phonenumber: user?.phoneNumber || "",
-      email: user?.email || "",
-      info: JSON.stringify({
-        orderNo,
-        categoryId,
-        quantity,
-        amount: totalAmount,
-        agentName: user.name || "",
-        agentPhoneNumber: user?.phoneNumber || "",
-        agentEmail: user?.email || "",
-        type: category,
-        domain: ["stadium", "cinema", "bus"].includes(category)
-          ? "Ticket"
-          : "Voucher",
-        paymentDetails: paymentDetails || {},
-      }),
-      provider: "wallet",
-      mode: "Wallet",
-      partner: JSON.stringify({
-        ResponseCode: user_deduction === 1 ? "0000" : "2000",
-        Data: {
-          ref: transaction_reference,
-        },
-      }),
-      vouchers: JSON.stringify([]),
-      status: user_deduction === 1 ? "completed" : "failed",
-      reference: transaction_reference,
-    };
-  } else {
-    const payment = {
-      name: user?.name,
-      phonenumber: user?.phoneNumber,
-      email: user?.email,
-      amount: Number(totalAmount).toFixed(2),
-      provider: user?.provider,
-      transaction_reference,
-    };
+        if (
+          _.isEmpty(user_balance) ||
+          Number(user_balance[0]?.amount) < Number(totalAmount)
+        ) {
+          return res.status(401).json("Insufficient wallet Fund to complete transaction!");
+        }
+
+        const user_deduction = await transx("user_wallets")
+          .where("user_id", id)
+          .decrement({
+            amount: totalAmount,
+          });
 
 
-    const sendMoneyReponse = await sendMoney(payment, "v");
+        await transx("user_wallet_transactions")
+          .insert({
+            _id: generateId(),
+            user_id: id,
+            issuer: id,
+            type: 'purchase',
+            wallet: user_balance[0]?.amount,
+            amount: totalAmount,
+            comment: 'Voucher',
+            attachment: null,
+            status: user_deduction === 1 ? "completed" : "failed",
 
-    const status =
-      sendMoneyReponse?.ResponseCode === "0000"
-        ? "completed"
-        : sendMoneyReponse?.ResponseCode === "0001"
-          ? "pending"
-          : "failed";
+          })
 
-    transactionInfo = {
-      _id: transaction_id,
-      user: id,
-      phonenumber: user?.phoneNumber || "",
-      email: user?.email || "",
-      info: JSON.stringify({
-        orderNo,
-        categoryId,
-        quantity,
-        amount: totalAmount,
-        agentName: user.name || "",
-        agentPhoneNumber: user?.phoneNumber || "",
-        agentEmail: user?.email || "",
-        provider: user?.provider,
-        mode: "Mobile Money",
-        type: category,
-        domain: ["stadium", "cinema", "bus"].includes(category)
-          ? "Ticket"
-          : "Voucher",
-        paymentDetails: paymentDetails || {},
-      }),
-      provider: user?.provider,
-      partner: JSON.stringify(sendMoneyReponse?.Data),
-      vouchers: JSON.stringify([]),
-      status,
-      reference: transaction_reference,
-    };
-  }
-  // console.log(transactionInfo)
 
-  const transaction = await transx("voucher_transactions").insert(
-    transactionInfo
-  );
 
-  // //if creating new transaction fails
-  if (_.isEmpty(transaction)) {
-    await transx.rollback();
-    return res
-      .status(404)
-      .json("Error Processing your request!Please try again later.");
-  }
 
-  await transx.commit();
 
-  res.status(200).json({ _id: transaction_id });
-} catch (error) {
+        transactionInfo = {
+          _id: transaction_id,
+          user: id,
+          phonenumber: user?.phoneNumber || "",
+          email: user?.email || "",
+          info: JSON.stringify({
+            orderNo,
+            categoryId,
+            quantity,
+            amount: totalAmount,
+            agentName: user.name || "",
+            agentPhoneNumber: user?.phoneNumber || "",
+            agentEmail: user?.email || "",
+            type: category,
+            domain: ["stadium", "cinema", "bus"].includes(category)
+              ? "Ticket"
+              : "Voucher",
+            paymentDetails: paymentDetails || {},
+          }),
+          provider: "wallet",
+          mode: "Wallet",
+          partner: JSON.stringify({
+            ResponseCode: user_deduction === 1 ? "0000" : "2000",
+            Data: {
+              ref: transaction_reference,
+            },
+          }),
+          vouchers: JSON.stringify([]),
+          status: user_deduction === 1 ? "completed" : "failed",
+          reference: transaction_reference,
+        };
+      } else {
+        const payment = {
+          name: user?.name,
+          phonenumber: user?.phoneNumber,
+          email: user?.email,
+          amount: Number(totalAmount).toFixed(2),
+          provider: user?.provider,
+          transaction_reference,
+        };
 
-  console.log(error);
 
-  await transx.rollback();
-  return res.status(500).json("Transaction Failed!Please try again later.");
-}
+        const sendMoneyReponse = await sendMoney(payment, "v");
+
+        const status =
+          sendMoneyReponse?.ResponseCode === "0000"
+            ? "completed"
+            : sendMoneyReponse?.ResponseCode === "0001"
+              ? "pending"
+              : "failed";
+
+        transactionInfo = {
+          _id: transaction_id,
+          user: id,
+          phonenumber: user?.phoneNumber || "",
+          email: user?.email || "",
+          info: JSON.stringify({
+            orderNo,
+            categoryId,
+            quantity,
+            amount: totalAmount,
+            agentName: user.name || "",
+            agentPhoneNumber: user?.phoneNumber || "",
+            agentEmail: user?.email || "",
+            provider: user?.provider,
+            mode: "Mobile Money",
+            type: category,
+            domain: ["stadium", "cinema", "bus"].includes(category)
+              ? "Ticket"
+              : "Voucher",
+            paymentDetails: paymentDetails || {},
+          }),
+          provider: user?.provider,
+          partner: JSON.stringify(sendMoneyReponse?.Data),
+          vouchers: JSON.stringify([]),
+          status,
+          reference: transaction_reference,
+        };
+      }
+      // console.log(transactionInfo)
+
+      const transaction = await transx("voucher_transactions").insert(
+        transactionInfo
+      );
+
+      // //if creating new transaction fails
+      if (_.isEmpty(transaction)) {
+        await transx.rollback();
+        return res
+          .status(404)
+          .json("Error Processing your request!Please try again later.");
+      }
+
+      await transx.commit();
+
+      res.status(200).json({ _id: transaction_id });
+    } catch (error) {
+
+      console.log(error);
+
+      await transx.rollback();
+      return res.status(500).json("Transaction Failed!Please try again later.");
+    }
   })
 );
 
@@ -1622,7 +1622,7 @@ router.post(
 
     try {
       const transaction_reference = randomBytes(24).toString("hex");
-      const transaction_id = generateId();
+      const transaction_id = generateId(6);
       let transactionInfo = {};
 
       // Check if the user has a wallet account
@@ -1940,7 +1940,7 @@ router.post(
 
     try {
       const transaction_reference = randomBytes(24).toString("hex");
-      const transaction_id = generateId();
+      const transaction_id = generateId(6);
       let transactionInfo = {};
 
       // Check if the user has a wallet account
@@ -2067,6 +2067,29 @@ router.post(
 
 //Check Balance Status
 router.get(
+  "/balances",
+  // verifyToken,
+  // verifyAdmin,
+  asyncHandler(async (req, res) => {
+    try {
+      const posResponse = await POS_Balance();
+      const preResponse = await PREPAID_Balance();
+      const accResponse = await accountBalance();
+
+      const response = await Promise.all([posResponse, preResponse, accResponse])
+      res.status(200).json({
+        pos: response[0]?.amount,
+        pre: response[1]?.amount,
+        balance: response[2]?.balance,
+      });
+    } catch (error) {
+      console.log(error)
+      res.status(401).json("Am unknown error has occurred!");
+    }
+  })
+);
+//Check Balance Status
+router.get(
   "/hb/pos",
   // verifyToken,
   // verifyAdmin,
@@ -2082,6 +2105,8 @@ router.get(
     }
   })
 );
+
+
 //Check Balance Status
 router.get(
   "/hb/prepaid",
@@ -2436,7 +2461,7 @@ router.post(
 
     try {
       // Call the API to create a transaction
-      const transaction_id = generateId();
+      const transaction_id = generateId(6);
       const transaction_reference = randomBytes(24).toString("hex");
       let transactionInfo = {};
 

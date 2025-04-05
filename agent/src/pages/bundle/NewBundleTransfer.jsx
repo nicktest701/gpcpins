@@ -103,7 +103,11 @@ const NewBundleTransfer = () => {
     });
   }, [provider]);
 
-  const { mutateAsync, isLoading } = useMutation({ mutationFn: sendBundle });
+  const { mutateAsync, isLoading } = useMutation({ 
+    mutationFn: sendBundle,
+    retry:false,
+     
+  });
   const handleSubmit = () => {
     setProviderErr("");
     setConfirmPhoneNumberErr("");

@@ -31,6 +31,7 @@ const { sendOTPSMS } = require("../config/sms");
 const generateId = require("../config/generateId");
 const { getVerifier } = require("./users/authUsers");
 const generateRandomNumber = require("../config/generateRandomCode");
+const redisClient = require("../config/redisClient");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -96,7 +97,7 @@ router.get(
     const { id } = req.user;
 
     const verifier = await getVerifier(id);
-    const accessToken = signMainToken(verifier, "180d");
+    const accessToken = await signMainToken(verifier, "180d");
 
     res.status(200).json({
       accessToken,
@@ -615,7 +616,7 @@ router.post(
       isActive: Boolean(verifier[0]?.isActive),
     };
 
-    const accessToken = signMainToken(authVerifier, "180d");
+    const accessToken = await signMainToken(authVerifier, "180d");
     const refreshToken = signMainRefreshToken(updatedVerifier, "365d");
 
     const hashedToken = await bcrypt.hash(refreshToken, 10);
@@ -648,7 +649,7 @@ router.post(
   verifyToken,
   verifyScanner,
   asyncHandler(async (req, res) => {
-    const { id } = req.user;
+    const { id, jti } = req.user;
 
     //logs
     await knex("verifier_activity_logs").insert({
@@ -658,7 +659,7 @@ router.post(
       severity: "info",
     });
 
-
+    await redisClient.del(`user:${jti}`)
     req.user = null;
 
     res.sendStatus(204);
@@ -694,7 +695,7 @@ router.put(
       severity: "info",
     });
 
-    const accessToken = signMainToken(verifier, "180d");
+    const accessToken = await signMainToken(verifier, "180d");
 
     res.status(201).json({
       accessToken

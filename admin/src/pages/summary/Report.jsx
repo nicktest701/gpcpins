@@ -37,9 +37,13 @@ const months = [
   "November",
   "December",
 ];
+
+const currentYear = moment().year();
+const startDate = moment().startOf("year").format("YYYY-MM-DD");
+const endDate = moment().format("YYYY-MM-DD");
 function Report() {
   const { palette } = useTheme();
-  const [sortValue, setSortValue] = useState("2024");
+  const [sortValue, setSortValue] = useState(currentYear);
   const [type, setType] = useState("All");
 
   const reportTransactions = useQuery({
@@ -52,7 +56,7 @@ function Report() {
     queryKey: ["products-transactions", sortValue],
     queryFn: () =>
       getTransactions({
-        date: { startDate: new Date("2023-01-01"), endDate: new Date() },
+        date: { startDate, endDate },
         sort: "all",
       }),
     enabled: !!sortValue,
@@ -107,6 +111,10 @@ function Report() {
             <MenuItem value="2024">2024</MenuItem>
             <MenuItem value="2025">2025</MenuItem>
             <MenuItem value="2026">2026</MenuItem>
+            <MenuItem value="2027">2027</MenuItem>
+            <MenuItem value="2028">2028</MenuItem>
+            <MenuItem value="2029">2029</MenuItem>
+            <MenuItem value="2030">2030</MenuItem>
           </TextField>
           <TextField
             select
@@ -199,7 +207,7 @@ function Report() {
           title={`${type} Transactions`}
           search
           isLoading={transactions.isLoading}
-          columns={transactionsColumns((type))}
+          columns={transactionsColumns(type)}
           data={sortedTransactions}
           showExportButton={true}
           onRefresh={() => {

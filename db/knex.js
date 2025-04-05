@@ -24,19 +24,19 @@ function getKnexInstance() {
           user: process.env.DB_USER,
           password: process.env.DB_PASSWORD,
           database: process.env.DB_NAME,
-          //  connectTimeout: 60000, // 60 seconds
+           connectTimeout: 60000, // 60 seconds
 
 
         },
         pool: {
           min: 5,
           max: 50,
-          // "createTimeoutMillis": 3000,
-          // "acquireTimeoutMillis": 60000,
-          // "idleTimeoutMillis": 30000,
-          // "reapIntervalMillis": 1000,
-          // "createRetryIntervalMillis": 100,
-          // "propagateCreateError": false
+          "createTimeoutMillis": 3000,
+          "acquireTimeoutMillis": 60000,
+          "idleTimeoutMillis": 30000,
+          "reapIntervalMillis": 1000,
+          "createRetryIntervalMillis": 100,
+          "propagateCreateError": false
 
         },
         // debug: true,

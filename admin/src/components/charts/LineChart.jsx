@@ -9,7 +9,7 @@ const LineChart = ({ height, labels, datasets }) => {
     <Box
       sx={{
         minWidth: 200,
-        height: height || 400,
+        height:  400,
       }}
     >
       <Line

@@ -110,7 +110,7 @@ function Sidebar() {
           display: "flex",
           flexDirection: "column",
           // gridTemplateRows: 'auto 1fr auto',
-          width: toggleWidth ? 55 : { xs: 0, md: 200, lg: 280 },
+          width: toggleWidth ? 55 : { xs: 0, md: 200, lg: 240 },
           gap: "1rem",
         }}
       >

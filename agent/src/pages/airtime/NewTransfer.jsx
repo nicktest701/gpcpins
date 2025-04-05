@@ -6,9 +6,6 @@ import {
   Tab,
   Input,
   Typography,
-  List,
-  ListItemText,
-  ListItem,
   Stack,
   Alert,
   InputLabel,
@@ -16,14 +13,26 @@ import {
   CircularProgress,
   Button,
   IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
 } from "@mui/material";
 import { ArrowBack } from "@mui/icons-material";
+import {
+  Delete as DeleteIcon,
+  Search as SearchIcon,
+} from "@mui/icons-material";
 import { TabContext, TabList, TabPanel } from "@mui/lab";
 import Swal from "sweetalert2";
+import _ from "lodash";
 import LoadingButton from "@mui/lab/LoadingButton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import CustomDialogTitle from "@/components/dialogs/CustomDialogTitle";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useContext, useState } from "react";
 import {
   getInternationalMobileFormat,
@@ -50,9 +59,9 @@ const XLSX_FILE_TYPE =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const XLS_FILE_TYPE = "application/vnd.ms-excel";
 const NewTransfer = () => {
-  const navigate = useNavigate();
   const [dataPath, setDataPath] = useState("");
   const [content, setContent] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
   const [contentErr, setContentErr] = useState("");
   const { user } = useContext(AuthContext);
   const { customDispatch } = useContext(CustomContext);
@@ -74,6 +83,7 @@ const NewTransfer = () => {
   const [token, setToken] = useState("");
   const [err, setErr] = useState("");
   const [failureCount, setFailCount] = useState(3);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Get wallet status and non-user information
   const { data, isLoading: isLoadingWalletStatus } = useQuery({
@@ -133,23 +143,24 @@ const NewTransfer = () => {
         : reader.readAsArrayBuffer(files);
 
       reader.onload = function (event) {
-        let checkers = [];
+        let details = [];
 
         if (files.type === XLSX_FILE_TYPE || files.type === XLS_FILE_TYPE) {
-          checkers = readXLSX(event.target.result);
+          details = readXLSX(event.target.result);
         }
 
         if (files.type === CSV_FILE_TYPE) {
-          checkers = readCSV(event.target.result);
+          details = readCSV(event.target.result);
         }
 
         // console.log({
-        //   meta: _.uniq(checkers?.flatMap(Object.keys)),
-        //   data: checkers,
+        //   meta: _.uniq(details?.flatMap(Object.keys)),
+        //   data: details,
         // });
 
         setDataPath(files.name);
-        setContent(checkers);
+        setContent(details);
+        setFilteredData(details);
       };
 
       Swal.close();
@@ -222,7 +233,10 @@ const NewTransfer = () => {
     setShowPinPage(true);
   };
 
-  const { mutateAsync, isLoading } = useMutation({ mutationFn: sendAirtime });
+  const { mutateAsync, isLoading } = useMutation({
+    mutationFn: sendAirtime,
+    retry:false,
+  });
 
   const handleSubmitPayload = () => {
     setErr("");
@@ -253,8 +267,8 @@ const NewTransfer = () => {
     }
 
     Swal.fire({
-      title: "Processing",
-      text: `Proceed with transaction?`,
+      title: "Processing Airtime",
+      text: `Airtime sent cannot be reverse.Please check if all details are correct.Proceed with transaction?`,
       showCancelButton: true,
     }).then(({ isConfirmed }) => {
       if (isConfirmed) {
@@ -283,8 +297,6 @@ const NewTransfer = () => {
             // customDispatch(
             //   globalAlertType("info", data || "Transaction Completed!")
             // );
-
-           
           },
           onError: async (error) => {
             if (error === "Invalid pin!") {
@@ -331,7 +343,37 @@ const NewTransfer = () => {
     setFailCount(3);
     setToken("");
     setContent([]);
-    setShowPinPage();
+    setShowPinPage(false);
+    setDataPath("");
+  };
+
+  // Delete a file from the list
+  const handleDeleteFile = (recipient) => {
+    const details = content.filter((item) => item?.recipient !== recipient);
+    setFilteredData(details);
+    setContent(details);
+  };
+
+  // Clear all uploaded data
+  const handleClearAll = () => {
+    setContent([]);
+  };
+
+  // Handle Search Functionality
+  const handleSearch = (event) => {
+    const query = event.target.value.toLowerCase();
+    setSearchQuery(query);
+
+    if (!query) {
+      setFilteredData(content);
+    } else {
+      const filteredResults = content.filter((row) =>
+        Object.values(row).some((value) =>
+          value.toString().toLowerCase().includes(query)
+        )
+      );
+      setFilteredData(filteredResults);
+    }
   };
 
   return (
@@ -538,8 +580,8 @@ const NewTransfer = () => {
                   <br />
                   <br />
                   <div style={{ display: "flex", gap: "16px" }}>
-                    <b style={{ color: "blue" }}>1. RECIPIENT</b>
-                    <b style={{ color: "blue" }}>2. AMOUNT</b>
+                    <b style={{ color: "var(--primary)" }}>1. RECIPIENT</b>
+                    <b style={{ color: "var(--primary)" }}>2. AMOUNT</b>
                   </div>
                 </Typography>
                 <Stack spacing={1} pb={2} width="100%">
@@ -593,38 +635,78 @@ const NewTransfer = () => {
                     fullWidth
                   />
                 </Stack>
-                {content?.length > 0 && (
-                  <List
-                    sx={{
-                      height: 300,
-                      my: 2,
-                      borderRadius: 1,
-                      overflowY: "auto",
-                      border: "1px solid lightgray",
-                      width: "100%",
-                    }}
-                  >
-                    <ListItem>
-                      <ListItemText primary="Number" />
-                      <ListItemText primary="Amount" />
-                    </ListItem>
-                    {content?.map((item) => {
-                      return (
-                        <ListItem key={item?.number}>
-                          <ListItemText secondary={item?.recipient} />
-                          <ListItemText
-                            secondaryTypographyProps={{
-                              color:
-                                Number(item?.amount) < 1
-                                  ? "error"
-                                  : "info.main",
-                            }}
-                            secondary={currencyFormatter(item?.amount)}
-                          />
-                        </ListItem>
-                      );
-                    })}
-                  </List>
+
+                {content.length > 0 && (
+                  <>
+                    <Typography variant="h4">Transfer List</Typography>
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      py={2}
+                    >
+                      <Typography variant="h4">
+                        {currencyFormatter(_.sumBy(content, "amount") || 0)}
+                      </Typography>
+                      <Button
+                        onClick={handleClearAll}
+                        variant="contained"
+                        color="secondary"
+                        style={{ marginTop: 10 }}
+                      >
+                        Clear All
+                      </Button>
+                    </Stack>
+                    <TextField
+                      fullWidth
+                      variant="outlined"
+                      placeholder="Search..."
+                      onChange={handleSearch}
+                      InputProps={{ startAdornment: <SearchIcon /> }}
+                      sx={{ my: 2 }}
+                    />
+
+                    <TableContainer
+                      component={Paper}
+                      sx={{ maxHeight: 500, overflowY: "auto" }}
+                    >
+                      <Table stickyHeader>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Recipient</TableCell>
+                            <TableCell>Amount</TableCell>
+                            <TableCell>Actions</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {filteredData.map((item, index) => (
+                            <TableRow key={index}>
+                              <TableCell>{item?.recipient}</TableCell>
+                              <TableCell
+                                sx={{
+                                  color:
+                                    Number(item?.amount) < 1
+                                      ? "error"
+                                      : "info.main",
+                                }}
+                              >
+                                {currencyFormatter(item?.amount)}
+                              </TableCell>
+                              <TableCell>
+                                <IconButton
+                                  onClick={() =>
+                                    handleDeleteFile(item?.recipient)
+                                  }
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </>
                 )}
 
                 <LoadingButton

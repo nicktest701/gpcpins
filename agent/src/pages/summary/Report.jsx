@@ -28,14 +28,17 @@ const months = [
   "November",
   "December",
 ];
-const currentYear = new Date().getFullYear();
+
+const currentYear = moment().year();
+const startDate = moment().startOf("year").format("YYYY-MM-DD");
+const endDate = moment().format("YYYY-MM-DD");
 function Report() {
   const { palette } = useTheme();
   const [sortValue, setSortValue] = useState(currentYear);
   const [type, setType] = useState("All");
   const date = {
-    startDate: new Date(`${currentYear}-01-01`),
-    endDate: new Date(),
+    startDate,
+    endDate,
   };
 
   const reportTransactions = useQuery({
@@ -98,9 +101,13 @@ function Report() {
             onChange={(e) => setSortValue(e.target.value)}
             sx={{ width: 200, my: 2 }}
           >
-            <MenuItem value="2024">2024</MenuItem>
+  <MenuItem value="2024">2024</MenuItem>
             <MenuItem value="2025">2025</MenuItem>
             <MenuItem value="2026">2026</MenuItem>
+            <MenuItem value="2027">2027</MenuItem>
+            <MenuItem value="2028">2028</MenuItem>
+            <MenuItem value="2029">2029</MenuItem>
+            <MenuItem value="2030">2030</MenuItem>
           </TextField>
           <TextField
             select

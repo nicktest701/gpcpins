@@ -1,43 +1,55 @@
 const jwt = require("jsonwebtoken");
+const redisClient = require("./redisClient");
+const { randomUUID } = require("crypto");
 
-function signAccessToken(data) {
-  return jwt.sign(data, process.env.TOKEN, {
-    expiresIn: "180d",
-  });
-}
 
+const tid = randomUUID()
 function signRefreshToken(data) {
-  return jwt.sign(data, process.env.TOKEN_REFRESH, {
+  const token = jwt.sign(data, process.env.TOKEN_REFRESH, {
     expiresIn: "1000d",
   });
+  return token;
 }
 
-function signSampleToken(data) {
-  return jwt.sign(data, process.env.TOKEN, {
+async function signSampleToken(data) {
+  const token = jwt.sign(data, process.env.TOKEN, {
     expiresIn: "1h",
+    jwtid: tid
   });
+  await redisClient.set(`user:${tid}`, token, {
+    EX: 60 * 60 // or just 3600
+  });
+  return token;
 }
 function signSampleRefreshToken(data) {
-  return jwt.sign(data, process.env.TOKEN_REFRESH, {
+  const token = jwt.sign(data, process.env.TOKEN_REFRESH, {
     expiresIn: "1h",
   });
+  return token;
 }
 
-function signMainToken(data, expires) {
-  return jwt.sign(data, process.env.TOKEN, {
+async function signMainToken(data, expires) {
+  const token = jwt.sign(data, process.env.TOKEN, {
     expiresIn: expires,
-    
+    jwtid: tid
   });
+  await redisClient.set(`user:${tid}`, token, {
+    EX: 60 * 60 * 24 * 180 // 180 days in seconds
+  });
+
+
+  return token;
 }
 function signMainRefreshToken(data, expires) {
-  return jwt.sign(data, process.env.TOKEN_REFRESH, {
+  const token = jwt.sign(data, process.env.TOKEN_REFRESH, {
     expiresIn: "1000d",
 
+
   });
+  return token;
 }
 
 module.exports = {
-  signAccessToken,
   signRefreshToken,
   signSampleToken,
   signSampleRefreshToken,

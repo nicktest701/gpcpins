@@ -85,6 +85,19 @@ export const downloadVouchers = async (id) => {
 };
 
 // airtime
+export const allBalance = async () => {
+  try {
+    const res = await api({
+      method: "GET",
+      url: `/payment/balances`,
+    });
+
+    return res.data;
+  } catch (error) {
+    throw error.response.data;
+  }
+};
+// airtime
 export const getPOS_Balance = async () => {
   try {
     const res = await api({

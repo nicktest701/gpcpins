@@ -19,6 +19,10 @@ import { getAgentTransactions } from "@/api/agentAPI";
 import { currencyFormatter } from "@/constants";
 import CustomRangePicker from "@/components/pickers/CustomRangePicker";
 import CustomTotal from "@/components/custom/CustomTotal";
+import moment from "moment";
+
+const startDate = moment("2024-01-01").format("YYYY-MM-DD");
+const endDate = moment().format("YYYY-MM-DD");
 
 function AirtimeTransaction() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -28,14 +32,14 @@ function AirtimeTransaction() {
   const [type, setType] = useState("all");
   const [date, setDate] = useState([
     {
-      startDate: new Date("2024-01-01"),
-      endDate: new Date(),
+      startDate,
+      endDate,
       key: "selection",
     },
   ]);
 
   const transactions = useQuery({
-    queryKey: ["agent-airtime-transactions", date[0]],
+    queryKey: ["agent-airtime-transactions", startDate, endDate],
     queryFn: () => getAgentTransactions({ date: date[0], type: "airtime" }),
     enabled: !!user?.id,
   });
@@ -55,140 +59,7 @@ function AirtimeTransaction() {
     });
   };
 
-  // const { mutateAsync } = useMutation({ mutationFn: sendAirtime });
-
-  // const handleResend = (data) => {
-  //   const values = {
-  //     recipient: data?.recipient,
-  //     network: data?.provider,
-  //     amount: data?.amount,
-  //   };
-
-  //   Swal.fire({
-  //     title: "Processing",
-  //     text: `Resend Airtime?`,
-  //     showCancelButton: true,
-  //   }).then(({ isConfirmed }) => {
-  //     if (isConfirmed) {
-  //       Swal.update({
-  //         icon: "info",
-  //         title: "Processing",
-  //         text: "Transfering the airtime please wait",
-  //         backdrop: false,
-  //         timer: 10000,
-  //       });
-
-  //       mutateAsync(values, {
-  //         onSettled: () => {
-  //           Swal.close();
-  //           queryClient.invalidateQueries(["agent-transactions"]);
-  //         },
-  //         onSuccess: () => {
-  //           customDispatch(globalAlertType("info", "Transaction Completed!"));
-  //         },
-  //         onError: (error) => {
-  //           customDispatch(globalAlertType("error", error));
-  //         },
-  //       });
-  //     }
-  //   });
-  // };
-
-  // const statusMutate = useMutation({
-  //   mutationFn: checkAgentTransactionStatus,
-  // });
-
-  // const handleCheckStatus = (reference) => {
-  //   statusMutate.mutateAsync(
-  //     { reference },
-  //     {
-  //       onSettled: () => {
-  //         queryClient.invalidateQueries(["agent-transactions"]);
-  //       },
-  //       onSuccess: () => {
-  //         Swal.fire({
-  //           icon: "info",
-  //           title: "Transaction Status",
-  //           html: `<p>Hello</p>`,
-  //           backdrop: false,
-  //           timer: 10000,
-  //         });
-  //       },
-  //       onError: () => {
-  //         Swal.fire({
-  //           icon: "error",
-  //           title: "Processing Failed!",
-  //           text: "Could not fetch transaction status",
-  //           backdrop: false,
-  //           timer: 10000,
-  //         });
-  //       },
-  //     }
-  //   );
-  // };
-
-  // const removeMutate = useMutation({
-  //   mutationFn: removeAgentTransactions,
-  // });
-  // const handleRemoveTransaction = (id) => {
-  //   Swal.fire({
-  //     title: "Deleting",
-  //     text: `Remove Transaction?`,
-  //     showCancelButton: true,
-  //   }).then(({ isConfirmed }) => {
-  //     if (isConfirmed) {
-  //       removeMutate.mutateAsync(
-  //         { id },
-  //         {
-  //           onSettled: () => {
-  //             queryClient.invalidateQueries(["agent-transactions"]);
-  //           },
-  //           onSuccess: () => {
-  //             customDispatch(globalAlertType("info", "Transaction Removed!"));
-  //           },
-  //           onError: (error) => {
-  //             customDispatch(globalAlertType("error", error));
-  //           },
-  //         }
-  //       );
-  //     }
-  //   });
-  // };
-
-  // const modifiedColumns = [
-  //   ...airtimeTransactionsColumns,
-  //   {
-  //     field: "",
-  //     title: "Action",
-  //     export: false,
-  //     render: (data) => {
-  //       return (
-  //         <ActionMenu>
-  //           {data?.status !== "completed" && (
-  //             <MenuItem
-  //               sx={{ fontSize: 13 }}
-  //               onClick={() => handleResend(data)}
-  //             >
-  //               Resend
-  //             </MenuItem>
-  //            )}
-  //           <MenuItem
-  //             sx={{ fontSize: 13 }}
-  //             onClick={() => handleCheckStatus(data?.reference)}
-  //           >
-  //             Check Status
-  //           </MenuItem>
-  //           <MenuItem
-  //             sx={{ fontSize: 13 }}
-  //             onClick={() => handleRemoveTransaction(data?._id)}
-  //           >
-  //             Remove
-  //           </MenuItem>
-  //         </ActionMenu>
-  //       );
-  //     },
-  //   },
-  // ];
+ 
 
   return (
     <>

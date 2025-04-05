@@ -647,7 +647,7 @@ router.post(
   verifyToken, verifyScanner,
   asyncHandler(async (req, res) => {
     const { id: userID } = req.user
-    const { type, id, ticket, ticketID, category, token } = req.body;
+    const {  id, ticket, ticketID, category, token } = req.body;
 
     //Check if ticket exists
     if (!ticket || !id || !token) {
@@ -655,102 +655,45 @@ router.post(
     }
 
     const transx = await knex.transaction();
-
-    //find transaction with  id
-    const transaction = await transx('voucher_transactions')
-      .select('_id', 'email', 'phonenumber', 'vouchers', 'info')
-      .where('_id', id)
-      .limit(1).first()
-
-    if (_.isEmpty(transaction)) {
-      return res.status(400).json('Ticket not found!');
-    }
-
-
-
-    const categoryId = JSON.parse(transaction?.info)?.categoryId;
-
-    if (category !== categoryId) {
-      return res.status(400).json('Not a valid ticket!');
-    }
-
-    const vouchers = JSON.parse(transaction?.vouchers);
-
     try {
-      let voucherId = '';
-
-      if (type === 'input') {
-
-
-        const seletedTicket = vouchers.map(async (voucher) => {
-
-          const foundTicket = await transx('vouchers').select('_id', 'pin', 'serial')
-            .where({
-              _id: voucher,
-              pin: ticket
-            }).orWhere({
-              _id: voucher,
-              serial: ticket
-            }).limit(1).first();
+      //find transaction with voucher id
+      const verifiedTicket = await transx("scanned_tickets_vouchers_view")
+        .where({ voucherId: ticket }).first();
 
 
-          return foundTicket
-        });
-
-        const availableTicket = await Promise.all(seletedTicket)
-        const formatedAvailableTicket = _.compact(availableTicket)
-
-        if (_.isEmpty(formatedAvailableTicket)) {
-          return res.status(400).json('Couldnt find your ticket!');
-
-        }
-
-        //REMOVE ALL NON MATCHING TICKETS
-        voucherId = formatedAvailableTicket[0]?._id
-
-
-
-      } else {
-
-        const splittedTicket = ticket.split('_');
-        voucherId = splittedTicket[0];
-
+      if (!_.isEmpty(verifiedTicket)) {
+        verifiedTicket.isVerified = true
+        return res.status(200).json(verifiedTicket);
       }
 
 
-      const ticketData = await transx("scanned_tickets_vouchers_view")
-        .where({ voucherId }).first();
+      //find transaction with  id
+      const transaction = await transx('voucher_transactions')
+        .select('_id', 'email', 'phonenumber', 'vouchers', 'info')
+        .where('_id', id)
+        .limit(1).first()
 
-
-      if (!_.isEmpty(ticketData)) {
-        ticketData.isVerified = true
-
-        return res.status(200).json(ticketData);
+      if (_.isEmpty(transaction)) {
+        return res.status(400).json('Ticket not found!');
       }
+      //update transaction with voucher id
+      const categoryId = JSON.parse(transaction?.info)?.categoryId;
 
-
-      //find voucher with its id
-      const voucher = vouchers.find((voucher) => voucher === voucherId);
-
-
-
-      if (_.isEmpty(voucher)) {
-        return res.status(400).json('Couldnt find your ticket!');
-
+      if (category !== categoryId) {
+        return res.status(400).json('Not a valid ticket!');
       }
 
 
 
       await transx('vouchers').update({
         status: 'used',
-      }).where('_id', voucher)
+      }).where('_id', ticket)
 
       await transx('scanned_tickets').insert({
-        _id: generateId(),
+        _id: generateId(6),
         ticket: ticketID,
-        //  verifier: '1a2fde1e30abe333',
         verifier: userID,
-        voucher,
+        voucher: ticket,
         category: categoryId,
         transaction: id,
       })
@@ -758,7 +701,7 @@ router.post(
       //find tranasction with specific payment id
       const scannedTicket = await transx('scanned_tickets_vouchers_view')
         .select('*')
-        .where('voucherId', voucher)
+        .where('voucherId', ticket)
         .limit(1)
         .first()
 

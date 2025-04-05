@@ -9,7 +9,7 @@ function CustomCard({ title, children, width }) {
         p: 2,
         width: "100%",
         // border: '1px solid whitesmoke',
-        borderRadius: 0,
+        // borderRadius: 0,
       }}
     >
       <Stack direction="row" justifyContent="flex-start" alignItems="center" gap={1}>

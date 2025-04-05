@@ -9,7 +9,7 @@ const PieChart = ({ height, labels, data }) => {
     <Box
       sx={{
         minWidth: 200,
-        minHeight: height || 300,
+        minHeight: 300,
       }}
     >
       <Doughnut

@@ -1026,15 +1026,6 @@ router.get(
       return res.status(400).json('Error! Ticket not available.');
     }
 
-    const splittedTicket = ticket.split('_');
-    const voucherId = splittedTicket[0];
-
-    ///Check if voucher id is a valid mongo db id
-    if (!isValidUUID2(id)) {
-      return res.status(400).json('Error! Ticket not available.');
-    }
-
-
     const transx = await knex.transaction();
 
     try {
@@ -1045,29 +1036,25 @@ router.get(
         .limit(1).first();
 
       if (_.isEmpty(transaction)) {
-        return res.status(400).json('Couldnt Verify your ticket');
+        return res.status(400).json('Couldnt find your ticket!');
       }
 
       // console.log(transaction)
 
       //selectedVoucher
-      const selectedVoucher = await transx('vouchers').where('_id', voucherId).first()
+      const selectedVoucher = await transx('voucher_view').where('_id', ticket).first()
 
       if (_.isEmpty(selectedVoucher)) {
-        return res.status(400).json('Couldnt find your ticket!');
+        return res.status(400).json('Couldnt Verify your ticket! Try again');
       }
-
-      //category
-      const category = await transx('categories').where('_id', selectedVoucher.category).first()
-
 
 
       const info = JSON.parse(transaction?.info)
       const details = JSON.parse(selectedVoucher?.details)
       const modifiedVoucher = {
         id: transaction?._id,
-        voucherType: category?.voucherType,
-        category: category?.category,
+        voucherType: selectedVoucher?.voucher,
+        category: selectedVoucher?.category,
         serial: selectedVoucher.serial,
         pin: selectedVoucher.pin,
         type: details?.type,
@@ -1448,7 +1435,7 @@ router.get(
         ticketTransactions
       );
 
-   await transx.commit()
+      await transx.commit()
 
       res.status(200).json({
         category: {
@@ -1604,7 +1591,7 @@ router.get(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-   
+
 
     const agent_airtime_transactions = await knex("agent_transactions")
       .where({ year: moment().year(), type: 'airtime' })
@@ -1688,7 +1675,7 @@ router.get(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const transx=await knex.transaction()
+    const transx = await knex.transaction()
 
     const agent_bundle_transactions = await transx("agent_transactions")
       .where({ year: moment().year(), type: 'bundle' })
@@ -3142,7 +3129,8 @@ router.get(
         "createdAt", "updatedAt",
         "year"
       )
-      .where({ agent_id: id, year: year, status: "completed" })
+      .where({ agent_id: id, year: year, })
+      .andWhere('status', "IN", ['completed', 'refunded'])
       .orderBy("createdAt", "desc");
 
     const modifiedTransactions = transactions.map(({ info, ...rest }) => {
@@ -3169,7 +3157,7 @@ router.get(
         ...getRecentTransaction(airtimeTransaction, 3),
         ...getRecentTransaction(bundleTransaction, 3),
       ],
-      "createdAt", "updatedAt",
+      "createdAt",
       "desc"
     );
 

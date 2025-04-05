@@ -1,10 +1,10 @@
 const QRCode = require('qrcode');
 
-async function generateQRCode(id, voucherId, serial) {
+async function generateQRCode(id, voucherId) {
   try {
     // const url = await QRCode.toDataURL(serial);
     const url = await QRCode.toDataURL(
-      `https://gpcpins.com/verify?XwnA=${id}&bwhT=${voucherId}_${serial}`
+      `https://gpcpins.com/verify?XwnA=${id}&bwhT=${voucherId}`
     );
     // const url = await QRCode.toDataURL(
     //   `http://localhost:3000/verify?XwnA=${id}&bwhT=${voucherId}_${serial}`

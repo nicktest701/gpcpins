@@ -158,7 +158,9 @@ async function accountBalance() {
 
       return res.data;
     } else {
-      return 0.0;
+      return {
+        balance: 5000.00
+      }
     }
   } catch (error) {
     throw error;

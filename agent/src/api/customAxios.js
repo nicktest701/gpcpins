@@ -13,9 +13,9 @@ const BASE_URL = import.meta.env.VITE_BASE_URL;
 const api = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
-  headers: {
-    Connection: 'keep-alive'
-  }
+  // headers: {
+  //   Connection: 'keep-alive'
+  // }
 });
 
 api.defaults.withCredentials = true;

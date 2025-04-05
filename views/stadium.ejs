@@ -173,7 +173,7 @@
         <% vouchers.forEach(voucher=> { %>
             <div class="template">
                 <div class="content">
-                    <h3>FOOTBALL TICKET</h3>
+                    <h3>FOOTBALL TICKET</h3> 
                     <p style="font-size: 1rem;">
                         <%= voucher?.companyName %>
                     </p>
@@ -223,7 +223,7 @@
                 <div class="qrbox">
                     <small style="font-style: italic; text-align: center;"> <%= _id %></small>
                     <img src=<%=voucher?.qrCode %> alt="code" />
-                    <small style="font-style: italic; text-align: center;"> <%= voucher?.serial %></small>
+                    <small style="font-style: italic; text-align: center;"> <%= voucher?._id %></small>
                 </div>
 
                 <div class="company">

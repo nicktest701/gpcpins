@@ -46,6 +46,7 @@ const sendEMail = require("../config/sendEmail");
 const generateRandomNumber = require("../config/generateRandomCode");
 const { sendSMS, sendOTPSMS } = require("../config/sms");
 const currencyFormatter = require("../config/currencyFormatter");
+const redisClient = require("../config/redisClient");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -344,7 +345,7 @@ router.get(
       businessDescription: agent?.business_description,
     };
 
-    const accessToken = signMainToken(accessData, "180d");
+    const accessToken = await signMainToken(accessData, "180d");
 
 
     res.status(200).json({
@@ -673,7 +674,7 @@ router.post(
       active: agent?.active,
     };
 
-    const accessToken = signMainToken(accessData, "180d");
+    const accessToken = await signMainToken(accessData, "180d");
     const refreshToken = signMainRefreshToken(updatedAgent, "600d");
 
     // res.cookie("_SSUID_kyfc", accessToken, {
@@ -864,7 +865,7 @@ router.post(
       active: agent[0]?.active,
     };
 
-    const accessToken = signMainToken(accessData, "180d");
+    const accessToken = await signMainToken(accessData, "180d");
     const refreshToken = signMainRefreshToken(updatedAgent, "600d");
 
     // res.cookie("_SSUID_kyfc", accessToken, {
@@ -913,7 +914,7 @@ router.post(
   "/logout",
   verifyToken,
   asyncHandler(async (req, res) => {
-    const { id } = req.user;
+    const { id, jti } = req.user;
     // res.cookie("_SSUID_kyfc", "", {
     //   httpOnly: true,
     //   path: "/",
@@ -935,6 +936,7 @@ router.post(
       title: "Logged out of account.",
       severity: "info",
     });
+    await redisClient.del(`user:${jti}`)
     req.user = null;
 
     res.sendStatus(204);
@@ -1016,7 +1018,7 @@ router.put(
       businessDescription: agent[0]?.business_description,
     };
 
-    const accessToken = signMainToken(accessData, "180d");
+    const accessToken = await signMainToken(accessData, "180d");
 
     //logs
     await knex("agent_activity_logs").insert({
@@ -1625,105 +1627,63 @@ router.post(
   verifyToken,
   verifyAgent,
   asyncHandler(async (req, res) => {
-    const info = req.body;
     const { id } = req.user;
+    const info = req.body;
+
+    const balanceResponse = await accountBalance();
+    const balance = Number(balanceResponse?.balance);
+    const amount = Number(info?.amount);
+
+
+    if (balance < amount) {
+      await insufficientBalanceWarning(balance);
+      return res.status(401).json("Service Not Available. Try again later.");
+    }
 
     const transx = await knex.transaction();
-
-
-    const response = await accountBalance();
-    if (Number(response?.balance) < Number(info?.amount)) {
-
-      const body = `
-    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(response?.balance)}.
-    Please recharge to avoid any inconveniences.
-    Thank you.
-              `;
-      await sendEMail(
-        process.env.MAIL_CLIENT_USER,
-        mailTextShell(`<p>${body}</p>`),
-        "LOW TOP UP ACCOUNT BALANCE"
-      );
-
-      await sendSMS(body, process.env.CLIENT_PHONENUMBER)
-
-      return res.status(401).json("Service Not Available.Try again later");
-    }
-
-
-
-    const agentWallet = await transx("agent_wallets")
+    const [agentWallet] = await transx("agent_wallets")
       .select("_id", "agent_key", "amount", "active")
-      .where({
-        agent_id: id,
-
-      })
+      .where({ agent_id: id })
       .limit(1);
 
-
-    if (_.isEmpty(agentWallet)) {
+    if (!agentWallet || !(await bcrypt.compare(info?.token, agentWallet.agent_key))) {
+      await transx.rollback();
       return res.status(401).json("Invalid pin!");
     }
 
-    const isPinValid = await bcrypt.compare(info?.token, agentWallet[0]?.agent_key)
-
-
-    if (!isPinValid) {
-      return res.status(401).json("Invalid pin!");
-    }
-
-
-    if (
-      Number(agentWallet[0]?.amount) < Number(info?.amount)
-    ) {
-
-      await knex("agent_notifications").insert({
+    if (Number(agentWallet.amount) < amount) {
+      await transx("agent_notifications").insert({
         _id: generateId(),
         agent_id: id,
         type: "airtime",
         title: "Airtime Transfer Failed!",
         message: "Insufficient wallet balance to complete transaction!",
       });
+      await transx.commit();
       return res.status(401).json("Insufficient wallet balance to complete transaction!");
     }
 
-
-
-
-    //transaction reference
     const transaction_reference = randomBytes(24).toString("hex");
-
-    //set airtime info
     const airtimeInfo = {
       recipient: info?.recipient,
-      amount: info?.amount,
-      network:
-        info?.network === "MTN"
-          ? 4
-          : info?.network === "Vodafone"
-            ? 6
-            : info?.network === "AirtelTigo"
-              ? 1
-              : 0,
+      amount,
+      network: info?.network === "MTN" ? 4 : info?.network === "Vodafone" ? 6 : info?.network === "AirtelTigo" ? 1 : 0,
       transaction_reference,
     };
 
-    const commissionRate = await transx("agent_commissions")
+    const [commissionData] = await transx("agent_commissions")
       .select("rate")
       .where({ agent_id: id, provider: info?.network })
       .limit(1);
-    if (!commissionRate || !info) {
+
+    if (!commissionData) {
+      await transx.rollback();
       return res.status(400).json("Invalid Request");
     }
 
-    //Calculate customers commission amount
-    const commissionAmount =
-      (commissionRate[0].rate / 100) * airtimeInfo.amount;
+    const commission = (commissionData.rate / 100) * amount;
+    const payableAmount = amount - commission;
 
-    //Customers payable Amount
-    const payableAmount = airtimeInfo.amount - commissionAmount;
-
-    //Generate transaction info
     const transactionInfo = {
       _id: generateId(),
       agent_id: id,
@@ -1731,105 +1691,78 @@ router.post(
       type: "airtime",
       recipient: info?.recipient,
       provider: info?.network,
-      info: JSON.stringify({
-        recipient: info?.recipient,
-        ref: transaction_reference,
-        amount: payableAmount,
-      }),
+      info: JSON.stringify({ recipient: info?.recipient, ref: transaction_reference, amount: payableAmount }),
       amount: payableAmount,
-      commission: commissionAmount,
-      totalAmount: info?.amount,
+      commission,
+      totalAmount: amount,
     };
 
-
-
-    // Update agent wallet and record the transaction in database
-    await transx("agent_wallets").where("agent_id", id).decrement({
-      amount: transactionInfo?.amount,
-    });
-
+    await transx("agent_wallets").where("agent_id", id).decrement({ amount: payableAmount });
     await transx.commit();
 
-
     const tranx = await knex.transaction();
+
     try {
-
       const response = await sendAirtime(airtimeInfo);
-      if (['00', '09'].includes(response["status-code"])) {
+      const statusCode = response["status-code"];
+      const isSuccess = ["00", "09"].includes(statusCode);
 
-        await tranx("agent_transactions").insert({
-          ...transactionInfo,
-          status: "completed",
-        });
+      await tranx("agent_transactions").insert({
+        ...transactionInfo,
+        status: isSuccess ? "completed" : "failed",
+      });
 
-        const balance = Number(response?.balance_after);
-        if (balance < 1000) {
-          const body = `
-        Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.
-        Please recharge to avoid any inconveniences.
-        Thank you.
-              `;
-          await sendEMail(
-            process.env.MAIL_CLIENT_USER,
-            mailTextShell(`<p>${body}</p>`),
-            "LOW TOP UP ACCOUNT BALANCE"
-          );
-          await sendSMS(body, process.env.CLIENT_PHONENUMBER);
+      if (isSuccess) {
+        if (Number(response?.balance_after) < 1000) {
+          await insufficientBalanceWarning(response?.balance_after);
         }
 
-        //send notiication to agent about the transaction
         await tranx("agent_notifications").insert({
           _id: generateId(),
           agent_id: id,
           type: "airtime",
           title: "Airtime Transfer",
-          message: `You have successfully recharged ${airtimeInfo.recipient} with ${currencyFormatter(airtimeInfo.amount)} of airtime, you were charged GHS ${airtimeInfo.amount} with a commission of GHS ${transactionInfo?.commission}`,
+          message: `You have successfully recharged ${airtimeInfo.recipient} with ${currencyFormatter(
+            airtimeInfo.amount
+          )} of airtime. Commission: GHS ${currencyFormatter(commission)}.`,
         });
       } else {
-
-
-        await tranx("agent_transactions").insert({
-          ...transactionInfo,
-          status: "failed",
-        });
-
         await tranx("agent_notifications").insert({
           _id: generateId(),
           agent_id: id,
           type: "airtime",
           title: "Airtime Transfer Failed!",
-          message: `Your airtime transfer of ${currencyFormatter(airtimeInfo.amount)} to ${airtimeInfo.recipient} failed.Please Try again later.`,
+          message: `Your airtime transfer of ${currencyFormatter(
+            airtimeInfo.amount
+          )} to ${airtimeInfo.recipient} failed. Please try again later.`,
         });
       }
 
-      await tranx.commit();
-
-      //logs
-      await knex("agent_activity_logs").insert({
+      await tranx("agent_activity_logs").insert({
         agent_id: id,
-        title: "Transferred airtime to Customers.",
+        title: "Transferred airtime to customer.",
         severity: "info",
       });
 
-      return res.status(200).json("Airtime transfer was successful!");
+      await tranx.commit();
+      return res.status(200).json(isSuccess ? "Airtime transfer was successful!" : "Airtime transfer failed!");
     } catch (error) {
-
       await tranx("agent_transactions").insert({
         ...transactionInfo,
         status: "failed",
       });
 
-      //
       await tranx("agent_notifications").insert({
         _id: generateId(),
         agent_id: id,
         type: "airtime",
         title: "Airtime Transfer Failed!",
-        message: `Your airtime transfer of ${currencyFormatter(airtimeInfo.amount)} to ${airtimeInfo.recipient} failed.Please Try again later.`,
+        message: `Your airtime transfer of ${currencyFormatter(
+          airtimeInfo.amount
+        )} to ${airtimeInfo.recipient} failed. Please try again later.`,
       });
-      await tranx.commit();
 
-      //
+      await tranx.commit();
       return res.status(401).json("Transaction failed! An error has occurred.");
     }
   })
@@ -1842,213 +1775,180 @@ router.post(
   verifyToken,
   verifyAgent,
   asyncHandler(async (req, res) => {
-    const data = req.body;
+    const { content, token } = req.body;
     const { id } = req.user;
 
+    // Step 1: Calculate total amount to be charged from all recipients
+    const totalAmount = _.sumBy(content, (info) => Number(info?.amount));
 
-    const totalAmount = _.sumBy(data?.content, (info) => Number(info?.amount));
+    // Step 2: Check platform account balance
     const response = await accountBalance();
     if (Number(response?.balance) < Number(totalAmount)) {
-
-      const body = `
-    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(response?.balance)}.
-    Please recharge to avoid any inconveniences.
-    Thank you.
-              `;
-      await sendEMail(
-        process.env.MAIL_CLIENT_USER,
-        mailTextShell(`<p>${body}</p>`),
-        "LOW TOP UP ACCOUNT BALANCE"
-      );
-
-      await sendSMS(body, process.env.CLIENT_PHONENUMBER)
-
-      return res.status(401).json("Service Not Available.Try again later");
+      await insufficientBalanceWarning(response?.balance);
+      return res.status(401).json("Service Not Available. Try again later.");
     }
-
-
-
 
     const transx = await knex.transaction();
 
-    const agentWallet = await knex("agent_wallets")
-      .select("_id", "agent_key", "amount", "active")
-      .where({
-        agent_id: id,
-
-      })
-      .limit(1);
-    // console.log(agentWallet)
-
-
-    if (_.isEmpty(agentWallet)) {
-      return res.status(401).json("Invalid pin!");
-    }
-
-    const isPinValid = await bcrypt.compare(data?.token, agentWallet[0]?.agent_key)
-    if (!isPinValid) {
-      return res.status(401).json("Invalid pin!");
-    }
-
-
-
-
-    if (
-      Number(agentWallet[0]?.amount) < Number(totalAmount)
-    ) {
-
-      await transx("agent_notifications").insert({
-        _id: generateId(),
-        agent_id: id,
-        type: "airtime",
-        title: "Airtime Transfer Failed!",
-        message: "Insufficient wallet balance to complete transaction!",
-      });
-
-      return res.status(401).json("Insufficient wallet balance to complete transaction!");
-    }
-
-
-
-
-    const transactions = data?.content?.map(async (info) => {
-      //transaction reference
-      const transaction_reference = randomBytes(24).toString("hex");
-
-      const { code, providerName, phoneNumber } = getPhoneNumberInfo(
-        info?.recipient?.toString()
-      );
-
-      //set airtime info
-      const airtimeInfo = {
-        recipient: info?.recipient,
-        amount: info?.amount,
-        network: code,
-        transaction_reference,
-      };
-
-      const commissionRate = await transx("agent_commissions")
-        .select("rate")
-        .where({ agent_id: id, provider: providerName })
+    try {
+      // Step 3: Fetch agent wallet and validate PIN
+      const agentWallet = await transx("agent_wallets")
+        .select("_id", "agent_key", "amount", "active")
+        .where({ agent_id: id })
         .limit(1);
-      if (!commissionRate || !info) {
-        return res.status(400).json("Invalid Request");
+
+      if (
+        !agentWallet.length ||
+        !(await bcrypt.compare(token, agentWallet[0].agent_key))
+      ) {
+        await transx.rollback();
+        return res.status(401).json("Invalid PIN!");
       }
 
-      //Calculate customers commission amount
-      const commissionAmount =
-        (commissionRate[0].rate / 100) * airtimeInfo.amount;
-
-      //Customers payable Amount
-      const payableAmount = airtimeInfo.amount - commissionAmount;
-
-      //Generate transaction info
-      const transactionInfo = {
-        _id: generateId(),
-        agent_id: id,
-        reference: transaction_reference,
-        type: "airtime",
-        recipient: phoneNumber,
-        provider: providerName,
-        info: JSON.stringify({
-          recipient: info?.recipient,
-          ref: transaction_reference,
-          amount: payableAmount,
-        }),
-        amount: payableAmount,
-        commission: commissionAmount,
-        totalAmount: info?.amount,
-      };
-
-      // Update agent wallet and record the transaction in database
-      await transx("agent_wallets").where("agent_id", id).decrement({
-        amount: transactionInfo?.amount,
-      });
-
-      const response = await sendAirtime(airtimeInfo);
-
-
-      if (['00', '09'].includes(response["status-code"])) {
-
-        // insert transaction into database
-        await transx("agent_transactions").insert({
-          ...transactionInfo,
-          status: "completed",
-        });
-
-
-
-        //send notiication to agent about the transaction
-        await transx("agent_notifications").insert({
-          _id: generateId(),
-          agent_id: id,
-          type: "airtime",
-          title: "Airtime Transfer",
-          message: `You have successfully recharged ${airtimeInfo?.recipient} with ${currencyFormatter(airtimeInfo.amount)} of airtime, you were charged GHS ${airtimeInfo?.amount} with a commission of GHS ${transactionInfo?.commission}`,
-        });
-
-
-        return {
-          ...transactionInfo,
-          status: "completed",
-        };
-
-      } else {
-        // insert transaction into database
-        await transx("agent_transactions").insert({
-          ...transactionInfo,
-          status: "failed",
-        });
-
-
+      // Step 4: Check if agent has enough balance
+      if (Number(agentWallet[0].amount) < Number(totalAmount)) {
         await transx("agent_notifications").insert({
           _id: generateId(),
           agent_id: id,
           type: "airtime",
           title: "Airtime Transfer Failed!",
-          message: `Your airtime transfer of ${currencyFormatter(airtimeInfo.amount)} to ${airtimeInfo.recipient} failed.Please Try again later.`,
+          message: "Insufficient wallet balance to complete transaction!",
         });
-
-        return {
-          ...transactionInfo,
-          status: "failed",
-        };
-      }
-
-    });
-
-    Promise.all(transactions)
-      .then(async (values) => {
-        const response = await accountBalance();
-        if (response?.balance < 1000) {
-          const body = `
-    Your one-4-all top up account balance is running low.Your remaining balance is GHS ${response?.balance}.
-    Please recharge to avoid any inconveniences.
-    Thank you.
-          `;
-          await sendEMail(
-            process.env.MAIL_CLIENT_USER,
-            mailTextShell(`<p>${body}</p>`),
-            "LOW TOP UP ACCOUNT BALANCE"
-          );
-          await sendSMS(body, process.env.CLIENT_PHONENUMBER);
-        }
-        //logs
-        await transx("agent_activity_logs").insert({
-          agent_id: id,
-          title: "Transferred bulk airtime to Customers.",
-          severity: "info",
-        });
-        await transx.commit();
-        return res.status(200).json("Airtime transfer was successful!");
-      })
-      .catch(async (error) => {
-
         await transx.commit();
         return res
           .status(401)
-          .json("Transaction failed! An error has occurred.");
+          .json("Insufficient wallet balance to complete transaction!");
+      }
+
+      // Step 5: Prepare transactions for each recipient
+      const transactions = await Promise.all(
+        content.map(async (info) => {
+          const transaction_reference = randomBytes(24).toString("hex");
+          const { code, providerName, phoneNumber } = getPhoneNumberInfo(
+            info?.recipient.toString()
+          );
+
+          const airtimeInfo = {
+            recipient: info.recipient,
+            amount: Number(info.amount),
+            network: code,
+            transaction_reference,
+          };
+
+          const commissionRate = await transx("agent_commissions")
+            .select("rate")
+            .where({ agent_id: id, provider: providerName })
+            .limit(1);
+
+          // if (!commissionRate.length) {
+          //   throw new Error("Invalid commission data");
+          // }
+
+          const commissionAmount =
+            ((commissionRate[0]?.rate || 0.20) / 100) * airtimeInfo.amount;
+
+          const payableAmount = airtimeInfo.amount - commissionAmount;
+
+          const transactionInfo = {
+            _id: generateId(),
+            agent_id: id,
+            reference: transaction_reference,
+            type: "airtime",
+            recipient: phoneNumber,
+            provider: providerName,
+            info: JSON.stringify({
+              recipient: info.recipient,
+              ref: transaction_reference,
+              amount: payableAmount,
+            }),
+            amount: payableAmount,
+            commission: commissionAmount,
+            totalAmount: airtimeInfo.amount,
+          };
+
+          return { transactionInfo, airtimeInfo, payableAmount };
+        })
+      );
+
+      const totalPayable = _.sumBy(transactions, "payableAmount");
+
+      // Step 6: Deduct total payable amount from agent's wallet
+      await transx("agent_wallets")
+        .where("agent_id", id)
+        .decrement({ amount: totalPayable });
+
+      await transx.commit(); // Wallet deduction done, move to send airtime
+
+      // Step 7: Process each airtime transaction
+      const airtimeTx = await knex.transaction();
+
+      await Promise.all(
+        transactions.map(async ({ transactionInfo, airtimeInfo }) => {
+          try {
+            const response = await sendAirtime(airtimeInfo);
+            const isSuccess = ["00", "09"].includes(response["status-code"]);
+
+            await airtimeTx("agent_transactions").insert({
+              ...transactionInfo,
+              status: isSuccess ? "completed" : "failed",
+            });
+
+            await airtimeTx("agent_notifications").insert({
+              _id: generateId(),
+              agent_id: id,
+              type: "airtime",
+              title: isSuccess ? "Airtime Transfer" : "Airtime Transfer Failed!",
+              message: isSuccess
+                ? `You have successfully recharged ${airtimeInfo.recipient} with ${currencyFormatter(
+                  airtimeInfo.amount
+                )} of airtime. Commission earned: GHS ${transactionInfo.commission}.`
+                : `Your airtime transfer of ${currencyFormatter(
+                  airtimeInfo.amount
+                )} to ${airtimeInfo.recipient} failed. Please try again later.`,
+            });
+
+            return isSuccess;
+          } catch (err) {
+            // Fallback for unexpected errors
+            await airtimeTx("agent_transactions").insert({
+              ...transactionInfo,
+              status: "failed",
+            });
+
+            await airtimeTx("agent_notifications").insert({
+              _id: generateId(),
+              agent_id: id,
+              type: "airtime",
+              title: "Airtime Transfer Failed!",
+              message: `Your airtime transfer of ${currencyFormatter(
+                airtimeInfo.amount
+              )} to ${airtimeInfo.recipient} failed. Please try again later.`,
+            });
+
+            return false;
+          }
+        })
+      );
+
+      // Step 8: Log activity
+      await airtimeTx("agent_activity_logs").insert({
+        agent_id: id,
+        title: "Transferred bulk airtime to Customers.",
+        severity: "info",
       });
+
+      await airtimeTx.commit();
+
+      return res.status(200).json("Airtime transfer was successful!");
+    } catch (err) {
+      console.log("2", err)
+      await transx.rollback();
+      // await transx.commit();
+      // await airtimeTx.commit();
+      return res
+        .status(500)
+        .json("Transaction failed! An error has occurred.");
+    }
   })
 );
 
@@ -2058,175 +1958,141 @@ router.post(
   verifyToken,
   verifyAgent,
   asyncHandler(async (req, res) => {
-    const info = req.body;
+    const { bundle, recipient, token, network } = req.body;
     const { id } = req.user;
 
 
-    const response = await accountBalance();
-    if (Number(response?.balance) < Number(info?.bundle?.price)) {
+    // Step 1: Check system balance
+    const systemBalance = await accountBalance();
 
+    const systemAvailable = Number(systemBalance?.balance || 0);
+    const bundlePrice = Number(bundle?.price || 0);
 
-      const body = `
-    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(response?.balance)}.
-    Please recharge to avoid any inconveniences.
-    Thank you.
-              `;
-      await sendEMail(
-        process.env.MAIL_CLIENT_USER,
-        mailTextShell(`<p>${body}</p>`),
-        "LOW TOP UP ACCOUNT BALANCE"
-      );
-
-      await sendSMS(body, process.env.CLIENT_PHONENUMBER)
-
-      return res.status(401).json("Service Not Available.Try again later");
+    if (systemAvailable < bundlePrice) {
+      await insufficientBalanceWarning(systemAvailable);
+      return res.status(401).json("Service Not Available. Try again later.");
     }
 
-
+    // Step 2: Verify agent wallet and pin
     const transx = await knex.transaction();
 
-    const agentWallet = await transx("agent_wallets")
+    const [agentWallet] = await transx("agent_wallets")
       .select("_id", "agent_key", "amount", "active")
-      .where({
-        agent_id: id,
-
-      })
+      .where({ agent_id: id })
       .limit(1);
 
-
-    if (_.isEmpty(agentWallet)) {
+    if (!agentWallet) {
+      await transx.rollback();
       return res.status(401).json("Invalid pin!");
     }
 
-    const isPinValid = await bcrypt.compare(info?.token, agentWallet[0]?.agent_key)
-
-
+    const isPinValid = await bcrypt.compare(token, agentWallet.agent_key);
     if (!isPinValid) {
+      await transx.rollback();
       return res.status(401).json("Invalid pin!");
     }
 
-
-    if (
-      Number(agentWallet[0]?.amount) < Number(info?.bundle?.price)
-    ) {
-      await knex("agent_notifications").insert({
+    if (Number(agentWallet.amount) < bundlePrice) {
+      await transx("agent_notifications").insert({
         _id: generateId(),
         agent_id: id,
         type: "bundle",
         title: "Data Bundle Transfer Failed",
         message: "Insufficient wallet balance to complete transaction!"
       });
+      await transx.commit();
       return res.status(401).json("Insufficient wallet balance to complete transaction!");
     }
 
-
-    //transaction reference
+    // Step 3: Prepare transaction
     const transaction_reference = randomBytes(24).toString("hex");
 
-    //set bundle info
     const bundleInfo = {
-      recipient: info?.recipient,
-      data_code: info?.bundle?.plan_id,
-      network: info?.bundle?.network_code || 0,
+      recipient,
+      data_code: bundle.plan_id,
+      network: bundle.network_code || 0,
       transaction_reference,
     };
 
-    //Generate transaction info
     const transactionInfo = {
       _id: generateId(),
       agent_id: id,
       reference: transaction_reference,
       type: "bundle",
-      recipient: info?.recipient,
-      provider: info?.network,
-      info: JSON.stringify({
-        recipient: info?.recipient,
-        ref: transaction_reference,
-        amount: info?.bundle?.price,
-        ...info?.bundle,
-      }),
-      amount: info?.bundle?.price,
+      recipient,
+      provider: network,
+      info: JSON.stringify({ recipient, ref: transaction_reference, amount: bundlePrice, ...bundle }),
+      amount: bundlePrice,
       commission: 0,
-      totalAmount: info?.bundle?.price,
+      totalAmount: bundlePrice,
     };
 
+    await transx("agent_wallets").where("agent_id", id).decrement("amount", bundlePrice);
+    await transx.commit();
 
-    // Update agent wallet and record the transaction in database
-    await transx("agent_wallets").where("agent_id", id).decrement({
-      amount: transactionInfo?.amount,
-    });
+    // Step 4: Process bundle
+    const tranx = await knex.transaction();
 
     try {
-      const response = await sendBundle(bundleInfo);
-      if (['00', '09'].includes(response["status-code"])) {
-        await transx("agent_transactions").insert({
-          ...transactionInfo,
-          status: "completed",
-        });
+      const result = await sendBundle(bundleInfo);
+      const { ["status-code"]: statusCode, balance_after } = result;
 
+      const isSuccess = ["00", "09"].includes(statusCode);
 
+      await tranx("agent_transactions").insert({
+        ...transactionInfo,
+        status: isSuccess ? "completed" : "failed",
+      });
 
-        await transx("agent_notifications").insert({
-          _id: generateId(),
-          agent_id: id,
-          type: "bundle",
-          title: "Data Bundle Transfer",
-          message: `You have successfully recharged ${bundleInfo.recipient} with ${bundleInfo.data_code}, you were charged GHS ${transactionInfo?.amount}`,
-        });
-
-        const balance = Number(response?.balance_after);
-        if (balance < 1000) {
-          const body = `
-    Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.
-    Please recharge to avoid any inconveniences.
-    Thank you.
-          `;
-          await sendEMail(
-            process.env.MAIL_CLIENT_USER,
-            mailTextShell(`<p>${body}</p>`),
-            "LOW TOP UP ACCOUNT BALANCE"
-          );
-          await sendSMS(body, process.env.CLIENT_PHONENUMBER);
-        }
-      } else {
-        await transx("agent_transactions").insert({
-          ...transactionInfo,
-          status: "failed",
-        });
-
-        await transx("agent_notifications").insert({
-          _id: generateId(),
-          agent_id: id,
-          type: "bundle",
-          title: "Data Bundle Transfer Failed",
-          message: `Could not process your request.Try again later !`,
-        });
-
-      }
-
-
-      //logs
-      await transx("agent_activity_logs").insert({
+      await tranx("agent_notifications").insert({
+        _id: generateId(),
         agent_id: id,
-        title: `Transferred data bundle, ${bundleInfo.data_code} to ${bundleInfo.recipient}.`,
+        type: "bundle",
+        title: isSuccess ? "Data Bundle Transfer" : "Data Bundle Transfer Failed",
+        message: isSuccess
+          ? `You have successfully recharged ${recipient} with ${bundle.plan_id}, you were charged GHS ${bundlePrice}`
+          : "Could not process your request. Try again later!",
+      });
+
+      await tranx("agent_activity_logs").insert({
+        agent_id: id,
+        title: `Transferred data bundle, ${bundle.plan_id} to ${recipient}.`,
         severity: "info",
       });
-      await transx.commit();
 
-      return res.status(200).json("Bundle transfer was successful!");
+      // Notify if balance is low
+      if (isSuccess && Number(balance_after) < 1000) {
+        await insufficientBalanceWarning(balance_after);
+      }
+
+      await tranx.commit();
+
+      return res.status(200).json(
+        isSuccess ? "Bundle transfer was successful!" : "Bundle transfer failed!"
+      );
     } catch (error) {
-
-      await transx("agent_notifications").insert({
+      await tranx("agent_notifications").insert({
         _id: generateId(),
         agent_id: id,
         type: "bundle",
         title: "Data Bundle Transfer Failed",
-        message: `Could not process your request.Try again later !`,
+        message: "Could not process your request. Try again later!",
       });
-      await transx.commit();
+      await tranx.commit();
       return res.status(401).json("Transaction failed! An error has occurred.");
     }
   })
 );
+
+
+const insufficientBalanceWarning = async (bal) => {
+  const body = `
+    Your one-4-all top up account balance is running low. Your remaining balance is GHS ${currencyFormatter(bal)}.
+    Please recharge to avoid any inconveniences. Thank you.
+  `;
+  await sendEMail(process.env.MAIL_CLIENT_USER, mailTextShell(`<p>${body}</p>`), "LOW TOP UP ACCOUNT BALANCE");
+  await sendSMS(body, process.env.CLIENT_PHONENUMBER);
+};
+
 
 module.exports = router;

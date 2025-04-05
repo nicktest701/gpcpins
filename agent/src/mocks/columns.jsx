@@ -384,11 +384,7 @@ export const airtimeTransactionsColumns = [
     field: "_id",
     // hidden: true,
   },
-  {
-    title: "Payment Reference",
-    field: "reference",
-    // hidden: true,
-  },
+
   {
     title: "Recipient",
     field: "recipient",
@@ -427,6 +423,11 @@ export const airtimeTransactionsColumns = [
       minimumFractionDigits: 3,
       maximumFractionDigits: 3,
     },
+  },
+  {
+    title: "Payment Reference",
+    field: "reference",
+    // hidden: true,
   },
   {
     title: "Commission",

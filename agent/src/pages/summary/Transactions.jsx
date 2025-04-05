@@ -30,6 +30,8 @@ import { useContext } from "react";
 import { globalAlertType } from "../../components/alert/alertType";
 import CustomTotal from "../../components/custom/CustomTotal";
 
+const startDate = moment("2024-01-01").format("YYYY-MM-DD");
+  const endDate = moment().format("YYYY-MM-DD");
 function Transactions() {
   const { customDispatch } = useContext(CustomContext);
 
@@ -39,8 +41,8 @@ function Transactions() {
   const [type, setType] = useState("All");
   const [date, setDate] = useState([
     {
-      startDate: new Date("2023-01-01"),
-      endDate: new Date(),
+      startDate,
+      endDate,
       key: "selection",
     },
   ]);
@@ -51,13 +53,13 @@ function Transactions() {
     } else {
       setDate([
         {
-          startDate: new Date("2024-01-01"),
-          endDate: new Date(),
+          startDate,
+          endDate,
           key: "selection",
         },
       ]);
     }
-  }, [showRange]);
+  }, [showRange, startDate, endDate]);
 
   const transactions = useQuery({
     queryKey: ["products-transactions", sortValue, date],

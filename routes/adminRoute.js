@@ -74,12 +74,6 @@ router.get(
 );
 
 
-
-
-
-
-
-
 router.get(
   "/auth/token",
   limit,
@@ -87,7 +81,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const authEmployee = req.user;
 
-    const accessToken = signMainToken(authEmployee, "15m");
+    const accessToken = await signMainToken(authEmployee, "15m");
 
     res.status(200).json({
       accessToken,
@@ -173,7 +167,7 @@ router.get(
       });
       console.log(code);
 
-     await sendOTPSMS(  `Please ignore this message if you did not request the OTP.Your verification code is ${code}.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`, employee[0]?.phonenumber);
+      await sendOTPSMS(`Please ignore this message if you did not request the OTP.Your verification code is ${code}.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`, employee[0]?.phonenumber);
     }
 
     res.sendStatus(201);
@@ -340,6 +334,7 @@ router.post(
         "phonenumber",
         "profile",
         "isAdmin",
+        "isEnabled",
         "active",
         'createdAt')
       .where("email", employeeToken[0]?.email);
@@ -349,19 +344,20 @@ router.post(
 
     }
 
-    const { active, isAdmin, permissions, ...rests } = employee[0];
+    const { active, isAdmin, permissions, isEnabled, ...rests } = employee[0];
 
     const authEmployee = {
       ...rests,
       permissions: JSON.parse(permissions),
       active: Boolean(active),
-      isAdmin: Boolean(isAdmin)
+      isAdmin: Boolean(isAdmin),
+      isEnabled: Boolean(isEnabled),
 
     };
 
 
 
-    const accessToken = signMainToken(authEmployee, "15m");
+    const accessToken = await signMainToken(authEmployee, "15m");
     const refreshToken = signMainRefreshToken(authEmployee, "24h");
 
 
@@ -394,7 +390,7 @@ router.post(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const { id } = req.user;
+    const { id, jti } = req.user;
 
     //logs
     await knex("activity_logs").insert({
@@ -402,6 +398,8 @@ router.post(
       title: "Logged out of account.",
       severity: "info",
     });
+
+    await redisClient.del(`user:${jti}`)
     req.user = null;
 
     res.sendStatus(204);
@@ -480,6 +478,7 @@ router.put(
         "permissions",
         "phonenumber",
         "profile",
+        "isEnabled",
         "isAdmin",
         "active",
         'createdAt'
@@ -491,17 +490,18 @@ router.put(
 
 
 
-    const { active, isAdmin, permissions, ...rests } = employee[0];
+    const { active, isAdmin, permissions, isEnabled, ...rests } = employee[0];
 
     const authEmployee = {
       ...rests,
       permissions: JSON.parse(permissions),
       active: Boolean(active),
-      isAdmin: Boolean(isAdmin)
+      isAdmin: Boolean(isAdmin),
+      isEnabled: Boolean(isEnabled),
 
     };
 
-    const accessToken = signMainToken(authEmployee, "15m");
+    const accessToken = await signMainToken(authEmployee, "15m");
 
     res.status(201).json({
       accessToken,
@@ -537,6 +537,7 @@ router.put(
         "phonenumber",
         "profile",
         "isAdmin",
+        "isEnabled",
         "active",
         'createdAt'
       )
@@ -547,18 +548,19 @@ router.put(
     }
 
 
-    const { active, isAdmin, permissions, ...rests } = employee[0];
+    const { active, isAdmin, permissions, isEnabled, ...rests } = employee[0];
 
 
     const authEmployee = {
       ...rests,
       permissions: JSON.parse(permissions),
       active: Boolean(active),
-      isAdmin: Boolean(isAdmin)
+      isAdmin: Boolean(isAdmin),
+      isEnabled: Boolean(isEnabled)
 
     };
 
-    const accessToken = signMainToken(authEmployee, "15m");
+    const accessToken = await signMainToken(authEmployee, "15m");
 
     //logs
     await knex("activity_logs").insert({
@@ -618,6 +620,7 @@ router.put(
         "phonenumber",
         "profile",
         "isAdmin",
+        "isEnabled",
         "active",
         'createdAt'
       )
@@ -628,18 +631,19 @@ router.put(
       return res.status(404).json("Error! Could not save changes.");
     }
 
-    const { active, isAdmin, permissions, ...rests } = employee[0];
+    const { active, isAdmin, permissions, isEnabled, ...rests } = employee[0];
 
 
     const authEmployee = {
       ...rests,
       permissions: JSON.parse(permissions),
       active: Boolean(active),
-      isAdmin: Boolean(isAdmin)
+      isAdmin: Boolean(isAdmin),
+      isEnabled: Boolean(isEnabled)
 
     };
 
-    const accessToken = signMainToken(authEmployee, "15m");
+    const accessToken = await signMainToken(authEmployee, "15m");
 
     //logs
     await knex("activity_logs").insert({
