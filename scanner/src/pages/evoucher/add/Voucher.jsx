@@ -17,6 +17,7 @@ const Voucher = () => {
   const [loading, setLoading] = useState(false);
   const [pageInfo, setPageInfo] = useState({
     title: "",
+    subtitle: "",
     category: "",
     note: "",
     type: "",
@@ -59,7 +60,7 @@ const Voucher = () => {
     <Container px={4}>
       <CustomTitle
         title={pageInfo?.title}
-        subtitle='Generate Excitement: Create a New Voucher or Ticket Now!'
+        subtitle={pageInfo?.subtitle}
         icon={
           <CreditCardSharp sx={{ width: 80, height: 80 }} color="primary" />
         }

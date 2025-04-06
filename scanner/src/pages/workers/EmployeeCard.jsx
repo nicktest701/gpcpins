@@ -14,15 +14,16 @@ function EmployeeCard({ _id, name, email, phonenumber, profile }) {
   return (
     <Box
       sx={{
-        width: { xs: "100%", sm: 220 },
+        minWidth: 280,
         height: "auto",
         borderRadius: 1,
         boxShadow: (theme) => theme.customShadows.z8,
         bgcolor: "#fff",
         display: "flex",
         flexDirection: "column",
+        justifyContent:'center',
         alignItems: "center",
-        gap: '2px',
+        gap: "2px",
         p: 2,
         cursor: "pointer",
         transition: "all 100ms ease-in-out",
@@ -44,13 +45,18 @@ function EmployeeCard({ _id, name, email, phonenumber, profile }) {
       >
         {getInitials(name)}
       </Avatar>
-      <Typography color="primary" textTransform="uppercase">
+      <Typography width='100%' maxWidth={250} color="primary" textTransform="uppercase" textAlign="center">
         {name}
       </Typography>
-      <Typography textAlign='center' variant='body2'>
+      <Typography
+        textAlign="center"
+        variant="caption"
+        whiteSpace="wrap"
+        textTransform="lowercase"
+      >
         {email}
       </Typography>
-      <Typography textAlign='center' variant='body2'>
+      <Typography textAlign="center" variant="body2">
         {phonenumber}
       </Typography>
       <SouthEastIcon sx={{ alignSelf: "end" }} />

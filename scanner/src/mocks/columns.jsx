@@ -34,6 +34,7 @@ export const PAGES = [
     note: "Note",
     type: "cinema",
     route: "add-cinema-tickets",
+    subtitle: "View and Scan Your Purchased Movie Tickets",
   },
   {
     title: "Stadium Tickets",
@@ -41,6 +42,7 @@ export const PAGES = [
     note: "Note",
     type: "stadium",
     route: "add-stadia-tickets",
+    subtitle: "Access Your Stadium Entry Tickets for Scanning",
   },
   {
     title: "Bus Tickets",
@@ -48,6 +50,7 @@ export const PAGES = [
     note: "Note",
     type: "bus",
     route: "add-bus-tickets",
+    subtitle: "Show Your Bus Tickets for Boarding and Verification",
   },
 ];
 
@@ -721,7 +724,7 @@ export const LOGS_COLUMNS = [
     render: ({ severity }) => (
       <Button
         size="small"
-        variant='outlined'
+        variant="outlined"
         color={`${severity}`}
         sx={{
           borderRadius: 1,
@@ -808,7 +811,22 @@ export const ASSIGNED_TICKET_COLUMNS = [
   },
 ];
 export const RECENTLY_SCANNED_TICKET_COLUMNS = [
-  { title: "Scanned On", field: "createdAt" },
+  {
+    title: "Scanned On",
+    field: "createdAt",
+    render: ({ createdAt }) => (
+      <>
+        {" "}
+        <Typography variant="caption">
+          {moment(new Date(createdAt)).format("ddd,LL")} |
+          <span style={{ color: "var(--primary)" }}>
+            {" "}
+            {moment(new Date(createdAt)).format("h:mm a")}
+          </span>
+        </Typography>
+      </>
+    ),
+  },
   { title: "Ticket", field: "voucherType" },
   { title: "Type", field: "type" },
   { title: "Scanned By", field: "verifierName" },

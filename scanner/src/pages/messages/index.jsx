@@ -134,7 +134,7 @@ function Messages() {
     <Container>
       <CustomTitle
         title="Messages"
-        subtitle="Broadcast messages to keeep them up to date with the latest information."
+        subtitle="Broadcast messages to keep them up to date with the latest information."
         icon={<Message sx={{ width: 50, height: 50 }} color="primary" />}
       />
 

@@ -22,6 +22,7 @@ const LineChart = ({ height, labels, datasets }) => {
         options={{
           responsive: true,
           maintainAspectRatio: false,
+          
           layout: {
             padding: 10,
           },
@@ -29,21 +30,26 @@ const LineChart = ({ height, labels, datasets }) => {
             x: {
               ticks: {
                 // display: false,
+                
               },
               grid: {
-                display: false,
+                // display: false,
+              
               },
             },
             y: {
+               beginAtZero: 0,
               ticks: {
+               
                 // display: false,
               },
               grid: {
-                display: false,
+                // display: false,
               },
             },
           },
           plugins: {
+            
             legend: {
               // display: false,
             },

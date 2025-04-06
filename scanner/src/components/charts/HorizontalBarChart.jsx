@@ -28,10 +28,12 @@ const HorizontalBarChart = ({ labels, datasets }) => {
           scales: {
             x: {
               ticks: {
-                 display: false,
+                //  display: false,
+                precision:10,
+                stepSize:1
               },
               grid: {
-                display: false,
+                // display: false,
               },
             },
             y: {
@@ -41,7 +43,7 @@ const HorizontalBarChart = ({ labels, datasets }) => {
                 mirror:true
               },
               grid: {
-                display: false,
+                // display: false,
               },
             },
           },

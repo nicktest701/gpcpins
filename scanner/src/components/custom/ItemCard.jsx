@@ -4,14 +4,14 @@ import Typography from "@mui/material/Typography";
 
 import PropTypes from "prop-types";
 
-const ItemCard = ({ title, value, icon, bg }) => {
+const ItemCard = ({ title, value, icon }) => {
   return (
     <Card
       sx={{
         border: "1px solid whitesmoke",
         position: "relative",
         px: 3,
-        py: 5,
+        py: 3,
         borderRadius: 2,
         width: "100%",
         bgcolor: "#fff",

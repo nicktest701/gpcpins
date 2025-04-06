@@ -37,7 +37,7 @@ const ViewEmployees = () => {
   const verifiers = useQuery({
     queryKey: ["verfifiers"],
     queryFn: getAllVerifiers,
-    initialData: [],
+    // initialData: [],
   });
 
   const modifiedVerifiers = useMemo(() => {

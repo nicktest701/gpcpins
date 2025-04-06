@@ -1063,7 +1063,7 @@ router.get(
         amount: info?.amount,
         email: transaction.email,
         phonenumber: transaction.phonenumber,
-        status: selectedVoucher?.status,
+        status: _.upperCase(selectedVoucher?.status),
         createdAt: transaction?.createdAt
       };
 
@@ -1946,7 +1946,6 @@ router.get(
   })
 );
 
-
 // GET All Logs
 router.get(
   "/logs",
@@ -2044,8 +2043,6 @@ router.get(
     }
   })
 );
-
-
 
 router.get(
   "/:transactionId",
@@ -2280,8 +2277,6 @@ router.get(
   })
 );
 
-
-
 router.post(
   "/refund",
   verifyToken,
@@ -2289,10 +2284,6 @@ router.post(
   asyncHandler(async (req, res) => {
     const { id: ISSUER_ID, name } = req.user
     const { id, category, amount, mode, phonenumber, email, user, isAgent } = req.body;
-
-
-    // console.log(req.body);
-    // return res.status(400).json("Money has been refunded successfully");
 
     const phoneInfo = getPhoneNumberInfo(phonenumber)
     const transaction_reference = randomBytes(24).toString("hex");

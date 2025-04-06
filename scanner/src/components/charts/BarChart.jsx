@@ -29,7 +29,7 @@ const BarChart = ({ labels, datasets }) => {
                 // display: false,
               },
               grid: {
-                display: false,
+                // display: false,
               },
             },
             y: {
@@ -37,7 +37,7 @@ const BarChart = ({ labels, datasets }) => {
                 // display: false,
               },
               grid: {
-                display: false,
+                // display: false,
               },
             },
           },

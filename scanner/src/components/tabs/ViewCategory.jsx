@@ -1,19 +1,13 @@
-import { useContext, useState } from "react";
+import { useContext } from "react";
 import Box from "@mui/material/Box";
 import MaterialTable, { MTableToolbar } from "material-table";
-import Swal from "sweetalert2";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { tableIcons } from "../../config/tableIcons";
 import { DeleteRounded, Refresh } from "@mui/icons-material";
-import { CustomContext } from "../../context/providers/CustomProvider";
 import {
   getColumns,
   getDeletePermission,
   getExportPermission,
 } from "../../config/getColumns";
-import // deleteMoreCategory,
-"../../api/categoryAPI";
-import { globalAlertType } from "../alert/alertType";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { AuthContext } from "../../context/providers/AuthProvider";
 
@@ -22,107 +16,10 @@ const ViewCategory = ({ categories, refetch }) => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const queryClient = useQueryClient();
-  const { customDispatch } = useContext(CustomContext);
-  const [selectedItems, setSelectedItems] = useState([]);
-
-  const handleSelectionChange = (data) => {
-    const ids = data?.map(({ id }) => id);
-    setSelectedItems(ids);
-  };
-
-  // const { mutateAsync } = useMutation({
-  //   mutationFn: deleteCategory,
-  // });
-  // function removeCategory(id) {
-  //   Swal.fire({
-  //     title: "Removing",
-  //     text: "Do you want to remove ?",
-  //     showCancelButton: true,
-  //   }).then(({ isConfirmed }) => {
-  //     if (isConfirmed) {
-  //       mutateAsync(id, {
-  //         onSettled: () => {
-  //           queryClient.invalidateQueries(["category"]);
-  //         },
-  //         onSuccess: (data) => {
-  //           customDispatch(globalAlertType("info", data));
-  //         },
-  //         onError: (error) => {
-  //           customDispatch(globalAlertType("error", error));
-  //         },
-  //       });
-  //     }
-  //   });
-  // }
-
-  // const { mutateAsync: deleteMoreAsync } = useMutation({
-  //   mutationFn: deleteMoreCategory,
-  // });
-  // function removeAllCategory() {
-  //   Swal.fire({
-  //     title: "Removing",
-  //     text: "Do you want to remove all selected categories?",
-  //     showCancelButton: true,
-  //   }).then(({ isConfirmed }) => {
-  //     if (isConfirmed) {
-  //       deleteMoreAsync(selectedItems, {
-  //         onSettled: () => {
-  //           queryClient.invalidateQueries(["category"]);
-  //         },
-  //         onSuccess: (data) => {
-  //           customDispatch(globalAlertType("info", data));
-  //         },
-  //         onError: (error) => {
-  //           customDispatch(globalAlertType("error", error));
-  //         },
-  //       });
-  //     }
-  //   });
-  // }
-
   const handleOpenViewCategory = (id) => {
     navigate(`/evoucher/${category}/${id}`);
   };
 
-  // const { mutateAsync: disableCategoryMutateAsync } = useMutation({
-  //   mutationFn: disableCategory,
-  // });
-
-  // const handleActivateCategory = (id, active) => {
-  //   Swal.fire({
-  //     title: active ? "Disabling Category" : "Activating Category",
-  //     text: `Do you want to ${active ? "disable" : "activate"} category?`,
-  //     showCancelButton: true,
-  //   }).then(({ isConfirmed }) => {
-  //     if (isConfirmed) {
-  //       disableCategoryMutateAsync(
-  //         {
-  //           id,
-  //           active: !active,
-  //         },
-  //         {
-  //           onSettled: () => {
-  //             queryClient.invalidateQueries(["category"]);
-  //           },
-  //           onSuccess: (data) => {
-  //             customDispatch(globalAlertType("info", data));
-  //           },
-  //           onError: (error) => {
-  //             customDispatch(globalAlertType("error", error));
-  //           },
-  //         }
-  //       );
-  //     }
-  //   });
-  // };
-
-  // const IS_NEW_AVAILABLE = user?.permissions?.includes(
-  //   getCreatePermission(category)
-  // );
-  // const IS_EDIT_AVAILABLE = user?.permissions?.includes(
-  //   getEditPermission(category)
-  // );
   const IS_DELETE_AVAILABLE = user?.permissions?.includes(
     getDeletePermission(category)
   );
@@ -211,7 +108,6 @@ const ViewCategory = ({ categories, refetch }) => {
           onClick: () => refetch(),
         },
       ]}
-      onSelectionChange={handleSelectionChange}
       onRowClick={(e, data) => handleOpenViewCategory(data?.id)}
     />
   );

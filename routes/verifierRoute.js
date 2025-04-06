@@ -184,7 +184,7 @@ router.get(
       });
       console.log(code);
 
-      sendOTPSMS(`Your verification code is ${code}.`, verifier[0]?.phonenumber);
+      sendOTPSMS(`Please ignore this message if you did not request the OTP.Your verification code is ${code}.Don't share this code with anyone; Our employees will never ask for the code.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`, verifier[0]?.phonenumber);
     }
 
     res.sendStatus(201);
@@ -246,7 +246,6 @@ router.post(
   asyncHandler(async (req, res) => {
     const { id } = req.user;
     const newVerifier = req.body;
-
 
     const transx = await knex.transaction();
 
@@ -421,7 +420,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const { id, token } = req.body;
 
-    if (!id || !isValidUUID2(id) || !token) {
+    if (!id || !token) {
       return res.status(400).json("An unknown error has occurred!");
     }
 
@@ -540,7 +539,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const { email, token, type, reset } = req.body;
 
-    console.log(req.body)
+   
     if (!email || !token) {
       return res.status(400).json("Invalid Code");
     }
