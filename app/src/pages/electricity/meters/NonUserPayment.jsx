@@ -1,6 +1,5 @@
 import { useContext, useState } from "react";
 import {
- 
   Dialog,
   DialogActions,
   DialogContent,
@@ -294,7 +293,7 @@ function NonUserPayment() {
 
                         <TextField
                           size="small"
-                          type="number"
+                          type="password"
                           inputMode="numeric"
                           placeholder="Enter 4-digit pin"
                           value={token}

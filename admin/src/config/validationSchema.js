@@ -1,7 +1,5 @@
 import { date, number, object, ref, string } from "yup";
 
-
-
 export const prepaidMeterValidationSchema = () => {
   return object().shape({
     number: string()
@@ -147,7 +145,6 @@ export const addClientValidationSchema = () => {
   });
 };
 
-
 // Add Category
 export const addWaecValidationSchema = () => {
   return object().shape({
@@ -209,7 +206,20 @@ export const agentPersonalValidationSchema = () => {
     lastname: string().trim().required("Required*"),
     username: string().trim().required("Required*"),
     dob: date().required("Required*"),
-    nid: string().trim().required("Required*"),
+    nid: string()
+      .optional()
+      .test(
+        "is-valid-id",
+        "Enter a valid Voter ID (digits only) or National ID (GHA-XXXXXXXXX-X)",
+        function (value) {
+          if (!value) return true; // optional when empty
+
+          const isVoterId = /^\d{10}$/.test(value); // adjust the digit length if needed
+          const isNationalId = /^GHA-\d{9}-\d$/.test(value);
+
+          return isVoterId || isNationalId;
+        }
+      ),
   });
 };
 
@@ -246,7 +256,20 @@ export const agentValidationSchema = () => {
     lastname: string().trim().required("Required*"),
     username: string().trim().required("Required*"),
     dob: date().optional(),
-    nid: string().optional(),
+    nid:  string()
+    .optional()
+    .test(
+      "is-valid-id",
+      "Enter a valid Voter ID (digits only) or National ID (GHA-XXXXXXXXX-X)",
+      function (value) {
+        if (!value) return true; // optional when empty
+
+        const isVoterId = /^\d{10}$/.test(value); // adjust the digit length if needed
+        const isNationalId = /^GHA-\d{9}-\d$/.test(value);
+
+        return isVoterId || isNationalId;
+      }
+    ),
     residence: string().trim().required("Required*"),
     email: string().trim().required("Required*").email("Invalid email address"),
     phonenumber: string()
@@ -270,7 +293,20 @@ export const userValidationSchema = () => {
     firstname: string().trim().required("Required*"),
     lastname: string().trim().required("Required*"),
     dob: date().optional(),
-    nid: string().optional(),
+    nid:  string()
+    .optional()
+    .test(
+      "is-valid-id",
+      "Enter a valid Voter ID (digits only) or National ID (GHA-XXXXXXXXX-X)",
+      function (value) {
+        if (!value) return true; // optional when empty
+
+        const isVoterId = /^\d{10}$/.test(value); // adjust the digit length if needed
+        const isNationalId = /^GHA-\d{9}-\d$/.test(value);
+
+        return isVoterId || isNationalId;
+      }
+    ),
     email: string().trim().required("Required*").email("Invalid email address"),
     phonenumber: string()
       .trim()
@@ -279,30 +315,23 @@ export const userValidationSchema = () => {
   });
 };
 
-
 export const processPrepaidValidationSchema = () => {
   return object().shape({
-    receipt: string()
-      .required("A copy of the transaction receipt is required*")
-    ,
-    orderNo: string()
-      .required("Required*")
-    ,
+    receipt: string().required(
+      "A copy of the transaction receipt is required*"
+    ),
+    orderNo: string().required("Required*"),
     confirmOrderNo: string()
       .trim()
       .required("Required*")
       .oneOf([ref("orderNo"), null], "Tokens do not match"),
-    paymentId: string()
-      .required("Required*")
-    ,
+    paymentId: string().required("Required*"),
     confirmPaymentId: string()
       .trim()
       .required("Required*")
       .oneOf([ref("paymentId"), null], "Order IDs do not match"),
   });
 };
-
-
 
 // Add Category
 export const refundValidationSchema = () => {

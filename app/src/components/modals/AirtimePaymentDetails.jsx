@@ -201,7 +201,7 @@ function AirtimePaymentDetails() {
         </Stack>
       ) : (
         <>
-          {isWallet && (failureCount <= 0 || !data?.active) ? (
+          {isWallet && (failureCount <= 0 || (data && !data?.active)) ? (
             <Stack p={4} alignItems="center" spacing={1}>
               <Typography variant="h6" paragraph>
                 Wallet Account Disabled
@@ -214,7 +214,7 @@ function AirtimePaymentDetails() {
                   <span>OR</span>
                   <Typography variant="caption">
                     Try again in{" "}
-                    <span style={{ color: "red" }}>{data?.timeOut}</span>
+                    <span style={{ color: "red" }}>{data?.timeOut || 0}</span>
                   </Typography>
                 </>
               )}
@@ -251,7 +251,6 @@ function AirtimePaymentDetails() {
                     <VoucherPlaceHolderItem
                       title="Recipient Number"
                       value={searchParams.get("recipient")}
-                     
                     />
                   )}
                   {searchParams.get("plan_name") && (

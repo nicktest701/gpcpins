@@ -18,12 +18,10 @@ const Single = () => {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
   const [type, setType] = useState("Airtime");
-  const [phoneNumber, setPhoneNumber] = useState(user?.phonenumber);
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [provider, setProvider] = useState("");
   const [phoneNumberErr, setPhoneNumberErr] = useState("");
-  const [confirmPhonenumber, setConfirmPhonenumber] = useState(
-    user?.phonenumber
-  );
+  const [confirmPhonenumber, setConfirmPhonenumber] = useState("");
 
   const initialValues = {
     type,

@@ -284,7 +284,7 @@ function UserPayment() {
 
                         <TextField
                           size="small"
-                          type="number"
+                          type="password"
                           inputMode="numeric"
                           placeholder="Enter 4-digit pin"
                           value={token}

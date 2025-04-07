@@ -1,4 +1,12 @@
-import { date, number, object, string, ref, ValidationError, boolean, } from "yup";
+import {
+  date,
+  number,
+  object,
+  string,
+  ref,
+  ValidationError,
+  boolean,
+} from "yup";
 import {
   getInternationalMobileFormat,
   isValidPartner,
@@ -16,13 +24,14 @@ const momoSchema = {
       const partner = parent?.mobilePartner || "Mobile";
       if (!isValidPartner(partner, getInternationalMobileFormat(value))) {
         throw new ValidationError(
-          `Invalid ${partner === "mtn-gh"
-            ? "MTN"
-            : partner === "vodafone-gh"
+          `Invalid ${
+            partner === "mtn-gh"
+              ? "MTN"
+              : partner === "vodafone-gh"
               ? "Telecel"
               : partner === "tigo-gh"
-                ? "AirtelTigo"
-                : partner
+              ? "AirtelTigo"
+              : partner
           } number !`,
           value, // Value to associate the error with
           "phoneNumber" // Field to associate the error with
@@ -58,8 +67,8 @@ export const waecValidationSchema = (momo) => {
       type: string().required("Required*"),
     }),
     email: string().test("isValidEmail", "", (value) => {
-      if (value?.trim() === '' || value === undefined) {
-        return true
+      if (value?.trim() === "" || value === undefined) {
+        return true;
       }
 
       if (!isValidEmail(value)) {
@@ -79,9 +88,8 @@ export const waecValidationSchema = (momo) => {
 export const ticketValidationSchema = (momo) => {
   return object().shape({
     email: string().test("isValidEmail", "", (value) => {
-
-      if (value?.trim() === '' || value === undefined) {
-        return true
+      if (value?.trim() === "" || value === undefined) {
+        return true;
       }
 
       if (!isValidEmail(value)) {
@@ -110,9 +118,8 @@ export const universityValidationSchema = (momo) => {
       .min(1, "Quantity should be 1 or more!"),
     fullName: string().trim().required("Required*"),
     email: string().test("isValidEmail", "", (value) => {
-
-      if (value?.trim() === '' || value === undefined) {
-        return true
+      if (value?.trim() === "" || value === undefined) {
+        return true;
       }
 
       if (!isValidEmail(value)) {
@@ -132,11 +139,12 @@ export const universityValidationSchema = (momo) => {
 
 export const prepaidNonUserPaymentValidationSchema = (momo) => {
   return object().shape({
-    amount: number().required("Required").min(50, "Minimum amount you can buy is GHS 50."),
+    amount: number()
+      .required("Required")
+      .min(50, "Minimum amount you can buy is GHS 50."),
     email: string().test("isValidEmail", "", (value) => {
-
-      if (value?.trim() === '' || value === undefined) {
-        return true
+      if (value?.trim() === "" || value === undefined) {
+        return true;
       }
 
       if (!isValidEmail(value)) {
@@ -229,9 +237,8 @@ export const bundleValidationSchema = () => {
 export const bulkAirtimeValidationSchema = (momo) => {
   return object().shape({
     email: string().test("isValidEmail", "", (value) => {
-
-      if (value?.trim() === '' || value === undefined) {
-        return true
+      if (value?.trim() === "" || value === undefined) {
+        return true;
       }
 
       if (!isValidEmail(value)) {
@@ -311,7 +318,20 @@ export const agentRegistrationValidationSchema = () => {
     firstname: string().trim().required("Required*"),
     lastname: string().trim().required("Required*"),
     dob: date().required("Required*"),
-    nid: string().trim().required("Required*"),
+    nid: string()
+      .optional()
+      .test(
+        "is-valid-id",
+        "Enter a valid Voter ID (digits only) or National ID (GHA-XXXXXXXXX-X)",
+        function (value) {
+          if (!value) return true; // optional when empty
+
+          const isVoterId = /^\d{10}$/.test(value); // adjust the digit length if needed
+          const isNationalId = /^GHA-\d{9}-\d$/.test(value);
+
+          return isVoterId || isNationalId;
+        }
+      ),
     residence: string().trim().required("Required*"),
     email: string().trim().required("Required*").email("Invalid email address"),
     phonenumber: string()
@@ -374,6 +394,32 @@ export const registerUserValidationSchema = () => {
       .oneOf([true], "You must accept the terms and conditions"),
   });
 };
+export const getStartedValidationSchema = () => {
+  return object().shape({
+    firstname: string().trim().required("Required*"),
+    lastname: string().trim().required("Required*"),
+    phonenumber: string()
+      .optional()
+      .test("is-valid-phone", "Enter a valid phone number", function (value) {
+        if (!value) return true; // allow empty (optional)
+        return /^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/.test(value); // customize pattern as needed
+      }),
+    nid: string()
+      .optional()
+      .test(
+        "is-valid-id",
+        "Enter a valid Voter ID (digits only) or National ID (GHA-XXXXXXXXX-X)",
+        function (value) {
+          if (!value) return true; // optional when empty
+
+          const isVoterId = /^\d{10}$/.test(value); // adjust the digit length if needed
+          const isNationalId = /^GHA-\d{9}-\d$/.test(value);
+
+          return isVoterId || isNationalId;
+        }
+      ),
+  });
+};
 export const updateUserValidationSchema = () => {
   return object().shape({
     firstname: string().trim().required("Required*"),
@@ -384,9 +430,19 @@ export const updateUserValidationSchema = () => {
       .required("Required*")
       .matches(/^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/, "Invalid Phone number"),
     nid: string()
-      .trim()
-      .required("Required*")
-      .matches(/GHA-\d{9}-\d/, "Invalid ID number"),
+      .optional()
+      .test(
+        "is-valid-id",
+        "Enter a valid Voter ID (digits only) or National ID (GHA-XXXXXXXXX-X)",
+        function (value) {
+          if (!value) return true; // optional when empty
+
+          const isVoterId = /^\d{10}$/.test(value); // adjust the digit length if needed
+          const isNationalId = /^GHA-\d{9}-\d$/.test(value);
+
+          return isVoterId || isNationalId;
+        }
+      ),
   });
 };
 
@@ -437,5 +493,3 @@ export const addBusValidationSchema = () => {
     date: date().required("Required*").min(new Date(), "Date must be present!"),
   });
 };
-
-

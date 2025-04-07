@@ -38,10 +38,10 @@ yarn-error.log*
 /dist
 *.txt
 *.pdf
-*.webp
-*.png
-*.jpeg
-*.webp
+# *.webp
+# *.png
+# *.jpeg
+# *.webp
 
 .vscode
 .hintrc

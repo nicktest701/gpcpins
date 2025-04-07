@@ -12,6 +12,7 @@ import { CustomContext } from "../context/providers/CustomProvider";
 import { AuthContext } from "../context/providers/AuthProvider";
 import { globalAlertType } from "../components/alert/alertType";
 import GlobalSpinner from "../components/GlobalSpinner";
+import { getStartedValidationSchema } from "../config/validationSchema";
 
 function GetStarted() {
   const { user, login } = useContext(AuthContext);
@@ -78,7 +79,7 @@ function GetStarted() {
       <Box sx={{ minWidth: 300 }}>
         <Formik
           initialValues={initValues}
-          //   validationSchema={}
+          validationSchema={getStartedValidationSchema}
           onSubmit={onSubmit}
           enableReinitialize={true}
         >

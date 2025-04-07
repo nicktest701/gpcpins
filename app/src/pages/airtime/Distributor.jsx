@@ -178,6 +178,7 @@ function Distributor() {
                       value={values.nid}
                       onChange={handleChange("nid")}
                       error={Boolean(touched.nid && errors.nid)}
+                      helperText={touched.nid && errors.nid}
                       // helperText={
                       //   touched.nid && errors.nid ? (
                       //     errors.nid
