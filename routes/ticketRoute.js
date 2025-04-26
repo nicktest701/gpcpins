@@ -74,20 +74,20 @@ router.get(
     const { category } = req.query;
 
     const vouchers = await knex("vouchers")
-      .join("categories", "vouchers.category", "categories._id")
-      .where("vouchers.category", category)
       .select(
-        "vouchers._id as _id",
+        "vouchers._id",
         "categories._id as categoryId",
-        "categories.category as category",
-        "categories.voucherType as voucherType",
-        "vouchers.type as type",
-        "vouchers.pin as pin",
-        "vouchers.serial as serial",
+        "categories.category",
+        "categories.voucherType",
+        "vouchers.type",
+        "vouchers.pin",
+        "vouchers.serial",
         "vouchers.status",
-        "vouchers.createdAt as createdAt",
-        "vouchers.updatedAt as updatedAt"
-      );
+        "vouchers.createdAt",
+        "vouchers.updatedAt"
+      )
+      .join("categories", "vouchers.category", "categories._id")
+      .where("vouchers.category", category);
 
     res.status(200).json(vouchers);
   })
@@ -128,27 +128,27 @@ router.post(
     if (_.isEmpty(tickets)) {
       return res.sendStatus(204);
     }
+   
 
     const transx = await knex.transaction();
     try {
-      const vouchers = _.map(tickets, "voucher");
-
-      // return res.sendStatus(200)
-
-      await transx("vouchers")
-        .update({
-          status: "used",
-        })
-        .where("_id", "IN", vouchers);
-
       //check if ticket has already been synced
-      const unSyncedTickets = tickets?.map(async (ticket) => {
-        const { verifier, voucher, category } = ticket;
+      const unSyncedTickets = tickets?.map(async (unSyncedTicket) => {
+        const {
+          _id,
+          ticket,
+          verifier,
+          voucher,
+          category,
+          tranxaction,
+          active,
+          createdAt,
+          updatedAt,
+        } = unSyncedTicket;
 
         const itExists = await transx("scanned_tickets")
           .select("*")
           .where({
-            verifier,
             voucher,
             category,
           })
@@ -157,18 +157,65 @@ router.post(
         if (!_.isEmpty(itExists)) {
           return null;
         } else {
-          return ticket;
+          //check if voucher exists in the system
+          return {
+            _id,
+            ticket,
+            verifier,
+            voucher,
+            category,
+            transaction: tranxaction,
+            active,
+            createdAt,
+            updatedAt,
+          };
         }
       });
 
       const rawTickets = await Promise.all(unSyncedTickets);
+      //remove null values from array
 
-      if (_.isEmpty(rawTickets)) {
-        await transx("scanned_tickets").insert(_.compact(rawTickets));
+      const newTickets = _.compact(rawTickets);
+      if (!_.isEmpty(newTickets)) {
+        await transx("scanned_tickets").insert(newTickets);
+
+        const vouchers = _.map(newTickets, "voucher");
+
+        //update vouchers to used
+        await transx("vouchers")
+          .update({
+            status: "used",
+          })
+          .where("_id", "IN", vouchers);
+
+        const scannedTickets = await transx("scanned_tickets")
+          .select(
+            "_id",
+            "ticket",
+            "verifier",
+            "voucher",
+            "category",
+            "transaction as tranxaction",
+            "active",
+            "createdAt",
+            "updatedAt"
+          )
+          .whereNot("voucher", "IN", vouchers)
+          .orderBy("createdAt", "desc");
+
+        await transx.commit();
+
+        return res
+          .status(200)
+          .json({ message: "Synced successfully", tickets: scannedTickets });
+      } else {
+        await transx.commit();
+
+        return res.status(200).json({
+          message: "No new tickets to sync",
+          tickets: [],
+        });
       }
-      await transx.commit();
-
-      res.status(200).json({ message: "Synced successfully" });
     } catch (error) {
       await transx.rollback();
       console.log(error);
@@ -201,7 +248,6 @@ router.get(
   verifyScanner,
   asyncHandler(async (req, res) => {
     const { verifierId: id } = req.params;
- 
 
     //GET ALL ASSIGNED TICKETS
     const assignedTickets = await knex("tickets")
@@ -212,7 +258,6 @@ router.get(
     const scannedTickets = await knex("scanned_tickets_vouchers_view")
       .where("verifierId", id)
       .select("*");
-      
 
     //GET RECENT TRANSACTIONS
     const todayScannedTicket =
@@ -227,7 +272,6 @@ router.get(
 
     //GET TOTAL SCAN BY MONTH
     const totalScanByMonth = getScannedTicketsByMonth(scannedTickets);
-
 
     res.status(200).json({
       assignedTickets: assignedTickets.length,
@@ -292,8 +336,6 @@ router.get(
 
     //GET TOP SCANNED TICKETS
     const topScannedTickets = getTopScannedTickets(scannedTickets);
-
- 
 
     res.status(200).json({
       assignedTickets: assignedTickets.length,
@@ -488,7 +530,7 @@ router.get(
       .where({ ticketId: id, categoryId: ticket[0]?.category })
       .orderBy("createdAt", "desc");
 
-      await transx.commit();
+    await transx.commit();
 
     //GET ALL TICKETS SCANNED BY VERIFIER
     const scannedTickets = scannedTicketsByCategory?.filter(
@@ -529,8 +571,6 @@ router.get(
 
     const data = _.map(groupedScannedTickets, "value");
     const unassigned = scannedTicketsByCategory?.length - _.sum(data);
-
- 
 
     return res.status(200).json({
       totalSoldVouchers: vouchers?.length,
@@ -623,8 +663,6 @@ router.post(
     const scannedTicket = await knex("scanned_tickets").where({
       voucher: ticket?.toString(),
     });
-
-
 
     if (!_.isEmpty(scannedTicket)) {
       const verifiedTicket = await knex("scanned_tickets_vouchers_view")

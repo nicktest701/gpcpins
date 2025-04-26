@@ -18,26 +18,24 @@ import {
   SearchRounded,
 } from "@mui/icons-material";
 import { useQuery } from "@tanstack/react-query";
-import ItemCard from "../../components/custom/ItemCard";
-import CustomCard from "../../components/custom/CustomCard";
-import PieChart from "../../components/charts/PieChart";
-import PlainTable from "../../components/tables/PlainTable";
-import BarChart from "../../components/charts/BarChart";
-import { getTotalSales } from "../../api/transactionAPI";
-import LineChart from "../../components/charts/LineChart";
+import ItemCard from "@/components/custom/ItemCard";
+import CustomCard from "@/components/custom/CustomCard";
+import PieChart from "@/components/charts/PieChart";
+import PlainTable from "@/components/tables/PlainTable";
+import BarChart from "@/components/charts/BarChart";
+import { getTotalSales } from "@/api/transactionAPI";
+import LineChart from "@/components/charts/LineChart";
 import { useTheme } from "@emotion/react";
-import { recentTransactionColumns } from "../../mocks/columns";
-import CustomTitle from "../../components/custom/CustomTitle";
-import { currencyFormatter, IMAGES } from "../../constants";
+import { recentTransactionColumns } from "@/mocks/columns";
+import CustomTitle from "@/components/custom/CustomTitle";
+import { currencyFormatter, IMAGES } from "@/constants";
 import CountUp from "react-countup";
-import CustomStepper from "../../components/custom/CustomStepper";
-import AnimatedContainer from "../../components/animations/AnimatedContainer";
+import CustomStepper from "@/components/custom/CustomStepper";
+import AnimatedContainer from "@/components/animations/AnimatedContainer";
 import { useNavigate } from "react-router-dom";
 import { useContext, useState } from "react";
-import { AuthContext } from "../../context/providers/AuthProvider";
-import {
-  allBalance,
-} from "../../api/paymentAPI";
+import { AuthContext } from "@/context/providers/AuthProvider";
+import { allBalance } from "@/api/paymentAPI";
 import DashboardSkeleton from "@/components/skeletons/DashboardSkeleton";
 
 function Overall() {
@@ -49,39 +47,94 @@ function Overall() {
   const summary = useQuery({
     queryKey: ["total-sales"],
     queryFn: () => getTotalSales(),
+    initialData: {
+      totalSales: {
+        ecg: 0,
+        voucher: 0,
+        airtime: 0,
+        bundle: 0,
+        total: 0,
+      },
+      totalCount: {
+        labels: [
+          "Vouchers & Tickets",
+          "Prepaid Units",
+          "Airtime Transfer",
+          "Data Bundle",
+        ],
+        data: [0, 0, 0, 0],
+      },
+      recents: [],
+      today: { voucher: 0, ecg: 0, airtime: 0, bundle: 0 },
+      sevenDays: {
+        labels: [
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+        ],
+        voucher: { data: [] },
+        ecg: { data: [] },
+        bundle: { data: [] },
+        airtime: { data: [] },
+      },
+      transactionByMonth: {
+        labels: [
+          "January",
+          "February",
+          "March",
+          "April",
+          "May",
+          "June",
+          "July",
+          "August",
+          "September",
+          "October",
+          "November",
+          "December",
+        ],
+        voucher: { data: [] },
+        ecg: { data: [] },
+        bundle: { data: [] },
+        airtime: { data: [] },
+      },
+      logs: [],
+    },
   });
 
-  const {data:balances,isLoading} = useQuery({
+  const { data: balances, isLoading } = useQuery({
     queryKey: ["all-balance"],
     queryFn: () => allBalance(),
-    initialData:{
-      pos:0.0,
-      pre:0.0,
-      balance:0.0
+    initialData: {
+      pos: 0.0,
+      pre: 0.0,
+      balance: 0.0,
     },
     enabled: !!user?.id,
     retry: 1,
   });
 
- 
   const handleOnSearchClicked = () => {
     navigate(
       `/summary/transactions?YixHy=a34cdd3543&_pid=423423&1=&_search=${searchValue}`
     );
   };
-  
+
   const handlOnChange = (e) => {
     // startTransition(() => {
     setSearchValue(e.target?.value);
     // });
   };
-  
-  if (summary?.isLoading||isLoading) {
+
+  if (summary?.isLoading || isLoading) {
     return <DashboardSkeleton />;
   }
+  // console.log("summary", summary?.data);
   return (
     <>
-      { Number(balances?.balance) < 1000 && showAlert && (
+      {Number(balances?.balance) < 1000 && showAlert && (
         <Alert
           variant="filled"
           severity="warning"
@@ -101,8 +154,8 @@ function Overall() {
           onClose={() => setShowAlert(false)}
         >
           Your Hubtel Prepaid balance is running low.Your remaining balance is{" "}
-          {currencyFormatter(balances?.pre)} .Please note that refund
-          cannot be completed with low prepaid balance.
+          {currencyFormatter(balances?.pre)} .Please note that refund cannot be
+          completed with low prepaid balance.
         </Alert>
       )}
       <Box
@@ -231,12 +284,15 @@ function Overall() {
               title="Total"
               icon={<BarChartRounded htmlColor="rgb(0, 20, 34)" />}
               value={
-                <CountUp
-                  start={0}
-                  end={summary?.data?.totalSales?.total ?? 0}
-                  prefix="GHS "
-                  decimals={2}
-                />
+                <Typography variant="h4">
+                  {currencyFormatter(summary?.data?.totalSales?.total)}
+                </Typography>
+                // <CountUp
+                //   start={0}
+                //   end={summary?.data?.totalSales?.total || 0}
+                //   prefix="GHS "
+                //   decimals={2}
+                // />
               }
               bg={"rgba(0, 20, 34,.2)"}
             />
@@ -245,12 +301,16 @@ function Overall() {
               title="Voucher & Tickets"
               icon={<PaymentRounded color="secondary" />}
               value={
-                <CountUp
-                  start={0}
-                  end={summary?.data?.totalSales?.voucher ?? 0}
-                  prefix="GHS "
-                  decimals={2}
-                />
+                <Typography variant="h4">
+                  {currencyFormatter(summary?.data?.totalSales?.voucher || 0)}
+                </Typography>
+
+                // <CountUp
+                //   start={0}
+                //   end={summary?.data?.totalSales?.voucher || 0}
+                //   prefix="GHS "
+                //   decimals={2}
+                // />
               }
               bg={"rgba(255, 126, 5,.2)"}
             />
@@ -259,13 +319,16 @@ function Overall() {
               title="Prepaid Units"
               icon={<BoltRounded color="info" />}
               value={
-                <CountUp
-                  start={0}
-                  end={summary?.data?.totalSales?.ecg ?? 0}
-                  prefix="GHS "
-                  decimals={2}
-                  enableScrollSpy={true}
-                />
+                <Typography variant="h4">
+                  {currencyFormatter(summary?.data?.totalSales?.ecg)}
+                </Typography>
+                // <CountUp
+                //   start={0}
+                //   end={summary?.data?.totalSales?.ecg || 0}
+                //   prefix="GHS "
+                //   decimals={2}
+                //   enableScrollSpy={true}
+                // />
               }
             />
 
@@ -273,13 +336,17 @@ function Overall() {
               title="Airtime"
               icon={<PhoneInTalk htmlColor="rgba(12, 126, 5)" />}
               value={
-                <CountUp
-                  start={0}
-                  end={summary?.data?.totalSales?.airtime ?? 0}
-                  prefix="GHS "
-                  decimals={2}
-                  enableScrollSpy={true}
-                />
+                <Typography variant="h4">
+                  {currencyFormatter(summary?.data?.totalSales?.airtime)}
+                </Typography>
+                // <CountUp
+                // <CountUp
+                //   start={0}
+                //   end={summary?.data?.totalSales?.airtime || 0}
+                //   prefix="GHS "
+                //   decimals={2}
+                //   enableScrollSpy={true}
+                // />
               }
               bg={"rgba(12, 126, 5,.2)"}
             />
@@ -287,13 +354,17 @@ function Overall() {
               title="Data Bundle"
               icon={<DataArray htmlColor="rgba(240, 1, 5)" />}
               value={
-                <CountUp
-                  start={0}
-                  end={summary?.data?.totalSales?.bundle ?? 0}
-                  prefix="GHS "
-                  decimals={2}
-                  enableScrollSpy={true}
-                />
+                <Typography variant="h4">
+                  {currencyFormatter(summary?.data?.totalSales?.bundle || 0)}
+                </Typography>
+                // <CountUp
+                // <CountUp
+                //   start={0}
+                //   end={summary?.data?.totalSales?.bundle || 0}
+                //   prefix="GHS "
+                //   decimals={2}
+                //   enableScrollSpy={true}
+                // />
               }
               bg={"rgba(240, 1, 5,.2)"}
             />
@@ -346,7 +417,7 @@ function Overall() {
                       value={
                         <CountUp
                           start={0}
-                          end={summary?.data?.today?.voucher ?? 0}
+                          end={summary?.data?.today?.voucher || 0}
                           prefix="GHS "
                           decimals={2}
                         />
@@ -360,7 +431,7 @@ function Overall() {
                       value={
                         <CountUp
                           start={0}
-                          end={summary?.data?.today?.ecg ?? 0}
+                          end={summary?.data?.today?.ecg || 0}
                           prefix="GHS "
                           decimals={2}
                         />
@@ -374,7 +445,7 @@ function Overall() {
                       value={
                         <CountUp
                           start={0}
-                          end={summary?.data?.today?.airtime ?? 0}
+                          end={summary?.data?.today?.airtime || 0}
                           prefix="GHS "
                           decimals={2}
                         />
@@ -388,7 +459,7 @@ function Overall() {
                       value={
                         <CountUp
                           start={0}
-                          end={summary?.data?.today?.bundle ?? 0}
+                          end={summary?.data?.today?.bundle || 0}
                           prefix="GHS "
                           decimals={2}
                         />
@@ -409,25 +480,25 @@ function Overall() {
                     datasets={[
                       {
                         label: "Vouchers & Tickets",
-                        data: summary?.data?.sevenDays?.voucher?.data ?? [],
+                        data: summary?.data?.sevenDays?.voucher?.data || [],
                         borderColor: palette.warning.main,
                         tension: 0.3,
                       },
                       {
                         label: "Prepaid Units",
-                        data: summary?.data?.sevenDays?.ecg?.data ?? [],
+                        data: summary?.data?.sevenDays?.ecg?.data || [],
                         borderColor: palette.info.main,
                         tension: 0.3,
                       },
                       {
                         label: "Airtime Units",
-                        data: summary?.data?.sevenDays?.airtime?.data ?? [],
+                        data: summary?.data?.sevenDays?.airtime?.data || [],
                         borderColor: palette.success.main,
                         tension: 0.3,
                       },
                       {
                         label: "Data Bundle",
-                        data: summary?.data?.sevenDays?.bundle?.data ?? [],
+                        data: summary?.data?.sevenDays?.bundle?.data || [],
                         borderColor: palette.error.main,
                         tension: 0.3,
                       },
@@ -452,28 +523,28 @@ function Overall() {
               datasets={[
                 {
                   label: "Vouchers & Tickets",
-                  data: summary?.data?.transactionByMonth?.voucher?.data ?? [],
+                  data: summary?.data?.transactionByMonth?.voucher?.data || [],
                   backgroundColor: palette.secondary.main,
                   barThickness: 20,
                   borderRadius: 2,
                 },
                 {
                   label: "Prepaid Units",
-                  data: summary?.data?.transactionByMonth?.ecg?.data ?? [],
+                  data: summary?.data?.transactionByMonth?.ecg?.data || [],
                   backgroundColor: palette.info.main,
                   barThickness: 20,
                   borderRadius: 2,
                 },
                 {
                   label: "Airtime Transfers",
-                  data: summary?.data?.transactionByMonth?.airtime?.data ?? [],
+                  data: summary?.data?.transactionByMonth?.airtime?.data || [],
                   backgroundColor: palette.success.main,
                   barThickness: 20,
                   borderRadius: 2,
                 },
                 {
                   label: "Data Bundle",
-                  data: summary?.data?.transactionByMonth?.bundle?.data ?? [],
+                  data: summary?.data?.transactionByMonth?.bundle?.data || [],
                   backgroundColor: palette.error.main,
                   barThickness: 20,
                   borderRadius: 2,

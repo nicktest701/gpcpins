@@ -1303,7 +1303,7 @@ router.get(
 
       await transx.commit();
 
-      res.status(200).json({
+      const data = {
         totalSales: grandTotal,
         totalCount: count,
         recents,
@@ -1311,7 +1311,9 @@ router.get(
         sevenDays,
         transactionByMonth,
         logs,
-      });
+      };
+
+      res.status(200).json(data);
     } catch (error) {
       await transx.rollback();
     }
@@ -1428,8 +1430,7 @@ router.get(
       );
 
       await transx.commit();
-
-      res.status(200).json({
+      const data = {
         category: {
           total: totalCategories,
           voucher: voucherCount,
@@ -1485,7 +1486,9 @@ router.get(
           voucher: thisYear?.voucher?.data,
           ticket: thisYear?.ecg?.data,
         },
-      });
+      };
+
+      res.status(200).json(data);
     } catch (error) {
       await transx.rollback();
       return res
@@ -2264,7 +2267,7 @@ router.get(
             .select("email", "phonenumber")
             .where({ _id: agent_bundle_transaction?.user })
             .first();
-         
+
           transaction = {
             ...agent_bundle_transaction,
             email: agentDetails?.email,

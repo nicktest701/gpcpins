@@ -1,7 +1,7 @@
+import { Box } from "@mui/material";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
-
 
 const ItemCard = ({ title, value, icon }) => {
   return (
@@ -27,27 +27,13 @@ const ItemCard = ({ title, value, icon }) => {
         >
           {icon}
         </div>
-        {/* {typeof value === "number" || typeof value === "string" ? ( */}
-        <Typography
-          variant="body1"
-          textAlign="center"
-          // fontWeight="bold"
-          sx={{ paddingY: 1 }}
-        >
+
+        <Box textAlign="center" sx={{ py: 1, fontSize: 20 }}>
           {value}
-        </Typography>
-        {/* ) : (
-          <>{value}</>
-        )} */}
+        </Box>
       </CardContent>
     </Card>
   );
 };
-
-// ItemCard.propTypes = {
-//   title: PropTypes.string,
-//   value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-//   icon: PropTypes.node,
-// };
 
 export default ItemCard;

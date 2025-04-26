@@ -9,22 +9,19 @@ import {
 } from "@mui/material";
 import moment from "moment";
 import Swal from "sweetalert2";
-import CustomTitle from "../../components/custom/CustomTitle";
-import CustomFormControl from "../../components/inputs/CustomFormControl";
+import CustomTitle from "@/components/custom/CustomTitle";
+import CustomFormControl from "@/components/inputs/CustomFormControl";
 import { LoadingButton } from "@mui/lab";
 import { Formik } from "formik";
 import { useMutation } from "@tanstack/react-query";
-import {
-  getRefundTransaction,
-  refundTransaction,
-} from "../../api/transactionAPI";
-import { currencyFormatter } from "../../constants";
+import { getRefundTransaction, refundTransaction } from "@/api/transactionAPI";
+import { currencyFormatter } from "@/constants";
 import { useContext, useState } from "react";
-import { globalAlertType } from "../../components/alert/alertType";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import GlobalSpinner from "../../components/spinners/GlobalSpinner";
-import LoadingSpinner from "../../components/spinners/LoadingSpinner";
-import { refundValidationSchema } from "../../config/validationSchema";
+import { globalAlertType } from "@/components/alert/alertType";
+import { CustomContext } from "@/context/providers/CustomProvider";
+import GlobalSpinner from "@/components/spinners/GlobalSpinner";
+import LoadingSpinner from "@/components/spinners/LoadingSpinner";
+import { refundValidationSchema } from "@/config/validationSchema";
 
 function Refund() {
   const { customDispatch } = useContext(CustomContext);
@@ -41,6 +38,7 @@ function Refund() {
     useMutation({
       mutationFn: getRefundTransaction,
     });
+
   const onSubmit = (values, options) => {
     mutateAsync(values, {
       onSettled: () => {
@@ -57,7 +55,16 @@ function Refund() {
     setAmountErr("");
 
     if (Number(amount) <= 0) {
-      setAmountErr("Amount should be more than 0");
+
+      setAmountErr("Amount should not be less than GHS 0.00");
+      return;
+    }
+    if (Number(amount) >= data?.amount) {
+      setAmountErr(
+        `Amount should be less than or equal to amount paid (${currencyFormatter(
+          data?.amount
+        )})`
+      );
       return;
     }
 
@@ -255,7 +262,7 @@ function Refund() {
               gap={2}
             >
               <Typography fontWeight="bold">Status</Typography>
-              <Typography textTransform='capitalize'>{data?.status}</Typography>
+              <Typography textTransform="capitalize">{data?.status}</Typography>
             </Stack>
           </Stack>
 
