@@ -50,6 +50,10 @@ function Pending() {
 
   const { mutateAsync, isLoading } = useMutation({
     mutationFn: ConfirmPayment,
+    retry: false,
+    onError: () => {
+      customDispatch(globalAlertType("error", "Error confirming payment"));
+    },
   });
 
   const handleConfirmPayment = () => {
@@ -124,7 +128,6 @@ function Pending() {
       }
     });
   };
-
 
   if (!state?._id) {
     return <Navigate to="/" />;
