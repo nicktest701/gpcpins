@@ -36,7 +36,7 @@
     "express-session": "^1.18.1",
     "express-x-hub": "^1.0.4",
     "firebase": "^11.2.0",
-    "form-data": "^4.0.1",
+    "form-data": "^4.0.4",
     "hashids": "^2.3.0",
     "helmet": "^8.0.0",
     "http-errors": "^2.0.0",
