@@ -569,12 +569,12 @@ router.get(
     const { id, type } = req.params;
     const confirm = req.query?.confirm;
 
-    const transx = await knex.transaction();
-
+    
     if (!isValidUUID2(id) || !type) {
       return res.status(402).send("Invalid Request");
     }
-
+    
+    const transx = await knex.transaction();
     let transaction = [];
 
     if (type === "voucher" || type === "ticket") {

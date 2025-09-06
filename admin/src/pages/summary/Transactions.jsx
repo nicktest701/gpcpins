@@ -34,8 +34,8 @@ import CustomTitle from "../../components/custom/CustomTitle";
 import { getAllEmployees } from "../../api/employeeAPI";
 import LoadingSpinner from "../../components/spinners/LoadingSpinner";
 
-const startDate = moment("2024-01-01").format("YYYY-MM-DD");
-const endDate = moment().format("YYYY-MM-DD");
+const startDate = moment("2024-01-01").toDate();
+const endDate = moment().toDate();
 function Transactions() {
   const { user } = useContext(AuthContext);
   const [searchParams, setSearchParams] = useSearchParams();

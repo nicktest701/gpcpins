@@ -39,8 +39,8 @@ const months = [
 ];
 
 const currentYear = moment().year();
-const startDate = moment().startOf("year").format("YYYY-MM-DD");
-const endDate = moment().format("YYYY-MM-DD");
+const startDate = moment("2024-01-01").toDate();
+const endDate = moment().toDate();
 function Report() {
   const { palette } = useTheme();
   const [sortValue, setSortValue] = useState(currentYear);

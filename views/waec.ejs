@@ -65,7 +65,7 @@
 
         small,
         a {
-            font-size: 9px;
+            font-size: 12px;
         }
 
         .wrapper {
@@ -74,7 +74,7 @@
             justify-content: flex-start;
             flex-wrap: wrap;
             gap: 8px;
-            margin-bottom: 300px;
+            margin-bottom: 400px;
         }
 
         .voucher-cover {
@@ -85,14 +85,14 @@
         }
 
         .voucher-cover p:first-child {
-            font-size: 10px;
+            font-size: 14px;
             width: 22%;
             text-transform: uppercase;
 
         }
 
         .voucher-cover p:last-child {
-            font-size: 10px;
+            font-size: 15px;
             font-weight: bold;
 
         }
@@ -104,7 +104,7 @@
     <div class="wrapper">
         <% vouchers.forEach(function(voucher){%>
             <div
-                style="width: 180px;border:solid 1px black;padding:8px; background:linear-gradient(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.92)) no-repeat; background-position: center center; background-size: 100px 100px;">
+                style="width: 230px;border:solid 1px black;padding:8px; background:linear-gradient(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.92)) no-repeat; background-position: center center; background-size: 100px 100px;">
                 <!-- url('<%=voucher?.logo %>') -->
                 <p style="text-align:center;white-space:wrap;font-size: 10px;">
                     <%= voucher?.voucherType %>
