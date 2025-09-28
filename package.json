@@ -52,7 +52,7 @@
     "nodemailer": "^6.9.16",
     "otp-gen-agent": "^1.1.4",
     "p-limit": "^3.1.0",
-    "puppeteer": "^24.1.0",
+    "puppeteer": "^24.10.2",
     "qrcode": "^1.5.4",
     "redis": "^4.7.0",
     "toobusy-js": "^0.5.1"
