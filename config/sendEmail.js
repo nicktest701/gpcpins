@@ -6,21 +6,18 @@ const sendEMail = async (email_address, message, subject) => {
   try {
     const transportMail = nodemailer.createTransport({
       host: process.env.MAIL_CLIENT_SERVICE,
+      port: 465,
+      secure: true,
       auth: {
         user: process.env.MAIL_CLIENT_USER,
         pass: process.env.MAIL_CLIENT_PASS,
       },
+      connectionTimeout: 15000,
       tls: {
         rejectUnauthorized: false,
-        ciphers: "SSLv3",
+        // ciphers: "SSLv3",
       },
-      port: 465,
-      secure: true,
-      from: process.env.MAIL_CLIENT_USER,
-      connectionTimeout: 10000,
-      tls: {
-        rejectUnauthorized: false,
-      },
+      // from: process.env.MAIL_CLIENT_USER,
     });
 
     // verify connection configuration

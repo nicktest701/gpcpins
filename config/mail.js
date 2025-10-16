@@ -1,24 +1,23 @@
 const nodemailer = require("nodemailer");
 const { resendMailText } = require("./mailText");
+const { Resend } = require("resend");
 const { thankYouText } = (require = require("./mailText"));
 
 const transportMail = nodemailer.createTransport({
   host: process.env.MAIL_CLIENT_SERVICE,
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.MAIL_CLIENT_USER,
     pass: process.env.MAIL_CLIENT_PASS,
   },
+  connectionTimeout: 15000,
   tls: {
     rejectUnauthorized: false,
-    ciphers: "SSLv3",
+    // ciphers: "SSLv3",
   },
-  port: 465,
-  secure: true,
-  from: process.env.MAIL_CLIENT_USER,
-  connectionTimeout: 10000,
-  tls: {
-    rejectUnauthorized: false,
-  },
+  // from: process.env.MAIL_CLIENT_USER,
+
 });
 
 const sendMail = async (transaction_id, email_address) => {
@@ -82,7 +81,6 @@ const resendReceiptMail = async (
   email_address,
   downloadLink
 ) => {
-
   if (process.env.NODE_ENV !== "production") return true;
 
   try {
@@ -95,7 +93,6 @@ const resendReceiptMail = async (
       html: resendMailText(transaction_id, downloadLink),
     };
     const mailResult = await transportMail.sendMail(mailOptions);
-
 
     return mailResult;
   } catch (error) {
@@ -135,9 +132,26 @@ const sendReportMail = async (
   }
 };
 
+const sendResend = () => {
+  console.log("Sending with resend...");
+  try {
+    const resend = new Resend(process.env.MAIL_RESEND_API_KEY);
+
+    resend.emails.send({
+      from: "onboarding@resend.dev",
+      to: "nicktest701@gmail.com",
+      subject: "Hello World",
+      html: "<p>Congrats on sending your <strong>first email</strong>!</p>",
+    });
+  } catch (error) {
+    console.log(error.message);
+  }
+};
+
 module.exports = {
   sendReportMail,
   sendMail,
   sendTicketMail,
   resendReceiptMail,
+  sendResend,
 };

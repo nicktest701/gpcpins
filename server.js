@@ -339,7 +339,6 @@
 
 // server.setTimeout(120000);
 
-
 require("dotenv").config({ path: ".env" });
 const path = require("path");
 const compression = require("compression");
@@ -373,6 +372,7 @@ const notificationRoute = require("./routes/notificationRoute");
 const { verifyToken } = require("./middlewares/verifyToken");
 const sendEMail = require("./config/sendEmail");
 const knex = require("./db/knex");
+
 
 // Default server port
 const PORT = process.env.PORT || 5000;
@@ -684,6 +684,7 @@ process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
 // Start server
 const server = app.listen(PORT, () => {
+
   console.log(`Server running in ${NODE_ENV} mode on port ${PORT}`);
 });
 
