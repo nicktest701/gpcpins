@@ -95,7 +95,7 @@ const resendReceiptMail = async (
       html: resendMailText(transaction_id, downloadLink),
     };
     const mailResult = await transportMail.sendMail(mailOptions);
-    console.log(mailResult);
+
 
     return mailResult;
   } catch (error) {
