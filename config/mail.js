@@ -12,15 +12,17 @@ const transportMail = nodemailer.createTransport({
     rejectUnauthorized: false,
     ciphers: "SSLv3",
   },
+  port: 465,
   secure: true,
   from: process.env.MAIL_CLIENT_USER,
+  connectionTimeout: 10000,
   tls: {
     rejectUnauthorized: false,
   },
 });
 
 const sendMail = async (transaction_id, email_address) => {
-  if (process.env.NODE_ENV !== 'production') return true
+  if (process.env.NODE_ENV !== "production") return true;
   try {
     const mailOptions = {
       from: `GPC ${process.env.MAIL_CLIENT_USER}`,
@@ -49,9 +51,7 @@ const sendTicketMail = async (
   email_address,
   type = "Voucher"
 ) => {
-
   // if (process.env.NODE_ENV !== 'production') return true
-
 
   try {
     const mailOptions = {
@@ -82,8 +82,8 @@ const resendReceiptMail = async (
   email_address,
   downloadLink
 ) => {
-  if (process.env.NODE_ENV !== 'production') return true
 
+  if (process.env.NODE_ENV !== "production") return true;
 
   try {
     const mailOptions = {
@@ -95,6 +95,7 @@ const resendReceiptMail = async (
       html: resendMailText(transaction_id, downloadLink),
     };
     const mailResult = await transportMail.sendMail(mailOptions);
+    console.log(mailResult);
 
     return mailResult;
   } catch (error) {
@@ -109,8 +110,7 @@ const sendReportMail = async (
   transaction_id,
   subject
 ) => {
-  if (process.env.NODE_ENV !== 'production') return true
-
+  if (process.env.NODE_ENV !== "production") return true;
 
   try {
     const mailOptions = {

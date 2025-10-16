@@ -23,10 +23,7 @@ const {
   PREPAID_Balance,
 } = require("../config/sendMoney");
 const sendEMail = require("../config/sendEmail");
-const {
-  sendTicketMail,
-  resendReceiptMail,
-} = require("../config/mail");
+const { sendTicketMail, resendReceiptMail } = require("../config/mail");
 const { sendSMS } = require("../config/sms");
 const generateQRCode = require("../config/qrcode");
 const currencyFormatter = require("../config/currencyFormatter");
@@ -44,8 +41,6 @@ const { mailTextShell } = require("../config/mailText");
 const { MTN, VODAFONE, AIRTELTIGO } = require("../config/bundleList");
 const generateId = require("../config/generateId");
 
-
-
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "./receipts/");
@@ -58,8 +53,6 @@ const Storage = multer.diskStorage({
 });
 
 const Upload = multer({ storage: Storage });
-
-
 
 const corsOptions = {
   methods: "POST",
@@ -82,7 +75,6 @@ const rlimit = rateLimit({
 });
 
 const limit = pLimit(3);
-
 
 router.get(
   "/vouchers",
@@ -107,7 +99,6 @@ router.get(
       return res.status(404).json("Invalid request.Try again later");
     }
 
-
     let { _id, info, vouchers, status, createdAt, updatedAt } = trans[0];
 
     if (status === "pending" || status == "failed") {
@@ -116,7 +107,6 @@ router.get(
 
     const userInfo = JSON.parse(info);
     const userVoucher = JSON.parse(vouchers);
-
 
     //Check if voucher pdf already exists
     // if (fs.existsSync(path.join(process.cwd(), "/vouchers/", `${id}.pdf`))) {
@@ -127,7 +117,6 @@ router.get(
 
     //Check if voucher pdf already exists
     if (userInfo?.downloadLink) {
-
       //       await sendSMS(
       //         `${userInfo?.agentEmail} ${userInfo?.agentPhoneNumber}.
       //  Download Vouchers here: ${userInfo?.downloadLink}`,
@@ -140,7 +129,6 @@ router.get(
 
       return res.status(200).json({ id, downloadLink: userInfo?.downloadLink });
     }
-
 
     if (userVoucher?.length <= 0) {
       return res.status(404).json("Payment not completed!");
@@ -158,7 +146,6 @@ router.get(
         "categories.price as price",
         "categories.details as details"
       );
-
 
     //if creating new transaction fails
     if (_.isEmpty(soldVouchers)) {
@@ -197,12 +184,10 @@ router.get(
       status,
     };
 
-
     try {
       const result = await processVouchers(generatedTransaction);
 
       if (result === "done") {
-
         const downloadLink = await uploadVoucherFile(`${_id}.pdf`);
 
         await knex("voucher_transactions")
@@ -239,9 +224,9 @@ router.get(
         // });
 
         //         const SMSPrompt = await sendSMS(
-        //           `${modifiedVoucher[0]?.voucherType}  ${modifiedVoucher[0]?.dataURL}   
+        //           `${modifiedVoucher[0]?.voucherType}  ${modifiedVoucher[0]?.dataURL}
         // [Pin--Serial]
-        // ${smsData.join(" ")}  
+        // ${smsData.join(" ")}
         // ${userInfo?.agentEmail}
         // ${userInfo?.agentPhoneNumber}
         // Download Voucher here: ${downloadLink}`,
@@ -250,7 +235,6 @@ router.get(
 
         // await Promise.all([emailPrompt, SMSPrompt])
 
-
         // await sendWhatsappMessage({
         //   user: getInternationalMobileFormat(userInfo?.agentPhoneNumber),
         //   message: "Thank you for your purchase!",
@@ -258,7 +242,7 @@ router.get(
         // });
       }
     } catch (error) {
-      console.log(error)
+      console.log(error);
       return res.status(500).json("Error processing your vouchers!");
     }
   })
@@ -279,7 +263,8 @@ router.get(
     const trans = await knex("voucher_transactions")
       .where("_id", id)
       .select("*")
-      .limit(1).first();
+      .limit(1)
+      .first();
 
     if (_.isEmpty(trans)) {
       return res.status(404).json("Invalid request.Try again later");
@@ -303,14 +288,12 @@ router.get(
 
     //Check if voucher pdf already exists
     if (userInfo?.downloadLink) {
-
       //     await sendSMS(
       //       `${userInfo?.agentEmail} ${userInfo?.agentPhoneNumber}.
       //  Download Tickets here: ${userInfo?.downloadLink}`,
       //       userInfo?.agentPhoneNumber
       //     );
       if (userInfo?.agentEmail) {
-
         await sendTicketMail(_id, userInfo?.agentEmail, "GPC Tickets");
       }
 
@@ -321,20 +304,18 @@ router.get(
       return res.status(404).json("Payment not completed!");
     }
 
-
     const { type, orderNo, categoryId, paymentDetails } = userInfo;
 
     let tickets = [];
     let soldVouchers = [];
 
     if (["stadium", "cinema"].includes(type)) {
-
       const vouchers = await Promise.all(
         paymentDetails.tickets.flatMap(async (ticket) => {
           return await knex("vouchers")
             .join("categories", "vouchers.category", "=", "categories._id")
             .whereIn("vouchers._id", userVoucher)
-            .andWhere('vouchers.type', ticket?.type)
+            .andWhere("vouchers.type", ticket?.type)
             .select(
               "vouchers._id as _id",
               "vouchers.pin as pin",
@@ -351,7 +332,6 @@ router.get(
       );
 
       soldVouchers = _.flatMap(vouchers);
-
     }
     //Check if tickets are bus
     if (["bus"].includes(type)) {
@@ -372,10 +352,7 @@ router.get(
           "categories.details as details",
           "categories.year as year"
         );
-
-
     }
-
 
     if (["stadium", "cinema"].includes(type)) {
       const generatedTickets = _.map(
@@ -391,12 +368,10 @@ router.get(
         }) => {
           const detailsInfo = JSON.parse(details);
 
-
           const item = _.find(
             detailsInfo?.pricing,
             (item) => item.type === vType
           );
-
 
           const code = await generateQRCode(id, _id);
 
@@ -447,7 +422,6 @@ router.get(
         }
       );
       tickets = await Promise.all(generatedTickets);
-
     }
 
     if (type === "bus") {
@@ -489,7 +463,7 @@ router.get(
             qrCode: code,
             year: year,
             status: "sold",
-            companyName: detailsInfo?.companyName || "Gab Powerful Consult"
+            companyName: detailsInfo?.companyName || "Gab Powerful Consult",
           };
         }
       );
@@ -512,7 +486,6 @@ router.get(
       const result = await processVouchers(generatedTransaction);
 
       if (result === "done") {
-
         const downloadLink = await uploadVoucherFile(`${_id}.pdf`);
 
         await knex("voucher_transactions")
@@ -551,10 +524,9 @@ Download Ticket here: ${downloadLink}`,
         //   message: "Thank you for your purchase!",
         //   media: downloadLink,
         // })
-
       }
     } catch (error) {
-      console.log(error)
+      console.log(error);
       return res.status(500).json("Error processing your tickets!");
     }
   })
@@ -569,11 +541,10 @@ router.get(
     const { id, type } = req.params;
     const confirm = req.query?.confirm;
 
-    
     if (!isValidUUID2(id) || !type) {
       return res.status(402).send("Invalid Request");
     }
-    
+
     const transx = await knex.transaction();
     let transaction = [];
 
@@ -600,7 +571,6 @@ router.get(
         .join("meters", "prepaid_transactions.meter", "=", "meters._id")
         .where("prepaid_transactions._id", id)
         .first();
-
     }
 
     if (type === "airtime") {
@@ -642,25 +612,24 @@ router.get(
 
     //if creating new transaction fails
     if (_.isEmpty(transaction)) {
-      await transx.rollback()
+      await transx.rollback();
       return res.status(402).json("Error Processing your request!");
     }
 
     if (transaction.status === "failed") {
-      await transx.rollback()
+      await transx.rollback();
       return res.status(402).json("Payment Cancelled!");
     }
 
     if (transaction.status !== "completed") {
-      await transx.rollback()
+      await transx.rollback();
       return res.status(402).json("Payment not completed!");
     }
 
     const info = transaction?.info ? JSON.parse(transaction?.info) : "";
 
-
-    if (["voucher", 'ticket'].includes(type) && confirm) {
-      const { _id, info } = transaction
+    if (["voucher", "ticket"].includes(type) && confirm) {
+      const { _id, info } = transaction;
 
       const userInfo = JSON.parse(info);
 
@@ -679,18 +648,19 @@ router.get(
                 "vouchers.status": "new",
                 "vouchers.active": 1,
               })
-              .select("vouchers._id",
-                'vouchers.serial',
-                'vouchers.pin',
-                'vouchers.type',
+              .select(
+                "vouchers._id",
+                "vouchers.serial",
+                "vouchers.pin",
+                "vouchers.type",
                 "categories.details as details",
-                "categories.voucherType as voucherType",)
+                "categories.voucherType as voucherType"
+              )
               .limit(ticket?.quantity);
           })
         );
 
         selectedVouchers = _.flatMap(vouchers);
-
       }
       //Check if tickets are bus
       else if (["bus"].includes(userInfo?.type)) {
@@ -702,14 +672,14 @@ router.get(
             "vouchers.status": "new",
             "vouchers.active": 1,
           })
-          .select("vouchers._id",
-            'vouchers.serial',
-            'vouchers.pin',
-            'vouchers.type',
+          .select(
+            "vouchers._id",
+            "vouchers.serial",
+            "vouchers.pin",
+            "vouchers.type",
             "categories.details as details",
-            "categories.voucherType as voucherType",);
-
-
+            "categories.voucherType as voucherType"
+          );
       }
       //Check if vouchers are waec,university or security
       else {
@@ -720,27 +690,23 @@ router.get(
             "vouchers.status": "new",
             "vouchers.active": 1,
           })
-          .select("vouchers._id",
-            'vouchers.serial',
-            'vouchers.pin',
-            'vouchers.type',
+          .select(
+            "vouchers._id",
+            "vouchers.serial",
+            "vouchers.pin",
+            "vouchers.type",
             "categories.voucherType as voucherType",
             "categories.details as details"
           )
           .limit(userInfo?.quantity);
       }
 
-
-
-      const soldVouchers_ids = _.map(selectedVouchers, '_id');
-
+      const soldVouchers_ids = _.map(selectedVouchers, "_id");
 
       try {
-
-
-        await transx("voucher_transactions").where('_id', _id).update(
-          { vouchers: JSON.stringify(soldVouchers_ids) }
-        );
+        await transx("voucher_transactions")
+          .where("_id", _id)
+          .update({ vouchers: JSON.stringify(soldVouchers_ids) });
 
         //Update Selected Vouchers as SOLD
         await transx("vouchers").whereIn("_id", soldVouchers_ids).update({
@@ -749,58 +715,55 @@ router.get(
         });
         // await transx.commit();
 
-
-
-        if (type === 'voucher' && confirm) {
+        if (type === "voucher" && confirm) {
           // console.log(userInfo)
           const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
 
           const smsInfo = selectedVouchers.map((voucher) => {
             return `[${voucher?.pin}--${voucher?.serial}]`;
           });
-          const smsData = await Promise.all([smsInfo])
+          const smsData = await Promise.all([smsInfo]);
 
           await sendSMS(
             `${selectedVouchers[0]?.voucherType} ${detailsInfo?.voucherURL}   
 [Pin--Serial]
-${smsData.join(" ")}`, userInfo?.agentPhoneNumber
+${smsData.join(" ")}`,
+            userInfo?.agentPhoneNumber
           );
-
-
         }
 
-        if (type === 'ticket' && confirm) {
+        if (type === "ticket" && confirm) {
           const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
           // console.log(selectedVouchers)
 
           const smsInfo = selectedVouchers.map((voucher) => {
             return `[${voucher?.type}--${voucher?.serial || voucher?.pin}]`;
           });
-          const smsData = await Promise.all([smsInfo])
+          const smsData = await Promise.all([smsInfo]);
 
           await sendSMS(
             `${selectedVouchers[0]?.voucherType}   
 [Seat No./Type--Serial]
 ${smsData.join(" ")},  
 
-${moment(detailsInfo?.date)?.format('dddd,Do MMMM,YYYY')},${moment(detailsInfo?.time).format('hh:mm a')},  
-${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your tickets.
+${moment(detailsInfo?.date)?.format("dddd,Do MMMM,YYYY")},${moment(
+              detailsInfo?.time
+            ).format("hh:mm a")},  
+${userInfo?.agentEmail || ""},${
+              userInfo?.agentPhoneNumber
+            }.Please visit https://www.gpcpins.com/evoucher to print your tickets.
 `,
             userInfo?.agentPhoneNumber
           );
-
         }
-
-
       } catch (error) {
-
         console.log(error);
         await transx.rollback();
-        return res.status(500).json("Error Processing your request! Please try again later.");
+        return res
+          .status(500)
+          .json("Error Processing your request! Please try again later.");
       }
-
     }
-
 
     if (
       ["airtime"].includes(type) &&
@@ -808,42 +771,45 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
       Boolean(transaction.isProcessed) === false &&
       confirm
     ) {
+      const recipients = JSON.parse(transaction?.recipient);
+      const recipientList = recipients?.map((recipient) => {
+        return `${recipient?.type}(${
+          recipient?.recipient
+        }) at an amount of ${currencyFormatter(recipient?.price)}`;
+      });
 
-
-      const recipients = JSON.parse(transaction?.recipient)
-      const recipientList = recipients?.map(recipient => {
-        return `${recipient?.type}(${recipient?.recipient}) at an amount of ${currencyFormatter(
-          recipient?.price
-        )}`
-      })
-
-      const formatter = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
+      const formatter = new Intl.ListFormat("en", {
+        style: "long",
+        type: "conjunction",
+      });
       const formattedList = formatter.format(recipientList);
-
 
       await sendSMS(
         `Your request to buy bulk ${type} has been received.Your transaction id is ${transaction?._id}.Thank you for your business with us!`,
         transaction?.phonenumber
       );
 
-
-      const message = `The number ${transaction?.phonenumber} with Email Address ${transaction?.email || ""
-        } has successfully made payment to transfer bulk airtime to:
+      const message = `The number ${
+        transaction?.phonenumber
+      } with Email Address ${
+        transaction?.email || ""
+      } has successfully made payment to transfer bulk airtime to:
          ${formattedList}.`;
       // console.log(message)
 
-
-      if (process.env.NODE_ENV === 'production') {
-
+      if (process.env.NODE_ENV === "production") {
         const emailPrompt = await sendEMail(
           process.env.MAIL_CLIENT_USER,
           mailTextShell(`<p>${message}</p>`),
           "REQUEST FOR BULK AIRTIME TRANSFER"
         );
 
-        const SMSPrompt = await sendSMS(message, process.env.CLIENT_PHONENUMBER);
+        const SMSPrompt = await sendSMS(
+          message,
+          process.env.CLIENT_PHONENUMBER
+        );
 
-        await Promise.all([emailPrompt, SMSPrompt])
+        await Promise.all([emailPrompt, SMSPrompt]);
       }
 
       await transx("notifications").insert({
@@ -851,8 +817,6 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
         title: "Bulk Airtime Transfer",
         message,
       });
-
-
     }
 
     if (
@@ -869,17 +833,17 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
           transaction?.network === "mtn-gh"
             ? 4
             : transaction?.network === "vodafone-gh"
-              ? 6
-              : transaction?.network === "tigo-gh"
-                ? 1
-                : 0,
+            ? 6
+            : transaction?.network === "tigo-gh"
+            ? 1
+            : 0,
         transaction_reference,
       };
 
       try {
         const response = await sendBundle(bundleInfo);
 
-        if (['00', '09'].includes(response["status-code"])) {
+        if (["00", "09"].includes(response["status-code"])) {
           await transx("bundle_transactions").where("_id", id).update({
             isProcessed: 1,
           });
@@ -897,22 +861,23 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
             const body = `Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.Please recharge to avoid any inconveniences.Thank you.
             `;
 
-            if (process.env.NODE_ENV === 'production') {
-
+            if (process.env.NODE_ENV === "production") {
               const emailPrompt = await sendEMail(
                 process.env.MAIL_CLIENT_USER,
                 mailTextShell(`<p>${body}</p>`),
                 "LOW TOP UP ACCOUNT BALANCE"
               );
-              const SMSPrompt = await sendSMS(body, process.env.CLIENT_PHONENUMBER);
+              const SMSPrompt = await sendSMS(
+                body,
+                process.env.CLIENT_PHONENUMBER
+              );
 
-              await Promise.all([emailPrompt, SMSPrompt])
+              await Promise.all([emailPrompt, SMSPrompt]);
             }
-
           }
         }
       } catch (error) {
-        await transx.rollback()
+        await transx.rollback();
 
         // console.log(error?.response?.data);
         return res.status(401).json("An error has occurred");
@@ -934,16 +899,16 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
           transaction?.network === "mtn-gh"
             ? 4
             : transaction?.network === "vodafone-gh"
-              ? 6
-              : transaction?.network === "tigo-gh"
-                ? 1
-                : 0,
+            ? 6
+            : transaction?.network === "tigo-gh"
+            ? 1
+            : 0,
         transaction_reference,
       };
       try {
         const response = await sendAirtime(airtimeInfo);
 
-        if (['00', '09'].includes(response["status-code"])) {
+        if (["00", "09"].includes(response["status-code"])) {
           await transx("airtime_transactions").where("_id", id).update({
             isProcessed: 1,
           });
@@ -960,30 +925,33 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
           if (balance < 1000) {
             const body = `Your one-4-all top up account balance is running low.Your remaining balance is GHS ${balance}.Please recharge to avoid any inconveniences.Thank you.`;
 
-
-            if (process.env.NODE_ENV === 'production') {
-
+            if (process.env.NODE_ENV === "production") {
               const emailPrompt = await sendEMail(
                 process.env.MAIL_CLIENT_USER,
                 mailTextShell(`<p>${body}</p>`),
                 "LOW TOP UP ACCOUNT BALANCE"
               );
-              const SMSPrompt = await sendSMS(body, process.env.CLIENT_PHONENUMBER);
+              const SMSPrompt = await sendSMS(
+                body,
+                process.env.CLIENT_PHONENUMBER
+              );
 
-              limit(() => Promise.all([emailPrompt, SMSPrompt]))
+              limit(() => Promise.all([emailPrompt, SMSPrompt]));
             }
           }
         }
       } catch (error) {
-        await transx.rollback()
+        await transx.rollback();
         return res.status(401).json("An error has occurred");
       }
     }
 
     if (type === "prepaid" && confirm) {
-
-      const message = `The number ${transaction?.mobileNo} with METER NO. '${transaction?.number
-        }' has successfully made payment to buy PREPAID UNITS at an amount of ${currencyFormatter(info?.amount)}.`;
+      const message = `The number ${transaction?.mobileNo} with METER NO. '${
+        transaction?.number
+      }' has successfully made payment to buy PREPAID UNITS at an amount of ${currencyFormatter(
+        info?.amount
+      )}.`;
 
       await transx("notifications").insert({
         _id: generateId(),
@@ -992,7 +960,6 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
       });
 
       if (transaction?.email) {
-
         await sendElectricityMail(
           transaction?._id,
           transaction?.email,
@@ -1013,7 +980,6 @@ ${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https:/
 
       limit(() => Promise.all([userSMS, agentMail]));
     }
-
 
     await transx.commit();
     const successfulTransaction = {
@@ -1044,8 +1010,8 @@ router.get(
       type === "airtime"
         ? "airtime_transactions"
         : type === "bundle"
-          ? "bundle_transactions"
-          : "voucher_transactions";
+        ? "bundle_transactions"
+        : "voucher_transactions";
 
     await knex(db).where({ _id: id }).update({
       status: "failed",
@@ -1093,19 +1059,15 @@ router.post(
     } = req.body;
     // console.log(req.body)
 
-
-
     if (Number(totalAmount) <= 0) {
       return res.status(401).json("Please enter a valid amount.");
     }
-
 
     if (isWallet) {
       const userWallet = await knex("user_wallets")
         .select("_id", "user_key", "active")
         .where({
           user_id: id,
-
         })
         .limit(1);
 
@@ -1113,14 +1075,11 @@ router.post(
         return res.status(401).json("Invalid pin!");
       }
 
-      const isPinValid = await bcrypt.compare(token, userWallet[0]?.user_key)
-
+      const isPinValid = await bcrypt.compare(token, userWallet[0]?.user_key);
 
       if (!isPinValid) {
         return res.status(401).json("Invalid pin!");
       }
-
-
     }
 
     if (!category || !ALLOWED_CATEGORIES.includes(category)) {
@@ -1181,7 +1140,13 @@ router.post(
     ) {
       return res
         .status(404)
-        .json(`${["stadium", "cinema", "bus"].includes(category) ? 'Ticket' : 'Voucher'} not available! Try again later.`);
+        .json(
+          `${
+            ["stadium", "cinema", "bus"].includes(category)
+              ? "Ticket"
+              : "Voucher"
+          } not available! Try again later.`
+        );
     }
 
     const transx = await knex.transaction();
@@ -1192,8 +1157,6 @@ router.post(
       const orderNo = randomBytes(20).toString("hex");
       let transactionInfo = {};
 
-
-
       if (isWallet) {
         // Check wallet remaining balance
         const user_balance = await transx("user_wallets")
@@ -1201,12 +1164,13 @@ router.post(
           .select("amount")
           .limit(1);
 
-
         if (
           _.isEmpty(user_balance) ||
           Number(user_balance[0]?.amount) < Number(totalAmount)
         ) {
-          return res.status(401).json("Insufficient wallet Fund to complete transaction!");
+          return res
+            .status(401)
+            .json("Insufficient wallet Fund to complete transaction!");
         }
 
         const user_deduction = await transx("user_wallets")
@@ -1215,24 +1179,17 @@ router.post(
             amount: totalAmount,
           });
 
-
-        await transx("user_wallet_transactions")
-          .insert({
-            _id: generateId(),
-            user_id: id,
-            issuer: id,
-            type: 'purchase',
-            wallet: user_balance[0]?.amount,
-            amount: totalAmount,
-            comment: 'Voucher',
-            attachment: null,
-            status: user_deduction === 1 ? "completed" : "failed",
-
-          })
-
-
-
-
+        await transx("user_wallet_transactions").insert({
+          _id: generateId(),
+          user_id: id,
+          issuer: id,
+          type: "purchase",
+          wallet: user_balance[0]?.amount,
+          amount: totalAmount,
+          comment: "Voucher",
+          attachment: null,
+          status: user_deduction === 1 ? "completed" : "failed",
+        });
 
         transactionInfo = {
           _id: transaction_id,
@@ -1275,15 +1232,14 @@ router.post(
           transaction_reference,
         };
 
-
         const sendMoneyReponse = await sendMoney(payment, "v");
 
         const status =
           sendMoneyReponse?.ResponseCode === "0000"
             ? "completed"
             : sendMoneyReponse?.ResponseCode === "0001"
-              ? "pending"
-              : "failed";
+            ? "pending"
+            : "failed";
 
         transactionInfo = {
           _id: transaction_id,
@@ -1331,7 +1287,6 @@ router.post(
 
       res.status(200).json({ _id: transaction_id });
     } catch (error) {
-
       console.log(error);
 
       await transx.rollback();
@@ -1349,15 +1304,14 @@ router.post(
     const transaction = await knex("voucher_transactions")
       .select("*")
       .where("_id", id)
-      .limit(1).first();
-
+      .limit(1)
+      .first();
 
     if (_.isEmpty(transaction)) {
       return res.status(402).json("Transaction not found!");
     }
 
-
-    const { _id, info } = transaction
+    const { _id, info } = transaction;
 
     const userInfo = JSON.parse(info);
 
@@ -1376,18 +1330,19 @@ router.post(
               "vouchers.status": "new",
               "vouchers.active": 1,
             })
-            .select("vouchers._id",
-              'vouchers.serial',
-              'vouchers.pin',
-              'vouchers.type',
+            .select(
+              "vouchers._id",
+              "vouchers.serial",
+              "vouchers.pin",
+              "vouchers.type",
               "categories.details as details",
-              "categories.voucherType as voucherType",)
+              "categories.voucherType as voucherType"
+            )
             .limit(ticket?.quantity);
         })
       );
 
       selectedVouchers = _.flatMap(vouchers);
-
     }
     //Check if tickets are bus
     else if (["bus"].includes(userInfo?.type)) {
@@ -1399,14 +1354,14 @@ router.post(
           "vouchers.status": "new",
           "vouchers.active": 1,
         })
-        .select("vouchers._id",
-          'vouchers.serial',
-          'vouchers.pin',
-          'vouchers.type',
+        .select(
+          "vouchers._id",
+          "vouchers.serial",
+          "vouchers.pin",
+          "vouchers.type",
           "categories.details as details",
-          "categories.voucherType as voucherType",);
-
-
+          "categories.voucherType as voucherType"
+        );
     }
     //Check if vouchers are waec,university or security
     else {
@@ -1417,69 +1372,69 @@ router.post(
           "vouchers.status": "new",
           "vouchers.active": 1,
         })
-        .select("vouchers._id",
-          'vouchers.serial',
-          'vouchers.pin',
-          'vouchers.type',
+        .select(
+          "vouchers._id",
+          "vouchers.serial",
+          "vouchers.pin",
+          "vouchers.type",
           "categories.voucherType as voucherType",
           "categories.details as details"
         )
         .limit(userInfo?.quantity);
     }
 
-
     try {
-
-
-      if (["waec", 'security', 'university'].includes(userInfo?.type)) {
-
+      if (["waec", "security", "university"].includes(userInfo?.type)) {
         const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
 
         const smsInfo = selectedVouchers.map((voucher) => {
           return `[${voucher?.pin}--${voucher?.serial}]`;
         });
-        const smsData = await Promise.all([smsInfo])
+        const smsData = await Promise.all([smsInfo]);
 
         await sendSMS(
           `${selectedVouchers[0]?.voucherType}  ${detailsInfo?.voucherURL}   
 [Pin--Serial]
-${smsData.join(" ")}`, userInfo?.agentPhoneNumber
+${smsData.join(" ")}`,
+          userInfo?.agentPhoneNumber
         );
-
-
-
       }
 
-      if (["bus", 'cinema', 'stadium'].includes(userInfo?.type)) {
-        const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
-        // console.log(selectedVouchers)
+      if (["bus", "cinema", "stadium"].includes(userInfo?.type)) {
+        const d = _.isEmpty(selectedVouchers)
+          ? "{}"
+          : selectedVouchers[0]?.details;
+
+        const detailsInfo = JSON.parse(_.isUndefined(d) ? {} : d);
 
         const smsInfo = selectedVouchers.map((voucher) => {
           return `[${voucher?.type}--${voucher?.serial || voucher?.pin}]`;
         });
-        const smsData = await Promise.all([smsInfo])
+        const smsData = await Promise.all([smsInfo]);
 
         await sendSMS(
           `${selectedVouchers[0]?.voucherType}   
 [Seat No./Type--Serial]
 ${smsData.join(" ")},  
 
-${moment(detailsInfo?.date)?.format('dddd,Do MMMM,YYYY')},${moment(detailsInfo?.time).format('hh:mm a')},  
-${userInfo?.agentEmail || ""},${userInfo?.agentPhoneNumber}.Please visit https://www.gpcpins.com/evoucher to print your tickets.
+${moment(detailsInfo?.date)?.format("dddd,Do MMMM,YYYY")},${moment(
+            detailsInfo?.time
+          ).format("hh:mm a")},  
+${userInfo?.agentEmail || ""},${
+            userInfo?.agentPhoneNumber
+          }.Please visit https://www.gpcpins.com/evoucher to print your tickets.
 `,
           userInfo?.agentPhoneNumber
         );
-
       }
 
       await resendReceiptMail(id, userInfo?.agentEmail, downloadLink);
-
     } catch (error) {
-
       console.log(error);
-      return res.status(500).json("Error Processing your request! Please try again later.");
+      return res
+        .status(500)
+        .json("Error Processing your request! Please try again later.");
     }
-
 
     res.sendStatus(200);
   })
@@ -1517,23 +1472,21 @@ router.get(
       async ({ recipient, issuer, info, isProcessed, ...rest }) => {
         const employee = await knex("employees")
           .where("_id", issuer)
-          .select("_id", knex.raw("CONCAT(firstname,' ',lastname) as name")).first();
+          .select("_id", knex.raw("CONCAT(firstname,' ',lastname) as name"))
+          .first();
 
         return {
           ...rest,
           isProcessed: Boolean(isProcessed),
           recipient: JSON.parse(recipient),
           info: JSON.parse(info),
-          issuer: employee?.name
-
+          issuer: employee?.name,
         };
       }
     );
 
-
     const sDate = moment(startDate);
     const eDate = moment(endDate);
-
 
     const availableTransactions = await Promise.all(modifiedTransactions);
 
@@ -1580,7 +1533,6 @@ router.post(
         .select("_id", "user_key", "active")
         .where({
           user_id: id,
-
         })
         .limit(1);
 
@@ -1588,21 +1540,20 @@ router.post(
         return res.status(401).json("Invalid pin!");
       }
 
-      const isPinValid = await bcrypt.compare(token, userWallet[0]?.user_key)
+      const isPinValid = await bcrypt.compare(token, userWallet[0]?.user_key);
 
       if (!isPinValid) {
         return res.status(401).json("Invalid pin!");
       }
     }
 
-
-
     const response = await accountBalance();
 
     if (Number(response?.balance) < Number(amount)) {
-
       const body = `
-    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(response?.balance)}.
+    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(
+      response?.balance
+    )}.
     Please recharge to avoid any inconveniences.
     Thank you.
               `;
@@ -1612,11 +1563,10 @@ router.post(
         "LOW TOP UP ACCOUNT BALANCE"
       );
 
-      await sendSMS(body, process.env.CLIENT_PHONENUMBER)
+      await sendSMS(body, process.env.CLIENT_PHONENUMBER);
 
       return res.status(401).json("Service Not Available.Try again later");
     }
-
 
     const tranx = await knex.transaction();
 
@@ -1646,23 +1596,17 @@ router.post(
             amount: amount,
           });
 
-        await tranx("user_wallet_transactions")
-          .insert({
-            _id: generateId(),
-            user_id: id,
-            issuer: id,
-            type: 'purchase',
-            wallet: user_balance[0]?.amount,
-            amount: amount,
-            comment: 'Airtime',
-            attachment: null,
-            status: user_deduction === 1 ? "completed" : "failed",
-
-          });
-
-
-
-
+        await tranx("user_wallet_transactions").insert({
+          _id: generateId(),
+          user_id: id,
+          issuer: id,
+          type: "purchase",
+          wallet: user_balance[0]?.amount,
+          amount: amount,
+          comment: "Airtime",
+          attachment: null,
+          status: user_deduction === 1 ? "completed" : "failed",
+        });
 
         transactionInfo = {
           _id: transaction_id,
@@ -1678,7 +1622,7 @@ router.post(
             phonenumber,
             amount,
             pricing: pricing ?? [],
-            domain: 'Airtime'
+            domain: "Airtime",
           }),
           partner: JSON.stringify({
             ResponseCode: user_deduction === 1 ? "0000" : "2000",
@@ -1692,7 +1636,6 @@ router.post(
         };
         // console.log(transactionInfo)
       } else {
-
         const payment = {
           phonenumber,
           amount: Number(amount).toFixed(2),
@@ -1706,8 +1649,8 @@ router.post(
           sendMoneyReponse?.ResponseCode === "0000"
             ? "completed"
             : sendMoneyReponse?.ResponseCode === "0001"
-              ? "pending"
-              : "failed";
+            ? "pending"
+            : "failed";
 
         transactionInfo = {
           _id: transaction_id,
@@ -1723,7 +1666,7 @@ router.post(
             phonenumber,
             amount,
             pricing: pricing ?? [],
-            domain: 'Airtime'
+            domain: "Airtime",
           }),
           partner: JSON.stringify(sendMoneyReponse?.Data),
           status,
@@ -1753,7 +1696,7 @@ router.post(
   })
 );
 
-//Proccess bulk airtime 
+//Proccess bulk airtime
 router.put(
   "/airtime",
   verifyToken,
@@ -1767,7 +1710,7 @@ router.put(
     }
 
     const transaction = await knex("airtime_transactions")
-      .select("_id", 'phonenumber')
+      .select("_id", "phonenumber")
       .where("_id", id)
       .limit(1);
 
@@ -1791,12 +1734,10 @@ router.put(
 
     res.status(200).json("Transaction Completed!");
 
-
     await sendSMS(
       `Your request to buy bulk airtime has been completed.Thank you for purchasing from us!Your transaction id is ${transaction[0]?._id}`,
       transaction[0]?.phonenumber
     );
-
 
     // const recipient = JSON.parse(transaction[0].recipient);
 
@@ -1834,9 +1775,6 @@ router.put(
     //           message: `You have successfully recharged ${airtimeInfo.recipient} with GHS ${airtimeInfo.amount} of airtime, you were charged GHS ${airtimeInfo.amount}`,
     //         });
 
-
-
-
     //         if (process.env.NODE_ENV === 'production') {
 
     //           const balance = await accountBalance();
@@ -1858,8 +1796,6 @@ router.put(
     //       .catch((error) => {
     //         return res.status(500).json("Transaction Failed!");
     //       });
-
-
   })
 );
 
@@ -1890,7 +1826,6 @@ router.post(
       return res.status(401).json("Invalid Request");
     }
 
-
     if (isWallet) {
       const userWallet = await knex("user_wallets")
         .select("_id", "user_key", "active")
@@ -1903,23 +1838,20 @@ router.post(
         return res.status(401).json("Invalid pin!");
       }
 
-      const isPinValid = await bcrypt.compare(token, userWallet[0]?.user_key)
-
+      const isPinValid = await bcrypt.compare(token, userWallet[0]?.user_key);
 
       if (!isPinValid) {
         return res.status(401).json("Invalid pin!");
       }
-
     }
-
 
     const response = await accountBalance();
 
     if (Number(response?.balance) < Number(amount)) {
-
-
       const body = `
-    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(response?.balance)}.
+    Your one-4-all top up account balance is running low.Your remaining balance is ${currencyFormatter(
+      response?.balance
+    )}.
     Please recharge to avoid any inconveniences.
     Thank you.
               `;
@@ -1929,12 +1861,10 @@ router.post(
         "LOW TOP UP ACCOUNT BALANCE"
       );
 
-      await sendSMS(body, process.env.CLIENT_PHONENUMBER)
+      await sendSMS(body, process.env.CLIENT_PHONENUMBER);
 
       return res.status(401).json("Service Not Available.Try again later");
     }
-
-
 
     const tranx = await knex.transaction();
 
@@ -1964,22 +1894,17 @@ router.post(
             amount: amount,
           });
 
-
-        await tranx("user_wallet_transactions")
-          .insert({
-            _id: generateId(),
-            user_id: id,
-            issuer: id,
-            type: 'purchase',
-            wallet: Number(user_balance[0]?.amount),
-            amount: amount,
-            comment: 'Data Bundle',
-            attachment: null,
-            status: user_deduction === 1 ? "completed" : "failed",
-
-          });
-
-
+        await tranx("user_wallet_transactions").insert({
+          _id: generateId(),
+          user_id: id,
+          issuer: id,
+          type: "purchase",
+          wallet: Number(user_balance[0]?.amount),
+          amount: amount,
+          comment: "Data Bundle",
+          attachment: null,
+          status: user_deduction === 1 ? "completed" : "failed",
+        });
 
         transactionInfo = {
           _id: transaction_id,
@@ -2021,8 +1946,8 @@ router.post(
           sendMoneyReponse?.ResponseCode === "0000"
             ? "completed"
             : sendMoneyReponse?.ResponseCode === "0001"
-              ? "pending"
-              : "failed";
+            ? "pending"
+            : "failed";
 
         transactionInfo = {
           _id: transaction_id,
@@ -2076,14 +2001,18 @@ router.get(
       const preResponse = await PREPAID_Balance();
       const accResponse = await accountBalance();
 
-      const response = await Promise.all([posResponse, preResponse, accResponse])
+      const response = await Promise.all([
+        posResponse,
+        preResponse,
+        accResponse,
+      ]);
       res.status(200).json({
         pos: response[0]?.amount,
         pre: response[1]?.amount,
         balance: response[2]?.balance,
       });
     } catch (error) {
-      console.log(error)
+      console.log(error);
       res.status(401).json("Am unknown error has occurred!");
     }
   })
@@ -2097,15 +2026,13 @@ router.get(
     try {
       const response = await POS_Balance();
 
-
       res.status(200).json(response?.amount);
     } catch (error) {
-      console.log(error)
+      console.log(error);
       res.status(401).json("Am unknown error has occurred!");
     }
   })
 );
-
 
 //Check Balance Status
 router.get(
@@ -2118,7 +2045,7 @@ router.get(
 
       res.status(200).json(response?.amount);
     } catch (error) {
-      console.log(error)
+      console.log(error);
       res.status(401).json("Am unknown error has occurred!");
     }
   })
@@ -2139,7 +2066,6 @@ router.get(
     }
   })
 );
-
 
 //Check Transaction Status
 router.post(
@@ -2191,7 +2117,7 @@ router.get(
 
       res.status(200).json(_.compact(bundles));
     } catch (error) {
-      console.log(error)
+      console.log(error);
       res.status(401).json("An unknown error has occurred");
     }
   })
@@ -2402,7 +2328,8 @@ router.get(
           name: transaction?.name,
           type: transaction?.type,
           district: transaction?.district,
-          address: transaction?.address, spn: transaction?.spn,
+          address: transaction?.address,
+          spn: transaction?.spn,
           // geoCode: transaction?.geoCode,
           // accountNumber: transaction?.accountNumber,
         },
@@ -2421,7 +2348,6 @@ router.post(
     const { id } = req.user;
     const { meter, info, charges, topup, amount, isWallet, token } = req.body;
 
-
     if (isWallet) {
       const userWallet = await knex("user_wallets")
         .select("_id", "user_key", "active")
@@ -2434,21 +2360,20 @@ router.post(
         return res.status(401).json("Invalid pin!");
       }
 
-      const isPinValid = await bcrypt.compare(token, userWallet[0]?.user_key)
+      const isPinValid = await bcrypt.compare(token, userWallet[0]?.user_key);
 
       if (!isPinValid) {
         return res.status(401).json("Invalid pin!");
       }
-
     }
 
     const transx = await knex.transaction();
 
     let meterId = generateId();
     let newMeter;
-    const userID = id ?? generateId()
+    const userID = id ?? generateId();
     // if (!isValidUUID2(meter)) {
-    if (typeof meter === 'object') {
+    if (typeof meter === "object") {
       newMeter = {
         _id: meterId,
         ...meter,
@@ -2485,22 +2410,17 @@ router.post(
             amount,
           });
 
-
-        await transx("user_wallet_transactions")
-          .insert({
-            _id: generateId(),
-            user_id: id,
-            issuer: id,
-            type: 'purchase',
-            wallet: user_balance[0]?.amount,
-            amount: amount,
-            comment: 'Prepaid Units',
-            attachment: null,
-            status: user_deduction === 1 ? "completed" : "failed",
-
-          });
-
-
+        await transx("user_wallet_transactions").insert({
+          _id: generateId(),
+          user_id: id,
+          issuer: id,
+          type: "purchase",
+          wallet: user_balance[0]?.amount,
+          amount: amount,
+          comment: "Prepaid Units",
+          attachment: null,
+          status: user_deduction === 1 ? "completed" : "failed",
+        });
 
         transactionInfo = {
           _id: transaction_id,
@@ -2544,8 +2464,8 @@ router.post(
           sendMoneyReponse?.ResponseCode === "0000"
             ? "completed"
             : sendMoneyReponse?.ResponseCode === "0001"
-              ? "pending"
-              : "failed";
+            ? "pending"
+            : "failed";
 
         transactionInfo = {
           _id: transaction_id,
@@ -2605,8 +2525,8 @@ router.post(
       ResponseCode === "0000"
         ? "completed"
         : ResponseCode === "0001"
-          ? "pending"
-          : "failed";
+        ? "pending"
+        : "failed";
 
     if (type === "p") {
       await knex("prepaid_transactions")
@@ -2661,7 +2581,7 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id, name } = req.user;
     const { _id, data } = req.body;
-    const { meter, meterId, paymentId, info } = JSON.parse(data)
+    const { meter, meterId, paymentId, info } = JSON.parse(data);
 
     const transx = await knex.transaction();
 
@@ -2681,7 +2601,7 @@ router.put(
         }),
         processed: 1,
         issuer: id,
-        issuerName: name
+        issuerName: name,
       });
 
     if (updateTransactionDetails !== 1) {
@@ -2693,8 +2613,22 @@ router.put(
         _id: _id,
         status: "completed",
       })
-      .select("_id", "number", "name", 'paymentId', "spn", 'email', 'mobileNo', 'info', 'topup', 'charges', 'amount', 'user')
-      .limit(1)?.first()
+      .select(
+        "_id",
+        "number",
+        "name",
+        "paymentId",
+        "spn",
+        "email",
+        "mobileNo",
+        "info",
+        "topup",
+        "charges",
+        "amount",
+        "user"
+      )
+      .limit(1)
+      ?.first();
 
     if (!transactions) {
       return res.status(404).json("Error updating request");
@@ -2728,7 +2662,6 @@ router.put(
       // issuer: issuer[0]?.name || "N/A",
     };
 
-
     //logs
     await transx("activity_logs").insert({
       employee_id: id,
@@ -2743,7 +2676,6 @@ router.put(
       paymentInfo?.mobileNo
     );
 
-
     // await trans("user_notifications").insert({
     //   _id: generateId(),
     //   user_id: transactions?.user,
@@ -2753,15 +2685,9 @@ router.put(
 
     // });
 
-
     res
       .status(201)
-      .json(
-        "Your request is being processed.You will be notified shortly!!"
-      );
-
-
-
+      .json("Your request is being processed.You will be notified shortly!!");
 
     // await sendWhatsappMessage({
     //   user: getInternationalMobileFormat(paymentInfo?.mobileNo),
@@ -2779,7 +2705,6 @@ router.put(
     await trans("prepaid_transactions")
       .where("_id", _id)
       .update({
-
         info: JSON.stringify({
           ...paymentInfo,
           downloadLink,
@@ -2795,27 +2720,27 @@ router.put(
         message: `You request to buy prepaid units has being completed.Click on the button below to download your receipt.In case units do not load automatically,Please enter the token on your meter to load your units.Thank you!`,
         link: downloadLink,
       });
-
     } else {
-
       await trans("user_notifications").insert({
         _id: generateId(),
         user_id: transactions?.user,
         type: "prepaid",
         title: "Prepaid Units",
         message: `You request to buy prepaid units has being completed.In case units do not load automatically,Please enter the token on your meter to load your units.Thank you!`,
-
       });
-
     }
 
     await trans.commit();
 
-
     limit(() =>
-      sendElectricityMail(_id, paymentInfo?.email, transactions?.status, url, meterInfo)
+      sendElectricityMail(
+        _id,
+        paymentInfo?.email,
+        transactions?.status,
+        url,
+        meterInfo
+      )
     );
-
 
     // const template = await generatePrepaidTemplate(meterInfo);
     // const result = limit(() => generatePrepaidReceipt(template, _id));
