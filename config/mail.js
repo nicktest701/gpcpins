@@ -87,7 +87,7 @@ const resendReceiptMail = async (
   email_address,
   downloadLink
 ) => {
-  if (process.env.NODE_ENV !== "production") return true;
+  // if (process.env.NODE_ENV !== "production") return true;
 
   const mailOptions = {
     from: `GPC ${process.env.MAIL_CLIENT_USER}`,

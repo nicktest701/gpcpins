@@ -48,6 +48,8 @@ const sendEMail = async (email_address, message, subject) => {
 
     // const mailResult = await transportMail.sendMail(mailOptions);
 
+    console.log(mailResult);
+
     return mailResult.data;
   } catch (error) {
     // await resend.emails.send({
