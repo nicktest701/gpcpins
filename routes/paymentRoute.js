@@ -635,6 +635,8 @@ router.get(
 
       let selectedVouchers = [];
 
+      // console.log(transaction);
+
       //Check if tickets are Stadium tickets or cinema
 
       if (["stadium", "cinema"].includes(userInfo?.type)) {
@@ -716,8 +718,8 @@ router.get(
         // await transx.commit();
 
         if (type === "voucher" && confirm) {
-          // console.log(userInfo)
           const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
+          // console.log(detailsInfo);
 
           const smsInfo = selectedVouchers.map((voucher) => {
             return `[${voucher?.pin}--${voucher?.serial}]`;
@@ -727,7 +729,7 @@ router.get(
           await sendSMS(
             `${selectedVouchers[0]?.voucherType} ${detailsInfo?.voucherURL}   
 [Pin--Serial]
-${smsData.join(" ")}`,
+${smsData.join(" ")}.`,
             userInfo?.agentPhoneNumber
           );
         }
@@ -1386,6 +1388,7 @@ router.post(
     try {
       if (["waec", "security", "university"].includes(userInfo?.type)) {
         const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
+        console.log(userInfo);
 
         const smsInfo = selectedVouchers.map((voucher) => {
           return `[${voucher?.pin}--${voucher?.serial}]`;
@@ -1395,7 +1398,7 @@ router.post(
         await sendSMS(
           `${selectedVouchers[0]?.voucherType}  ${detailsInfo?.voucherURL}   
 [Pin--Serial]
-${smsData.join(" ")}`,
+${smsData.join(" ")},download voucher here: ${userInfo?.downloadLink}`,
           userInfo?.agentPhoneNumber
         );
       }
@@ -1422,7 +1425,9 @@ ${moment(detailsInfo?.date)?.format("dddd,Do MMMM,YYYY")},${moment(
           ).format("hh:mm a")},  
 ${userInfo?.agentEmail || ""},${
             userInfo?.agentPhoneNumber
-          }.Please visit https://www.gpcpins.com/evoucher to print your tickets.
+          }.Please visit https://www.gpcpins.com/evoucher to print your tickets.,download voucher here: ${
+            userInfo?.downloadLink
+          }
 `,
           userInfo?.agentPhoneNumber
         );

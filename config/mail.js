@@ -3,43 +3,46 @@ const { resendMailText } = require("./mailText");
 const { Resend } = require("resend");
 const { thankYouText } = (require = require("./mailText"));
 
-const transportMail = nodemailer.createTransport({
-  host: process.env.MAIL_CLIENT_SERVICE,
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.MAIL_CLIENT_USER,
-    pass: process.env.MAIL_CLIENT_PASS,
-  },
-  connectionTimeout: 15000,
-  tls: {
-    rejectUnauthorized: false,
-    // ciphers: "SSLv3",
-  },
-  // from: process.env.MAIL_CLIENT_USER,
+// const transportMail = nodemailer.createTransport({
+//   host: process.env.MAIL_CLIENT_SERVICE,
+//   port: 465,
+//   secure: true,
+//   auth: {
+//     user: process.env.MAIL_CLIENT_USER,
+//     pass: process.env.MAIL_CLIENT_PASS,
+//   },
+//   connectionTimeout: 15000,
+//   tls: {
+//     rejectUnauthorized: false,
+//   },
+// });
 
-});
+const resend = new Resend(process.env.MAIL_RESEND_API_KEY);
 
 const sendMail = async (transaction_id, email_address) => {
   if (process.env.NODE_ENV !== "production") return true;
-  try {
-    const mailOptions = {
-      from: `GPC ${process.env.MAIL_CLIENT_USER}`,
-      sender: process.env.MAIL_CLIENT_USER,
-      to: [email_address],
-      subject: "Vouchers & Tickets",
-      text: "Application Vouchers",
-      html: "<h1>Thank you for your business!!!.</h1>",
-      attachments: [
-        {
-          filename: `${transaction_id}.pdf`,
-          path: `./vouchers/${transaction_id}.pdf`,
-        },
-      ],
-    };
 
-    const mailResult = await transportMail.sendMail(mailOptions);
-    return mailResult;
+  const mailOptions = {
+    from: `GPC ${process.env.MAIL_CLIENT_USER}`,
+    sender: process.env.MAIL_CLIENT_USER,
+    to: [email_address],
+    subject: "Vouchers & Tickets",
+    text: "Application Vouchers",
+    html: "<h1>Thank you for your business!!!.</h1>",
+    attachments: [
+      {
+        filename: `${transaction_id}.pdf`,
+        path: `./vouchers/${transaction_id}.pdf`,
+      },
+    ],
+  };
+  try {
+    // const mailResult = await transportMail.sendMail(mailOptions);
+    const mailResult = await resend.emails.send({
+      ...mailOptions,
+      from: process.env.MAIL_CLIENT_USER,
+    });
+    return mailResult.data;
   } catch (error) {
     console.log(error);
   }
@@ -52,27 +55,30 @@ const sendTicketMail = async (
 ) => {
   // if (process.env.NODE_ENV !== 'production') return true
 
+  const mailOptions = {
+    from: `GPC ${process.env.MAIL_CLIENT_USER}`,
+    sender: process.env.MAIL_CLIENT_USER,
+    to: [email_address],
+    subject: type || "Gab Powerful Consult",
+    text: "Vouchers & Tickets",
+    html: thankYouText(transaction_id),
+    attachments: [
+      {
+        filename: `${transaction_id}.pdf`,
+        path: `./vouchers/${transaction_id}.pdf`,
+      },
+    ],
+  };
   try {
-    const mailOptions = {
-      from: `GPC ${process.env.MAIL_CLIENT_USER}`,
-      sender: process.env.MAIL_CLIENT_USER,
-      to: [email_address],
-      subject: type || "Gab Powerful Consult",
-      text: "Vouchers & Tickets",
-      html: thankYouText(transaction_id),
-      attachments: [
-        {
-          filename: `${transaction_id}.pdf`,
-          path: `./vouchers/${transaction_id}.pdf`,
-        },
-      ],
-    };
-
-    const mailResult = await transportMail.sendMail(mailOptions);
-
-    return mailResult;
+    // const mailResult = await transportMail.sendMail(mailOptions);
+    const mailResult = await resend.emails.send({
+      ...mailOptions,
+      from: process.env.MAIL_CLIENT_USER,
+    });
+    return mailResult.data;
   } catch (error) {
     // throw error.message;
+
     console.log(error);
   }
 };
@@ -83,21 +89,24 @@ const resendReceiptMail = async (
 ) => {
   if (process.env.NODE_ENV !== "production") return true;
 
+  const mailOptions = {
+    from: `GPC ${process.env.MAIL_CLIENT_USER}`,
+    sender: process.env.MAIL_CLIENT_USER,
+    to: [email_address],
+    subject: "Gab Powerful Consult",
+    text: "Application Vouchers",
+    html: resendMailText(transaction_id, downloadLink),
+  };
   try {
-    const mailOptions = {
-      from: `GPC ${process.env.MAIL_CLIENT_USER}`,
-      sender: process.env.MAIL_CLIENT_USER,
-      to: [email_address],
-      subject: "Gab Powerful Consult",
-      text: "Application Vouchers",
-      html: resendMailText(transaction_id, downloadLink),
-    };
-    const mailResult = await transportMail.sendMail(mailOptions);
-
-    return mailResult;
+    // const mailResult = await transportMail.sendMail(mailOptions);
+    const mailResult = await resend.emails.send({
+      ...mailOptions,
+      from: process.env.MAIL_CLIENT_USER,
+    });
+    return mailResult.data;
   } catch (error) {
-    // throw error.message;
     console.log(error);
+    // throw error.message;
   }
 };
 
@@ -109,42 +118,29 @@ const sendReportMail = async (
 ) => {
   if (process.env.NODE_ENV !== "production") return true;
 
+  const mailOptions = {
+    from: `GPC ${process.env.MAIL_CLIENT_USER}`,
+    sender: process.env.MAIL_CLIENT_USER,
+    to: [email_address],
+    subject,
+    text: "Application Vouchers",
+    html: content,
+    attachments: [
+      {
+        filename: transaction_id,
+        path: `./reports/${transaction_id}`,
+      },
+    ],
+  };
   try {
-    const mailOptions = {
-      from: `GPC ${process.env.MAIL_CLIENT_USER}`,
-      sender: process.env.MAIL_CLIENT_USER,
-      to: [email_address],
-      subject,
-      text: "Application Vouchers",
-      html: content,
-      attachments: [
-        {
-          filename: transaction_id,
-          path: `./reports/${transaction_id}`,
-        },
-      ],
-    };
-
-    const mailResult = await transportMail.sendMail(mailOptions);
-    return mailResult;
+    // const mailResult = await transportMail.sendMail(mailOptions);
+    const mailResult = await resend.emails.send({
+      ...mailOptions,
+      from: process.env.MAIL_CLIENT_USER,
+    });
+    return mailResult.data;
   } catch (error) {
     console.log(error);
-  }
-};
-
-const sendResend = () => {
-  console.log("Sending with resend...");
-  try {
-    const resend = new Resend(process.env.MAIL_RESEND_API_KEY);
-
-    resend.emails.send({
-      from: "onboarding@resend.dev",
-      to: "nicktest701@gmail.com",
-      subject: "Hello World",
-      html: "<p>Congrats on sending your <strong>first email</strong>!</p>",
-    });
-  } catch (error) {
-    console.log(error.message);
   }
 };
 
@@ -153,5 +149,4 @@ module.exports = {
   sendMail,
   sendTicketMail,
   resendReceiptMail,
-  sendResend,
 };
