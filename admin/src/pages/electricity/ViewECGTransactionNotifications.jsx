@@ -56,7 +56,7 @@ function ViewECGTransactionNotifications() {
     if (id) {
       all = [id];
     } else {
-      all = _.map(notifications.data, "_id");
+      all = _.map(notifications.data, "id");
     }
 
     Swal.fire({
@@ -77,7 +77,7 @@ function ViewECGTransactionNotifications() {
             onError: (error) => {
               customDispatch(globalAlertType("error", error));
             },
-          }
+          },
         );
       }
     });
@@ -110,10 +110,10 @@ function ViewECGTransactionNotifications() {
       <Box sx={{ bgcolor: "#fff", p: 4 }}>
         <List sx={{ maxHeight: "60svh", overflow: "auto", py: 4 }}>
           {notifications?.data?.length > 0 ? (
-            notifications?.data?.map(({ _id, message, active, createdAt }) => {
+            notifications?.data?.map(({ id, message, active, createdAt }) => {
               return (
                 <ListItem
-                  key={_id}
+                  key={id}
                   sx={{
                     cursor: "pointer",
                     "&:hover": {
@@ -137,7 +137,7 @@ function ViewECGTransactionNotifications() {
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
-                    onClick={() => handleUnreadNotifications(_id)}
+                    onClick={() => handleUnreadNotifications(id)}
                     primary={message}
                     primaryTypographyProps={{ fontSize: 14 }}
                     secondary={moment(createdAt).format("LLL")}
@@ -151,9 +151,7 @@ function ViewECGTransactionNotifications() {
 
                   <ListItemSecondaryAction>
                     <Stack spacing={2}>
-                      <IconButton
-                        onClick={() => handleDeleteNotifications(_id)}
-                      >
+                      <IconButton onClick={() => handleDeleteNotifications(id)}>
                         <Delete />
                       </IconButton>
                       {active ? (

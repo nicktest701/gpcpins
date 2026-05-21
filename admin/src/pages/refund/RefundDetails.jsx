@@ -70,7 +70,7 @@ function RefundDetails() {
   const sortedTransactions = useMemo(() => {
     let modifiedTransactions = transactions.data;
 
-    if (!["All", "Airtime", "Prepaid"].includes(type)) {
+    if (!["All", "airtime", "prepaid"].includes(type)) {
       setUsers("All");
     } else {
       if (users !== "All") {
@@ -81,12 +81,12 @@ function RefundDetails() {
     }
 
     if (type !== "All") {
-      if (type === "Airtime") {
+      if (type === "airtime") {
         return modifiedTransactions?.filter(
-          (item) => item.domain === type && item.kind === airtimeType
+          (item) => item.service === type && item.kind === airtimeType
         );
       } else {
-        return modifiedTransactions?.filter((item) => item.domain === type);
+        return modifiedTransactions?.filter((item) => item.service === type);
       }
     }
     return modifiedTransactions;
@@ -94,57 +94,7 @@ function RefundDetails() {
 
   const modifiedColumns = [
     ...transactionsColumns(type, true),
-    // {
-    //   field: "",
-    //   title: "Action",
-    //   export: false,
-    //   render: (data) => {
-    //     return (
-    //       <ActionMenu>
-    //         {data?.mode === "Mobile Money" && (
-    //           <MenuItem
-    //             sx={{ fontSize: 13 }}
-    //             onClick={() => handleCheckStatus(data?.reference, data?.domain)}
-    //           >
-    //             Check Status
-    //           </MenuItem>
-    //         )}
-    //         {["Voucher", "Ticket", "Prepaid"].includes(type) &&
-    //           data?.status === "completed" && (
-    //             <>
-    //               <MenuItem
-    //                 sx={{ fontSize: 13 }}
-    //                 onClick={() =>
-    //                   handleResend({
-    //                     id: data?._id,
-    //                     email: data?.email,
-    //                     downloadLink: data?.downloadLink,
-    //                   })
-    //                 }
-    //               >
-    //                 Resend
-    //               </MenuItem>
-    //               <MenuItem
-    //                 sx={{ fontSize: 13 }}
-    //                 onClick={() =>
-    //                   handleDownload(data?._id, data?.downloadLink)
-    //                 }
-    //               >
-    //                 Download
-    //               </MenuItem>
-    //             </>
-    //           )}
-    //         <MenuItem
-    //           sx={{ fontSize: 13 }}
-    //           //   onClick={() => removeTransaction(data?._id)}
-    //         >
-    //           Remove
-    //         </MenuItem>
-    //       </ActionMenu>
-    //     );
-    //   },
-    // },
-  ];
+   ];
 
   return (
     <>
@@ -259,13 +209,13 @@ function RefundDetails() {
                     sx={{ width: 200, my: 2 }}
                   >
                     <MenuItem value="All">All</MenuItem>
-                    <MenuItem value="Voucher">Vouchers</MenuItem>
-                    <MenuItem value="Ticket">Tickets</MenuItem>
-                    <MenuItem value="Prepaid">Prepaid Units </MenuItem>
-                    <MenuItem value="Airtime">Airtime Transfer </MenuItem>
-                    <MenuItem value="Bundle">Data Bundle </MenuItem>
+                    <MenuItem value="voucher">Vouchers</MenuItem>
+                    <MenuItem value="ticket">Tickets</MenuItem>
+                    <MenuItem value="prepaid">Prepaid Units </MenuItem>
+                    <MenuItem value="airtime">Airtime Transfer </MenuItem>
+                    <MenuItem value="bundle">Data Bundle </MenuItem>
                   </TextField>
-                  {type === "Airtime" && (
+                  {type === "airtime" && (
                     <TextField
                       select
                       label="Airtime Type"
@@ -279,7 +229,7 @@ function RefundDetails() {
                     </TextField>
                   )}
 
-                  {["All", "Airtime", "Prepaid"].includes(type) && (
+                  {["All", "airtime", "prepaid"].includes(type) && (
                     <TextField
                       select
                       label="Select Issuer"
@@ -310,19 +260,7 @@ function RefundDetails() {
                   padding: "8px",
                 }}
               >
-                {/* <LoadingButton
-                  variant="contained"
-                  endIcon={<NoteRounded />}
-                  onClick={handleGenerateReport}
-                  loading={reportMutate.isLoading}
-                  disabled={
-                    reportMutate.isLoading || sortedTransactions?.length === 0
-                  }
-                >
-                  {reportMutate.isLoading
-                    ? "Generating Report.Please Wait..."
-                    : " Generate Report"}
-                </LoadingButton> */}
+      
               </div>
             </div>
           }

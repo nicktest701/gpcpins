@@ -89,7 +89,7 @@ const NotificationDropdown = ({ display, setClose }) => {
           _.take(notifications, 3)?.map((notif) => {
             return (
               <Stack
-                key={notif?._id}
+                key={notif?.id}
                 onClick={goToTransactions}
                 sx={{
                   cursor: 'pointer',
@@ -115,7 +115,7 @@ const NotificationDropdown = ({ display, setClose }) => {
                   <Notifications sx={{ width: 16, height: 16 }} />
                 </Stack>
                 <Typography variant='body2' color='primary.main' p={1}>
-                  {notif?.body || notif?.message}
+                  {notif?.body}
                 </Typography>
                 <Typography
                   color='primary.main'

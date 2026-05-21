@@ -35,7 +35,9 @@ export default function NotificationsPopover() {
     queryKey: ["notifications"],
     queryFn: () => getAllNotifications(),
     enabled: !!user?.id,
-    initial: [],
+    initialData: [],
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const [open, setOpen] = useState(null);
@@ -56,7 +58,7 @@ export default function NotificationsPopover() {
   if (notifications?.isLoading) return null;
 
   const totalUnRead = notifications?.data?.filter(
-    (item) => item.active === 1
+    (item) => item.active === 1,
   ).length;
 
   return (
@@ -125,7 +127,7 @@ export default function NotificationsPopover() {
         >
           {notifications?.data?.slice(0, 2).map((notification) => (
             <NotificationItem
-              key={notification._id}
+              key={notification.id}
               notification={notification}
               handleClose={handleClose}
             />

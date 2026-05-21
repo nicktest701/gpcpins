@@ -5,10 +5,11 @@ import {
 } from "@mui/material";
 import { useContext } from "react";
 import { CustomContext } from "../../../context/providers/CustomProvider";
-import { ArrowForward } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
 
-function MeterListItem({ _id, spn, number, name, type }) {
+function MeterListItem({ id, spn, number, name, type }) {
   const { customDispatch } = useContext(CustomContext);
+  const navigate = useNavigate();
 
   const openMeterDetails = () => {
     customDispatch({
@@ -16,12 +17,15 @@ function MeterListItem({ _id, spn, number, name, type }) {
       payload: {
         open: true,
         details: {
-          _id,
+          id,
           number,
           name,
           type,
         },
       },
+    });
+    navigate(`/electricity/meters/${id}`, {
+      replace: true,
     });
   };
 
@@ -76,7 +80,7 @@ function MeterListItem({ _id, spn, number, name, type }) {
         secondary="Type"
         sx={{ display: { xs: "none", md: "block" } }}
       />
-      <ListItemSecondaryAction color="secondary">
+      <ListItemSecondaryAction color="primary">
         Buy Prepaid
       </ListItemSecondaryAction>
     </ListItemButton>

@@ -21,8 +21,8 @@ import CustomRangePicker from "@/components/pickers/CustomRangePicker";
 import CustomTotal from "@/components/custom/CustomTotal";
 import moment from "moment";
 
-const startDate = moment("2024-01-01").format("YYYY-MM-DD");
-const endDate = moment().format("YYYY-MM-DD");
+const startDate = moment(new Date("2024-01-01"));
+const endDate = moment(new Date());
 
 function AirtimeTransaction() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -40,7 +40,14 @@ function AirtimeTransaction() {
 
   const transactions = useQuery({
     queryKey: ["agent-airtime-transactions", startDate, endDate],
-    queryFn: () => getAgentTransactions({ date: date[0], type: "airtime" }),
+    queryFn: () =>
+      getAgentTransactions({
+        date: {
+          startDate: moment(date[0]?.startDate).format("YYYY-MM-DD"),
+          endDate: moment(date[0]?.endDate).format("YYYY-MM-DD"),
+        },
+        type: "airtime",
+      }),
     enabled: !!user?.id,
   });
 
@@ -58,8 +65,6 @@ function AirtimeTransaction() {
       return params;
     });
   };
-
- 
 
   return (
     <>
@@ -118,7 +123,7 @@ function AirtimeTransaction() {
               <CustomTotal
                 title="Total"
                 total={currencyFormatter(
-                  _.sumBy(sortedTransactions, (item) => Number(item?.amount))
+                  _.sumBy(sortedTransactions, (item) => Number(item?.amount)),
                 )}
               />
             </Stack>

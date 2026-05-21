@@ -63,7 +63,7 @@ function AddMessage({ open, setOpen }) {
     type: "SMS",
     recipient: "",
     title: "",
-    message: "",
+    body: "",
     phoneNumber: "",
     email: "",
   };
@@ -81,11 +81,14 @@ function AddMessage({ open, setOpen }) {
       }
       values = {
         ...values,
+
         group: content,
       };
     }
 
     payload = trimObject(values);
+
+    console.log(payload);
 
     mutateAsync(payload, {
       onSettled: () => {
@@ -235,10 +238,10 @@ function AddMessage({ open, setOpen }) {
                       size="small"
                       label="Message here"
                       fullWidth
-                      value={values.message}
-                      onChange={handleChange("message")}
-                      error={Boolean(touched.message && errors.message)}
-                      helperText={touched.message && errors.message}
+                      value={values.body}
+                      onChange={handleChange("body")}
+                      error={Boolean(touched.body && errors.body)}
+                      helperText={touched.body && errors.body}
                     />
                     {values.recipient === "Individual" && (
                       <TextField
@@ -262,8 +265,8 @@ function AddMessage({ open, setOpen }) {
                   <>
                     <ReactQuill
                       theme="snow"
-                      value={values.message}
-                      onChange={handleChange("message")}
+                      value={values.body}
+                      onChange={handleChange("body")}
                       placeholder="Message here"
                       style={{ height: "200px", marginBottom: "30px" }}
                       modules={{

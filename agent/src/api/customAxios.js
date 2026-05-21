@@ -1,38 +1,33 @@
 import axios from "axios";
-// import { isMobileBrowser } from "../config/isMobileBrowser";
+
+
 import {
   deleteToken,
-  deleteUser,
   getRefreshToken,
   getToken,
   saveAccessToken,
 } from "../config/sessionHandler";
+import { isOnline } from "../config/detectOnlineStatus";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 const api = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
-  // headers: {
-  //   Connection: 'keep-alive'
-  // }
 });
 
 api.defaults.withCredentials = true;
+api.defaults.headers.common["Authorization"] = `Bearer ${getToken()}`;
 
 // Set a common authorization header for all requests
 api.interceptors.request.use(
   (config) => {
-    // if (isMobPsiileBrowser()) {
-
-    // }
-    const token = getToken();
-    // console.log(token);
-    if (token) {
-      // axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    if (!isOnline()) {
+      throw new Error("Device offline");
     }
 
+    const token = getToken();
+    config.headers.Authorization = token ? `Bearer ${token}` : '';
     return config;
   },
   (error) => {
@@ -47,8 +42,8 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if ([401, 403].includes(error.response.status) && !originalRequest._retry) {
-      originalRequest._retry = true;
+    if ([403].includes(error.response.status) && !originalRequest._retry) {
+
 
       try {
         const refreshToken = getRefreshToken();
@@ -64,17 +59,20 @@ api.interceptors.response.use(
         });
 
 
-        originalRequest.headers.Authorization = `Bearer ${res.data?.accessToken}`;
         saveAccessToken(res.data?.accessToken);
+        originalRequest.headers.Authorization = `Bearer ${res.data?.accessToken}`;
 
 
+        originalRequest._retry = true;
 
+        // Retry the original request with the new access token
         return api(originalRequest);
       } catch (refreshError) {
-        deleteUser();
-        deleteToken();
 
-        window.location.href = "/auth/login";
+        deleteToken();
+        // Handle token refresh failure, possibly redirect to login page
+        //  console.log("Token refresh failed:", refreshError?.message);
+        window.location.href = "/auth/login?e=true";
         return Promise.reject(refreshError);
       }
     }

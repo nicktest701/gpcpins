@@ -8,8 +8,21 @@ import {
 } from "@mui/material";
 import "../../styles/date-range-picker.css"; // main style file
 import { DateRangePicker, DateRange } from "react-date-range";
+import moment from "moment";
 
-function CustomDateRangePicker({ open, setOpen, date, setDate, refetchData }) {
+function CustomDateRangePicker({
+  open,
+  setOpen,
+  date = [
+    {
+      startDate: moment().toDate(),
+      endDate: moment().toDate(),
+      key: "selection",
+    },
+  ],
+  setDate,
+  refetchData,
+}) {
   const theme = useTheme();
   const matches = useMediaQuery(theme.breakpoints.up("md"));
 
@@ -17,6 +30,11 @@ function CustomDateRangePicker({ open, setOpen, date, setDate, refetchData }) {
     refetchData();
     setOpen(false);
   };
+
+  const handleChange = (item) => {
+    setDate([item.selection]);
+  };
+
   return (
     <Dialog
       open={open}
@@ -28,7 +46,7 @@ function CustomDateRangePicker({ open, setOpen, date, setDate, refetchData }) {
       <DialogContent sx={{ display: "grid", placeItems: "center" }}>
         {matches ? (
           <DateRangePicker
-            onChange={(item) => setDate([item.selection])}
+            onChange={handleChange}
             showSelectionPreview={true}
             moveRangeOnFirstSelection={false}
             months={2}
@@ -38,7 +56,7 @@ function CustomDateRangePicker({ open, setOpen, date, setDate, refetchData }) {
         ) : (
           <DateRange
             editableDateInputs={true}
-            onChange={(item) => setDate([item.selection])}
+            onChange={handleChange}
             moveRangeOnFirstSelection={false}
             ranges={date}
           />

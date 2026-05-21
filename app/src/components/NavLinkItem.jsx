@@ -1,41 +1,106 @@
-import { useTheme, Stack, Typography } from '@mui/material';
-import { NavLink } from 'react-router-dom';
+// import { useTheme, Stack, Typography } from '@mui/material';
+// import { NavLink } from 'react-router-dom';
 
-function NavLinkItem({ to, title, icon }) {
-  const {
-    palette,
-    typography: { button },
-  } = useTheme();
+// function NavLinkItem({ to, title, icon }) {
+//   const {
+//     palette,
+//     typography: { button },
+//   } = useTheme();
 
-  const linkStyle = ({ isActive }) => {
-    return {
-      fontFamily: button.fontFamily,
-      fontSize: button.fontSize,
-      position: 'relative',
-      textDecoration: 'none',
-      borderBottom: isActive ? `solid 2px ${palette.primary.main} ` : null,
-      color: isActive ? palette.primary.main : '#333',
-      fontWeight: isActive ? 'bolder' : 'normal',
-    };
-  };
+//   const linkStyle = ({ isActive }) => {
+//     return {
+//       fontFamily: button.fontFamily,
+//       fontSize: button.fontSize,
+//       position: 'relative',
+//       textDecoration: 'none',
+//       borderBottom: isActive ? `solid 2px ${palette.primary.main} ` : null,
+//       color: isActive ? palette.primary.main : '#333',
+//       fontWeight: isActive ? 'bolder' : 'normal',
+//     };
+//   };
+
+//   return (
+//     <NavLink to={`${to}?_pid=1`} style={linkStyle} end>
+//       <Stack
+//         direction='row'
+//         columnGap={3}
+//         sx={{
+//           padding: 1,
+//           cursor: 'pointer',
+//           '&:hover': {
+//             backgroundColor: palette.grey[300],
+//           },
+//         }}
+//       >
+//         {icon}
+//         <Typography variant='button'>{title}</Typography>
+//       </Stack>
+//     </NavLink>
+//   );
+// }
+
+// export default NavLinkItem;
+
+
+import { ListItemButton, ListItemIcon, ListItemText, useTheme, alpha } from "@mui/material";
+import { NavLink } from "react-router-dom";
+
+function NavLinkItem({ to, title, icon, end = true }) {
+  const theme = useTheme();
 
   return (
-    <NavLink to={`${to}?_pid=1`} style={linkStyle} end>
-      <Stack
-        direction='row'
-        columnGap={3}
+    <ListItemButton
+      component={NavLink}
+      to={`${to}?_pid=1`}
+      end={end}
+      sx={{
+        borderRadius: 2,
+        my: 0.5,
+        px: 1.5,
+        py: 1,
+        transition: theme.transitions.create(['background-color', 'border-color', 'color'], {
+          duration: theme.transitions.duration.short,
+        }),
+        '&.active': {
+          bgcolor: alpha(theme.palette.primary.main, 0.1),
+          borderLeft: `4px solid ${theme.palette.primary.main}`,
+          pl: '12px', // compensate for border width (16px - 4px)
+          '& .MuiListItemIcon-root': {
+            color: theme.palette.primary.main,
+          },
+          '& .MuiListItemText-primary': {
+            color: theme.palette.primary.main,
+            fontWeight: 600,
+          },
+        },
+        '&:hover:not(.active)': {
+          bgcolor: alpha(theme.palette.grey[500], 0.08),
+        },
+      }}
+    >
+      <ListItemIcon
         sx={{
-          padding: 1,
-          cursor: 'pointer',
+          minWidth: 40,
+          color: theme.palette.text.secondary,
+          transition: theme.transitions.create('transform'),
           '&:hover': {
-            backgroundColor: palette.grey[300],
+            transform: 'scale(1.1)',
           },
         }}
       >
         {icon}
-        <Typography variant='button'>{title}</Typography>
-      </Stack>
-    </NavLink>
+      </ListItemIcon>
+      <ListItemText
+        primary={title}
+        primaryTypographyProps={{
+          variant: 'body2',
+          fontWeight: 500,
+          sx: {
+            transition: theme.transitions.create('color'),
+          },
+        }}
+      />
+    </ListItemButton>
   );
 }
 

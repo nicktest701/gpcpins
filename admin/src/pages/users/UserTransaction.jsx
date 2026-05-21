@@ -31,7 +31,7 @@ function UserTransaction() {
   const sortedTransactions = useMemo(() => {
     let filteredTransaction = transactions?.data;
     if (type !== "All") {
-      if (type === "Airtime") {
+      if (type === "airtime") {
         filteredTransaction = transactions?.data?.filter(
           (item) => item.domain === type && item.kind === airtimeType
         );
@@ -52,7 +52,7 @@ function UserTransaction() {
   }, [transactions?.data, type, airtimeType, status]);
 
   const modifiedColumns = [
-    ...(type === "Airtime"
+    ...(type === "airtime"
       ? airtimeTransactionsColumns(airtimeType)
       : userTransactionsColumns(type)),
   ];
@@ -94,13 +94,13 @@ function UserTransaction() {
                 sx={{ width: 250, my: 2 }}
               >
                 <MenuItem value="All">All</MenuItem>
-                <MenuItem value="Voucher">Vouchers</MenuItem>
-                <MenuItem value="Ticket">Tickets</MenuItem>
-                <MenuItem value="Prepaid">Prepaid </MenuItem>
-                <MenuItem value="Airtime">Airtime Transfer </MenuItem>
-                <MenuItem value="Bundle">Data Bundle </MenuItem>
+                <MenuItem value="voucher">Vouchers</MenuItem>
+                <MenuItem value="ticket">Tickets</MenuItem>
+                <MenuItem value="prepaid">Prepaid </MenuItem>
+                <MenuItem value="airtime">Airtime Transfer </MenuItem>
+                <MenuItem value="bundle">Data Bundle </MenuItem>
               </TextField>
-              {type === "Airtime" && (
+              {type === "airtime" && (
                 <TextField
                   select
                   label="Airtime Type"

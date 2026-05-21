@@ -1,12 +1,11 @@
 import axios from "axios";
-
+// import { isMobileBrowser } from "../config/isMobileBrowser";
 
 import {
   deleteToken,
   getRefreshToken,
   getToken,
   saveAccessToken,
-
 } from "../config/sessionHandler";
 import { isOnline } from "../config/detectOnlineStatus";
 
@@ -19,7 +18,6 @@ const api = axios.create({
 
 api.defaults.withCredentials = true;
 api.defaults.headers.common["Authorization"] = `Bearer ${getToken()}`;
-
 
 // Set a common authorization header for all requests
 api.interceptors.request.use(
@@ -44,11 +42,8 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (
-      [403].includes(error?.response?.status) &&
-      !originalRequest._retry
-    ) {
-      originalRequest._retry = true;
+    if ([403].includes(error.response.status) && !originalRequest._retry) {
+
 
       try {
         const refreshToken = getRefreshToken();
@@ -67,19 +62,20 @@ api.interceptors.response.use(
         saveAccessToken(res.data?.accessToken);
         originalRequest.headers.Authorization = `Bearer ${res.data?.accessToken}`;
 
+
+        originalRequest._retry = true;
+
         // Retry the original request with the new access token
         return api(originalRequest);
       } catch (refreshError) {
-        window.location.href = "/auth/login?e=true";
+
         deleteToken();
-        //  deleteToken();
         // Handle token refresh failure, possibly redirect to login page
-        // console.log('Token refresh failed:', refreshError?.message);
+        //  console.log("Token refresh failed:", refreshError?.message);
+        window.location.href = "/auth/login?e=true";
         return Promise.reject(refreshError);
       }
     }
-
-
     return Promise.reject(error);
   }
 );

@@ -28,13 +28,15 @@ export const getMainCategory = async (category) => {
     throw error.response.data;
   }
 };
-export const getCategoryByType = async (category, page) => {
+
+
+export const getCategoryByType = async (type, page) => {
   try {
     const res = await api({
       url: `/category/type`,
       method: "GET",
       params: {
-        category,
+        type,
         page,
       },
 
@@ -45,6 +47,9 @@ export const getCategoryByType = async (category, page) => {
     throw error.response.data;
   }
 };
+
+
+
 
 export const getAllCategories = async () => {
   try {

@@ -10,7 +10,9 @@ import {
 import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
 import { recentTransactionColumns } from "../../mocks/columns";
 import { useQuery } from "@tanstack/react-query";
-import { getTransactions } from "../../api/transactionAPI";
+import {
+  getScannedTicketHistory,
+} from "../../api/transactionAPI";
 import { useMemo, useState } from "react";
 import moment from "moment";
 import CustomTotal from "../../components/custom/CustomTotal";
@@ -36,9 +38,14 @@ function Summary() {
   const transactions = useQuery({
     queryKey: ["tickets-transactions", sortValue],
     queryFn: user?.isAdmin
-      ? () => getTransactions({ date: date[0], sort: sortValue, verifier: "" })
+      ? () =>
+          getScannedTicketHistory({
+            date: date[0],
+            sort: sortValue,
+            verifier: "",
+          })
       : () =>
-          getTransactions({
+          getScannedTicketHistory({
             date: date[0],
             sort: sortValue,
             verifier: user?.id,

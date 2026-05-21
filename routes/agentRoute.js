@@ -3,8 +3,8 @@ const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
 const moment = require("moment");
 const bcrypt = require("bcryptjs");
-const path = require("path")
-const fs = require("fs")
+const path = require("path");
+const fs = require("fs");
 const { randomBytes } = require("crypto");
 const { otpGen, customOtpGen } = require("otp-gen-agent");
 const { signMainToken, signMainRefreshToken } = require("../config/token");
@@ -18,10 +18,8 @@ const {
 const { isValidUUID2 } = require("../config/validation");
 const verifyAgent = require("../middlewares/verifyAgent");
 const verifyAdmin = require("../middlewares/verifyAdmin");
-const { uploadPhoto } = require("../config/uploadFile");
 const { mailTextShell } = require("../config/mailText");
 const generateId = require("../config/generateId");
-const { calculateTimeDifference } = require("../config/timeHelper");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
@@ -30,7 +28,7 @@ const limit = rateLimit({
 });
 
 //model
-const { hasTokenExpired } = require("../config/dateConfigs");
+const { parseDateRange } = require("../config/dateConfigs");
 
 const knex = require("../db/knex");
 const {
@@ -47,6 +45,9 @@ const generateRandomNumber = require("../config/generateRandomCode");
 const { sendSMS, sendOTPSMS } = require("../config/sms");
 const currencyFormatter = require("../config/currencyFormatter");
 const redisClient = require("../config/redisClient");
+const { safeJSON } = require("../config/helpers");
+const generateDeviceId = require("../utils/deviceFingerprint");
+const { uploadPhoto } = require("../config/uploadFile");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -66,32 +67,14 @@ router.get(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const agents = await knex("agent_business_view").select(
-      "_id",
-      "profile",
-      "firstname",
-      "lastname",
-      "username",
-      "name",
-      "dob",
-      "nid",
-      "email",
-      "phonenumber",
-      "residence",
-      "active",
-      "createdAt",
-      "updatedAt",
-      "business_id",
-      "business_name",
-      "business_location",
-      "business_description",
-      "business_email",
-      "business_phonenumber",
+    const agents = await knex("vw_user_business_view").select("*").where({
+      role: process.env.AGENT_ID,
+    });
 
-    );
+    if (_.isEmpty(agents)) return res.status(200).json([]);
 
     res.status(200).json(agents);
-  })
+  }),
 );
 
 router.get(
@@ -101,23 +84,25 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = req.user;
 
-    const agent = await knex("agent_business_view")
+    const agent = await knex("vw_user_business_view")
       .select(
-        "_id",
+        "id",
         "firstname",
         "lastname",
-        'username',
+        "username",
         "name",
         "email",
         "role",
         "phonenumber",
         "profile",
-        "business_name",
-        "business_location",
-        "business_description"
+        "businessName",
+        "businessLocation",
+        "businessDescription",
+        "active",
+        "createdAt",
       )
-      .where("_id", id)
-      .limit(1).first();
+      .where("id", id)
+      .first();
 
     if (_.isEmpty(agent) || agent?.active === 0) {
       return res.sendStatus(204);
@@ -125,7 +110,7 @@ router.get(
 
     res.status(200).json({
       user: {
-        id: agent?._id,
+        id: agent?.id,
         firstname: agent?.firstname,
         lastname: agent?.lastname,
         username: agent?.username,
@@ -135,12 +120,14 @@ router.get(
         phonenumber: agent?.phonenumber,
         profile: agent?.profile,
         //business
-        businessName: agent?.business_name,
-        businessLocation: agent?.business_location,
-        businessDescription: agent?.business_description,
+        businessName: agent?.businessName,
+        businessLocation: agent?.businessLocation,
+        businessDescription: agent?.businessDescription,
+        active: agent?.active,
+        createdAt: agent?.createdAt,
       },
     });
-  })
+  }),
 );
 
 // @GET Agent commission
@@ -151,10 +138,11 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const commissions = await knex("agent_commissions")
-      .where("agent_id", id)
+      .where("user_id", id)
       .select("*");
+
     res.status(200).json(commissions);
-  })
+  }),
 );
 
 router.get(
@@ -165,20 +153,26 @@ router.get(
     const { id } = req.user;
     const { startDate, endDate } = req.query;
 
-    const sDate = moment(startDate).format("YYYY-MM-DD");
-    const eDate = moment(endDate).format("YYYY-MM-DD");
+    const { start, end, error } = parseDateRange(startDate, endDate);
 
-    const logs = await knex.raw(
-      `SELECT *
-          FROM (
-              SELECT *,DATE(createdAt) AS created_date
-              FROM agent_activity_logs_view
-          ) AS agent_activity_logs_view_  WHERE agentId=? AND isActive=1  AND created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
-      [id, sDate, eDate]
-    );
+    if (error) {
+      return res.status(400).json(error);
+    }
 
-    return res.status(200).json(logs[0]);
-  })
+    const logs = await knex("vw_user_logs_view")
+      .select(
+        "*",
+        knex.raw("DATE_FORMAT(createdAt, '%D %M %Y %h:%i:%s %p') as loggedAt"),
+      )
+      .where({ userId: id, isActive: true })
+      .whereBetween("createdAt", [start, end]);
+
+    if (_.isEmpty(logs)) {
+      return res.status(200).json([]);
+    }
+
+    return res.status(200).json(logs);
+  }),
 );
 
 // PUT Remove All Selected Logs
@@ -186,56 +180,48 @@ router.put(
   "/logs",
   verifyToken,
   asyncHandler(async (req, res) => {
-
     const { logs } = req.body;
 
-
-    await knex('agent_activity_logs').where("_id", "IN", logs).update({
-      isActive: false
+    await knex("activity_logs").where("id", "IN", logs).update({
+      is_active: false,
     });
     return res.sendStatus(204);
-
-  })
+  }),
 );
-
-
 
 router.get(
   "/verify-identity",
   verifyToken,
   asyncHandler(async (req, res) => {
-    const { id } = req.user
+    const { id } = req.user;
     const { nid, dob } = req.query;
 
-
-    const agent = await knex("agents").where({ _id: id })
-      .select('nid', 'dob', knex.raw("DATE_FORMAT(dob,'%D %M %Y') as dobb"))
+    const agent = await knex("users")
+      .where({ id })
+      .select("nid", "dob", knex.raw("DATE_FORMAT(dob,'%D %M %Y') as dobb"))
       .limit(1);
 
-
     if (_.isEmpty(agent[0])) {
-      return res.status(400).json('Invalid Request!');
+      return res.status(400).json("Invalid Request!");
     }
 
     if (nid && agent[0]?.nid !== nid) {
-
       return res.status(400).json("Sorry.We couldn't find your National ID.");
     }
 
     if (dob) {
-      const formattedDate = moment(dob).format('Do MMMM YYYY')
+      const formattedDate = moment(dob).format("Do MMMM YYYY");
 
       if (agent[0]?.dobb !== formattedDate) {
-
-        return res.status(400).json("Sorry.We couldn't find your date of birth.");
+        return res
+          .status(400)
+          .json("Sorry.We couldn't find your date of birth.");
       }
     }
 
-
-    return res.status(200).json('OK');
-  })
+    return res.status(200).json("OK");
+  }),
 );
-
 
 router.get(
   "/phonenumber/token",
@@ -278,11 +264,14 @@ router.get(
       });
       console.log(code);
 
-      await sendOTPSMS(`Please ignore this message if you did not request the OTP.Your verification code is ${code}.Don't share this code with anyone; Our employees will never ask for the code.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`, agent[0]?.phonenumber);
+      await sendOTPSMS(
+        `Please ignore this message if you did not request the OTP.Your verification code is ${code}.Don't share this code with anyone; Our employees will never ask for the code.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`,
+        agent[0]?.phonenumber,
+      );
     }
 
     res.sendStatus(201);
-  })
+  }),
 );
 
 router.get(
@@ -291,16 +280,16 @@ router.get(
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const agent = await knex("agent_business_view")
-      .select("*")
-      .where("_id", id)
-      .limit(1);
+    const agent = await knex("vw_user_business_view")
+      .join("wallets", "vw_user_business_view.id", "=", "wallets.user_id")
+      .select("vw_user_business_view.*", "wallets.amount")
+      .where("vw_user_business_view.id", id)
+      .first();
 
-    if (_.isEmpty(agent)) res.status(200).json({});
-    // console.log(agent)
+    if (_.isEmpty(agent)) return res.status(200).json({});
 
-    res.status(200).json(agent[0]);
-  })
+    res.status(200).json(agent);
+  }),
 );
 
 router.get(
@@ -308,11 +297,11 @@ router.get(
   limit,
   verifyRefreshToken,
   asyncHandler(async (req, res) => {
-    const { id, active, role } = req.user;
+    const { id } = req.user;
 
-    const agent = await knex("agent_business_view")
+    const agent = await knex("vw_user_business_view")
       .select(
-        "_id",
+        "id",
         "firstname",
         "lastname",
         "username",
@@ -321,41 +310,26 @@ router.get(
         "role",
         "phonenumber",
         "profile",
-        "business_name",
-        "business_location",
-        "business_description"
+        "businessName",
+        "businessLocation",
+        "businessDescription",
+        "active",
+        "createdAt",
       )
-      .where("_id", id)
-      .limit(1).first();
+      .where("id", id)
+      .first();
 
-    const accessData = {
-      id: agent?._id,
-      name: agent?.name,
-      firstname: agent?.firstname,
-      lastname: agent?.lastname,
-      username: agent?.username,
-      email: agent?.email,
-      phonenumber: agent?.phonenumber,
-      role: agent?.role,
-      profile: agent?.profile,
-      active: agent?.active,
-      //business
-      businessName: agent?.business_name,
-      businessLocation: agent?.business_location,
-      businessDescription: agent?.business_description,
-    };
+    if (_.isEmpty(agent) || Boolean(agent?.active) === false) {
+      return res.sendStatus(204);
+    }
 
-    const accessToken = await signMainToken(accessData, "180d");
-
+    const accessToken = await signMainToken(agent, "180d");
 
     res.status(200).json({
-
       accessToken,
     });
-
-  })
+  }),
 );
-
 
 // @POST Agent
 router.post(
@@ -376,12 +350,11 @@ router.post(
         ...rest
       } = req.body;
 
-
-      const doesUserNameExists = await transaction("agents")
-        .select("username", 'email')
+      const doesUserNameExists = await transaction("users")
+        .select("username", "email")
         .where("email", rest?.email)
         .orWhere("phonenumber", rest?.phonenumber)
-        .limit(1);
+        .first();
 
       if (!_.isEmpty(doesUserNameExists)) {
         return res
@@ -389,28 +362,32 @@ router.post(
           .json("Phone Number / Email Address already exists!");
       }
 
-
-
       const agent_id = generateId();
       const password = generateRandomNumber(10);
-      const hashedPassword = await bcrypt.hash(password, 10);
-
+      const hashedPassword = await bcrypt.hash(password, 12);
 
       //Save Agent Personal Information
-      await transaction("agents").insert({
-        _id: agent_id,
-        role: process.env.AGENT_ID,
+      await transaction("users").insert({
+        id: agent_id,
+        role_id: 1,
+        firstname: rest?.firstname,
+        lastname: rest?.lastname,
+        email: rest?.email?.toLowerCase(),
+        username: `${rest.username}`,
+        phonenumber: rest?.phonenumber,
+        residence: rest?.residence,
+        permissions: JSON.stringify([]),
+        dob: rest?.dob,
+        nid: rest?.nid,
+        profile: rest?.profile,
         password: hashedPassword,
         active: 1,
-        ...rest,
-        username: `${rest.username}`,
-        email: rest?.email?.toLowerCase()
       });
 
       //Save Agent Business Information
       await transaction("agent_businesses").insert({
-        _id: generateId(),
-        agent_id,
+        id: generateId(),
+        user_id: agent_id,
         name: business_name,
         location: business_location,
         description: business_description,
@@ -420,30 +397,30 @@ router.post(
       });
 
       //Create Agent Wallet Information
-      const agent_key = await customOtpGen({ length: 4 });
-      const hashedPin = await bcrypt.hash(agent_key, 10)
+      const user_key = await customOtpGen({ length: 4 });
+      const hashedPin = await bcrypt.hash(user_key, 12);
 
-      await transaction("agent_wallets").insert({
-        _id: generateId(),
-        agent_id,
-        agent_key: hashedPin,
+      await transaction("wallets").insert({
+        id: generateId(),
+        user_id: agent_id,
+        user_key: hashedPin,
       });
 
       //Create Agent Wallet Information
 
       await transaction("agent_commissions").insert([
         {
-          agent_id,
+          user_id: agent_id,
           provider: "MTN",
           rate: 0.2,
         },
         {
-          agent_id,
+          user_id: agent_id,
           provider: "Vodafone",
           rate: 0.25,
         },
         {
-          agent_id,
+          user_id: agent_id,
           provider: "AirtelTigo",
           rate: 0.25,
         },
@@ -467,7 +444,7 @@ router.post(
       <p><strong>Username:</strong> ${rest?.phonenumber}</p><br/>
       <p><strong>Default Password:</strong> ${password}</p><br/>
       <p><strong>Email Address:</strong> ${rest?.email}</p><br/>
-      <p><strong>Wallet PIN:</strong> ${agent_key}</p><br/>
+      <p><strong>Wallet PIN:</strong> ${user_key}</p><br/>
       <p>We recommend you change your <b>Default Password</b> and <b>Wallet Pin</b> when you log into your account.</p>
 
       <p>Best regards,</p>
@@ -477,32 +454,36 @@ router.post(
       </div>`;
 
       const smsMessage = `We are delighted to inform you that your application to become an agent at GAB POWERFUL CONSULT has been accepted!
-      Login URL:https://agent.gpcpins.com,Username: ${rest?.phonenumber},Default Password:${password},Email Address:${rest?.email},Wallet PIN: ${agent_key}.
+      Login URL:https://agent.gpcpins.com,Username: ${rest?.phonenumber},Default Password:${password},Email Address:${rest?.email},Wallet PIN: ${user_key}.
      We recommend you change your Default Password and Wallet Pin when you log into your account.
-      `
+      `;
 
       //logs
       await knex("activity_logs").insert({
-        employee_id: id,
+        user_id: id,
         title: "Created new agent account!",
         severity: "info",
       });
 
-      await sendEMail(
-        rest?.email,
-        mailTextShell(message),
-        "Welcome to GAB POWERFUL CONSULT."
-      );
-
-      await sendSMS(smsMessage, rest?.phonenumber)
-
       res.sendStatus(201);
+
+      setImmediate(async () => {
+        if (process.env.NODE_ENV === "production") {
+          await sendEMail(
+            rest?.email,
+            mailTextShell(message),
+            "Welcome to GAB POWERFUL CONSULT.",
+          );
+
+          await sendSMS(smsMessage, rest?.phonenumber);
+        }
+      });
     } catch (error) {
       await transaction.rollback();
 
       res.status(500).json("An unknown error has occurred!");
     }
-  })
+  }),
 );
 
 //@POST Request to be an agent
@@ -519,13 +500,14 @@ router.post(
       ...rest
     } = req.body;
 
+    res.status(200).json("Request Sent!");
     try {
       const body = `<div>
       <h1 style='text-transform:uppercase;'> Application to Become an Agent</h1><br/>
       <div style='text-align:left;'>
 
       <p>I am writing to express my interest in joining GAB POWERFUL CONSULT as an agent.
-    
+      
       <p><strong>Personal details:</strong></p>
       <p><strong>Firstname:</strong> ${rest?.firstname}</p>
       <p><strong>Lastname:</strong> ${rest?.lastname}</p>
@@ -540,20 +522,22 @@ router.post(
       <p><strong>Business Address:</strong> ${business_location}</p>
       <p><strong>Description of Business:</strong> ${business_description}</p>
       <p><strong>Business Email Address:</strong> ${business_email || ""}</p>
-      <p><strong>Business Telephone Line:</strong> ${business_phonenumber || ""
-        }</p>
-
+      <p><strong>Business Telephone Line:</strong> ${
+        business_phonenumber || ""
+      }</p>
+      
       <p>Thank you for considering my application. I look forward to the possibility of working together and contributing to the growth of GAB POWERFUL CONSULT.</p>
       </div>
 
       </div>`;
 
-      await sendEMail(
-        process.env.MAIL_CLIENT_USER,
-        mailTextShell(body),
-        " Application to Become an Agent"
-      );
-
+      if (process.env.NODE_ENV === "production") {
+        await sendEMail(
+          process.env.MAIL_CLIENT_USER,
+          mailTextShell(body),
+          " Application to Become an Agent",
+        );
+      }
       const message = `<div>
       <h1 style='text-transform:uppercase;'> Application to Become an Agent at GAB POWERFUL CONSULT.</h1><br/>
       <div style='text-align:left;'>
@@ -574,7 +558,7 @@ router.post(
       await sendEMail(
         rest?.email,
         mailTextShell(message),
-        " Application to Become an Agent at GAB POWERFUL CONSULT."
+        " Application to Become an Agent at GAB POWERFUL CONSULT.",
       );
 
       await sendSMS(
@@ -584,13 +568,12 @@ Thank you for your application to become an agent at GAB POWERFUL CONSULT. We've
 Best regards,
 GAB Powerful Consult      
         `,
-        rest?.phonenumber
+        rest?.phonenumber,
       );
-      res.status(200).json("Request Sent!");
     } catch (error) {
       res.status(500).json("An unknown error has occurred");
     }
-  })
+  }),
 );
 
 // @POST Agent commission
@@ -600,16 +583,19 @@ router.post(
   verifyAdminORAgent,
   asyncHandler(async (req, res) => {
     const { rate, agent_id, provider } = req.body;
+
     await knex("agent_commissions")
       .where({
-        agent_id,
+        user_id: agent_id,
         provider,
       })
-      .update({
+      .upsert({
         rate,
+        user_id: agent_id,
+        provider,
       });
     res.status(200).json("Commission Updated");
-  })
+  }),
 );
 
 //@GET agent by email
@@ -619,295 +605,116 @@ router.post(
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
-
-    const agentExists = await knex("agents")
-      .select("email", 'phonenumber', "password", "active", 'isEnabled')
+    const agent = await knex("users")
+      .join("roles", "users.role_id", "roles.id")
+      .select(
+        "email",
+        "phonenumber",
+        "password",
+        "role_id",
+        "code",
+        "active",
+        "is_enabled as isEnabled",
+      )
       .where("email", email)
-      .orWhere('phonenumber', email)
-      .limit(1).first();
+      .first();
 
-
-    if (_.isEmpty(agentExists)) {
+    if (_.isEmpty(agent)) {
       return res.status(400).json("User does not exist!");
     }
 
-    const passwordIsValid = await bcrypt.compare(password, agentExists?.password);
+    if ([process.env.AGENT_ID].indexOf(agent?.code) === -1) {
+      return res.status(401).json("Unauthorized Access!!");
+    }
+
+    const passwordIsValid = await bcrypt.compare(password, agent?.password);
 
     if (!passwordIsValid) {
       return res.status(400).json("Invalid login credentials!");
     }
 
-
-    if (Boolean(agentExists?.active) === false || Boolean(agentExists?.isEnabled) === false) {
+    if (
+      Boolean(agent?.active) === false ||
+      Boolean(agent?.isEnabled) === false
+    ) {
       return res.status(400).json("Account disabled! Please try again later.");
     }
 
     //
-    const agent = await knex("agent_business_view")
-      .select("*")
-      .where("email", agentExists?.email).first();
+    const agentBusiness = await knex("vw_user_business_view")
+      .select(
+        "id",
+        "name",
+        "firstname",
+        "lastname",
+        "username",
+        "email",
+        "phonenumber",
+        "role",
+        "profile",
+        "active",
+        "businessName",
+        "businessLocation",
+        "businessDescription",
+        "active",
+        "createdAt",
+      )
+      .where("email", agent?.email)
+      .first();
 
     if (_.isEmpty(agent)) {
       return res.status(401).json("Authentication Failed!");
     }
 
-    const accessData = {
-      id: agent?._id,
-      name: agent?.name,
-      firstname: agent?.firstname,
-      lastname: agent?.lastname,
-      username: agent?.username,
-      email: agent?.email,
-      phonenumber: agent?.phonenumber,
-      role: agent?.role,
-      profile: agent?.profile,
-      active: agent?.active,
-      //business
-      businessName: agent?.business_name,
-      businessLocation: agent?.business_location,
-      businessDescription: agent?.business_description,
-    };
-
     const updatedAgent = {
-      id: agent?._id,
-      role: agent?.role,
-      active: agent?.active,
+      id: agentBusiness?.id,
+      role: agentBusiness?.role,
+      active: agentBusiness?.active,
+      createdAt: agentBusiness?.createdAt,
     };
 
-    const accessToken = await signMainToken(accessData, "180d");
-    const refreshToken = signMainRefreshToken(updatedAgent, "600d");
+    const deviceId = generateDeviceId(req);
 
-    // res.cookie("_SSUID_kyfc", accessToken, {
-    //   maxAge: 1 * 60 * 60 * 1000,
-    //   httpOnly: true,
-    //   path: "/",
-    //   secure: true,
-    //   // domain:
-    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-    //   sameSite: "none",
-    // });
+    const [sessionId] = await knex("user_sessions").insert({
+      user_id: agentBusiness.id,
+      device_id: deviceId,
+      device_name: req.headers["user-agent"],
+      ip_address: req.ip,
+      user_agent: req.headers["user-agent"],
+    });
 
-    // res.cookie("_SSUID_X_ayd", refreshToken, {
-    //   maxAge: 90 * 24 * 60 * 60 * 1000,
-    //   httpOnly: true,
-    //   path: "/",
-    //   secure: true,
-    //   // domain:
-    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-    //   sameSite: "none",
-    // });
+    const accessToken = await signMainToken(agentBusiness, "180d");
+    const refreshToken = signMainRefreshToken(updatedAgent, "365d");
 
-    const hashedToken = await bcrypt.hash(refreshToken, 10);
+    const expires = new Date();
+    expires.setDate(expires.getDate() + 7);
 
-    await knex("agents").where("_id", agent?._id).update({
-      token: hashedToken,
+    await knex("user_tokens").insert({
+      user_id: agentBusiness.id,
+      session_id: sessionId,
+      refresh_token: refreshToken,
+      expiresAt: expires,
     });
 
     //logs
-    await knex("agent_activity_logs").insert({
-      agent_id: agent?._id,
+    await knex("activity_logs").insert({
+      user_id: agentBusiness?.id,
       title: "Logged into account.",
       severity: "info",
     });
 
-
-
-    return res.status(201).json({
-      refreshToken,
-      accessToken,
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "Strict",
+      path: "/agents/auth/token",
     });
-
-
-
-
-    ///
-
-    // const token = await otpGen();
-
-    // await knex("tokens").insert({
-    //   _id: generateId(),
-    //   token,
-    //   email: agent[0]?.email,
-    // });
-
-    // const message = `
-    //     <div style="width:100%;max-width:500px;margin-inline:auto;">
-
-    //     <p>Your verification code is</p>
-    //     <h1>${token}</h1>
-
-    //     <p>-- Gab Powerful Team --</p>
-    // </div>
-    //     `;
-
-    // if (process.env.NODE_ENV !== "production") {
-    //   console.log(token);
-    // }
-
-    // try {
-    //   await sendMail(agent[0]?.email, mailTextShell(message));
-    // } catch (error) {
-    //   await knex("tokens").where("email", agent[0]?.email).del();
-
-    //   return res.status(500).json("An error has occurred!");
-    // }
-
-    // res.sendStatus(201);
-
-
-
-  })
-);
-
-router.post(
-  "/verify",
-  limit,
-  asyncHandler(async (req, res) => {
-    const { id, token } = req.body;
-
-    if (!id || !isValidUUID2(id) || !token) {
-      return res.status(400).json("An unknown error has occurred!");
-    }
-
-    const agentToken = await knex("tokens")
-      .where({
-        _id: id,
-        token,
-      })
-      .select("*");
-
-    if (_.isEmpty(agentToken)) {
-      return res.status(400).json("An unknown error has occurred!");
-    }
-
-    if (hasTokenExpired(agentToken[0]?.createdAt)) {
-      return res.status(400).json("Sorry! Your link has expired.");
-    }
-
-    await knex("agents")
-      .where("email", agentToken[0]?.email)
-      .update({ active: 1 });
-
-    const agent = await knex("agents")
-      .select("_id")
-      .where({
-        email: agentToken[0]?.email,
-      })
-      .limit(1);
 
     res.status(201).json({
-      user: {
-        id: agent[0]?._id,
-      },
-    });
-  })
-);
-
-//Verify OTP
-router.post(
-  "/verify-otp",
-  limit,
-  asyncHandler(async (req, res) => {
-    const { email, token } = req.body;
-
-    if (!email || !token) {
-      return res.status(400).json("Invalid Code");
-    }
-
-    const agentToken = await knex("tokens")
-      .select("*")
-      .where({
-        email,
-        token,
-      })
-      .limit(1);
-
-    if (_.isEmpty(agentToken)) {
-      return res.status(400).json("Invalid Code");
-    }
-
-    if (hasTokenExpired(agentToken[0]?.createdAt)) {
-      return res.status(400).json("Sorry! Your code has expired.");
-    }
-
-    await knex("agents")
-      .where("email", agentToken[0]?.email)
-      .update({ active: 1 });
-
-    const agent = await knex("agent_business_view")
-      .select("*")
-      .where("email", agentToken[0]?.email);
-
-    if (_.isEmpty(agent)) {
-      return res.status(401).json("Authentication Failed!");
-    }
-
-    const accessData = {
-      id: agent[0]?._id,
-      name: agent[0]?.name,
-      firstname: agent[0]?.firstname,
-      lastname: agent[0]?.lastname,
-      username: agent[0]?.username,
-      email: agent[0]?.email,
-      phonenumber: agent[0]?.phonenumber,
-      role: agent[0]?.role,
-      profile: agent[0]?.profile,
-      active: agent[0]?.active,
-      //business
-      businessName: agent[0]?.business_name,
-      businessLocation: agent[0]?.business_location,
-      businessDescription: agent[0]?.business_description,
-    };
-
-    const updatedAgent = {
-      id: agent[0]?._id,
-      role: agent[0]?.role,
-      active: agent[0]?.active,
-    };
-
-    const accessToken = await signMainToken(accessData, "180d");
-    const refreshToken = signMainRefreshToken(updatedAgent, "600d");
-
-    // res.cookie("_SSUID_kyfc", accessToken, {
-    //   maxAge: 1 * 60 * 60 * 1000,
-    //   httpOnly: true,
-    //   path: "/",
-    //   secure: true,
-    //   // domain:
-    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-    //   sameSite: "none",
-    // });
-
-    // res.cookie("_SSUID_X_ayd", refreshToken, {
-    //   maxAge: 90 * 24 * 60 * 60 * 1000,
-    //   httpOnly: true,
-    //   path: "/",
-    //   secure: true,
-    //   // domain:
-    //   // process.env.NODE_ENV !== 'production' ? 'localhost' : '.gpcpins.com',
-    //   sameSite: "none",
-    // });
-
-    const hashedToken = await bcrypt.hash(refreshToken, 10);
-
-    await knex("agents").where("_id", agent[0]?._id).update({
-      token: hashedToken,
-    });
-
-    //logs
-    await knex("agent_activity_logs").insert({
-      agent_id: agent[0]?._id,
-      title: "Logged into account.",
-      severity: "info",
-    });
-
-
-    return res.status(201).json({
       refreshToken,
       accessToken,
     });
-
-  })
+  }),
 );
 
 router.post(
@@ -915,32 +722,26 @@ router.post(
   verifyToken,
   asyncHandler(async (req, res) => {
     const { id, jti } = req.user;
-    // res.cookie("_SSUID_kyfc", "", {
-    //   httpOnly: true,
-    //   path: "/",
-    //   expires: new Date(0),
-    // });
 
-    // res.cookie("_SSUID_X_ayd", "", {
-    //   httpOnly: true,
-    //   path: "/",
-    //   expires: new Date(0),
-    // });
+    res.clearCookie("refreshToken");
 
-    // res.clearCookie("_SSUID_kyfc");
-    // res.clearCookie("_SSUID_X_ayd");
+    await knex("user_tokens")
+      .where({ user_id: id })
+      .update({ is_revoked: true });
 
-    //logs
-    await knex("agent_activity_logs").insert({
-      agent_id: id,
+    await knex("activity_logs").insert({
+      user_id: id,
       title: "Logged out of account.",
       severity: "info",
     });
-    await redisClient.del(`user:${jti}`)
+
+    await redisClient.del(`user:${jti}`);
+
     req.user = null;
+    delete req.user;
 
     res.sendStatus(204);
-  })
+  }),
 );
 
 router.put(
@@ -948,28 +749,22 @@ router.put(
   verifyToken,
   verifyAdminORAgent,
   asyncHandler(async (req, res) => {
-    const { id, role } = req.user;
-    const { _id, agent_id, ...rest } = req.body;
+    const { id: userId, role } = req.user;
+    const { id, agent_id, ...rest } = req.body;
 
     if (agent_id) {
-      const updatedAgent = await knex("agent_businesses")
-        .where("agent_id", agent_id)
-        .update({
-          name: rest?.business_name,
-          location: rest?.business_location,
-          description: rest?.business_description,
-          email: rest?.business_email,
-          phonenumber: rest?.business_phonenumber,
-        });
-
-      if (updatedAgent !== 1) {
-        return res.status(400).json("Error updating agent information.");
-      }
+      await knex("agent_businesses").where("id", rest.business_id).update({
+        name: rest?.business_name,
+        location: rest?.business_location,
+        description: rest?.business_description,
+        email: rest?.business_email,
+        phonenumber: rest?.business_phonenumber,
+      });
 
       return res.status(201).json("Changes Saved!");
     }
 
-    const updatedAgent = await knex("agents").where("_id", _id).update(rest);
+    const updatedAgent = await knex("users").where("id", id).update(rest);
 
     if (updatedAgent !== 1) {
       return res.status(400).json("Error updating agent information.");
@@ -978,7 +773,7 @@ router.put(
     if (role === process.env.ADMIN_ID) {
       //logs
       await knex("activity_logs").insert({
-        employee_id: id,
+        user_id: userId,
         title: "Modified an agent account.",
         severity: "info",
       });
@@ -986,9 +781,9 @@ router.put(
       return res.status(201).json("Changes Saved!");
     }
 
-    const agent = await knex("agent_business_view")
+    const agent = await knex("vw_user_business_view")
       .select(
-        "_id",
+        "id",
         "firstname",
         "lastname",
         "username",
@@ -997,32 +792,20 @@ router.put(
         "role",
         "phonenumber",
         "profile",
-        "business_name",
-        "business_location",
-        "business_description"
+        "businessName",
+        "businessLocation",
+        "businessDescription",
+        "active",
+        "createdAt",
       )
-      .where("_id", _id);
-    const accessData = {
-      id: agent[0]?._id,
-      firstname: agent[0]?.firstname,
-      lastname: agent[0]?.lastname,
-      username: agent[0]?.username,
-      name: agent[0]?.name,
-      email: agent[0]?.email,
-      phonenumber: agent[0]?.phonenumber,
-      role: agent[0]?.role,
-      profile: agent[0]?.profile,
-      //business
-      businessName: agent[0]?.business_name,
-      businessLocation: agent[0]?.business_location,
-      businessDescription: agent[0]?.business_description,
-    };
+      .where("id", id)
+      .first();
 
-    const accessToken = await signMainToken(accessData, "180d");
+    const accessToken = await signMainToken(agent, "180d");
 
     //logs
-    await knex("agent_activity_logs").insert({
-      agent_id: agent[0]?._id,
+    await knex("activity_logs").insert({
+      user_id: agent?.id,
       title: "Modified your account details.",
       severity: "info",
     });
@@ -1041,14 +824,20 @@ router.put(
 </div>
     `;
 
-    await sendEMail(accessData?.email, message, "Profile Update Notification");
-    const smsMessage = `Your profile information has been updated.For security purposes, we wanted to ensure that you are aware of these changes. If you did not make these adjustments yourself or if you believe your account may have been compromised, please take immediate action by contacting our support team.If you have made these changes intentionally, please disregard this message.`
-    await sendOTPSMS(smsMessage, agent[0]?.phonenumber);
-
     res.status(201).json({
       user: accessToken,
     });
-  })
+
+    setImmediate(async () => {
+      await sendEMail(
+        accessData?.email,
+        message,
+        "Profile Update Notification",
+      );
+      const smsMessage = `Your profile information has been updated.For security purposes, we wanted to ensure that you are aware of these changes. If you did not make these adjustments yourself or if you believe your account may have been compromised, please take immediate action by contacting our support team.If you have made these changes intentionally, please disregard this message.`;
+      await sendOTPSMS(smsMessage, agent?.phonenumber);
+    });
+  }),
 );
 
 router.put(
@@ -1060,29 +849,25 @@ router.put(
     const { id: ID, role } = req.user;
     const { id, oldPassword, password } = req.body;
 
-
-
     if (role === process.env.AGENT_ID) {
-
-      const agentPassword = await knex('agents').select('password').where('_id', id).limit(1);
+      const agentPassword = await knex("users")
+        .select("password")
+        .where("id", id)
+        .first();
 
       const passwordIsValid = await bcrypt.compare(
         oldPassword,
-        agentPassword[0]?.password
+        agentPassword?.password,
       );
-
 
       if (!passwordIsValid) {
         return res.status(400).json("Invalid Password!");
       }
     }
 
+    const hashedPassword = await bcrypt.hash(password, 12);
 
-
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const modifiedAgent = await knex("agents").where("_id", id).update({
+    const modifiedAgent = await knex("users").where("id", id).update({
       password: hashedPassword,
     });
 
@@ -1093,7 +878,7 @@ router.put(
     if (role === process.env.ADMIN_ID) {
       //logs
       await knex("activity_logs").insert({
-        employee_id: ID,
+        user_id: ID,
         title: "Modified an agent password.",
         severity: "info",
       });
@@ -1101,17 +886,15 @@ router.put(
       return res.status(200).json("Changes Saved");
     }
 
-
-
     //logs
-    await knex("agent_activity_logs").insert({
-      agent_id: id,
+    await knex("activity_logs").insert({
+      user_id: id,
       title: "Modified your account password.",
       severity: "info",
     });
 
     return res.status(200).json("Changes Saved");
-  })
+  }),
 );
 
 router.put(
@@ -1128,22 +911,21 @@ router.put(
     let url = req.file?.filename;
     url = await uploadPhoto(req.file);
 
-    const agent = await knex("agents")
-      .where("_id", id)
-      .update({ profile: url });
+    const user = await knex("users").where("id", id).update({ profile: url });
 
-    if (agent !== 1) {
+    if (user !== 1) {
       return res.status(404).json("An unknown error has occurred!");
     }
+
     //logs
-    await knex("agent_activity_logs").insert({
-      agent_id: id,
+    await knex("activity_logs").insert({
+      user_id: id,
       title: "Modified your account details.",
       severity: "info",
     });
 
     res.status(201).json(url);
-  })
+  }),
 );
 
 //Enable or Disable Agent Account
@@ -1155,10 +937,9 @@ router.put(
     const { id: _id } = req.user;
     const { id, active } = req.body;
 
-
-    const updatedAgent = await knex("agents")
-      .where("_id", id)
-      .update({ active: active, isEnabled: active });
+    const updatedAgent = await knex("users")
+      .where("id", id)
+      .update({ active: active, is_enabled: active });
 
     if (updatedAgent !== 1) {
       return res.status(400).json("Error updating agent info");
@@ -1166,23 +947,24 @@ router.put(
 
     //logs
     await knex("activity_logs").insert({
-      employee_id: _id,
-      title: `${Boolean(active) === true
-        ? "Activated an agent account!"
-        : "Disabled an agent account!"
-        }`,
+      user_id: _id,
+      title: `${
+        Boolean(active) === true
+          ? "Activated an agent account!"
+          : "Disabled an agent account!"
+      }`,
       severity: "warning",
     });
 
     res
       .status(201)
       .json(
-        Boolean(active) === true ? "Account enabled!" : "Account disabled!"
+        Boolean(active) === true ? "Account enabled!" : "Account disabled!",
       );
-  })
+  }),
 );
 
-//@DELETE student
+//@DELETE agent account (soft delete)
 router.delete(
   "/:id",
   verifyToken,
@@ -1195,7 +977,10 @@ router.delete(
       return res.status(401).json("Invalid Request!");
     }
 
-    const agent = await knex("agents").where("_id", id).del();
+    const agent = await knex("users").where("id", id).update({
+      active: 0,
+      is_enabled: 0,
+    });
 
     if (!agent) {
       return res.status(500).json("Invalid Request!");
@@ -1203,14 +988,15 @@ router.delete(
 
     //logs
     await knex("activity_logs").insert({
-      employee_id: _id,
+      user_id: _id,
       title: "Deleted an agent account!",
       severity: "error",
     });
 
     res.status(200).json("Agent Account Removed!");
-  })
+  }),
 );
+
 //////////////////...............Business............////////////
 
 router.get(
@@ -1221,13 +1007,13 @@ router.get(
     const { id } = req.params;
     const business = await knex("agent_businesses")
       .select("*")
-      .where("agent_id", id)
-      .limit(1);
+      .where("user_id", id)
+      .first();
 
     if (_.isEmpty(business)) res.status(200).json({});
 
-    res.status(200).json(business[0]);
-  })
+    res.status(200).json(business);
+  }),
 );
 
 router.put(
@@ -1236,11 +1022,11 @@ router.put(
   verifyToken,
   verifyAgent,
   asyncHandler(async (req, res) => {
-    const { id } = req.user;
-    const { _id, ...newBusiness } = req.body;
+    const { id: USERID } = req.user;
+    const { id, ...newBusiness } = req.body;
 
     const business = await knex("agent_businesses")
-      .where("_id", _id)
+      .where("id", id)
       .update({
         ...newBusiness,
       });
@@ -1250,14 +1036,14 @@ router.put(
     }
 
     //logs
-    await knex("agent_activity_logs").insert({
-      agent_id: id,
+    await knex("activity_logs").insert({
+      user_id: USERID,
       title: "Modified your account details.",
       severity: "info",
     });
 
     res.status(201).json("Changes Saved!!!");
-  })
+  }),
 );
 
 ////////////////.............Wallet..................///////////
@@ -1269,69 +1055,18 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = req.user;
 
-    const wallet = await knex("agent_wallets")
-      .where("agent_id", id)
+    const wallet = await knex("wallets")
+      .where("user_id", id)
       .select("amount")
-      .limit(1);
+      .first();
 
     if (_.isEmpty(wallet)) {
       res.status(200).json(0);
     }
 
-    res.status(200).json(wallet[0]?.amount);
-  })
+    res.status(200).json(wallet?.amount);
+  }),
 );
-
-
-
-//Get Wallet Balance
-router.get(
-  "/wallet/status",
-  verifyToken,
-  asyncHandler(async (req, res) => {
-    const { id } = req.user;
-    const { action } = req.query;
-
-    if (action && action === "disable") {
-      await knex("agent_wallets").where("agent_id", id).update({ active: 0 });
-      return res.sendStatus(204);
-    }
-
-    const wallet = await knex("agent_wallets")
-      .where("agent_id", id)
-      .select("active", "createdAt", "updatedAt")
-      .limit(1);
-
-    if (_.isEmpty(wallet) || Boolean(wallet[0]?.active) === false) {
-      const now = moment();
-      const upTime = moment(new Date(wallet[0]?.updatedAt));
-      const timeLeft = calculateTimeDifference(now, upTime);
-
-      if (timeLeft.value <= 0) {
-        await knex("agent_wallets").where("agent_id", id).update({
-          active: 1,
-        });
-
-        return res.status(200).json({
-          active: true,
-        });
-      }
-
-      return res.status(200).json({
-        active: false,
-        timeOut:
-          timeLeft?.type === "hours"
-            ? `${timeLeft.value} hours`
-            : `${timeLeft.value} minutes`,
-      });
-    }
-
-    return res.status(200).json({
-      active: true,
-    });
-  })
-);
-
 
 router.get(
   "/wallet/transactions",
@@ -1341,21 +1076,31 @@ router.get(
     const { id } = req.user;
     const { startDate, endDate } = req.query;
 
-    const sDate = moment(startDate).format("YYYY-MM-DD");
-    const eDate = moment(endDate).format("YYYY-MM-DD");
+    // const sDate = moment(startDate).format("YYYY-MM-DD");
+    // const eDate = moment(endDate).format("YYYY-MM-DD");
 
-    const transactions = await knex.raw(
-      `SELECT *
-          FROM (
-              SELECT _id,agent_id,amount,type,comment,status,createdAt,DATE(createdAt) AS purchaseDate
-              FROM agent_wallet_transactions
-          ) AS agent_wallet_transactions_ 
-          WHERE agent_id=? AND purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,
-      [id, sDate, eDate]
-    );
+    const transactions = await knex("vw_wallet_transactions_issuer_view")
+      .where({
+        userId: id,
+        type: "credit",
+      })
+      .whereBetween("createdAt", [startDate, endDate])
+      .select(
+        "id",
+        "userId",
+        "amount",
+        "wallet",
+        "type",
+        "comment",
+        "status",
+        "createdAt",
+        "issuerName",
+        // "DATE(created_at) AS purchaseDate",
+      )
+      .orderBy("createdAt", "desc");
 
-    res.status(200).json(transactions[0]);
-  })
+    res.status(200).json(transactions);
+  }),
 );
 
 // /airtime/template
@@ -1369,9 +1114,8 @@ router.get(
       return res.sendFile(filePath);
     } else {
       return res.sendStatus(204);
-
     }
-  })
+  }),
 );
 
 //update wallet pin
@@ -1383,32 +1127,32 @@ router.put(
     const { id, email } = req.user;
     const { _id, pin, isAdmin, agentEmail } = req.body;
 
-    const agentId = isAdmin ? _id : id;
+    const userId = isAdmin ? _id : id;
     const emailAddress = isAdmin ? agentEmail : email;
 
-    const hashedPin = await bcrypt.hash(pin, 10)
+    const hashedPin = await bcrypt.hash(pin, 10);
 
-    const wallet = await knex("agent_wallets")
-      .where("agent_id", agentId)
-      .update("agent_key", hashedPin);
+    const wallet = await knex("wallets")
+      .where("user_id", userId)
+      .update("user_key", hashedPin);
 
     if (wallet !== 1) {
       return res
         .status(400)
-        .json("Error updating agent pin! Please try again later.");
+        .json("Error updating wallet pin! Please try again later.");
     }
 
     if (isAdmin) {
       //logs
       await knex("activity_logs").insert({
-        employee_id: id,
-        title: "Updated an Agent Wallet pin.",
+        user_id: id,
+        title: "Updated an User Wallet pin.",
         severity: "info",
       });
     } else {
       //logs
-      await knex("agent_activity_logs").insert({
-        agent_id: agentId,
+      await knex("user_activity_logs").insert({
+        user_id: userId,
         title: "Updated Wallet pin.",
         severity: "info",
       });
@@ -1431,60 +1175,7 @@ router.put(
     await sendEMail(emailAddress, message, "Profile Update Notification");
 
     res.status(200).json("Wallet Pin Changed!");
-  })
-);
-
-//Top up wallet request
-router.post(
-  "/top-up/request",
-  verifyToken,
-  verifyAgent,
-  asyncHandler(async (req, res) => {
-    const { id } = req.user;
-
-    const agent = await knex("agents")
-      .where("_id", id)
-      .select(
-        "phonenumber",
-        "email",
-        knex.raw("CONCAT(firstname,'',lastname) as name")
-      )
-      .limit(1);
-
-    try {
-      const body = `<div>
-      <h1 style='text-transform:uppercase;'>Wallet Top Up Request</h1><br/>
-      <div style='text-align:left;'>
-
-      <p>A request has been placed by <strong>${agent[0]?.name}</strong> to top up wallet balance.
-      <p><strong>Name:</strong> ${agent[0]?.name}</p>
-      <p><strong>Email:</strong> ${agent[0]?.email}</p><br/>
-      <p><strong>Telephone Number:</strong> ${agent[0]?.phonenumber}</p><br/>
-      <p><strong>Top Up Amount:</strong> ${req?.body?.amount}</p><br/>
-       
-      </div>
-      </div>`;
-
-      await sendEMail(
-        process.env.MAIL_CLIENT_USER,
-        mailTextShell(body),
-        "Wallet Top Up Request"
-      );
-
-      await sendOTPSMS(`Your request has been received.We'll get back to you shortly.`, agent[0]?.phonenumber);
-
-      //logs
-      await knex("agent_activity_logs").insert({
-        agent_id: id,
-        title: "Requested Wallet Top Up.",
-        severity: "info",
-      });
-
-      res.status(200).json("Request Sent!");
-    } catch (error) {
-      res.status(500).json("An unknown error has occurred");
-    }
-  })
+  }),
 );
 
 router.get(
@@ -1493,46 +1184,52 @@ router.get(
   verifyAgent,
   asyncHandler(async (req, res) => {
     const { id } = req.user;
-    const { startDate, endDate, type } = req.query;
+    let { startDate, endDate, type } = req.query;
 
-    const sDate = moment(startDate).format("YYYY-MM-DD");
-    const eDate = moment(endDate).format("YYYY-MM-DD");
+    // Validate required parameters
+    if (!startDate || !endDate) {
+      return res
+        .status(400)
+        .json({ error: "startDate and endDate are required" });
+    }
+    // Use extracted function
+    const { start, end, error } = parseDateRange(startDate, endDate);
 
-    const transactions = await knex.raw(
-      `SELECT *
-        FROM (
-            SELECT _id,
-agent_id,
-reference,
-type,
-recipient,
-provider,
-info,
-commission,
-amount as amt,
-totalAmount as amount,
-year,
-active,
-status,
-createdAt,
-updatedAt ,DATE(createdAt) AS purchaseDate
-            FROM agent_transactions
-        ) AS agent_transactions_ 
-            WHERE agent_id=? AND type=? AND purchaseDate BETWEEN ? AND ? ORDER BY createdAt DESC;`,
-      [id, type, sDate, eDate]
-    );
+    if (error) {
+      return res.status(400).json(error);
+    }
 
-    const transaction = transactions[0].map(({ info, ...rest }) => {
-      return {
-        ...rest,
-        info: JSON.parse(info),
-      };
-    });
+    // Build query
+    const transactions = await knex("agent_transactions")
+      .where({ user_id: id, type })
+      .whereBetween("created_at", [start, end])
+      .select(
+        "id",
+        "user_id",
+        "reference",
+        "type",
+        "recipient",
+        "provider",
+        "info",
+        "commission",
+        "amount as amt",
+        "total_amount as amount",
+        "year",
+        "active",
+        "status",
+        "created_at as createdAt",
+      )
+      .orderBy("created_at", "desc");
 
-    res.status(200).json(transaction);
-  })
+    // Transform results (parse JSON info)
+    const transformed = transactions.map(({ info, ...rest }) => ({
+      ...rest,
+      info: safeJSON(info),
+    }));
+
+    res.status(200).json(transformed);
+  }),
 );
-
 
 router.delete(
   "/top-up/transaction",
@@ -1541,13 +1238,11 @@ router.delete(
   asyncHandler(async (req, res) => {
     const { id } = req.query;
 
-    await knex("agent_transactions").where("_id", id).del();
+    await knex("agent_transactions").where("id", id).del();
 
     res.sendStatus(204);
-  })
+  }),
 );
-
-
 
 //Check Transaction Status
 router.get(
@@ -1564,7 +1259,7 @@ router.get(
     } catch (error) {
       res.status(401).json(error?.response?.data);
     }
-  })
+  }),
 );
 
 //Get List of all bundles
@@ -1600,26 +1295,8 @@ router.get(
     } catch (error) {
       res.status(401).json("An unknown error has occurred");
     }
-  })
+  }),
 );
-
-//Send bundle to recipient
-// router.post(
-//   "/top-up/bundle",
-//   verifyToken,
-//   verifyAgent,
-//   asyncHandler(async (req, res) => {
-//     const info = req.body;
-
-//     try {
-//       const response = await sendBundle(info);
-
-//       res.status(200).json(response);
-//     } catch (error) {
-//       res.status(401).json("An unknown error has occurred");
-//     }
-//   })
-// );
 
 //Send airtime to recipient
 router.post(
@@ -1634,47 +1311,58 @@ router.post(
     const balance = Number(balanceResponse?.balance);
     const amount = Number(info?.amount);
 
-
     if (balance < amount) {
       await insufficientBalanceWarning(balance);
       return res.status(401).json("Service Not Available. Try again later.");
     }
 
     const transx = await knex.transaction();
-    const [agentWallet] = await transx("agent_wallets")
-      .select("_id", "agent_key", "amount", "active")
-      .where({ agent_id: id })
-      .limit(1);
+    const agentWallet = await transx("wallets")
+      .select("id", "user_key", "amount", "active")
+      .where({ user_id: id })
+      .first();
 
-    if (!agentWallet || !(await bcrypt.compare(info?.token, agentWallet.agent_key))) {
+    if (
+      !agentWallet ||
+      !(await bcrypt.compare(info?.token, agentWallet.user_key))
+    ) {
       await transx.rollback();
       return res.status(401).json("Invalid pin!");
     }
 
     if (Number(agentWallet.amount) < amount) {
-      await transx("agent_notifications").insert({
-        _id: generateId(),
-        agent_id: id,
+      await transx("notifications").insert({
+        id: generateId(),
+        user_id: id,
         type: "airtime",
         title: "Airtime Transfer Failed!",
-        message: "Insufficient wallet balance to complete transaction!",
+        body: "Insufficient wallet balance to complete transaction!",
       });
       await transx.commit();
-      return res.status(401).json("Insufficient wallet balance to complete transaction!");
+      return res
+        .status(401)
+        .json("Insufficient wallet balance to complete transaction!");
     }
 
     const transaction_reference = randomBytes(24).toString("hex");
     const airtimeInfo = {
       recipient: info?.recipient,
       amount,
-      network: info?.network === "MTN" ? 4 : info?.network === "Vodafone" ? 6 : info?.network === "AirtelTigo" ? 1 : 0,
+      network:
+        info?.network === "MTN"
+          ? 4
+          : info?.network === "Vodafone"
+            ? 6
+            : info?.network === "AirtelTigo"
+              ? 1
+              : 0,
       transaction_reference,
     };
 
-    const [commissionData] = await transx("agent_commissions")
+    const commissionData = await transx("agent_commissions")
       .select("rate")
-      .where({ agent_id: id, provider: info?.network })
-      .limit(1);
+      .where({ user_id: id, provider: info?.network })
+      .first();
 
     if (!commissionData) {
       await transx.rollback();
@@ -1685,19 +1373,25 @@ router.post(
     const payableAmount = amount - commission;
 
     const transactionInfo = {
-      _id: generateId(),
-      agent_id: id,
+      id: generateId(),
+      user_id: id,
       reference: transaction_reference,
       type: "airtime",
       recipient: info?.recipient,
       provider: info?.network,
-      info: JSON.stringify({ recipient: info?.recipient, ref: transaction_reference, amount: payableAmount }),
+      info: JSON.stringify({
+        recipient: info?.recipient,
+        ref: transaction_reference,
+        amount: payableAmount,
+      }),
       amount: payableAmount,
       commission,
-      totalAmount: amount,
+      total_amount: amount,
     };
 
-    await transx("agent_wallets").where("agent_id", id).decrement({ amount: payableAmount });
+    await transx("wallets")
+      .where("user_id", id)
+      .decrement({ amount: payableAmount });
     await transx.commit();
 
     const tranx = await knex.transaction();
@@ -1717,57 +1411,62 @@ router.post(
           await insufficientBalanceWarning(response?.balance_after);
         }
 
-        await tranx("agent_notifications").insert({
-          _id: generateId(),
-          agent_id: id,
+        await tranx("notifications").insert({
+          id: generateId(),
+          user_id: id,
           type: "airtime",
           title: "Airtime Transfer",
-          message: `You have successfully recharged ${airtimeInfo.recipient} with ${currencyFormatter(
-            airtimeInfo.amount
+          body: `You have successfully recharged ${airtimeInfo.recipient} with ${currencyFormatter(
+            airtimeInfo.amount,
           )} of airtime. Commission: GHS ${currencyFormatter(commission)}.`,
         });
       } else {
-        await tranx("agent_notifications").insert({
-          _id: generateId(),
+        await tranx("notifications").insert({
+          id: generateId(),
           agent_id: id,
           type: "airtime",
           title: "Airtime Transfer Failed!",
-          message: `Your airtime transfer of ${currencyFormatter(
-            airtimeInfo.amount
+          body: `Your airtime transfer of ${currencyFormatter(
+            airtimeInfo.amount,
           )} to ${airtimeInfo.recipient} failed. Please try again later.`,
         });
       }
 
-      await tranx("agent_activity_logs").insert({
-        agent_id: id,
+      await tranx("activity_logs").insert({
+        user_id: id,
         title: "Transferred airtime to customer.",
         severity: "info",
       });
 
       await tranx.commit();
-      return res.status(200).json(isSuccess ? "Airtime transfer was successful!" : "Airtime transfer failed!");
+      return res
+        .status(200)
+        .json(
+          isSuccess
+            ? "Airtime transfer was successful!"
+            : "Airtime transfer failed!",
+        );
     } catch (error) {
       await tranx("agent_transactions").insert({
         ...transactionInfo,
         status: "failed",
       });
 
-      await tranx("agent_notifications").insert({
-        _id: generateId(),
-        agent_id: id,
+      await tranx("notifications").insert({
+        id: generateId(),
+        user_id: id,
         type: "airtime",
         title: "Airtime Transfer Failed!",
-        message: `Your airtime transfer of ${currencyFormatter(
-          airtimeInfo.amount
+        body: `Your airtime transfer of ${currencyFormatter(
+          airtimeInfo.amount,
         )} to ${airtimeInfo.recipient} failed. Please try again later.`,
       });
 
       await tranx.commit();
       return res.status(401).json("Transaction failed! An error has occurred.");
     }
-  })
+  }),
 );
-
 
 //Send airtime to recipient
 router.post(
@@ -1792,14 +1491,14 @@ router.post(
 
     try {
       // Step 3: Fetch agent wallet and validate PIN
-      const agentWallet = await transx("agent_wallets")
-        .select("_id", "agent_key", "amount", "active")
+      const agentWallet = await transx("wallets")
+        .select("id", "user_key", "amount", "active")
         .where({ agent_id: id })
-        .limit(1);
+        .first();
 
       if (
         !agentWallet.length ||
-        !(await bcrypt.compare(token, agentWallet[0].agent_key))
+        !(await bcrypt.compare(token, agentWallet.user_key))
       ) {
         await transx.rollback();
         return res.status(401).json("Invalid PIN!");
@@ -1807,7 +1506,7 @@ router.post(
 
       // Step 4: Check if agent has enough balance
       if (Number(agentWallet[0].amount) < Number(totalAmount)) {
-        await transx("agent_notifications").insert({
+        await transx("notifications").insert({
           _id: generateId(),
           agent_id: id,
           type: "airtime",
@@ -1825,7 +1524,7 @@ router.post(
         content.map(async (info) => {
           const transaction_reference = randomBytes(24).toString("hex");
           const { code, providerName, phoneNumber } = getPhoneNumberInfo(
-            info?.recipient.toString()
+            info?.recipient.toString(),
           );
 
           const airtimeInfo = {
@@ -1845,7 +1544,7 @@ router.post(
           // }
 
           const commissionAmount =
-            ((commissionRate[0]?.rate || 0.20) / 100) * airtimeInfo.amount;
+            ((commissionRate[0]?.rate || 0.2) / 100) * airtimeInfo.amount;
 
           const payableAmount = airtimeInfo.amount - commissionAmount;
 
@@ -1867,13 +1566,13 @@ router.post(
           };
 
           return { transactionInfo, airtimeInfo, payableAmount };
-        })
+        }),
       );
 
       const totalPayable = _.sumBy(transactions, "payableAmount");
 
       // Step 6: Deduct total payable amount from agent's wallet
-      await transx("agent_wallets")
+      await transx("wallets")
         .where("agent_id", id)
         .decrement({ amount: totalPayable });
 
@@ -1893,18 +1592,20 @@ router.post(
               status: isSuccess ? "completed" : "failed",
             });
 
-            await airtimeTx("agent_notifications").insert({
+            await airtimeTx("notifications").insert({
               _id: generateId(),
               agent_id: id,
               type: "airtime",
-              title: isSuccess ? "Airtime Transfer" : "Airtime Transfer Failed!",
+              title: isSuccess
+                ? "Airtime Transfer"
+                : "Airtime Transfer Failed!",
               message: isSuccess
                 ? `You have successfully recharged ${airtimeInfo.recipient} with ${currencyFormatter(
-                  airtimeInfo.amount
-                )} of airtime. Commission earned: GHS ${transactionInfo.commission}.`
+                    airtimeInfo.amount,
+                  )} of airtime. Commission earned: GHS ${transactionInfo.commission}.`
                 : `Your airtime transfer of ${currencyFormatter(
-                  airtimeInfo.amount
-                )} to ${airtimeInfo.recipient} failed. Please try again later.`,
+                    airtimeInfo.amount,
+                  )} to ${airtimeInfo.recipient} failed. Please try again later.`,
             });
 
             return isSuccess;
@@ -1915,23 +1616,23 @@ router.post(
               status: "failed",
             });
 
-            await airtimeTx("agent_notifications").insert({
+            await airtimeTx("notifications").insert({
               _id: generateId(),
               agent_id: id,
               type: "airtime",
               title: "Airtime Transfer Failed!",
               message: `Your airtime transfer of ${currencyFormatter(
-                airtimeInfo.amount
+                airtimeInfo.amount,
               )} to ${airtimeInfo.recipient} failed. Please try again later.`,
             });
 
             return false;
           }
-        })
+        }),
       );
 
       // Step 8: Log activity
-      await airtimeTx("agent_activity_logs").insert({
+      await airtimeTx("activity_logs").insert({
         agent_id: id,
         title: "Transferred bulk airtime to Customers.",
         severity: "info",
@@ -1941,15 +1642,13 @@ router.post(
 
       return res.status(200).json("Airtime transfer was successful!");
     } catch (err) {
-      console.log("2", err)
+      console.log("2", err);
       await transx.rollback();
       // await transx.commit();
       // await airtimeTx.commit();
-      return res
-        .status(500)
-        .json("Transaction failed! An error has occurred.");
+      return res.status(500).json("Transaction failed! An error has occurred.");
     }
-  })
+  }),
 );
 
 //Send bundle to recipient
@@ -1960,7 +1659,6 @@ router.post(
   asyncHandler(async (req, res) => {
     const { bundle, recipient, token, network } = req.body;
     const { id } = req.user;
-
 
     // Step 1: Check system balance
     const systemBalance = await accountBalance();
@@ -1976,32 +1674,34 @@ router.post(
     // Step 2: Verify agent wallet and pin
     const transx = await knex.transaction();
 
-    const [agentWallet] = await transx("agent_wallets")
-      .select("_id", "agent_key", "amount", "active")
-      .where({ agent_id: id })
-      .limit(1);
+    const agentWallet = await transx("wallets")
+      .select("id", "user_key", "amount", "active")
+      .where({ user_id: id })
+      .first();
 
     if (!agentWallet) {
       await transx.rollback();
       return res.status(401).json("Invalid pin!");
     }
 
-    const isPinValid = await bcrypt.compare(token, agentWallet.agent_key);
+    const isPinValid = await bcrypt.compare(token, agentWallet.user_key);
     if (!isPinValid) {
       await transx.rollback();
       return res.status(401).json("Invalid pin!");
     }
 
     if (Number(agentWallet.amount) < bundlePrice) {
-      await transx("agent_notifications").insert({
-        _id: generateId(),
-        agent_id: id,
+      await transx("notifications").insert({
+        id: generateId(),
+        user_id: id,
         type: "bundle",
         title: "Data Bundle Transfer Failed",
-        message: "Insufficient wallet balance to complete transaction!"
+        body: "Insufficient wallet balance to complete transaction!",
       });
       await transx.commit();
-      return res.status(401).json("Insufficient wallet balance to complete transaction!");
+      return res
+        .status(401)
+        .json("Insufficient wallet balance to complete transaction!");
     }
 
     // Step 3: Prepare transaction
@@ -2015,19 +1715,26 @@ router.post(
     };
 
     const transactionInfo = {
-      _id: generateId(),
-      agent_id: id,
+      id: generateId(),
+      user_id: id,
       reference: transaction_reference,
       type: "bundle",
       recipient,
       provider: network,
-      info: JSON.stringify({ recipient, ref: transaction_reference, amount: bundlePrice, ...bundle }),
+      info: JSON.stringify({
+        recipient,
+        ref: transaction_reference,
+        amount: bundlePrice,
+        ...bundle,
+      }),
       amount: bundlePrice,
       commission: 0,
-      totalAmount: bundlePrice,
+      total_amount: bundlePrice,
     };
 
-    await transx("agent_wallets").where("agent_id", id).decrement("amount", bundlePrice);
+    await transx("wallets")
+      .where("user_id", id)
+      .decrement("amount", bundlePrice);
     await transx.commit();
 
     // Step 4: Process bundle
@@ -2044,18 +1751,20 @@ router.post(
         status: isSuccess ? "completed" : "failed",
       });
 
-      await tranx("agent_notifications").insert({
-        _id: generateId(),
-        agent_id: id,
+      await tranx("notifications").insert({
+        id: generateId(),
+        user_id: id,
         type: "bundle",
-        title: isSuccess ? "Data Bundle Transfer" : "Data Bundle Transfer Failed",
-        message: isSuccess
+        title: isSuccess
+          ? "Data Bundle Transfer"
+          : "Data Bundle Transfer Failed",
+        body: isSuccess
           ? `You have successfully recharged ${recipient} with ${bundle.plan_id}, you were charged GHS ${bundlePrice}`
           : "Could not process your request. Try again later!",
       });
 
-      await tranx("agent_activity_logs").insert({
-        agent_id: id,
+      await tranx("activity_logs").insert({
+        user_id: id,
         title: `Transferred data bundle, ${bundle.plan_id} to ${recipient}.`,
         severity: "info",
       });
@@ -2067,32 +1776,42 @@ router.post(
 
       await tranx.commit();
 
-      return res.status(200).json(
-        isSuccess ? "Bundle transfer was successful!" : "Bundle transfer failed!"
-      );
+      return res
+        .status(200)
+        .json(
+          isSuccess
+            ? "Bundle transfer was successful!"
+            : "Bundle transfer failed!",
+        );
     } catch (error) {
-      await tranx("agent_notifications").insert({
-        _id: generateId(),
-        agent_id: id,
+      await tranx("notifications").insert({
+        id: generateId(),
+        user_id: id,
         type: "bundle",
         title: "Data Bundle Transfer Failed",
-        message: "Could not process your request. Try again later!",
+        body: "Could not process your request. Try again later!",
       });
       await tranx.commit();
       return res.status(401).json("Transaction failed! An error has occurred.");
     }
-  })
+  }),
 );
-
 
 const insufficientBalanceWarning = async (bal) => {
   const body = `
     Your one-4-all top up account balance is running low. Your remaining balance is GHS ${currencyFormatter(bal)}.
     Please recharge to avoid any inconveniences. Thank you.
   `;
-  await sendEMail(process.env.MAIL_CLIENT_USER, mailTextShell(`<p>${body}</p>`), "LOW TOP UP ACCOUNT BALANCE");
-  await sendSMS(body, process.env.CLIENT_PHONENUMBER);
-};
 
+  if (process.env.NODE_ENV === "production") {
+    await sendEMail(
+      process.env.MAIL_CLIENT_USER,
+      mailTextShell(`<p>${body}</p>`),
+      "LOW TOP UP ACCOUNT BALANCE",
+    );
+
+    await sendSMS(body, process.env.CLIENT_PHONENUMBER);
+  }
+};
 
 module.exports = router;

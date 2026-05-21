@@ -1,5 +1,27 @@
 import api from "./customAxios";
 
+export const getScannedTicketHistory = async ({
+  date: { startDate, endDate },
+  verifier,
+  sort,
+}) => {
+  try {
+    const res = await api({
+      method: "GET",
+      url: `/tickets/scanned_tickets/history`,
+      params: {
+        sort,
+        startDate,
+        endDate,
+        verifier
+      },
+    });
+
+    return res.data;
+  } catch (error) {
+    throw error.response.data;
+  }
+};
 export const getTransactions = async ({
   date: { startDate, endDate },
   verifier,

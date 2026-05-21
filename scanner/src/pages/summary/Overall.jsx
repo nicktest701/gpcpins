@@ -1,8 +1,4 @@
-import {
-  Button,
-  Grid,
-  Stack
-} from "@mui/material";
+import { Button, Grid, Stack } from "@mui/material";
 import {
   BarChartRounded,
   PaymentRounded,
@@ -34,6 +30,22 @@ function Overall() {
       ? () => getTransactionSummary("")
       : () => getTransactionSummary(user?.id),
     enabled: true,
+    initialData: {
+      assignedTickets: 0,
+      scannedTickets: 0,
+      todayScannedTicket: 0,
+      totalScanForLastSevenDays: {
+        labels: [],
+        data: [],
+      },
+      totalScanByMonth: [],
+      recentTransaction: [],
+      topScannedTickets: {
+        labels: [],
+        data: [],
+      },
+      logs: [],
+    },
   });
 
   if (summary?.isLoading) {
@@ -91,7 +103,8 @@ function Overall() {
             <ItemCard
               title="Assigned Tickets"
               icon={<BarChartRounded htmlColor="rgb(0, 20, 34)" />}
-              value={
+              value={summary?.data?.assignedTickets ?? 0}
+              component={
                 <CountUp start={0} end={summary?.data?.assignedTickets ?? 0} />
               }
               bg={"rgba(0, 20, 34,.2)"}
@@ -100,7 +113,8 @@ function Overall() {
             <ItemCard
               title="Verified Tickets"
               icon={<PaymentRounded color="secondary" />}
-              value={
+              value={summary?.data?.scannedTickets ?? 0}
+              component={
                 <CountUp start={0} end={summary?.data?.scannedTickets ?? 0} />
               }
               bg={"rgba(255, 126, 5,.2)"}
@@ -160,7 +174,8 @@ function Overall() {
                     <ItemCard
                       // title="Vouchers & Tickets"
                       icon={<PaymentRounded htmlColor="rgb(255, 126, 5)" />}
-                      value={
+                      value={summary?.data?.todayScannedTicket ?? 0}
+                      component={
                         <CountUp
                           start={0}
                           end={summary?.data?.todayScannedTicket ?? 0}

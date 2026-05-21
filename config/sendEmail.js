@@ -1,7 +1,7 @@
 const nodemailer = require("nodemailer");
 const { Resend } = require("resend");
 
-const resend = new Resend(process.env.MAIL_RESEND_API_KEY);
+// const resend = new Resend(process.env.MAIL_RESEND_API_KEY);
 
 const sendEMail = async (email_address, message, subject) => {
   // if (process.env.NODE_ENV !== 'production') return true
@@ -41,14 +41,16 @@ const sendEMail = async (email_address, message, subject) => {
       });
     }
     // console.log(mailOptions);
-    const mailResult = await resend.emails.send({
-      ...mailOptions,
-      from: process.env.MAIL_CLIENT_USER,
-    });
 
-    // const mailResult = await transportMail.sendMail(mailOptions);
+    // resend
+    // const mailResult = await resend.emails.send({
+    //   ...mailOptions,
+    //   from: process.env.MAIL_CLIENT_USER,
+    // });
 
-    console.log(mailResult);
+    const mailResult = await transportMail.sendMail(mailOptions);
+
+    // console.log('mail results is ',mailResult);
 
     return mailResult.data;
   } catch (error) {

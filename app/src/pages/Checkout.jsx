@@ -25,6 +25,8 @@ function Checkout() {
     // customDispatch,
   } = useContext(CustomContext);
 
+  // console.log("transaction", transaction);
+
   useEffect(() => {
     const handleBeforeUnload = (e) => {
       const confirmationMessage = "Are you sure you want to leave?";
@@ -40,20 +42,20 @@ function Checkout() {
   }, []);
 
   const isVoucher = ["waec", "university", "security"].includes(
-    transaction?.info?.type
+    transaction?.info?.categoryType
   );
 
   const generatedVouchers = useQuery({
-    queryKey: ["generatedVouchers", transaction?._id, transaction?.info?.type],
+    queryKey: ["generatedVouchers", transaction?.id, transaction?.info?.categoryType],
     queryFn: () =>
       makePayment({
-        id: transaction?._id,
-        type: transaction?.info?.type,
+        id: transaction?.id,
+        type: transaction?.info?.categoryType,
       }),
 
     enabled:
-      !!transaction?._id &&
-      !!transaction?.info?.type &&
+      !!transaction?.id &&
+      !!transaction?.info?.categoryType &&
       searchParams.get("completed") === null,
 
     onSuccess: () => {
@@ -65,9 +67,9 @@ function Checkout() {
     },
   });
 
-  const handleDownloadVouchers = () => downloadVouchers(transaction?._id);
+  const handleDownloadVouchers = () => downloadVouchers(transaction?.id);
 
-  if (!transaction?._id) {
+  if (!transaction?.id) {
     return <Navigate to="/evoucher" />;
   }
 
@@ -87,7 +89,7 @@ function Checkout() {
       {/* <Back to={state?.path} /> */}
 
       <>
-        {transaction?._id && (
+        {transaction?.id && (
           <>
             <Avatar
               alt="success"
@@ -115,7 +117,7 @@ function Checkout() {
             >
               <Stack spacing={1} width="100%">
                 <Divider />
-                <CheckOutItem title="Transaction ID" value={transaction._id} />
+                <CheckOutItem title="Transaction ID" value={transaction?.id} />
                 <CheckOutItem
                   title="Date"
                   value={moment(new Date(transaction?.createdAt)).format("LLL")}
@@ -134,12 +136,12 @@ function Checkout() {
                 />
                 <CheckOutItem
                   title="Mobile No."
-                  value={transaction?.info?.agentPhoneNumber}
+                  value={transaction?.phonenumber}
                 />
-                {transaction?.info?.agentEmail && (
+                {transaction?.email && (
                   <CheckOutItem
                     title="Email Address"
-                    value={transaction?.info?.agentEmail}
+                    value={transaction?.email}
                   />
                 )}
                 <CheckOutItem

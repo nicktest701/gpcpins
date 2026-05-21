@@ -8,7 +8,7 @@ import { useSearchParams } from "react-router-dom";
 function ManageTickets() {
   const [searchParams] = useSearchParams();
 
-  const activeTab = searchParams.get("t") || "all";
+  const activeTab = searchParams.get("t") || "all-assigned-tickets";
 
   return (
     <>
@@ -20,36 +20,36 @@ function ManageTickets() {
         }
       />
       <Stack my={2} direction="row" gap={4} borderBottom="1px solid lightgray">
-        <Tab label="All Tickets" isActive={activeTab === "all"} tab="all" />
+        <Tab label="All Tickets" isActive={activeTab === "all-assigned-tickets"} tab="all-assigned-tickets" />
         <Tab
           label="Assigned New"
-          isActive={activeTab === "tickets"}
-          tab="tickets"
+          isActive={activeTab === "new-ticket"}
+          tab="new-ticket"
         />
       </Stack>
       <Box minHeight="50svh" pt={2}>
         <Box bgcolor="whitesmoke" p={1} mb={2}>
           <Typography variant="h4">
-            {activeTab === "all"
+            {activeTab === "all-assigned-tickets"
               ? "All Tickets"
-              : activeTab === "tickets"
+              : activeTab === "new-ticket"
               ? "Assign New"
               : ""}
           </Typography>
           <Typography variant="body2">
-            {activeTab === "all"
+            {activeTab === "all-assigned-tickets"
               ? "View all tickets assigned to verifiers."
-              : activeTab === "tickets"
+              : activeTab === "new-ticket"
               ? "Assign new tickets to verifiers by completing the form below."
               : ""}
           </Typography>
         </Box>
 
         {/* all tickets  */}
-        {activeTab === "all" && <AllTickets />}
+        {activeTab === "all-assigned-tickets" && <AllTickets />}
 
         {/* Tickets  */}
-        {activeTab === "tickets" && <TicketAssignmentPage />}
+        {activeTab === "new-ticket" && <TicketAssignmentPage />}
       </Box>
       <Divider />
       {/* <Outlet /> */}

@@ -1,13 +1,13 @@
-import api from './customAxios';
+import api from "./customAxios";
 
-export const getAllNotifications = async (title) => {
+export const getAllNotifications = async (data) => {
   try {
     const res = await api({
-      method: 'GET',
+      method: "GET",
       url: `/notifications`,
       params: {
-        title
-      }
+        title: data,
+      },
     });
 
     return res.data;
@@ -16,17 +16,15 @@ export const getAllNotifications = async (title) => {
   }
 };
 
-
-
 export const getNotification = async () => {
   try {
     const res = await api({
-      method: 'GET',
+      method: "GET",
       url: `/notifications`,
       timeout: 10000,
-      timeoutErrorMessage: 'Error connecting to the server',
+      timeoutErrorMessage: "Error connecting to the server",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
     });
 
@@ -39,8 +37,21 @@ export const getNotification = async () => {
 export const updateNotification = async (ids) => {
   try {
     const res = await api({
-      method: 'PUT',
+      method: "PUT",
       url: `/notifications`,
+      data: { ids },
+    });
+
+    return res.data;
+  } catch (error) {
+    throw error.response.data;
+  }
+};
+export const markAllNotificationsAsRead = async (ids) => {
+  try {
+    const res = await api({
+      method: "PUT",
+      url: `/notifications/mark-all-read`,
       data: { ids },
     });
 
@@ -53,7 +64,7 @@ export const updateNotification = async (ids) => {
 export const deleteNotifications = async ({ id, all }) => {
   try {
     const res = await api({
-      method: 'DELETE',
+      method: "DELETE",
       url: `/notifications`,
       data: { id, all },
     });
@@ -63,5 +74,3 @@ export const deleteNotifications = async ({ id, all }) => {
     throw error.response.data;
   }
 };
-
-

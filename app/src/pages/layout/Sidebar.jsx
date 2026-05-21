@@ -1,91 +1,95 @@
 import { useContext, useEffect, useMemo } from "react";
-import Drawer from "@mui/material/Drawer";
 import {
-  Avatar,
-  Badge,
+  Drawer,
   Box,
-  Divider,
+  Avatar,
   IconButton,
   List,
   ListSubheader,
-  Stack,
   Typography,
+  Badge,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
   useTheme,
+  alpha,
+  keyframes,
 } from "@mui/material";
 import Swal from "sweetalert2";
-import PropTypes from "prop-types";
-import NavLinkItem from "../../components/NavLinkItem";
-import NavLinkItemCollapse from "../../components/modals/NavLinkItemCollapse";
-import { CustomContext } from "../../context/providers/CustomProvider";
 import { Link, useLocation } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   DashboardRounded,
-  ExitToAppRounded,
-  MoneyRounded,
   PaymentRounded,
-  SdCardRounded,
-  Close,
+  MoneyRounded,
   CardMembership,
-  NoteAltOutlined,
-  WalletOutlined,
   PersonOutlined,
-  SimCardOutlined,
   NotificationsOutlined,
+  WalletOutlined,
+  NoteAltOutlined,
+  ExitToAppRounded,
+  Close,
+  SimCardOutlined,
+  SdCardRounded,
 } from "@mui/icons-material";
-
 import { AuthContext } from "../../context/providers/AuthProvider";
+import { CustomContext } from "../../context/providers/CustomProvider";
 import { IMAGES } from "../../constants";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAllBroadcastMessages } from "../../api/broadcastMessageAPI";
+import NavLinkItem from "@/components/NavLinkItem";
+import NavLinkItemCollapse from "@/components/modals/NavLinkItemCollapse";
+
+// Pulse animation for the notification badge
+const pulse = keyframes`
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+`;
 
 function Sidebar() {
   const queryClient = useQueryClient();
   const { user, logout } = useContext(AuthContext);
-  const { pathname } = useLocation();
-
   const {
     customState: { openSidebar },
     customDispatch,
   } = useContext(CustomContext);
-  const { palette } = useTheme();
-  const location = useLocation();
+  const { pathname } = useLocation();
+  const theme = useTheme();
 
-  const notifications = useQuery({
+  // Fetch notifications (only for logged-in users)
+  const { data: notifications } = useQuery({
     queryKey: ["notifications"],
     queryFn: () => getAllBroadcastMessages(),
     enabled: !!user?.id,
+    initialData: queryClient.getQueryData(["notifications"]),
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnMount: false,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
-    initial: queryClient?.getQueryData(["notifications"]),
   });
 
-  const unReadNotifications = useMemo(
-    () => notifications?.data?.filter((item) => item?.active === 1),
-    [notifications.data]
+  const unreadCount = useMemo(
+    () => notifications?.filter((item) => item.active === 1).length || 0,
+    [notifications],
   );
 
+  // Close sidebar on navigation
   useEffect(() => {
-    if (location.pathname) {
-      customDispatch({
-        type: "openSidebar",
-        payload: false,
-      });
-    }
-  }, [location, customDispatch]);
+    customDispatch({ type: "openSidebar", payload: false });
+  }, [pathname, customDispatch]);
 
   const handleClose = () => {
-    customDispatch({
-      type: "openSidebar",
-      payload: !openSidebar,
-    });
+    customDispatch({ type: "openSidebar", payload: false });
   };
 
-  const handleLogOut = () => {
+  const handleLogout = () => {
     Swal.fire({
       title: "Logging out",
-      text: `Do you want to log out?`,
+      text: "Do you want to log out?",
       showCancelButton: true,
+      confirmButtonColor: theme.palette.error.main,
+      cancelButtonColor: theme.palette.grey[500],
     }).then(async ({ isConfirmed }) => {
       if (isConfirmed) {
         logout();
@@ -94,49 +98,113 @@ function Sidebar() {
   };
 
   return (
-    <Drawer open={openSidebar} onClose={handleClose} variant="temporary">
-      <Stack
-        role="presentation"
-        width={{ xs: "100svw", md: 280 }}
-        spacing={1}
-      
+    <Drawer
+      anchor="left"
+      open={openSidebar}
+      onClose={handleClose}
+      PaperProps={{
+        sx: {
+          width: { xs: "100%", sm: 300 },
+          borderTopRightRadius: { xs: 0, sm: 16 },
+          borderBottomRightRadius: { xs: 0, sm: 16 },
+          boxShadow: theme.shadows[8],
+          bgcolor: theme.palette.background.paper,
+          transition: theme.transitions.create(
+            ["box-shadow", "border-radius"],
+            {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            },
+          ),
+        },
+      }}
+      // Optional: add a subtle backdrop blur effect (works in modern browsers)
+      ModalProps={{
+        BackdropProps: {
+          sx: {
+            backdropFilter: { xs: "none", sm: "blur(4px)" },
+            bgcolor: { xs: "rgba(0,0,0,0.5)", sm: "rgba(0,0,0,0.2)" },
+          },
+        },
+      }}
+    >
+      {/* Header with logo and close button */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          p: 2,
+          borderBottom: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+        }}
       >
-        <Box
+        <Avatar
+          src={IMAGES.coat_of_arms}
+          alt="logo"
           sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-           px:1
+            width: 48,
+            height: 48,
+            boxShadow: theme.shadows[2],
+          }}
+        />
+        <IconButton
+          onClick={handleClose}
+          aria-label="close sidebar"
+          sx={{
+            transition: theme.transitions.create(
+              ["background-color", "transform"],
+              {
+                duration: theme.transitions.duration.short,
+              },
+            ),
+            "&:hover": {
+              bgcolor: alpha(theme.palette.primary.main, 0.08),
+              transform: "scale(1.1)",
+            },
           }}
         >
-          <Avatar
-            alt="logo"
-            src={IMAGES.coat_of_arms}
-            sx={{
-              width: 48,
-              height: 48,
-              cursor: "pointer",
-            }}
-          />
-          <IconButton edge="end" sx={{ mr: 1 }} onClick={handleClose}>
-            <Close />
-          </IconButton>
-        </Box>
-        <Divider flexItem />
-        {user?.id ? (
-          <>
-            <List>
-              <NavLinkItem to="/" title="Home" icon={<DashboardRounded />} />
+          <Close />
+        </IconButton>
+      </Box>
 
-              {/* E Voucher */}
+      {/* Main navigation area */}
+      <Box
+        sx={{
+          p: 2,
+          overflowY: "auto",
+          flex: 1,
+          scrollbarWidth: "thin",
+          "&::-webkit-scrollbar": {
+            width: "6px",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            backgroundColor: alpha(theme.palette.grey[500], 0.3),
+            borderRadius: "10px",
+          },
+        }}
+      >
+        {user?.id ? (
+          // Authenticated user
+          <>
+            {/* Optional: user greeting (adds a personal touch) */}
+            <Box sx={{ mb: 2, px: 1 }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Welcome back,
+              </Typography>
+              <Typography variant="subtitle1" fontWeight="600" noWrap>
+                {user?.firstname || "User"}
+              </Typography>
+            </Box>
+
+            <List disablePadding>
+              <NavLinkItem to="/" title="Home" icon={<DashboardRounded />} />
               <NavLinkItem
                 to="evoucher"
                 title="Voucher & Tickets"
                 icon={<PaymentRounded />}
               />
-
               <NavLinkItemCollapse
-                icon={<MoneyRounded htmlColor="#333" />}
+                icon={<MoneyRounded />}
                 title="Prepaid Units"
               >
                 <NavLinkItem
@@ -150,26 +218,33 @@ function Sidebar() {
                   icon={<SimCardOutlined />}
                 />
               </NavLinkItemCollapse>
-
               <NavLinkItem
                 to="airtime"
-                title="Airtime & Data Bundle"
+                title="Airtime & Data"
                 icon={<CardMembership />}
               />
-
-              {/* SMS  */}
             </List>
 
             <List
+              disablePadding
               subheader={
                 <ListSubheader
-                  sx={{ color: "primary.main" }}
                   component="div"
-                  id="nested-list-subheader"
+                  sx={{
+                    bgcolor: "transparent",
+                    color: theme.palette.text.secondary,
+                    fontWeight: 600,
+                    fontSize: "0.75rem",
+                    lineHeight: 2.5,
+                    letterSpacing: "0.5px",
+                    textTransform: "uppercase",
+                    px: 1,
+                  }}
                 >
                   Account
                 </ListSubheader>
               }
+              sx={{ mt: 3 }}
             >
               <NavLinkItem
                 to="profile"
@@ -181,8 +256,15 @@ function Sidebar() {
                 title="Notifications"
                 icon={
                   <Badge
-                    badgeContent={unReadNotifications?.length}
+                    badgeContent={unreadCount}
                     color="error"
+                    sx={{
+                      "& .MuiBadge-badge": {
+                        animation:
+                          unreadCount > 0 ? `${pulse} 1.5s infinite` : "none",
+                        transition: theme.transitions.create("transform"),
+                      },
+                    }}
                   >
                     <NotificationsOutlined />
                   </Badge>
@@ -194,34 +276,53 @@ function Sidebar() {
                 icon={<WalletOutlined />}
               />
               <NavLinkItem
-                to="/transactions"
+                to="transactions"
                 title="Transactions"
                 icon={<NoteAltOutlined />}
               />
-              <Stack
-                direction="row"
-                columnGap={3}
+
+              <ListItemButton
+                onClick={handleLogout}
                 sx={{
-                  padding: 2,
-                  cursor: "pointer",
+                  borderRadius: 2,
+                  my: 0.5,
+                  px: 1.5,
+                  py: 1,
+                  color: theme.palette.error.main,
+                  transition: theme.transitions.create([
+                    "background-color",
+                    "color",
+                  ]),
                   "&:hover": {
-                    backgroundColor: palette.grey[300],
+                    bgcolor: alpha(theme.palette.error.main, 0.08),
                   },
                 }}
-                onClick={handleLogOut}
               >
-                <ExitToAppRounded />
-
-                <Typography variant="button">Log Out</Typography>
-              </Stack>
+                <ListItemIcon
+                  sx={{
+                    minWidth: 40,
+                    color: "inherit",
+                    transition: theme.transitions.create("transform"),
+                    "&:hover": { transform: "scale(1.1)" },
+                  }}
+                >
+                  <ExitToAppRounded />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Log Out"
+                  primaryTypographyProps={{
+                    variant: "body2",
+                    fontWeight: 500,
+                  }}
+                />
+              </ListItemButton>
             </List>
           </>
         ) : (
+          // Unauthenticated user
           <>
-            <List>
+            <List disablePadding>
               <NavLinkItem to="/" title="Home" icon={<DashboardRounded />} />
-
-              {/* E Voucher */}
               <NavLinkItem
                 to="evoucher"
                 title="E-Voucher"
@@ -230,60 +331,115 @@ function Sidebar() {
               <NavLinkItem
                 to="electricity"
                 title="Prepaid Units"
-                icon={<MoneyRounded htmlColor="#333" />}
+                icon={<MoneyRounded />}
               />
               <NavLinkItem
                 to="airtime"
-                title="Airtime & Data Bundle"
+                title="Airtime & Data"
                 icon={<CardMembership />}
               />
             </List>
 
             <List
+              disablePadding
               subheader={
-                <ListSubheader component="div" id="nested-list-subheader">
+                <ListSubheader
+                  component="div"
+                  sx={{
+                    bgcolor: "transparent",
+                    color: theme.palette.text.secondary,
+                    fontWeight: 600,
+                    fontSize: "0.75rem",
+                    lineHeight: 2.5,
+                    letterSpacing: "0.5px",
+                    textTransform: "uppercase",
+                    px: 1,
+                  }}
+                >
                   Account
                 </ListSubheader>
               }
+              sx={{ mt: 3 }}
             >
-              <>
-                <Stack
-                  columnGap={3}
+              <ListItemButton
+                component={Link}
+                to="/user/login"
+                state={{ path: pathname }}
+                sx={{
+                  borderRadius: 2,
+                  my: 0.5,
+                  px: 1.5,
+                  py: 1,
+                  transition: theme.transitions.create("background-color"),
+                  "&:hover": {
+                    bgcolor: alpha(theme.palette.primary.main, 0.06),
+                  },
+                }}
+              >
+                <ListItemIcon
                   sx={{
-                    padding: 2,
-                    cursor: "pointer",
+                    minWidth: 40,
+                    color: theme.palette.text.secondary,
+                    transition: theme.transitions.create("transform"),
+                    "&:hover": { transform: "scale(1.1)" },
                   }}
-                  spacing={2}
                 >
-                  <Link
-                    to="/user/login"
-                    state={{ path: pathname }}
-                    className="nav-item"
-                  >
-                    Login
-                  </Link>
+                  <PersonOutlined />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Login"
+                  primaryTypographyProps={{
+                    variant: "body2",
+                    fontWeight: 500,
+                  }}
+                />
+              </ListItemButton>
 
-                  <Link
-                    to="/user/register"
-                    state={{ path: pathname }}
-                    className="nav-item"
-                    style={{ backgroundColor: "var(--primary)", color: "#fff" }}
-                  >
-                    Sign up
-                  </Link>
-                </Stack>
-              </>
+              <ListItemButton
+                component={Link}
+                to="/user/register"
+                state={{ path: pathname }}
+                sx={{
+                  borderRadius: 2,
+                  my: 0.5,
+                  px: 1.5,
+                  py: 1,
+                  bgcolor: theme.palette.primary.main,
+                  color: "white",
+                  transition: theme.transitions.create([
+                    "background-color",
+                    "box-shadow",
+                  ]),
+                  "&:hover": {
+                    bgcolor: theme.palette.primary.dark,
+                    boxShadow: theme.shadows[4],
+                  },
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    minWidth: 40,
+                    color: "inherit",
+                    transition: theme.transitions.create("transform"),
+                    "&:hover": { transform: "scale(1.1)" },
+                  }}
+                >
+                  <PersonOutlined />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Sign Up"
+                  primaryTypographyProps={{
+                    variant: "body2",
+                    fontWeight: 600,
+                  }}
+                />
+              </ListItemButton>
             </List>
           </>
         )}
-      </Stack>
+      </Box>
     </Drawer>
   );
 }
 
 export default Sidebar;
-
-Sidebar.proptype = {
-  openSidebar: PropTypes.bool,
-  setOpenSidebar: PropTypes.func,
-};

@@ -1,8 +1,14 @@
-import { ArrowBack, ArrowDropDown } from "@mui/icons-material";
+import {
+  ArrowBack,
+  ArrowDropDown,
+  CheckCircle,
+  Cancel,
+} from "@mui/icons-material";
 import {
   Button,
   Container,
   Divider,
+  Grid,
   IconButton,
   List,
   ListItem,
@@ -10,179 +16,263 @@ import {
   Paper,
   Stack,
   Typography,
+  Skeleton,
+  Chip,
+  Box,
 } from "@mui/material";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { getCategory } from "../../api/categoryAPI";
-import PayLoading from "../PayLoading";
 import { getVoucherDetails } from "../../api/voucherAPI";
 import { currencyFormatter } from "../../constants";
-import moment from "moment";
-import MainDropdown from "../dropdowns/MainDropdown";
-import Active from "../Active";
 
 function CategoryDetails() {
   const { category, id } = useParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const isTicket = ["cinema", "stadium", "bus"];
+  const isTicket = ["cinema", "stadium", "bus"].includes(category);
 
-  const info = useQuery({
+  // Fetch category details
+  const {
+    data: categoryData,
+    isLoading: categoryLoading,
+    isError: categoryError,
+    error: categoryErrorObj,
+  } = useQuery({
     queryKey: ["category", id],
     queryFn: () => getCategory(id),
     initialData: queryClient
       .getQueryData(["category"])
-      ?.filter((item) => item?._id === id),
+      ?.find((item) => item?.id === id),
     enabled: !!id,
   });
 
-  const vouchers = useQuery({
+  // Fetch voucher statistics
+  const {
+    data: voucherStats,
+    isLoading: statsLoading,
+    isError: statsError,
+  } = useQuery({
     queryKey: ["voucher", category, id],
     queryFn: () => getVoucherDetails(id),
     enabled: !!category && !!id,
   });
 
-  if (info.isLoading) {
-    return <PayLoading />;
-  }
+  const handleBack = () => navigate(-1);
 
-  if (info.isError) {
+  // Loading state with skeleton
+  if (categoryLoading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <Typography>{info.error}</Typography>
-      </div>
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Box sx={{ display: "flex", alignItems: "center", mb: 4 }}>
+          <IconButton onClick={handleBack} sx={{ mr: 2 }}>
+            <ArrowBack />
+          </IconButton>
+          <Skeleton variant="text" width={200} height={40} />
+        </Box>
+        <Paper elevation={0} sx={{ p: 3, mb: 4 }}>
+          <Skeleton variant="rectangular" height={200} />
+        </Paper>
+        <Skeleton variant="rectangular" height={150} />
+      </Container>
     );
   }
 
-  return (
-    <Container maxWidth="md">
-      <IconButton>
-        <Link to={-1} style={{ color: "var(--primary)" }}>
-          <ArrowBack />
-        </Link>
-      </IconButton>
-
-      <Paper elevation={0} sx={{ position: "relative", p: 2, my: 5 }}>
-        <Typography variant="h3" color="warning.main">
-          {info?.data?.voucherType}
+  if (categoryError) {
+    return (
+      <Container maxWidth="md" sx={{ py: 4, textAlign: "center" }}>
+        <Typography color="error">
+          Error loading category: {categoryErrorObj?.message}
         </Typography>
-        {category === "university" && (
-          <Typography variant="body1">
-            {info?.data?.details?.formType}
-          </Typography>
-        )}
-        {!["cinema", "stadium"].includes(category) && (
-          <Typography variant="h4">
-            {currencyFormatter(info?.data?.price)}
-          </Typography>
-        )}
+        <Button variant="contained" onClick={() => navigate(-1)} sx={{ mt: 2 }}>
+          Go Back
+        </Button>
+      </Container>
+    );
+  }
 
-        <Active
-          active={info?.data?.active}
-          style={{
-            position: "absolute",
-            top: 30,
-            right: 30,
-          }}
+  // Destructure data
+  const {
+    name: voucherType,
+    price,
+    details,
+    active,
+    year,
+  } = categoryData || {};
+  const pricing = details?.pricing || [];
+  const formType = details?.formType;
+
+  // Stats
+  const {
+    new: newVouchers = 0,
+    sold = 0,
+    reserved = 0,
+    used = 0,
+    expired = 0,
+    total = 0,
+  } = voucherStats || {};
+
+  return (
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* Header with back button and title */}
+      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 4 }}>
+        <IconButton onClick={handleBack} aria-label="go back">
+          <ArrowBack />
+        </IconButton>
+        <Typography variant="h4" component="h1" fontWeight="bold">
+          {voucherType || "Category Details"}
+        </Typography>
+        <Box sx={{ flexGrow: 1 }} />
+        <Chip
+          label={active ? "Active" : "Inactive"}
+          color={active ? "success" : "error"}
+          variant="outlined"
+          icon={active ? <CheckCircle /> : <Cancel />}
         />
+      </Stack>
 
-        {["cinema", "waec", "stadium"].includes(category) && (
-          <>
-            <Button
-              variant="outlined"
-              className="dropdown-trigger"
-              sx={{
-                position: "relative",
-                mt: 3,
-                borderRadius: 1,
-              }}
-              endIcon={<ArrowDropDown />}
-            >
-              Pricing
-              <MainDropdown>
-                <List sx={{ minWidth: 200, maxHeight: 200, overflow: "auto" }}>
-                  {info?.data?.details?.pricing?.map((item) => (
-                    <ListItem key={item.id}>
+      <Grid container spacing={4}>
+        {/* Main Info Card */}
+        <Grid item xs={12} md={6}>
+          <Paper
+            elevation={3}
+            sx={{
+              p: 3,
+              height: "100%",
+              borderRadius: 3,
+              background: "linear-gradient(135deg, #f5f7fa 0%, #fff 100%)",
+            }}
+          >
+            <Stack spacing={2}>
+              <Typography
+                variant="h3"
+                component="div"
+                fontWeight="bold"
+                color="primary"
+              >
+                {voucherType}
+              </Typography>
+              {category === "university" && formType && (
+                <Typography variant="body1" color="text.secondary">
+                  {formType}
+                </Typography>
+              )}
+              {!["cinema", "stadium"].includes(category) && price && (
+                <Typography variant="h4" color="secondary.main">
+                  {currencyFormatter(price)}
+                </Typography>
+              )}
+              {year && (
+                <Typography variant="body2" color="text.secondary">
+                  Year: {year}
+                </Typography>
+              )}
+            </Stack>
+          </Paper>
+        </Grid>
+
+        {/* Pricing Dropdown (if applicable) */}
+        {["cinema", "waec", "stadium"].includes(category) &&
+          pricing.length > 0 && (
+            <Grid item xs={12} md={6}>
+              <Paper
+                elevation={3}
+                sx={{ p: 3, borderRadius: 3, height: "100%" }}
+              >
+                <Typography variant="h6" gutterBottom>
+                  Pricing Options
+                </Typography>
+                View Pricing Details
+                <List
+                  sx={{
+                    minWidth: 220,
+                    maxHeight: 300,
+                    overflow: "auto",
+                    p: 0,
+                  }}
+                >
+                  {pricing.map((item) => (
+                    <ListItem key={item.id} divider>
                       <ListItemText
-                        primary={`${item.type} ${
-                          ["cinema", "waec", "stadium"].includes(category)
-                            ? "ticket"
-                            : "checker"
-                        }`}
-                        primaryTypographyProps={{
-                          color: "primary.main",
-                          fontWeight: "bolder",
-                          fontSize: 13,
-                        }}
-                        secondary={currencyFormatter(item?.price)}
-                        secondaryTypographyProps={{ fontSize: 12 }}
+                        primary={`${item.type} ${category === "waec" ? "Checker" : "Ticket"}`}
+                        primaryTypographyProps={{ fontWeight: "bold" }}
+                        secondary={currencyFormatter(item.price)}
+                        secondaryTypographyProps={{ color: "primary.main" }}
                       />
                     </ListItem>
                   ))}
                 </List>
-              </MainDropdown>
-            </Button>
-          </>
-        )}
-      </Paper>
-      <Typography
-        sx={{
-          backgroundColor: "primary.main",
-          color: "#fff",
-          p: 1,
-          mb: 5,
-        }}
-        paragraph
-      >
-        Voucher/Tickets Information
-      </Typography>
-      <Paper elevation={0} sx={{ p: 2 }}>
-        <Stack direction={{ xs: "column", md: "row" }}>
-          <ListItemText
-            primary={vouchers?.data?.new}
-            secondary="New"
-            secondaryTypographyProps={{ color: "warning.main" }}
-          />
-          <ListItemText
-            primary={vouchers?.data?.sold}
-            secondary="Sold"
-            secondaryTypographyProps={{ color: "warning.main" }}
-          />
-          {isTicket.includes(category) && (
-            <>
-              {" "}
-              <ListItemText
-                primary={vouchers?.data?.used}
-                secondary="Used"
-                secondaryTypographyProps={{ color: "warning.main" }}
-              />
-              <ListItemText
-                primary={vouchers?.data?.expired}
-                secondary="Expired"
-                secondaryTypographyProps={{ color: "warning.main" }}
-              />
-            </>
+              </Paper>
+            </Grid>
           )}
-        </Stack>
-        <Divider />
-        <Typography
-          variant="h3"
-          textAlign="right"
-          width="100%"
-          sx={{ display: "flex", justifyContent: "space-between" }}
-        >
-          <span> TOTAL</span>{" "}
-          <b style={{ color: "var(--secondary)" }}>{vouchers?.data?.total}</b>
-        </Typography>
-      </Paper>
+
+        {/* Voucher Statistics */}
+        <Grid item xs={12}>
+          <Paper elevation={2} sx={{ p: 3, borderRadius: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Voucher / Ticket Statistics
+            </Typography>
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid item xs={6} sm={3}>
+                <StatCard label="New" value={newVouchers} color="info" />
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <StatCard label="Sold" value={sold} color="warning" />
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <StatCard label="Reserved" value={reserved} color="error" />
+              </Grid>
+              {isTicket && (
+                <>
+                  <Grid item xs={6} sm={3}>
+                    <StatCard label="Used" value={used} color="success" />
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <StatCard label="Expired" value={expired} color="error" />
+                  </Grid>
+                </>
+              )}
+            </Grid>
+            <Divider sx={{ my: 2 }} />
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+            >
+              <Typography variant="h6" fontWeight="bold">
+                TOTAL
+              </Typography>
+              <Typography variant="h5" fontWeight="bold" color="primary">
+                {total}
+              </Typography>
+            </Stack>
+          </Paper>
+        </Grid>
+      </Grid>
     </Container>
   );
 }
+
+// Helper component for statistics cards
+const StatCard = ({ label, value, color }) => (
+  <Paper
+    elevation={0}
+    sx={{
+      p: 2,
+      textAlign: "center",
+      bgcolor: `${color}.50`,
+      borderRadius: 2,
+      border: `1px solid ${color}.200`,
+    }}
+  >
+    <Typography variant="h4" fontWeight="bold" color={`${color}.main`}>
+      {value}
+    </Typography>
+    <Typography variant="body2" color="text.secondary">
+      {label}
+    </Typography>
+  </Paper>
+);
 
 export default CategoryDetails;

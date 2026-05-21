@@ -422,7 +422,7 @@ export const waecCategoryColumns = [
                   <ListItem key={item.id}>
                     <ListItemText
                       primary={`${item.type} checker(s) for ${currencyFormatter(
-                        item?.price
+                        item?.price,
                       )}`}
                       primaryTypographyProps={{
                         fontSize: 10,
@@ -491,10 +491,10 @@ export const TICKETS_COLUMNS = [
           status === "new"
             ? "success"
             : status === "sold"
-            ? "info"
-            : status === "used"
-            ? "error"
-            : "warning"
+              ? "info"
+              : status === "used"
+                ? "error"
+                : "warning"
         }
         size="small"
         label={_.capitalize(status)}
@@ -517,8 +517,8 @@ export const TICKETS_COLUMNS = [
       return category === "bus"
         ? details?.seatNo
         : ["stadium", "cinema"].includes(category)
-        ? details?.type
-        : null;
+          ? details?.type
+          : null;
     },
   },
 ];
@@ -1204,8 +1204,8 @@ export const airtimeTransactionsColumns = (type) => [
           status === "completed" && Boolean(isProcessed)
             ? "Completed"
             : status === "refunded" && Boolean(isProcessed)
-            ? "Refunded"
-            : "Pending"
+              ? "Refunded"
+              : "Pending"
         }
         sx={{
           color: "#fff",
@@ -1213,22 +1213,22 @@ export const airtimeTransactionsColumns = (type) => [
             status === "completed" && Boolean(isProcessed)
               ? "success.darker"
               : status === "refunded" && Boolean(isProcessed)
-              ? "secondary.main"
-              : "warning.darker",
+                ? "secondary.main"
+                : "warning.darker",
           borderRadius: 1,
         }}
       >
         {status === "completed" && Boolean(isProcessed)
           ? "Completed"
           : status === "refunded" && Boolean(isProcessed)
-          ? "Refunded"
-          : "Pending"}
+            ? "Refunded"
+            : "Pending"}
       </Button>
     ),
   },
   {
     title: "TRANSACTION Id",
-    field: "_id",
+    field: "id",
     // hidden: true,
   },
   {
@@ -1303,8 +1303,8 @@ export const transactionsColumns = (type) => [
           status === "completed"
             ? "Completed"
             : status === "refunded"
-            ? "Refunded"
-            : "Pending"
+              ? "Refunded"
+              : "Pending"
         }
         sx={{
           color: "#fff",
@@ -1312,22 +1312,22 @@ export const transactionsColumns = (type) => [
             status === "completed"
               ? "success.darker"
               : status === "refunded"
-              ? "secondary.main"
-              : "warning.darker",
+                ? "secondary.main"
+                : "warning.darker",
           borderRadius: 1,
         }}
       >
         {status === "completed"
           ? "Completed"
           : status === "refunded"
-          ? "Refunded"
-          : "Pending"}
+            ? "Refunded"
+            : "Pending"}
       </Button>
     ),
   },
   {
     title: "TRANSACTION Id",
-    field: "_id",
+    field: "id",
     // hidden: true,
   },
   {
@@ -1347,15 +1347,15 @@ export const transactionsColumns = (type) => [
         render: (row) => row?.meter,
       }
     : type === "Bundle"
-    ? {
-        title: "Bundle Name",
-        field: "kind",
-      }
-    : {
-        title: "Voucher/Ticket",
-        field: "voucherType",
-        render: (row) => row?.voucherType,
-      },
+      ? {
+          title: "Bundle Name",
+          field: "kind",
+        }
+      : {
+          title: "Voucher/Ticket",
+          field: "voucherType",
+          render: (row) => row?.voucherType,
+        },
   type === "Bundle"
     ? { title: "Volume", field: "volume" }
     : {
@@ -1470,7 +1470,7 @@ export const WALLET_TOPUP_TRANSACTIONS = [
   },
   {
     title: "ID",
-    field: "_id",
+    field: "id",
     export: true,
   },
   { title: "COMMENT", field: "comment", hidden: true },
@@ -1525,3 +1525,145 @@ export const WALLET_TOPUP_TRANSACTIONS = [
     },
   },
 ];
+
+// export const WALLET_TOPUP_TRANSACTIONS = [
+//   {
+//     field: "createdAt",
+//     headerName: "DATE",
+//     flex: 1.2,
+//     minWidth: 160,
+
+//     renderCell: (params) => {
+//       const date = params.row.createdAt;
+
+//       return (
+//         <ListItemText
+//           primary={moment(date).format("Do MMM, YYYY")}
+//           secondary={moment(date).format("h:mm a")}
+//           primaryTypographyProps={{
+//             fontSize: 12,
+//             color: "primary.main",
+//           }}
+//           secondaryTypographyProps={{
+//             fontSize: 12,
+//             color: "info.main",
+//           }}
+//         />
+//       );
+//     },
+
+//     // Export formatting
+//     valueFormatter: (params) => moment(params.value).format("YYYY-MM-DD HH:mm"),
+//   },
+
+//   {
+//     field: "status",
+//     headerName: "STATUS",
+//     minWidth: 130,
+
+//     renderCell: (params) => {
+//       const status = params.row.status;
+
+//       return (
+//         <Button
+//           size="small"
+//           sx={{
+//             color: "white",
+//             bgcolor: status === "completed" ? "success.darker" : "error.darker",
+//             borderRadius: 1,
+//             px: 1.5,
+//           }}
+//         >
+//           {status === "failed" ? "Failed" : "Completed"}
+//         </Button>
+//       );
+//     },
+
+//     valueFormatter: (params) =>
+//       params.value === "failed" ? "Failed" : "Completed",
+//   },
+
+//   {
+//     field: "id",
+//     headerName: "ID",
+//     minWidth: 180,
+//   },
+
+//   // {
+//   //   field: "comment",
+//   //   headerName: "COMMENT",
+//   //   hide: true,
+//   // },
+
+//   {
+//     field: "type",
+//     headerName: "TYPE",
+//     minWidth: 160,
+
+//     renderCell: (params) => {
+//       const { type, comment } = params.row;
+
+//       const isCredit = ["deposit", "refund"].includes(type);
+
+//       return (
+//         <Button
+//           startIcon={
+//             isCredit ? (
+//               <ArrowUpward color="success" />
+//             ) : (
+//               <ArrowDownward color="error" />
+//             )
+//           }
+//           sx={{ color: "secondary.main" }}
+//         >
+//           {comment}
+//         </Button>
+//       );
+//     },
+
+//     valueFormatter: (params) => params.row.comment,
+//   },
+
+//   {
+//     field: "amount",
+//     headerName: "AMOUNT",
+//     type: "number",
+//     minWidth: 140,
+
+//     renderCell: (params) => {
+//       const amount = params.value;
+
+//       return `GHS ${Number(amount).toFixed(2)}`;
+//     },
+
+//     valueFormatter: (params) => `GHS ${Number(params.value).toFixed(2)}`,
+//   },
+
+//   {
+//     field: "details",
+//     headerName: "DETAILS",
+//     minWidth: 200,
+//     sortable: false,
+//     filterable: false,
+
+//     renderCell: (params) => {
+//       const { wallet, type, amount } = params.row;
+//       const isDeposit = type === "deposit";
+
+//       return (
+//         <Box>
+//           <ListItemText
+//             primary={wallet}
+//             secondary={`${isDeposit ? "+" : "-"} ${amount}`}
+//             secondaryTypographyProps={{
+//               color: isDeposit ? "success.main" : "error.main",
+//               fontWeight: 700,
+//             }}
+//           />
+//         </Box>
+//       );
+//     },
+
+//     disableExport: true,
+//   },
+// ];

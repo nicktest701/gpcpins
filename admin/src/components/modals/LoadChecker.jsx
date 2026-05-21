@@ -55,6 +55,30 @@ const LoadChecker = ({ open, setOpen }) => {
     enabled: !!searchParams.get("_pid"),
   });
 
+  const normalizeKey = (key) => key?.toString().trim().toLowerCase();
+
+  const mapRow = (row) => {
+    const normalized = {};
+
+    Object.keys(row).forEach((key) => {
+      const normalizedKey = normalizeKey(key);
+
+      if (normalizedKey === "pin") {
+        normalized.pin = row[key];
+      }
+
+      if (normalizedKey === "serial") {
+        normalized.serial = row[key];
+      }
+    });
+
+    return normalized;
+  };
+
+  const sanitizeData = (rows = []) => {
+    return rows.map(mapRow).filter((row) => row.pin || row.serial); // remove empty rows
+  };
+
   //LOAD Checkers from file excel,csv
   function handleLoadFile(e) {
     const files = e.target.files[0];
@@ -67,15 +91,22 @@ const LoadChecker = ({ open, setOpen }) => {
         : reader.readAsArrayBuffer(files);
 
       reader.onload = function (event) {
-        let checkers = [];
+        let rawData = [];
 
         if (files.type === XLSX_FILE_TYPE || files.type === XLS_FILE_TYPE) {
-          checkers = readXLSX(event.target.result);
+          rawData = readXLSX(event.target.result);
         }
 
         if (files.type === CSV_FILE_TYPE) {
-          checkers = readCSV(event.target.result);
+          rawData = readCSV(event.target.result);
         }
+
+        // ✅ normalize + extract only pin & serial
+        const checkers = sanitizeData(rawData).map((item, index) => ({
+          id: index + 1,
+          pin: item.pin || "",
+          serial: item.serial || "",
+        }));
 
         if (checkers?.length !== 0) {
           if (category === "bus") {
@@ -83,15 +114,17 @@ const LoadChecker = ({ open, setOpen }) => {
 
             const newCheckers = slicedCheckers?.map((checker, index) => {
               return {
-                category: categoryDetails?.data?._id,
-                voucherType: categoryDetails?.data?.voucherType,
+                category: categoryDetails?.data?.id,
+                voucherType: categoryDetails?.data?.name,
                 ...checker,
-                type: index + 1,
+                type: checker.id,
                 details: {
-                  seatNo: index + 1,
+                  seatNo: checker.id,
                 },
               };
             });
+
+      
 
             customDispatch({
               type: "loadedChecker",
@@ -107,8 +140,8 @@ const LoadChecker = ({ open, setOpen }) => {
             const newCheckers = slicedCheckers?.map((checker, index) => {
               return {
                 ...checker,
-                category: categoryDetails?.data?._id,
-                voucherType: categoryDetails?.data?.voucherType,
+                category: categoryDetails?.data?.id,
+                voucherType: categoryDetails?.data?.name,
                 type: duplicates[index],
                 details: {
                   type: duplicates[index],
@@ -127,8 +160,8 @@ const LoadChecker = ({ open, setOpen }) => {
             const newCheckers = checkers?.map((checker) => {
               return {
                 ...checker,
-                category: categoryDetails?.data?._id,
-                voucherType: categoryDetails?.data?.voucherType,
+                category: categoryDetails?.data?.id,
+                voucherType: categoryDetails?.data?.name,
               };
             });
 
@@ -255,7 +288,10 @@ const LoadChecker = ({ open, setOpen }) => {
                   label="Type"
                   id="type"
                   size="small"
-                  value={categoryDetails?.data?.voucherType || "F"}
+                  value={
+                    `${categoryDetails?.data?.name}-${categoryDetails?.data?.year}` ||
+                    "NEW VOUCHER"
+                  }
                   inputProps={{
                     readOnly: true,
                     color: "primary",
@@ -343,7 +379,7 @@ const LoadChecker = ({ open, setOpen }) => {
                       fontWeight: "600",
                     }}
                   >
-                    {categoryDetails?.data?.voucherType} Serials & Pincodes
+                    {categoryDetails?.data?.name} Serials & Pincodes
                   </Typography>
                 }
               />

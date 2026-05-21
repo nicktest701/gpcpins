@@ -23,6 +23,7 @@ const ViewEmployees = () => {
   const employees = useQuery({
     queryKey: ["employees"],
     queryFn: ()=>getAllEmployees(),
+    initialData: [],
   });
 
   const handleOpenNewEmployee = () => setOpenNewEmployee(true);
@@ -31,7 +32,7 @@ const ViewEmployees = () => {
 
   //VIEW Employee Details
   const handleViewEmployee = (rowData) => {
-    navigate(`/employees/${rowData?._id}`);
+    navigate(`/employees/${rowData?.id}`);
   };
 
   const columns = [

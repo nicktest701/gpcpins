@@ -381,7 +381,7 @@ export const airtimeTransactionsColumns = [
   },
   {
     title: "Id",
-    field: "_id",
+    field: "id",
     // hidden: true,
   },
 
@@ -546,7 +546,7 @@ export const WALLET_TOPUP_TRANSACTIONS = [
   },
   {
     title: "TRANSACTION ID",
-    field: "_id",
+    field: "id",
     export: true,
   },
   {
@@ -571,8 +571,8 @@ export const WALLET_TOPUP_TRANSACTIONS = [
 ];
 
 export const LOGS_COLUMNS = [
-  { title: "ID", field: "_id", hidden: true },
-  { title: "Modified At", field: "modifiedAt" },
+  { title: "ID", field: "id", hidden: true },
+  { title: "Logged At", field: "loggedAt" },
   { title: "Activity", field: "title" },
   {
     title: "Severity",

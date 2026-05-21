@@ -2,7 +2,8 @@ import { useContext, useState } from "react";
 import _ from "lodash";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import MaterialTable, { MTableToolbar } from "material-table";
+import MaterialTable from '@material-table/core';
+ import { MTableToolbar } from '@material-table/core';
 import Swal from "sweetalert2";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { tableIcons } from "../../config/tableIcons";
@@ -41,30 +42,32 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
     setSelectedItems(ids);
   };
 
-  const { mutateAsync } = useMutation({
-    mutationFn: deleteCategory,
-  });
-  function removeCategory(id) {
-    Swal.fire({
-      title: "Removing",
-      text: "Do you want to remove ?",
-      showCancelButton: true,
-    }).then(({ isConfirmed }) => {
-      if (isConfirmed) {
-        mutateAsync(id, {
-          onSettled: () => {
-            queryClient.invalidateQueries(["category"]);
-          },
-          onSuccess: (data) => {
-            customDispatch(globalAlertType("info", data));
-          },
-          onError: (error) => {
-            customDispatch(globalAlertType("error", error));
-          },
-        });
-      }
-    });
-  }
+  // const { mutateAsync } = useMutation({
+  //   mutationFn: deleteCategory,
+  // });
+  // function removeCategory(id) {
+  //   Swal.fire({
+  //     title: "Removing",
+  //     text: "Do you want to remove ?",
+  //     showCancelButton: true,
+  //   }).then(({ isConfirmed }) => {
+  //     if (isConfirmed) {
+  //       mutateAsync(id, {
+  //         onSettled: () => {
+  //           queryClient.invalidateQueries(["category"]);
+  //         },
+  //         onSuccess: (data) => {
+  //           customDispatch(globalAlertType("info", data));
+  //         },
+  //         onError: (error) => {
+  //           customDispatch(globalAlertType("error", error));
+  //         },
+  //       });
+  //     }
+  //   });
+  // }
+
+
 
   const { mutateAsync: deleteMoreAsync } = useMutation({
     mutationFn: deleteMoreCategory,
@@ -148,6 +151,7 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
     });
   };
 
+ 
   const IS_NEW_AVAILABLE = user?.permissions?.includes(
     getCreatePermission(category)
   );

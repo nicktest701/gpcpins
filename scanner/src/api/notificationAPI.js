@@ -4,7 +4,7 @@ export const getAllNotifications = async (title) => {
   try {
     const res = await api({
       method: 'GET',
-      url: `/notifications/verifier`,
+      url: `/notifications/verifer`,
       params: {
         title
       }
@@ -16,6 +16,20 @@ export const getAllNotifications = async (title) => {
   }
 };
 
+
+export const markAllNotificationsAsRead = async (ids) => {
+  try {
+    const res = await api({
+      method: "PUT",
+      url: `/notifications/mark-all-read`,
+      data: { ids },
+    });
+
+    return res.data;
+  } catch (error) {
+    throw error.response.data;
+  }
+};
 
 
 export const getNotification = async (id) => {

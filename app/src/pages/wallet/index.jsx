@@ -15,7 +15,6 @@ import { PaymentsRounded } from "@mui/icons-material";
 import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
 import { useSearchParams } from "react-router-dom";
 import TopUpRequest from "./TopUpRequest";
-import { getWalletBalance, getWalletTransaction } from "../../api/userAPI";
 import { AuthContext } from "../../context/providers/AuthProvider";
 import { useContext } from "react";
 import { currencyFormatter } from "../../constants";
@@ -24,6 +23,7 @@ import CustomDateRangePicker from "../../components/pickers/CustomDateRangePicke
 import CustomRangePicker from "../../components/pickers/CustomRangePicker";
 import CustomTotal from "../../components/custom/CustomTotal";
 import ChangePin from "./ChangePin";
+import { getWalletBalance, getWalletTransaction } from "../../api/walletAPI";
 function Wallet() {
   const { user } = useContext(AuthContext);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -104,6 +104,8 @@ function Wallet() {
           isLoading={transactions.isLoading}
           columns={WALLET_TOPUP_TRANSACTIONS}
           data={transactions?.data}
+          
+
           onRefresh={transactions.refetch}
           showExportButton={true}
           search

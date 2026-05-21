@@ -1,42 +1,38 @@
-import moment from 'moment';
+import moment from "moment";
 
 export function getCategoryData(data) {
-  switch (data[0].category) {
-
-
-    case 'bus':
-      return data?.map(
-        ({ _id, category, voucherType, price, details, active }) => {
-          const date = moment(new Date(details.date)).format('dddd,LL');
-          const time = moment(new Date(details.time)).format('h:mm a');
-          return {
-            id: _id,
-            category,
-            companyName: details?.companyName,
-            voucherType: `${voucherType} (${date},${time})`,
-            journey: voucherType,
-            report: details.report,
-            date: details.date,
-            time: details.time,
-            logo: details.logo,
-            noOfSeats: details?.noOfSeats,
-            vehicleNo: details?.vehicleNo,
-            price,
-            details,
-            active,
-          };
-        }
-      );
-
-    case 'cinema':
-      return data?.map(({ _id, category, voucherType, details, active }) => {
+  switch (data[0].type) {
+    case "bus":
+      return data?.map(({ id, type, name, price, details, active }) => {
+        const date = moment(new Date(details.date)).format("dddd,LL");
+        const time = moment(new Date(details.time)).format("h:mm a");
         return {
-          id: _id,
-          category,
-          profile: details.cinema,
-          voucherType,
+          id: id,
+          categoryType: type,
           companyName: details?.companyName,
-          movie: voucherType,
+          ticketName: `${name} (${date},${time})`,
+          journey: name,
+          report: details.report,
+          date: details.date,
+          time: details.time,
+          logo: details.logo,
+          noOfSeats: details?.noOfSeats,
+          vehicleNo: details?.vehicleNo,
+          price,
+          details,
+          active,
+        };
+      });
+
+    case "cinema":
+      return data?.map(({ id, type, name, details, active }) => {
+        return {
+          id: id,
+          categoryType: type,
+          profile: details.cinema,
+          ticketName: name,
+          companyName: details?.companyName,
+          movie: name,
           theatre: details.theatre,
           location: details.location,
           date: details.date,
@@ -47,12 +43,12 @@ export function getCategoryData(data) {
         };
       });
 
-    case 'stadium':
-      return data?.map(({ _id, category, voucherType, details, active }) => {
+    case "stadium":
+      return data?.map(({ id, type, name, details, active }) => {
         return {
-          id: _id,
-          voucherType,
-          category,
+          id: id,
+          ticketName: name,
+          categoryType: type,
           companyName: details?.companyName,
           matchType: details?.matchType,
           match: `${details.home} vs ${details.away}`,
@@ -65,29 +61,23 @@ export function getCategoryData(data) {
         };
       });
 
-
-
     default:
-      return []
+      return [];
   }
 }
 
-
-
-
 export function getFormatttedCategory(data) {
-  const { _id, category, voucherType, price, details, active } = data
+  const { id, type, name, price, details, active } = data;
 
-
-  switch (category) {
-
-    case 'bus':
+  switch (type) {
+    case "bus":
       return {
-        id: _id,
-        category,
+        id: id,
+        categoryType: type,
+        ticketName: name,
         companyName: details?.companyName,
-        // voucherType: `${voucherType} (${date},${time})`,
-        journey: voucherType,
+        // ticketName: `${ticketName} (${date},${time})`,
+        journey: name,
         report: details.report,
         date: details.date,
         time: details.time,
@@ -99,17 +89,14 @@ export function getFormatttedCategory(data) {
         active,
       };
 
-
-
-    case 'cinema':
-
+    case "cinema":
       return {
-        id: _id,
-        category,
+        id: id,
+        categoryType: type,
         profile: details.cinema,
-        voucherType,
+        ticketName: name,
         companyName: details?.companyName,
-        movie: voucherType,
+        movie: name,
         theatre: details.theatre,
         location: details.location,
         date: details.date,
@@ -119,13 +106,11 @@ export function getFormatttedCategory(data) {
         active,
       };
 
-
-    case 'stadium':
-
+    case "stadium":
       return {
-        id: _id,
-        voucherType,
-        category,
+        id: id,
+        ticketName: name,
+        categoryType: type,
         companyName: details?.companyName,
         matchType: details?.matchType,
         match: `${details.home} vs ${details.away}`,
@@ -137,8 +122,7 @@ export function getFormatttedCategory(data) {
         active,
       };
 
-
     default:
-      return {}
+      return {};
   }
 }

@@ -52,7 +52,7 @@ const PrepaidTransactions = ({ open, setOpen }) => {
         return date.toLowerCase().lastIndexOf(data.toLowerCase()) > -1;
       },
     },
-    { title: "Id", field: "_id", hidden: true, export: true },
+    { title: "Id", field: "id", hidden: true, export: true },
     { title: "Token", field: "paymentId", hidden: true, export: true },
     { title: "OrderNo", field: "info.orderNo", hidden: true, export: true },
     {
@@ -178,10 +178,10 @@ const PrepaidTransactions = ({ open, setOpen }) => {
       },
     },
 
-    { title: "Email Address", field: "info.email", hidden: true, export: true },
+    { title: "Email Address", field: "email", hidden: true, export: true },
     {
       title: "Mobile Number",
-      field: "info.mobileNo",
+      field: "mobileNo",
       hidden: true,
       export: true,
     },
@@ -217,7 +217,7 @@ const PrepaidTransactions = ({ open, setOpen }) => {
             </MenuItem>
             <MenuItem
               sx={{ fontSize: 13 }}
-              onClick={() => removeTransaction(data?._id)}
+              onClick={() => removeTransaction(data?.id)}
             >
               Remove
             </MenuItem>

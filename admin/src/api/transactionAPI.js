@@ -308,7 +308,7 @@ export const AllAgentsWallet = async () => {
   try {
     const res = await api({
       method: "GET",
-      url: `/transaction/agents/wallet`,
+      url: `/wallet/agents`,
     });
 
     return res.data;
@@ -319,6 +319,7 @@ export const AllAgentsWallet = async () => {
 
 export const topUpWallet = async (data) => {
 
+
   const formData = new FormData();
   formData.append("id", data?.id);
   formData.append("type", data?.type);
@@ -328,12 +329,26 @@ export const topUpWallet = async (data) => {
   try {
     const res = await api({
       method: "POST",
-      url: `/transaction/agents/wallet`,
+      url: `/wallet/topup`,
       data: formData,
 
       headers: {
         "Content-Type": "multipart/form-data",
       },
+    });
+
+    return res.data;
+  } catch (error) {
+    throw error.response.data;
+  }
+};
+
+export const updateWalletPin = async (data) => {
+  try {
+    const res = await api({
+      method: "PUT",
+      url: `/wallet`,
+      data,
     });
 
     return res.data;
@@ -358,11 +373,11 @@ export const getAgentTransaction = async (id) => {
 
 
 
-export const geAllAgentWalletTransaction = async ({ startDate, endDate }) => {
+export const geAllAgentWalletTransactions = async ({ startDate, endDate }) => {
   try {
     const res = await api({
       method: "GET",
-      url: `/transaction/agents/wallet/transaction`,
+      url: `/transaction/agents/wallet/transactions`,
       params: { startDate, endDate, report: false },
     });
 
@@ -376,7 +391,7 @@ export const getAgentWalletTransaction = async (id) => {
   try {
     const res = await api({
       method: "GET",
-      url: `/transaction/agents/wallet/transactions?id=${id}`,
+      url: `/transaction/users/wallet/transactions/${id}`,
     });
 
     return res.data;
@@ -385,14 +400,14 @@ export const getAgentWalletTransaction = async (id) => {
   }
 };
 
-export const geAllAgentWalletTransactionReport = async ({
+export const generateWalletTransactionReport = async ({
   startDate,
   endDate,
 }) => {
   try {
     const res = await api({
       method: "GET",
-      url: `/transaction/agents/wallet/transaction`,
+      url: `/transaction/agents/wallet/transactions`,
       params: { startDate, endDate, report: true },
     });
 
@@ -406,7 +421,7 @@ export const AllUsersWallet = async () => {
   try {
     const res = await api({
       method: "GET",
-      url: `/transaction/users/wallet`,
+      url: `/wallet/users`,
     });
 
     return res.data;
@@ -415,31 +430,7 @@ export const AllUsersWallet = async () => {
   }
 };
 
-export const topUpUserWallet = async (data) => {
-  const formData = new FormData();
-  formData.append("id", data?.id);
-  formData.append("type", data?.type);
-  formData.append("amount", data?.amount);
-  formData.append("comment", data?.comment);
-  formData.append("attachment", data?.attachment);
 
-
-  try {
-    const res = await api({
-      method: "POST",
-      url: `/transaction/users/wallet`,
-      data: formData,
-
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
 
 export const geAllUserWalletTransaction = async ({ startDate, endDate }) => {
   try {
@@ -454,6 +445,7 @@ export const geAllUserWalletTransaction = async ({ startDate, endDate }) => {
     throw error.response.data;
   }
 };
+
 export const geAllUserWalletTransactionReport = async ({
   startDate,
   endDate,
@@ -496,33 +488,5 @@ export const getUserWalletTransaction = async (id) => {
   }
 };
 
-export const getAllLogs = async ({ startDate, endDate }) => {
-  try {
-    const res = await api({
-      method: "GET",
-      url: `/transaction/logs`,
-      params: {
-        startDate,
-        endDate,
-      },
-    });
 
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
 
-export const removeLogs = async (data) => {
-  try {
-    const res = await api({
-      method: "PUT",
-      url: `/transaction/logs`,
-      data
-    });
-
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};

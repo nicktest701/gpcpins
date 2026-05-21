@@ -47,7 +47,7 @@ import {
   SettingsRounded,
   NotificationsRounded,
   Refresh,
-  StackedBarChartRounded
+  StackedBarChartRounded,
 } from "@mui/icons-material";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -72,11 +72,13 @@ function Sidebar() {
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
     initial: queryClient?.getQueryData(["notifications"]),
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const unReadNotifications = useMemo(
     () => notifications?.data?.filter((item) => item?.active === 1),
-    [notifications.data]
+    [notifications.data],
   );
 
   useEffect(() => {
@@ -180,7 +182,7 @@ function Sidebar() {
                     )}
 
                     {user?.permissions?.includes(
-                      "University & Polytechnic Forms"
+                      "University & Polytechnic Forms",
                     ) && (
                       <NavLinkItem
                         to="evoucher/university"
@@ -236,7 +238,7 @@ function Sidebar() {
                       />
                     )}
                     {user?.permissions?.includes(
-                      "View Prepaid Transaction"
+                      "View Prepaid Transaction",
                     ) && (
                       <NavLinkItem
                         to="electricity/transactions"
@@ -253,7 +255,7 @@ function Sidebar() {
                     title={toggleWidth ? "" : "Airtime"}
                   >
                     {user?.permissions?.includes(
-                      "View Bulk Airtime Transaction"
+                      "View Bulk Airtime Transaction",
                     ) && (
                       <NavLinkItem
                         to="airtime/transactions"
@@ -327,7 +329,7 @@ function Sidebar() {
                     title={toggleWidth ? "" : "Summary & Reports"}
                   >
                     {user?.permissions?.includes(
-                      "View All Tickets & Voucher Transactions"
+                      "View All Tickets & Voucher Transactions",
                     ) && (
                       <NavLinkItem
                         to="summary/vouchers-tickets"
@@ -336,7 +338,7 @@ function Sidebar() {
                       />
                     )}
                     {user?.permissions?.includes(
-                      "View All Prepaid Units Transactions"
+                      "View All Prepaid Units Transactions",
                     ) && (
                       <NavLinkItem
                         to="summary/prepaid-units"
@@ -345,7 +347,7 @@ function Sidebar() {
                       />
                     )}
                     {user?.permissions?.includes(
-                      "View All Airtime Transactions"
+                      "View All Airtime Transactions",
                     ) && (
                       <NavLinkItem
                         to="summary/airtime"
@@ -354,7 +356,7 @@ function Sidebar() {
                       />
                     )}
                     {user?.permissions?.includes(
-                      "View All Data Bundle Transactions"
+                      "View All Data Bundle Transactions",
                     ) && (
                       <NavLinkItem
                         to="summary/data-bundle"
@@ -365,11 +367,11 @@ function Sidebar() {
                     {/* {user?.permissions?.includes(
                       "View All Data Bundle Transactions"
                     ) && ( */}
-                      <NavLinkItem
-                        to="summary/agent-transactions"
-                        title={toggleWidth ? "" : "Agent Transactions"}
-                        icon={<StackedBarChartRounded />}
-                      />
+                    <NavLinkItem
+                      to="summary/agent-transactions"
+                      title={toggleWidth ? "" : "Agent Transactions"}
+                      icon={<StackedBarChartRounded />}
+                    />
                     {/* )} */}
                     {user?.permissions?.includes("View All Transactions") && (
                       <NavLinkItem
@@ -379,7 +381,7 @@ function Sidebar() {
                       />
                     )}
                     {user?.permissions?.includes(
-                      "View All Transactions Report"
+                      "View All Transactions Report",
                     ) && (
                       <NavLinkItem
                         to="summary/report"
@@ -395,13 +397,13 @@ function Sidebar() {
                     title={toggleWidth ? "" : "Refund Transactions"}
                   >
                     <NavLinkItem
-                      to="refund/details"
+                      to="refund"
                       title={toggleWidth ? "" : "All Refunds"}
                       icon={<FileCopyIcon />}
                     />
 
                     <NavLinkItem
-                      to="refund"
+                      to="refund/money"
                       title={toggleWidth ? "" : "Refund Money"}
                       icon={<FileCopyIcon />}
                     />

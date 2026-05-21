@@ -19,7 +19,6 @@ import { CustomContext } from "../../context/providers/CustomProvider";
 import { AuthContext } from "../../context/providers/AuthProvider";
 import { verifyCode, verifyPin } from "../../config/validation";
 import {
-  getPhoneNumberToken,
   updateWalletPin,
   verifyUserIdentity,
 } from "../../api/userAPI";
@@ -27,6 +26,7 @@ import { generateRandomCode } from "../../config/generateRandomCode";
 import Swal from "sweetalert2";
 import moment from "moment";
 import CustomDatePicker from "../../../../admin/src/components/inputs/CustomDatePicker";
+import { getWalletResetToken } from "../../api/walletAPI";
 
 function ChangePin() {
   const { user } = useContext(AuthContext);
@@ -43,7 +43,7 @@ function ChangePin() {
 
   //Send mobile number verification token
   const sendToken = useQuery({
-    queryFn: getPhoneNumberToken,
+    queryFn: getWalletResetToken,
     queryKey: ["verify-pin-number"],
     enabled: false,
     // !!searchParams.get("view_pin") && searchParams.get("generated") === null,
@@ -57,7 +57,7 @@ function ChangePin() {
 
   //Verify Code
   const { mutateAsync, isLoading } = useMutation({
-    mutationFn: getPhoneNumberToken,
+    mutationFn: getWalletResetToken,
   });
 
   const handleSubmit = () => {

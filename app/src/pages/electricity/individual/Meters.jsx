@@ -1,5 +1,4 @@
 import {
-  Avatar,
   Box,
   Button,
   CircularProgress,
@@ -12,18 +11,15 @@ import {
 import { lazy, useContext, useEffect, useState } from "react";
 import Meter from "../meters/Meter";
 import MeterListItem from "../meters/MeterListItem";
-import ViewMeter from "../meters/ViewMeter";
 import { CustomContext } from "../../../context/providers/CustomProvider";
 import AddMeter from "../meters/AddMeter";
 import UserPayment from "../meters/UserPayment";
 import ConfirmAddMeter from "../meters/ConfirmAddMeter";
 import { useQuery } from "@tanstack/react-query";
 import { getAllMetersByUserId } from "../../../api/meterAPI";
-import { NoteRounded } from "@mui/icons-material";
+
 import { Navigate } from "react-router-dom";
 import { AuthContext } from "../../../context/providers/AuthProvider";
-import { IMAGES } from "../../../constants";
-import { getInitials } from "../../../config/validation";
 
 const PrepaidTransactions = lazy(() => import("./PrepaidTransactions"));
 function Meters() {
@@ -73,38 +69,7 @@ function Meters() {
 
   return (
     <Container sx={{ py: 3 }}>
-      {/* <Container
-        sx={{
-          position: "relative",
-          paddingY: 2,
-          background: `linear-gradient(rgba(0,0,0,0.8),rgba(0,0,0,0.9)),url(${IMAGES.ecg}) no-repeat `,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          color: "#fff",
-          display: "flex",
-          alignItems: "center",
-          gap: 2,
-        }}
-      >
-        <Avatar
-          alt="profile_icon"
-          src={photo}
-          sx={{
-            width: 50,
-            height: 50,
-            bgcolor: "primary.main",
-            textTransform: "uppercase",
-          }}
-        >
-          {getInitials(user?.email[0])}
-        </Avatar>
-        <Stack>
-          <Typography variant="h6" fontWeight="bold">
-            {user?.name}
-          </Typography>
-          <Typography>{user?.email}</Typography>
-        </Stack>
-      </Container> */}
+
 
       <Box paddingY={4}>
         <Typography variant="h6">New Meter</Typography>
@@ -182,7 +147,6 @@ function Meters() {
       </List>
       <AddMeter />
       <ConfirmAddMeter />
-      <ViewMeter />
       <UserPayment />
       <PrepaidTransactions
         open={openTransaction}

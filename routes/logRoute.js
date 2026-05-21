@@ -7,130 +7,107 @@ const knex = require("../db/knex");
 const { verifyToken } = require("../middlewares/verifyToken");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const verifyScanner = require("../middlewares/verifyScanner");
-
+const { parseDateRange } = require("../config/dateConfigs");
 
 // GET All Logs
 router.get(
-    "/logs",
-    verifyToken,
-    verifyAdmin,
-    asyncHandler(async (req, res) => {
-        const { id, isAdmin } = req.user;
-        const { startDate, endDate } = req.query;
+  "/",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { id, isAdmin } = req.user;
+    const { startDate, endDate } = req.query;
 
-        const sDate = moment(startDate).format("YYYY-MM-DD");
-        const eDate = moment(endDate).format("YYYY-MM-DD");
+    const { start, end, error } = parseDateRange(startDate, endDate);
+    if (error) {
+      return res.status(400).json("error fetching logs");
+    }
 
-        let logs = [];
+    let query = knex("vw_user_logs_view").whereBetween("createdAt", [
+      start,
+      end,
+    ]);
 
-        if (isAdmin) {
-            logs = await knex.raw(
-                `SELECT *
-            FROM (
-                SELECT *,DATE(createdAt) AS created_date
-                FROM activity_logs_view
-            ) AS activity_logs_view_ WHERE created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
-                [sDate, eDate]
-            );
-        } else {
-            logs = await knex.raw(
-                `SELECT *
-            FROM (
-                SELECT *,DATE(createdAt) AS created_date
-                FROM activity_logs_view
-            ) AS activity_logs_view_  WHERE employeeId=? AND isActive=1 AND created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
-                [id, sDate, eDate]
-            );
-        }
+    if (!isAdmin) {
+      query.where({ userId: id, is_active: true });
+    }
 
-        return res.status(200).json(logs[0]);
-    })
+    const logs = await query.orderBy("createdAt", "desc").select("*");
+
+    return res.status(200).json(logs);
+  }),
 );
-
-
 
 //Verifier Logs
 router.get(
-    "/verifier",
-    verifyToken, verifyScanner,
-    asyncHandler(async (req, res) => {
-        const { id, isAdmin } = req.user;
-        const { startDate, endDate } = req.query;
+  "/verifier",
+  verifyToken,
+  // verifyScanner,
+  asyncHandler(async (req, res) => {
+    const { id, isAdmin } = req.user;
+    const { startDate, endDate } = req.query;
 
-        const sDate = moment(startDate).format("YYYY-MM-DD");
-        const eDate = moment(endDate).format("YYYY-MM-DD");
+    const { start, end, error } = parseDateRange(startDate, endDate);
+    if (error) {
+      return res.status(400).json("error fetching logs");
+    }
 
-        let logs = [];
+    const verifiers = await knex("vw_users_with_roles")
+      .where({
+        active: true,
+        role: process.env.SCANNER_ID,
+      })
+      .pluck("id"); // 🔥 only get ids (lighter + faster)
 
-        if (isAdmin) {
-            logs = await knex.raw(
-                `SELECT *
-            FROM (
-                SELECT *,DATE(createdAt) AS created_date
-                FROM verifier_activity_logs_view
-            ) AS verifier_activity_logs_view_ WHERE created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
-                [sDate, eDate]
-            );
-        } else {
-            logs = await knex.raw(
-                `SELECT *
-            FROM (
-                SELECT *,DATE(createdAt) AS created_date
-                FROM verifier_activity_logs_view
-            ) AS verifier_activity_logs_view_  WHERE verifierId=? AND isActive=1 AND created_date BETWEEN ? AND ? ORDER BY createdAt DESC;`,
-                [id, sDate, eDate]
-            );
-        }
+    let query = knex("vw_user_logs_view")
+      .whereIn("userId", verifiers)
+      .whereBetween("createdAt", [start, end]);
 
-        return res.status(200).json(logs[0]);
-    })
+    if (!isAdmin) {
+      query.where({ userId: id, is_active: true });
+    }
+
+    const logs = await query.orderBy("createdAt", "desc").select("*");
+
+    return res.status(200).json(logs);
+  }),
 );
 
+// PUT Remove All Selected Logs
+router.put(
+  "/",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { isAdmin } = req.user;
+    const { logs } = req.body;
+    console.log(logs);
+
+    if (isAdmin) {
+      await knex("activity_logs").where("id", "IN", logs).del();
+    } else {
+      await knex("activity_logs").where("id", "IN", logs).update({
+        is_active: false,
+      });
+    }
+
+    return res.sendStatus(204);
+  }),
+);
 
 router.put(
-    "/",
-    verifyToken,
-    verifyAdmin,
-    asyncHandler(async (req, res) => {
-        const { id, isAdmin } = req.user;
-        const { logs } = req.body;
+  "/verifier",
+  verifyToken,
+  verifyScanner,
+  asyncHandler(async (req, res) => {
+    const { logs } = req.body;
+    console.log(logs);
 
-
-        await knex('activity_logs').where("_id", "IN", logs).update({
-            isActive: false
-        });
-        return res.sendStatus(204);
-
-    })
+    await knex("verifier_activity_logs").where("_id", "IN", logs).update({
+      isActive: false,
+    });
+    return res.sendStatus(204);
+  }),
 );
-router.put(
-    "/verifier",
-    verifyToken, verifyScanner,
-    asyncHandler(async (req, res) => {
-        const { logs } = req.body;
-        console.log(logs)
-
-
-        await knex('verifier_activity_logs').where("_id", "IN", logs).update({
-            isActive: false
-        });
-        return res.sendStatus(204);
-
-    })
-);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 module.exports = router;

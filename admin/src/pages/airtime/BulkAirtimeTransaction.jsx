@@ -1,5 +1,12 @@
 import { lazy, useContext, useMemo, useState } from "react";
-import { Alert, AlertTitle, Button, MenuItem, Stack, TextField } from "@mui/material";
+import {
+  Alert,
+  AlertTitle,
+  Button,
+  MenuItem,
+  Stack,
+  TextField,
+} from "@mui/material";
 import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
 import CustomDateRangePicker from "../../components/pickers/CustomDateRangePicker";
 import { PaymentsRounded } from "@mui/icons-material";
@@ -19,8 +26,8 @@ import AirtimePrompt from "./AirtimePrompt";
 import CustomRangePicker from "../../components/pickers/CustomRangePicker";
 import CustomTotal from "../../components/custom/CustomTotal";
 
-const ProcessAirtimeTransaction = lazy(() =>
-  import("./ProcessAirtimeTransaction")
+const ProcessAirtimeTransaction = lazy(
+  () => import("./ProcessAirtimeTransaction"),
 );
 
 function BulkAirtimeTransaction() {
@@ -42,10 +49,11 @@ function BulkAirtimeTransaction() {
     queryKey: ["bulk-airtime-transactions", date],
     queryFn: () => getAllBulkAirtimePayment(date[0]),
     enabled: !!date,
+    initialData: [],
   });
 
   const unprocessedTransactions = transactions?.data?.filter(
-    ({ isProcessed }) => !isProcessed
+    ({ isProcessed }) => !isProcessed,
   );
 
   const sortedTransactions = useMemo(() => {
@@ -70,7 +78,7 @@ function BulkAirtimeTransaction() {
   };
 
   const CAN_PROCESS_AIRTIME = user?.permissions?.includes(
-    "Process Bulk Airtime Transaction"
+    "Process Bulk Airtime Transaction",
   );
   return (
     <>
@@ -83,7 +91,8 @@ function BulkAirtimeTransaction() {
           // action={<Button variant='outlined'>Okay</Button>}
         >
           <AlertTitle>Pending Transactions</AlertTitle>
-          You have ({unprocessedTransactions?.length}) pending transactions awaiting completion!
+          You have ({unprocessedTransactions?.length}) pending transactions
+          awaiting completion!
         </Alert>
       )}
 
@@ -136,7 +145,7 @@ function BulkAirtimeTransaction() {
               <CustomTotal
                 title="Total"
                 total={currencyFormatter(
-                  _.sumBy(sortedTransactions, (item) => Number(item?.amount))
+                  _.sumBy(sortedTransactions, (item) => Number(item?.amount)),
                 )}
               />
             </Stack>
@@ -146,7 +155,7 @@ function BulkAirtimeTransaction() {
           options={{
             exportAllData: true,
             exportButton: user?.permissions?.includes(
-              "Export Bulk Airtime Transaction"
+              "Export Bulk Airtime Transaction",
             ),
           }}
         />

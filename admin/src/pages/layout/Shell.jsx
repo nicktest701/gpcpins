@@ -8,7 +8,7 @@ import Layout from "./Layout";
 import PayLoading from "../../components/PayLoading";
 import GlobalAlert from "../../components/alert/GlobalAlert";
 import Worker from "../workers";
-import EmailSent from "../EmailSent";
+import VerifyOTP from "../VerifyOTP";
 import User from "./User";
 
 import Login from "../Login";
@@ -16,11 +16,11 @@ import MessageHome from "../messages/MessageHome";
 import VerifyEmployee from "../workers/VerifyEmployee";
 
 const Electricity = lazy(() => import("../electricity"));
-const ProcessPrepaidTransaction = lazy(() =>
-  import("../electricity/ProcessPrepaidTransaction")
+const ProcessPrepaidTransaction = lazy(
+  () => import("../electricity/ProcessPrepaidTransaction"),
 );
-const ViewECGTransactionNotifications = lazy(() =>
-  import("../electricity/ViewECGTransactionNotifications")
+const ViewECGTransactionNotifications = lazy(
+  () => import("../electricity/ViewECGTransactionNotifications"),
 );
 
 const Summary = lazy(() => import("../summary"));
@@ -47,7 +47,7 @@ import Report from "../summary/Report";
 import AgentTransaction from "../summary/agentSummary";
 
 //Refund
-const Refund = lazy(() => import("../refund"));
+const RefundMoney = lazy(() => import("../refund/RefundMoney"));
 const RefundDetails = lazy(() => import("../refund/RefundDetails"));
 
 const SummaryAirtime = lazy(() => import("../summary/Airtime"));
@@ -59,11 +59,11 @@ const Logs = lazy(() => import("../logs"));
 const Wallet = lazy(() => import("../wallet"));
 const UsersWallet = lazy(() => import("../wallet/UsersWallet"));
 const AgentsWallet = lazy(() => import("../wallet/AgentsWallet"));
-const UsersWalletTransactions = lazy(() =>
-  import("../wallet/UsersWalletTransactions")
+const UsersWalletTransactions = lazy(
+  () => import("../wallet/UsersWalletTransactions"),
 );
-const AgentsWalletTransactions = lazy(() =>
-  import("../wallet/AgentsWalletTransactions")
+const AgentsWalletTransactions = lazy(
+  () => import("../wallet/AgentsWalletTransactions"),
 );
 
 const UserHome = lazy(() => import("../users"));
@@ -75,8 +75,8 @@ const Agent = lazy(() => import("../airtime/agent"));
 const Overall = lazy(() => import("../summary/Overall"));
 
 const EVoucher = lazy(() => import("../evoucher/EVoucher"));
-const CategoryDetails = lazy(() =>
-  import("../../components/tabs/CategoryDetails")
+const CategoryDetails = lazy(
+  () => import("../../components/tabs/CategoryDetails"),
 );
 const Voucher = lazy(() => import("../evoucher/add/Voucher"));
 const NotFound = lazy(() => import("../NotFound"));
@@ -89,25 +89,25 @@ const Meters = lazy(() => import("../electricity/Meters"));
 // const Client = lazy(() => import("../clients"));
 const AddWAECCategory = lazy(() => import("../waec/AddWAECCategory"));
 const EditWAECCategory = lazy(() => import("../waec/EditWAECCategory"));
-const AddUniversityCategory = lazy(() =>
-  import("../university/AddUniversityCategory")
+const AddUniversityCategory = lazy(
+  () => import("../university/AddUniversityCategory"),
 );
-const EditUniversityCategory = lazy(() =>
-  import("../university/EditUniversityCategory")
+const EditUniversityCategory = lazy(
+  () => import("../university/EditUniversityCategory"),
 );
 const AddCinemaCategory = lazy(() => import("../cinema/AddCinemaCategory"));
 const EditCinemaCategory = lazy(() => import("../cinema/EditCinemaCategory"));
 const AddStadiumCategory = lazy(() => import("../stadium/AddStadiumCategory"));
-const EditStadiumCategory = lazy(() =>
-  import("../stadium/EditStadiumCategory")
+const EditStadiumCategory = lazy(
+  () => import("../stadium/EditStadiumCategory"),
 );
 const AddBusCategory = lazy(() => import("../bus/AddBusCategory"));
 const EditBusCategory = lazy(() => import("../bus/EditBusCategory"));
-const AddSecurityCategory = lazy(() =>
-  import("../security/AddSecurityCategory")
+const AddSecurityCategory = lazy(
+  () => import("../security/AddSecurityCategory"),
 );
-const EditSecurityCategory = lazy(() =>
-  import("../security/EditSecurityCategory")
+const EditSecurityCategory = lazy(
+  () => import("../security/EditSecurityCategory"),
 );
 
 function Shell() {
@@ -121,7 +121,7 @@ function Shell() {
 
     const handleOffline = () => {
       customDispatch(
-        globalAlertType("error", "Internet Connection Lost! Try reconnecting.")
+        globalAlertType("error", "Internet Connection Lost! Try reconnecting."),
       );
     };
 
@@ -158,6 +158,7 @@ function Shell() {
             >
               {user?.permissions?.includes("Generate Pins & Serials") && (
                 <Route
+                  index
                   path="generate"
                   element={
                     <Suspense fallback={<PayLoading />}>
@@ -506,16 +507,16 @@ function Shell() {
               index
               element={
                 <Suspense fallback={<PayLoading />}>
-                  <Refund />
+                  <RefundDetails />
                 </Suspense>
               }
             />
 
             <Route
-              path="details"
+              path="money"
               element={
                 <Suspense fallback={<PayLoading />}>
-                  <RefundDetails />
+                  <RefundMoney />
                 </Suspense>
               }
             />
@@ -588,7 +589,7 @@ function Shell() {
 
         <Route path="auth" element={<User />}>
           <Route path="login" element={<Login />} />
-          <Route path="code" element={<EmailSent />} />
+          <Route path="code" element={<VerifyOTP />} />
           <Route path="verify" element={<VerifyEmployee />} />
           <Route path="confirm" element={<EmployeePassword />} />
           <Route path="forgot" element={<ForgotPassword />} />

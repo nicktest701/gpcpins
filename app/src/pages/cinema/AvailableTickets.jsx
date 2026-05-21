@@ -39,7 +39,11 @@ function AvailableTickets() {
         <CircularProgress />
       </div>
     );
+
+
   }
+
+ 
 
   return (
     <Container maxWidth='lg' sx={{ py: 8 }}>
@@ -61,7 +65,7 @@ function AvailableTickets() {
           }}
         >
           {movieInfo?.data?.map((movie) => {
-            return <AvailableCinemaTicketItem key={movie?._id} {...movie} />;
+            return <AvailableCinemaTicketItem key={movie?.id} {...movie} />;
           })}
 
        

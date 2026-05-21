@@ -8,36 +8,29 @@ import Grid from "@mui/material/Grid";
 import Autocomplete from "@mui/material/Autocomplete";
 import Container from "@mui/material/Container";
 import { Formik } from "formik";
-import { IMAGES, currencyFormatter } from "../../constants";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import { universityValidationSchema } from "../../config/validationSchema";
-import CustomWrapper from "../../components/custom/CustomWrapper";
+import { IMAGES, currencyFormatter } from "@/constants";
+import { CustomContext } from "@/context/providers/CustomProvider";
+import { universityValidationSchema } from "@/config/validationSchema";
+import CustomWrapper from "@/components/custom/CustomWrapper";
 import { Helmet } from "react-helmet-async";
-import { useGetCategoryByType } from "../../hooks/useGetCategoryByType";
-import { AuthContext } from "../../context/providers/AuthProvider";
-import PayLoading from "../../components/PayLoading";
+import { useGetCategoryByType } from "@/hooks/useGetCategoryByType";
 import { Tooltip } from "@mui/material";
-import DOMPurify from "dompurify";
-import PaymentOption from "../../components/PaymentOption";
+
 import { useNavigate } from "react-router-dom";
 
 function UniversityForms() {
   const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
   const { customDispatch } = useContext(CustomContext);
-
   const [categoryType, setCategoryType] = useState({
     id: "",
-    voucherType: "",
+    name: "",
     price: 0,
   });
-  const [mobilePartner, setMobilePartner] = useState("");
+
   const [fullName, setFullName] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
   const [email, setEmail] = useState("");
   const [quantity, setQuantity] = useState(0);
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [confirmPhonenumber, setConfirmPhonenumber] = useState("");
+
   ///Get All waec categories
   const { categories, loading } = useGetCategoryByType("university");
 
@@ -48,33 +41,23 @@ function UniversityForms() {
   }, [categoryType, quantity]);
 
   const initialValues = {
-    category: "university",
+    type: "university",
     categoryType,
     quantity,
     totalAmount: grandTotal,
     fullName,
     email,
-    paymentMethod,
-    phoneNumber,
-    confirmPhonenumber,
-    mobilePartner,
   };
 
   const onSubmit = (values) => {
     const paymentInfo = {
       category: values?.category,
       categoryId: values?.categoryType?.id,
-      voucherType: values?.categoryType?.voucherType,
+      voucherName: values?.categoryType?.name,
       price: values?.categoryType?.price,
       quantity: Number(values?.quantity),
       totalAmount: values.totalAmount,
-      user: {
-        name: DOMPurify.sanitize(values.fullName),
-        email: DOMPurify.sanitize(email),
-        phoneNumber: DOMPurify.sanitize(phoneNumber) || user?.phonenumber,
-        provider: values?.mobilePartner,
-      },
-      isWallet: paymentMethod === "wallet",
+      email: values?.email,
     };
 
     customDispatch({
@@ -86,7 +69,6 @@ function UniversityForms() {
       replace: true,
     });
   };
-
 
   return (
     <>
@@ -109,9 +91,7 @@ function UniversityForms() {
       >
         <Formik
           initialValues={initialValues}
-          validationSchema={universityValidationSchema(
-            paymentMethod === "momo"
-          )}
+          validationSchema={universityValidationSchema}
           enableReinitialize={true}
           onSubmit={onSubmit}
         >
@@ -155,8 +135,8 @@ function UniversityForms() {
                         getOptionLabel={(option) => {
                           return !option.id
                             ? option.voucherType || ""
-                            : `${option.voucherType} - ${currencyFormatter(
-                                option?.price
+                            : `${option.name} - ${currencyFormatter(
+                                option?.price,
                               )}` || "";
                         }}
                         renderInput={(params) => {
@@ -169,12 +149,12 @@ function UniversityForms() {
                                 label="Select University,Nursing,Polytechnic.."
                                 size="small"
                                 error={Boolean(
-                                  touched?.categoryType?.voucherType &&
-                                    errors?.categoryType?.voucherType
+                                  touched?.categoryType?.name &&
+                                  errors?.categoryType?.name,
                                 )}
                                 helperText={
-                                  touched?.categoryType?.voucherType &&
-                                  errors?.categoryType?.voucherType
+                                  touched?.categoryType?.name &&
+                                  errors?.categoryType?.name
                                 }
                               />
                             </Tooltip>
@@ -244,37 +224,6 @@ function UniversityForms() {
                         onChange={(e) => setEmail(e.target.value)}
                         error={Boolean(touched.email && errors.email)}
                         helperText={touched.email && errors.email}
-                      />
-                      <PaymentOption
-                        showWallet={user?.id}
-                        showMomo
-                        setPaymentMethod={setPaymentMethod}
-                        error={Boolean(
-                          touched.paymentMethod && errors.paymentMethod
-                        )}
-                        helperText={errors.paymentMethod}
-                        mobileMoneyDetails={{
-                          mobilePartner,
-                          setMobilePartner,
-                          mobilePartnerErr: Boolean(
-                            touched.mobilePartner && errors.mobilePartner
-                          ),
-                          mobilePartnerHelperText: errors.mobilePartner,
-                          phonenumber: phoneNumber,
-                          setPhonenumber: setPhoneNumber,
-                          phonenumberErr: Boolean(
-                            touched.phoneNumber && errors.phoneNumber
-                          ),
-                          phonenumberHelperText: errors.phoneNumber,
-                          //
-                          confirmPhonenumber,
-                          setConfirmPhonenumber,
-                          confirmPhonenumberErr: Boolean(
-                            touched.phoneNumber && errors.confirmPhonenumber
-                          ),
-                          confirmPhonenumberHelperText:
-                            errors.confirmPhonenumber,
-                        }}
                       />
                     </Stack>
                   </Grid>

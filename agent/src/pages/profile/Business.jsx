@@ -20,6 +20,8 @@ const Business = () => {
   const { user } = useContext(AuthContext);
   const queryClient = useQueryClient();
 
+  console.log(user)
+
   const { mutateAsync, isLoading } = useMutation({
     mutationFn: updateAgentBusiness,
   });
@@ -30,7 +32,7 @@ const Business = () => {
     enabled: !!user?.id,
     initialData: () => {
       return {
-        _id: user?.id,
+        id: user?.id,
         name: user?.businessName,
         location: user?.businessLocation,
         description: user?.businessDescription,

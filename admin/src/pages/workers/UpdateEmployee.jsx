@@ -37,11 +37,11 @@ const UpdateEmployee = () => {
     enabled: !!id,
     initialData: queryClient
       .getQueryData(["employees"])
-      ?.find((employee) => employee?._id === id),
+      ?.find((employee) => employee?.id === id),
   });
 
   const initialValues = {
-    _id: data?._id,
+    id: data?.id,
     firstname: data?.firstname,
     lastname: data?.lastname,
     username: data?.username,
@@ -64,7 +64,7 @@ const UpdateEmployee = () => {
     mutationFn: updateEmployee,
   });
   const onSubmit = (values, options) => {
-    values._id = data?._id;
+    values.id = data?.id;
     values.dob = dob;
 
     Swal.fire({
@@ -73,7 +73,6 @@ const UpdateEmployee = () => {
       showCancelButton: true,
     }).then(({ isConfirmed }) => {
       if (isConfirmed) {
-        
         mutateAsync(values, {
           onSettled: () => {
             queryClient.invalidateQueries(["employee", id]);

@@ -45,7 +45,7 @@ function AddMeter() {
     }
 
     const meterInfo = {
-      user: user?.id,
+      user_id: user?.id,
       number: DOMPurify.sanitize(values?.number?.toUpperCase()),
       name: DOMPurify.sanitize(values?.name?.toUpperCase()),
       district: DOMPurify.sanitize(values?.district?.toUpperCase()),

@@ -1,23 +1,39 @@
 // redisClient.js
-const redis = require("redis");
+const {Redis} = require("@upstash/redis");
 
-const redisClient = redis.createClient({
-    url: process.env.REDIS_HOST_EXT, // You can configure the URL if using a Redis server URL
+const redisClient = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
 });
 
-redisClient.on('error', (err) => {
-    // console.error('Redis client error:', err);
-});
 
-(async () => {
-    try {
-        await redisClient.connect();
-        
-    } catch (error) {
-        // console.log('error');
+module.exports = redisClient;
 
-    }
-})();
 
-module.exports = redisClient
+// // redisClient.js
+// const redis = require("redis");
 
+// const redisClient = redis.createClient({
+//   url: process.env.UPSTASH_REDIS_REST_URL,
+//   token: process.env.UPSTASH_REDIS_REST_TOKEN,
+// });
+
+// redisClient.on("error", (err) => {
+//   if (process.env.NODE_ENV !== "production") {
+//     console.error("Redis client error:", err);
+//   }
+//   throw err;
+// });
+
+// (async () => {
+//   try {
+//     await redisClient.connect();
+//   } catch (error) {
+//     if (process.env.NODE_ENV !== "production") {
+//       console.error("Redis client error:", error);
+//     }
+//     throw error;
+//   }
+// })();
+
+// module.exports = redisClient;

@@ -2,7 +2,6 @@ import { useContext } from "react";
 import {
   Dialog,
   DialogContent,
-  Container,
   TextField,
   InputAdornment,
   Input,
@@ -19,7 +18,8 @@ import { Formik } from "formik";
 import { addWalletValidationSchema } from "../../config/validationSchema";
 import { CustomContext } from "../../context/providers/CustomProvider";
 import { globalAlertType } from "../../components/alert/alertType";
-import { topUpUserWallet } from "../../api/transactionAPI";
+import { topUpWallet } from "@/api/transactionAPI";
+
 
 function TopUpWallet() {
   const { customDispatch } = useContext(CustomContext);
@@ -53,9 +53,12 @@ function TopUpWallet() {
   };
 
   const { mutateAsync, isLoading } = useMutation({
-    mutationFn: topUpUserWallet,
+    mutationFn: topUpWallet,
   });
   const onSubmit = (values) => {
+
+    // console.log(values);
+    // return;
     Swal.fire({
       title: "Loading Wallet",
       text: `Proceed with Top Up?`,

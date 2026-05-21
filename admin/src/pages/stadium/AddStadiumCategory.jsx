@@ -1,41 +1,43 @@
-import React, { useContext, useState } from 'react';
-import moment from 'moment';
-import _ from 'lodash';
-import { LoadingButton } from '@mui/lab';
-import Autocomplete from '@mui/material/Autocomplete';
-import Button from '@mui/material/Button';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import InputAdornment from '@mui/material/InputAdornment';
-import Stack from '@mui/material/Stack';
-import TextField from '@mui/material/TextField';
-import Typography from '@mui/material/Typography';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Formik } from 'formik';
-import { CustomContext } from '../../context/providers/CustomProvider';
-import { postCategory } from '../../api/categoryAPI';
-import Transition from '../../components/Transition';
-import CustomDatePicker from '../../components/inputs/CustomDatePicker';
-import CustomTimePicker from '../../components/inputs/CustomTimePicker';
-import { STADIUM_STANDS, MATCH_TYPE } from '../../mocks/columns';
+import React, { useContext, useRef, useState } from "react";
+import moment from "moment";
+import _ from "lodash";
+import { LoadingButton } from "@mui/lab";
+import Autocomplete from "@mui/material/Autocomplete";
+import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import InputAdornment from "@mui/material/InputAdornment";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Formik } from "formik";
+import { CustomContext } from "../../context/providers/CustomProvider";
+import { postCategory } from "../../api/categoryAPI";
+import Transition from "../../components/Transition";
+import CustomDatePicker from "../../components/inputs/CustomDatePicker";
+import CustomTimePicker from "../../components/inputs/CustomTimePicker";
+import { STADIUM_STANDS, MATCH_TYPE } from "../../mocks/columns";
 import {
+  Avatar,
+  Box,
   Container,
   IconButton,
   List,
   ListItem,
   ListItemSecondaryAction,
   ListItemText,
-} from '@mui/material';
-import { currencyFormatter } from '../../constants';
-import { globalAlertType } from '../../components/alert/alertType';
+} from "@mui/material";
+import { currencyFormatter } from "../../constants";
+import { globalAlertType } from "../../components/alert/alertType";
 
-import { Close } from '@mui/icons-material';
-import CustomDialogTitle from '../../components/dialogs/CustomDialogTitle';
-import { addStadiumValidationSchema } from '../../config/validationSchema';
-import Compressor from 'compressorjs';
-import { v4 as uuid } from 'uuid';
-import DOMPurify from 'dompurify';
+import { Close } from "@mui/icons-material";
+import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
+import { addStadiumValidationSchema } from "../../config/validationSchema";
+import { v4 as uuid } from "uuid";
+import DOMPurify from "dompurify";
+import { uploadFile } from "@/lib/upload";
 
 const AddStadiumCategory = () => {
   //context
@@ -43,24 +45,27 @@ const AddStadiumCategory = () => {
   const queryClient = useQueryClient();
   const { customState, customDispatch } = useContext(CustomContext);
 
-  const [matchType, setMatchType] = useState('');
-  const [companyName, setCompanyName] = useState('');
+  const [matchType, setMatchType] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [homeTeamImage, setHomeTeamImage] = useState(null);
   const [awayTeamImage, setAwayTeamImage] = useState(null);
-  const [home, setHome] = useState('');
-  const [away, setAway] = useState('');
-  const [stand, setStand] = useState('');
-  const [standError, setStandError] = useState('');
+  const [home, setHome] = useState("");
+  const [away, setAway] = useState("");
+  const [stand, setStand] = useState("");
+  const [standError, setStandError] = useState("");
   const [standsList, setStandsList] = useState([]);
-  const [venue, setVenue] = useState('');
+  const [venue, setVenue] = useState("");
   const [time, setTime] = useState(moment());
   const [date, setDate] = useState(moment());
   const [price, setPrice] = useState(0);
   const [quantity, setQuantity] = useState(0);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
 
   const initialValues = {
-    category: 'stadium',
+    category: "stadium",
     matchType,
     home,
     away,
@@ -70,55 +75,56 @@ const AddStadiumCategory = () => {
     message,
     companyName,
   };
-  const handleHomeTeamFile = (e) => {
-    e.preventDefault();
-    if (e.target.files) {
-      const image = e.target.files[0];
 
-      new Compressor(image, {
-        height: 200,
-        width: 200,
-        quality: 0.6,
+  // Upload logo
+  const handleUploadFile = async (e) => {
+    setLoading(true);
 
-        success(data) {
-          const reader = new FileReader();
-          reader.onload = function (event) {
-            const ImageURL = event.target.result;
-            setHomeTeamImage(ImageURL);
-          };
+    try {
+      const file = e.target.files[0];
+      if (!file) return;
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = () => setLogoPreview(reader.result);
+      reader.readAsDataURL(file);
 
-          reader.readAsDataURL(data);
+      // Actually upload to Firebase
+      const { downloadURL } = await uploadFile({
+        folder: "category",
+        file,
+        onProgress: (progress) => {
+          setProgress(progress);
         },
       });
+      return downloadURL; // store final URL
+    } catch (error) {
+      customDispatch(
+        globalAlertType("error", "Something went wrong. Please try again."),
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleAwayTeamFile = (e) => {
+  const handleHomeTeamFile = async (e) => {
     e.preventDefault();
     if (e.target.files) {
-      const image = e.target.files[0];
+      const ImageURL = await handleUploadFile(e);
+      setHomeTeamImage(ImageURL);
+    }
+  };
 
-      new Compressor(image, {
-        height: 200,
-        width: 200,
-        quality: 0.6,
-
-        success(data) {
-          const reader = new FileReader();
-          reader.onload = function (event) {
-            const ImageURL = event.target.result;
-            setAwayTeamImage(ImageURL);
-          };
-
-          reader.readAsDataURL(data);
-        },
-      });
+  const handleAwayTeamFile = async (e) => {
+    e.preventDefault();
+    if (e.target.files) {
+      const ImageURL = await handleUploadFile(e);
+      setAwayTeamImage(ImageURL);
     }
   };
 
   const handleAddStand = () => {
-    if (stand?.trim() === '') {
-      setStandError('No stand selected.');
+    if (stand?.trim() === "") {
+      setStandError("No stand selected.");
       return;
     }
 
@@ -126,12 +132,12 @@ const AddStadiumCategory = () => {
       id: uuid(),
       type: stand.toUpperCase(),
       quantity: parseInt(DOMPurify.sanitize(quantity)),
-      price: DOMPurify.sanitize(price)
+      price: DOMPurify.sanitize(price),
     };
     setStandsList((prev) => {
-      return _.values(_.merge(_.keyBy([...prev, item], 'type')));
+      return _.values(_.merge(_.keyBy([...prev, item], "type")));
     });
-    setStand('');
+    setStand("");
     setQuantity(0);
     setPrice(0);
   };
@@ -142,20 +148,20 @@ const AddStadiumCategory = () => {
   };
 
   const { mutateAsync, isLoading } = useMutation({
-    mutationFn:  postCategory,
+    mutationFn: postCategory,
   });
   const onSubmit = (values, options) => {
-    setStandError('');
+    setStandError("");
     if (standsList.length === 0) {
-      setStandError('No stand selected.');
+      setStandError("No stand selected.");
       options.setSubmitting(false);
       return;
     }
 
     const newMatchTicket = {
-      category: values.category,
-      voucherType: DOMPurify.sanitize(
-        `${values.home} Vs ${values.away}(${values.matchType})`
+      type: values.category,
+      name: DOMPurify.sanitize(
+        `${values.home} Vs ${values.away}(${values.matchType})`,
       ),
       details: {
         matchType: DOMPurify.sanitize(values.matchType?.toUpperCase()),
@@ -166,27 +172,26 @@ const AddStadiumCategory = () => {
         away: DOMPurify.sanitize(values.away),
         pricing: standsList,
         venue: DOMPurify.sanitize(values.venue),
-        quantity: parseInt(_.sumBy(standsList, 'quantity')),
+        quantity: parseInt(_.sumBy(standsList, "quantity")),
         date: values.date,
         time: values.time,
         message: DOMPurify.sanitize(values.message),
         companyName: DOMPurify.sanitize(values.companyName),
       },
+      year: moment(values.date).format("YYYY"),
     };
-   
 
     mutateAsync(newMatchTicket, {
       onSettled: () => {
         options.setSubmitting(false);
-        queryClient.invalidateQueries(['category']);
-      
+        queryClient.invalidateQueries(["category"]);
       },
       onSuccess: (data) => {
-        customDispatch(globalAlertType('info', data));
+        customDispatch(globalAlertType("info", data));
         handleClose();
       },
       onError: (error) => {
-        customDispatch(globalAlertType('error', error));
+        customDispatch(globalAlertType("error", error));
       },
     });
   };
@@ -194,10 +199,23 @@ const AddStadiumCategory = () => {
   ///Close Add Category
   const handleClose = () => {
     customDispatch({
-      type: 'openAddStadiumCategory',
+      type: "openAddStadiumCategory",
       payload: { open: false },
     });
   };
+
+  // Preview logo if uploaded
+  const LogoPreview = ({ preview }) => (
+    <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 2 }}>
+      {preview && (
+        <Avatar
+          src={preview}
+          variant="rounded"
+          sx={{ width: 60, height: 60, objectFit: "contain" }}
+        />
+      )}
+    </Box>
+  );
 
   return (
     <Formik
@@ -209,136 +227,164 @@ const AddStadiumCategory = () => {
       {({ errors, touched, handleSubmit }) => {
         return (
           <Dialog
-            maxWidth='md'
+            maxWidth="md"
             fullWidth
             TransitionComponent={Transition}
             open={customState.stadiumCategory.open}
           >
             <CustomDialogTitle
-              title='New Football Ticket'
+              title="New Football Ticket"
               onClose={handleClose}
             />
             <DialogContent>
-              <Container maxWidth='md'>
+              <Container maxWidth="md">
                 <Stack rowGap={2} paddingY={2}>
                   <TextField
-                    size='small'
-                    label='Company'
+                    size="small"
+                    label="Company"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     error={Boolean(touched.companyName && errors.companyName)}
                     helperText={touched.companyName && errors.companyName}
                   />
                   <Autocomplete
-                    size='small'
+                    size="small"
                     options={MATCH_TYPE}
                     freeSolo
-                    closeText=''
+                    closeText=""
                     disableClearable
-                    noOptionsText='No match type available'
+                    noOptionsText="No match type available"
                     value={matchType || null}
                     onInputChange={(e, value) => setMatchType(value)}
                     isOptionEqualToValue={(option, value) => option === value}
                     renderInput={(props) => (
                       <TextField
                         {...props}
-                        label='Select match type'
+                        label="Select match type"
                         error={Boolean(touched.matchType && errors.matchType)}
                         helperText={
                           touched.matchType && errors.matchType
                             ? errors.matchType
-                            : 'eg.Friendly Match,Cup Final,League Match'
+                            : "eg.Friendly Match,Cup Final,League Match"
                         }
                       />
                     )}
                   />
+
+                  {loading && (
+                    <Box sx={{ width: "100%", mb: 1 }}>
+                      <Typography variant="caption" color="textSecondary">
+                        Uploading... {Math.round(progress)}%
+                      </Typography>
+                      <Box
+                        sx={{
+                          height: 4,
+                          width: "100%",
+                          bgcolor: "action.hover",
+                          borderRadius: 1,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            height: "100%",
+                            width: `${progress}%`,
+                            bgcolor: "primary.main",
+                            transition: "width 0.3s ease",
+                          }}
+                        />
+                      </Box>
+                    </Box>
+                  )}
                   <div>
-                    <label htmlFor='homeTeam'>Home Team logo</label>
+                    <label htmlFor="homeTeam">Home Team logo</label>
                     <input
-                      type='file'
-                      id='homeTeam'
+                      type="file"
+                      id="homeTeam"
                       onChange={(e) => handleHomeTeamFile(e)}
-                      accept='.png,.jpg,.jpeg,.webp'
+                      accept=".png,.jpg,.jpeg,.webp"
                     />
+                    <LogoPreview preview={homeTeamImage} />
                   </div>
 
                   <TextField
-                    size='small'
-                    label='Home Team'
+                    size="small"
+                    label="Home Team"
                     value={home}
                     onChange={(e) => setHome(e.target.value)}
                     error={Boolean(touched.home && errors.home)}
                     helperText={
-                      touched.home && errors.home ? errors.home : 'eg. TeamA'
+                      touched.home && errors.home ? errors.home : "eg. TeamA"
                     }
                   />
                   <div>
-                    <label htmlFor='awayTeam'>Away Team logo</label>
+                    <label htmlFor="awayTeam">Away Team logo</label>
                     <input
-                      type='file'
-                      id='awayTeam'
+                      type="file"
+                      id="awayTeam"
                       onChange={(e) => handleAwayTeamFile(e)}
-                      accept='.png,.jpg,.jpeg,.webp'
+                      accept=".png,.jpg,.jpeg,.webp"
                     />
+                    <LogoPreview preview={homeTeamImage} />
                   </div>
                   <TextField
-                    size='small'
-                    label='Away Team'
+                    size="small"
+                    label="Away Team"
                     value={away}
                     onChange={(e) => setAway(e.target.value)}
                     error={Boolean(touched.away && errors.away)}
                     helperText={
-                      touched.away && errors.away ? errors.away : 'eg. TeamB'
+                      touched.away && errors.away ? errors.away : "eg. TeamB"
                     }
                   />
-                       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <Autocomplete
                       fullWidth
-                      size='small'
+                      size="small"
                       options={STADIUM_STANDS}
                       freeSolo
-                      closeText=''
+                      closeText=""
                       disableClearable
-                      noOptionsText='No stand available'
-                      value={stand || ''}
+                      noOptionsText="No stand available"
+                      value={stand || ""}
                       onInputChange={(e, value) => setStand(value)}
                       isOptionEqualToValue={(option, value) => option === value}
                       renderInput={(props) => (
                         <TextField
                           {...props}
-                          label='Select a stand'
-                          error={standError.trim() !== ''}
+                          label="Select a stand"
+                          error={standError.trim() !== ""}
                           helperText={standError}
                         />
                       )}
                     />
                     <TextField
-                      size='small'
-                      type='number'
-                      inputMode='numeric'
-                      label='Quantity'
-                      placeholder='Quantity here'
+                      size="small"
+                      type="number"
+                      inputMode="numeric"
+                      label="Quantity"
+                      placeholder="Quantity here"
                       value={quantity}
                       onChange={(e) => setQuantity(e.target.value)}
                       error={Boolean(touched.quantity && errors.quantity)}
                       helperText={touched.quantity && errors.quantity}
                     />
                     <TextField
-                      size='small'
-                      type='number'
-                      inputMode='decimal'
-                      label='Price'
-                      placeholder='Price here'
+                      size="small"
+                      type="number"
+                      inputMode="decimal"
+                      label="Price"
+                      placeholder="Price here"
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
                       InputProps={{
                         startAdornment: (
-                          <InputAdornment position='start'>
+                          <InputAdornment position="start">
                             <Typography>GHS</Typography>
                           </InputAdornment>
                         ),
                         endAdornment: (
-                          <InputAdornment position='end'>
+                          <InputAdornment position="end">
                             <Typography>p</Typography>
                           </InputAdornment>
                         ),
@@ -347,8 +393,8 @@ const AddStadiumCategory = () => {
                       helperText={touched.price && errors.price}
                     />
                     <Button
-                      size='small'
-                      variant='contained'
+                      size="small"
+                      variant="contained"
                       onClick={handleAddStand}
                     >
                       Add
@@ -363,16 +409,16 @@ const AddStadiumCategory = () => {
                               primary={`${item.type} (${item.quantity})`}
                               primaryTypographyProps={{
                                 fontSize: 12,
-                                color: 'primary.main',
-                                fontWeight: 'bolder',
+                                color: "primary.main",
+                                fontWeight: "bolder",
                               }}
                               secondary={currencyFormatter(item?.price)}
                             />
 
                             <ListItemSecondaryAction>
                               <IconButton
-                                color='primary'
-                                size='small'
+                                color="primary"
+                                size="small"
                                 onClick={() => handleRemoveStand(item?.id)}
                               >
                                 <Close />
@@ -384,27 +430,27 @@ const AddStadiumCategory = () => {
                   </List>
 
                   <TextField
-                    size='small'
-                    label='Venue'
+                    size="small"
+                    label="Venue"
                     value={venue}
                     onChange={(e) => setVenue(e.target.value)}
                     error={Boolean(touched.venue && errors.venue)}
                     helperText={
                       touched.venue && errors.venue
                         ? errors.venue
-                        : 'eg. Kumasi,Ghana'
+                        : "eg. Kumasi,Ghana"
                     }
                   />
-                  <Stack direction='row' spacing={2}>
+                  <Stack direction="row" spacing={2}>
                     <CustomDatePicker
-                      label='Date'
+                      label="Date"
                       value={date}
                       setValue={setDate}
                       error={Boolean(touched.date && errors.date)}
                       helperText={touched.date && errors.date}
                     />
                     <CustomTimePicker
-                      label='Time'
+                      label="Time"
                       value={time}
                       setValue={setTime}
                       error={Boolean(touched.time && errors.time)}
@@ -413,8 +459,8 @@ const AddStadiumCategory = () => {
                   </Stack>
 
                   <TextField
-                    size='small'
-                    label='Message'
+                    size="small"
+                    label="Message"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     error={Boolean(touched.message && errors.message)}
@@ -425,13 +471,16 @@ const AddStadiumCategory = () => {
             </DialogContent>
             <DialogActions>
               <Container
-                maxWidth='md'
-                sx={{ display: 'flex', justifyContent: 'flex-end' }}
+                maxWidth="md"
+                sx={{ display: "flex", justifyContent: "flex-end" }}
               >
-                <Button onClick={handleClose}>Cancel</Button>
+                <Button onClick={handleClose} disabled={loading}>
+                  Cancel
+                </Button>
                 <LoadingButton
-                  variant='contained'
+                  variant="contained"
                   loading={isLoading}
+                  disabled={loading}
                   onClick={handleSubmit}
                 >
                   Proceed

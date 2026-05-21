@@ -1,28 +1,28 @@
 import { useContext, useMemo, useState } from "react";
-import CustomTitle from "../../components/custom/CustomTitle";
+import CustomTitle from "@/components/custom/CustomTitle";
 import { Container, MenuItem, TextField, Box } from "@mui/material";
 import { NoteAlt } from "@mui/icons-material";
 import _ from "lodash";
-import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import CustomizedMaterialTable from "@/components/tables/CustomizedMaterialTable";
+import { AuthContext } from "@/context/providers/AuthProvider";
 import Swal from "sweetalert2";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getTransactionByEmail,
   removeAnyTransaction,
-} from "../../api/transactionAPI";
-import CustomDateRangePicker from "../../components/pickers/CustomDateRangePicker";
+} from "@/api/transactionAPI";
+import CustomDateRangePicker from "@/components/pickers/CustomDateRangePicker";
 import {
   transactionsColumns,
   airtimeTransactionsColumns,
-} from "../../mocks/columns";
-import ActionMenu from "../../components/menu/ActionMenu";
-import { globalAlertType } from "../../components/alert/alertType";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import CustomTotal from "../../components/custom/CustomTotal";
-import { currencyFormatter } from "../../constants";
-import CustomRangePicker from "../../components/pickers/CustomRangePicker";
+} from "@/mocks/columns";
+import ActionMenu from "@/components/menu/ActionMenu";
+import { globalAlertType } from "@/components/alert/alertType";
+import { CustomContext } from "@/context/providers/CustomProvider";
+import CustomTotal from "@/components/custom/CustomTotal";
+import { currencyFormatter } from "@/constants";
+import CustomRangePicker from "@/components/pickers/CustomRangePicker";
 
 const Transaction = () => {
   const { user } = useContext(AuthContext);
@@ -50,7 +50,10 @@ const Transaction = () => {
     ],
     queryFn: () => getTransactionByEmail(date[0]),
     enabled: !!user?.id,
+    initialData:[]
   });
+
+
 
   const sortedTransactions = useMemo(() => {
     let filteredTransaction = transactions?.data;
@@ -141,7 +144,7 @@ const Transaction = () => {
               data?.status === "completed" && (
                 <MenuItem
                   sx={{ fontSize: 13 }}
-                  onClick={() => handleDownload(data?._id, data?.downloadLink)}
+                  onClick={() => handleDownload(data?.id, data?.downloadLink)}
                 >
                   Download
                 </MenuItem>
@@ -157,6 +160,7 @@ const Transaction = () => {
       },
     },
   ];
+
 
   return (
     <Container sx={{ py: 2 }}>

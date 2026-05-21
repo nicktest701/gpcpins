@@ -61,9 +61,9 @@ function Messages() {
     });
   };
 
-  const handleViewMessage = ({ _id }) => {
+  const handleViewMessage = ({ id }) => {
     setSearchParams((params) => {
-      params.set("message", _id);
+      params.set("message", id);
       return params;
     });
   };
@@ -82,7 +82,7 @@ function Messages() {
       text: `You are about to remove the selected messages.Changes cannot be undone.`,
       showCancelButton: true,
     }).then(({ isConfirmed }) => {
-      const messages = _.map(selectedMessages, "_id");
+      const messages = _.map(selectedMessages, "id");
       if (isConfirmed) {
         removeAllMutateAsync(
           { messages },
@@ -117,7 +117,7 @@ function Messages() {
             View Message
           </MenuItem>
           {user?.permissions?.includes("Delete messages") && (
-            <MenuItem onClick={() => handleRemoveMessage(rowData?._id)}>
+            <MenuItem onClick={() => handleRemoveMessage(rowData?.id)}>
               Delete
             </MenuItem>
           )}

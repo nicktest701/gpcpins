@@ -4,7 +4,7 @@ import Typography from "@mui/material/Typography";
 
 import PropTypes from "prop-types";
 
-const ItemCard = ({ title, value, icon, bg }) => {
+const ItemCard = ({ title,component, value, icon, bg }) => {
   return (
     <Card
       sx={{
@@ -18,6 +18,7 @@ const ItemCard = ({ title, value, icon, bg }) => {
       elevation={1}
     >
       <CardContent>
+        {/* {component} */}
         {value && (
           <Typography variant="h5" textAlign="center" sx={{ paddingY: 1 }}>
             {value}

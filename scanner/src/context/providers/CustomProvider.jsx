@@ -43,8 +43,8 @@ function CustomProvider({ children }) {
     enabled: false,
     // enabled: !!user?.id,
     initialData: [],
-    // refetchIntervalInBackground: true,
-    // refetchInterval: 5000,
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
     onSuccess: (data) => {
       const unReadNotifications = data?.filter((item) => item?.active === 1);
 
@@ -81,10 +81,11 @@ function CustomProvider({ children }) {
 
   useEffect(() => {
     const unReadNotifications = notifications?.data?.filter(
-      (item) => item?.active === 1
+      (item) => item?.active === 1,
     );
     if (
-      unReadNotifications?.length > localStorage.getItem("no-scan-notification") ??
+      unReadNotifications?.length >
+        localStorage.getItem("no-scan-notification") ??
       0
     ) {
       // Play the notification sound
@@ -111,7 +112,7 @@ function CustomProvider({ children }) {
 
   const [customState, customDispatch] = useReducer(
     CustomReducer,
-    initialValues
+    initialValues,
   );
 
   return (
@@ -119,7 +120,7 @@ function CustomProvider({ children }) {
       value={{
         customState,
         customDispatch,
-        notifications: notifications?.data,
+        notifications: [],
       }}
     >
       {children}

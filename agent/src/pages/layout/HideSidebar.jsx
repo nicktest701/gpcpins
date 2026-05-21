@@ -88,7 +88,7 @@ function HideSidebar() {
           bgcolor: "primary.main",
           overflowY: "scroll",
           height: "100%",
-          width:280
+          width: 280,
         }}
       >
         <Box
@@ -117,7 +117,7 @@ function HideSidebar() {
               >
                 <NavLinkItem
                   to="airtime/transactions"
-                   title="Sell Airtime"
+                  title="Sell Airtime"
                   icon={<CardMembership />}
                 />
                 <NavLinkItem
@@ -132,7 +132,7 @@ function HideSidebar() {
                 title="Summary"
                 icon={<BarChartRounded />}
               />
-                   <NavLinkItem
+              <NavLinkItem
                 to="logs"
                 title="Activity Logs"
                 icon={<AccessTimeIcon />}
@@ -141,6 +141,11 @@ function HideSidebar() {
 
             <List>
               <NavLinkItem to="profile" title="Profile" icon={<Person />} />
+              <NavLinkItem
+                to="notifications"
+                title="Notifications"
+                icon={<BarChartRounded />}
+              />
               <NavLinkItem
                 to="wallet"
                 title="Wallet"

@@ -11,15 +11,12 @@ function getRecentTransaction(data, quantity) {
   //GET Recent Transactions
   const recentTransaction = _.map(_.take(orderedData, quantity), (item) => {
     return {
-      _id: item?._id,
-      email: item?.info?.agentEmail || item?.info?.email,
-      phonenumber:
-        item?.info?.agentPhoneNumber ||
-        item?.info?.mobileNo ||
-        item?.phonenumber || item?.recipient,
-      amount: item?.info?.amount || Number(item?.amount),
+      id: item?.id,
+      email: item?.email,
+      phonenumber: item?.phonenumber || item?.recipient,
+      amount: Number(item?.amount),
       issuer: item?.issuer || "N/A",
-      domain: item?.info?.domain || item?.domain,
+      domain: item?.service,
       createdAt: item?.updatedAt,
       updated: item?.updatedAt,
     };
@@ -31,7 +28,7 @@ function getRecentTransaction(data, quantity) {
 function getTodayTransactionArray(data) {
   const modifiedTodayTransaction = data?.filter(
     (transaction) =>
-      moment(transaction?.updatedAt).format("l") === moment().format("l")
+      moment(transaction?.updatedAt).format("l") === moment().format("l"),
   );
 
   return modifiedTodayTransaction;
@@ -40,12 +37,10 @@ function getTodayTransactionArray(data) {
 function getTodayTransaction(data) {
   const modifiedTodayTransaction = data?.filter(
     (transaction) =>
-      moment(transaction?.updatedAt).format("l") === moment().format("l")
+      moment(transaction?.updatedAt).format("l") === moment().format("l"),
   );
   const todayTotal = _.sum(
-    _.map(modifiedTodayTransaction, (item) =>
-      Number(item?.info?.amount || item?.amount)
-    )
+    _.map(modifiedTodayTransaction, (item) => Number(item?.amount)),
   );
   return todayTotal;
 }
@@ -54,13 +49,11 @@ function getYesterdayTransaction(data) {
   const modifiedTodayTransaction = data?.filter(
     (transaction) =>
       moment(transaction?.updatedAt).format("l") ===
-      moment().subtract(1, "days").format("l")
+      moment().subtract(1, "days").format("l"),
   );
 
   const todayTotal = _.sum(
-    _.map(modifiedTodayTransaction, (item) =>
-      Number(item?.info?.amount || item?.amount)
-    )
+    _.map(modifiedTodayTransaction, (item) => Number(item?.amount)),
   );
   return todayTotal;
 }
@@ -68,7 +61,7 @@ function getYesterdayTransactionArray(data) {
   const yesterdayTransaction = data?.filter(
     (transaction) =>
       moment(transaction?.updatedAt).format("l") ===
-      moment().subtract(1, "days").format("l")
+      moment().subtract(1, "days").format("l"),
   );
 
   return yesterdayTransaction;
@@ -78,13 +71,13 @@ function getThisMonthTransaction(data) {
   const modifiedTodayTransaction = data?.filter(
     (transaction) =>
       moment(transaction?.updatedAt).format("MMM,YYYY") ===
-      moment().format("MMM,YYYY")
+      moment().format("MMM,YYYY"),
   );
 
   const todayTotal = _.sum(
     _.map(modifiedTodayTransaction, (item) =>
-      Number(item?.info?.amount || item?.amount)
-    )
+      Number(item?.info?.amount || item?.amount),
+    ),
   );
   return todayTotal;
 }
@@ -92,7 +85,7 @@ function getThisMonthTransactionArray(data) {
   const thisMonthTransaction = data?.filter(
     (transaction) =>
       moment(transaction?.updatedAt).format("MMM,YYYY") ===
-      moment().format("MMM,YYYY")
+      moment().format("MMM,YYYY"),
   );
 
   return thisMonthTransaction;
@@ -108,8 +101,8 @@ function getLastMonthTransactionArray(data) {
       lastMonthStart,
       lastMonthEnd,
       null,
-      "[]"
-    )
+      "[]",
+    ),
   );
 
   return lastMonthTransaction;
@@ -123,8 +116,8 @@ function getThisYearTransactionArray(data) {
       currentYearStart,
       currentYearEnd,
       null,
-      "[]"
-    )
+      "[]",
+    ),
   );
 
   return thisYearTransaction;
@@ -138,8 +131,8 @@ function getLastYearTransactionArray(data) {
       lastYearStart,
       lastYearEnd,
       null,
-      "[]"
-    )
+      "[]",
+    ),
   );
 
   return lastYearTransaction;
@@ -159,8 +152,8 @@ function getLastSevenDaysTransactions(vouchersTransaction, ecgTransaction) {
   if (vouchersTransaction?.length > 0) {
     const lastSevenDatesTransactions = _.reverse(
       vouchersTransaction?.filter(({ updatedAt }) =>
-        lastSevenDates.includes(moment(updatedAt).format("ddd,Do MMM"))
-      )
+        lastSevenDates.includes(moment(updatedAt).format("ddd,Do MMM")),
+      ),
     );
 
     //Filter out only amount and group transactions by date
@@ -168,44 +161,42 @@ function getLastSevenDaysTransactions(vouchersTransaction, ecgTransaction) {
       (transaction) => {
         return {
           createdAt: moment(transaction?.updatedAt).format("ddd,Do MMM"),
-          amount: _.isNaN(
-            Number(transaction?.info?.amount || transaction?.amount)
-          )
+          amount: _.isNaN(Number(transaction?.amount))
             ? 0
             : Number(transaction?.info?.amount),
         };
-      }
+      },
     );
 
     const vouchersLast7 = _.groupBy(
       [...initData, ...lastSevenDaysVouchersTransaction],
-      "createdAt"
+      "createdAt",
     );
 
     vouchers = Object.values(vouchersLast7).map((item) =>
-      _.sumBy(item, "amount")
+      _.sumBy(item, "amount"),
     );
   }
 
   if (ecgTransaction?.length > 0) {
     const lastSevenDatesECGTransactions = _.reverse(
       ecgTransaction?.filter(({ updatedAt }) =>
-        lastSevenDates.includes(moment(updatedAt).format("ddd,Do MMM"))
-      )
+        lastSevenDates.includes(moment(updatedAt).format("ddd,Do MMM")),
+      ),
     );
 
     const lastSevenDaysECGTransaction = lastSevenDatesECGTransactions.map(
       (transaction) => {
         return {
           createdAt: moment(transaction?.updatedAt).format("ddd,Do MMM"),
-          amount: Number(transaction?.info?.amount || transaction?.amount),
+          amount: Number(transaction?.amount),
         };
-      }
+      },
     );
 
     const ecgLast7 = _.groupBy(
       [...initData, ...lastSevenDaysECGTransaction],
-      "createdAt"
+      "createdAt",
     );
     ecg = Object.values(ecgLast7).map((item) => _.sumBy(item, "amount"));
   }
@@ -226,8 +217,8 @@ function getLastSevenDaysTransactionsArray(data) {
 
   const lastSevenDatesTransactions = _.reverse(
     data?.filter(({ updatedAt }) =>
-      lastSevenDates.includes(moment(updatedAt).format("ddd,Do MMM"))
-    )
+      lastSevenDates.includes(moment(updatedAt).format("ddd,Do MMM")),
+    ),
   );
 
   return lastSevenDatesTransactions;
@@ -270,29 +261,27 @@ function getTransactionsByMonth(vouchersTransaction, ecgTransaction) {
     const currentYearTransactions = _.reverse(
       vouchersTransaction?.filter(
         (transaction) =>
-          moment(transaction?.updatedAt).year() === moment().year()
-      )
+          moment(transaction?.updatedAt).year() === moment().year(),
+      ),
     );
 
     //Modified Date
     const modifiedTransaction = currentYearTransactions?.map((transaction) => {
       return {
         createdAt: moment(transaction?.updatedAt).format("MMMM"),
-        amount: _.isNaN(
-          Number(transaction?.info?.amount || transaction?.amount)
-        )
+        amount: _.isNaN(Number(transaction?.amount))
           ? 0
-          : Number(transaction?.info?.amount || transaction?.amount),
+          : Number(transaction?.amount),
       };
     });
 
     const groupedTransactions = _.groupBy(
       [...initData, ...modifiedTransaction],
-      "createdAt"
+      "createdAt",
     );
 
     vouchers = Object.values(groupedTransactions).map((item) =>
-      _.sumBy(item, "amount")
+      _.sumBy(item, "amount"),
     );
   }
 
@@ -300,29 +289,27 @@ function getTransactionsByMonth(vouchersTransaction, ecgTransaction) {
     const currentYearTransactions = _.reverse(
       ecgTransaction?.filter(
         (transaction) =>
-          moment(transaction?.updatedAt).year() === moment().year()
-      )
+          moment(transaction?.updatedAt).year() === moment().year(),
+      ),
     );
 
     //Modified Date
     const modifiedTransaction = currentYearTransactions?.map((transaction) => {
       return {
         createdAt: moment(transaction?.updatedAt).format("MMMM"),
-        amount: _.isNaN(
-          Number(transaction?.info?.amount || transaction?.amount)
-        )
+        amount: _.isNaN(Number(transaction?.amount))
           ? 0
-          : Number(transaction?.info?.amount || transaction?.amount),
+          : Number(transaction?.amount),
       };
     });
 
     const groupedTransactions = _.groupBy(
       [...initData, ...modifiedTransaction],
-      "createdAt"
+      "createdAt",
     );
 
     ecg = Object.values(groupedTransactions).map((item) =>
-      _.sumBy(item, "amount")
+      _.sumBy(item, "amount"),
     );
   }
 
@@ -375,21 +362,19 @@ function getTransactionsArrayByMonth(data) {
     const modifiedTransaction = currentYearTransactions?.map((transaction) => {
       return {
         createdAt: moment(transaction?.updatedAt).format("MMMM"),
-        amount: _.isNaN(
-          Number(transaction?.info?.amount || transaction?.amount)
-        )
+        amount: _.isNaN(Number(transaction?.amount))
           ? 0
-          : Number(transaction?.info?.amount || transaction?.amount),
+          : Number(transaction?.amount),
       };
     });
 
     const groupedTransactions = _.groupBy(
       [...initData, ...modifiedTransaction],
-      "createdAt"
+      "createdAt",
     );
 
     items = Object.values(groupedTransactions).map((item) =>
-      _.sumBy(item, "amount")
+      _.sumBy(item, "amount"),
     );
   }
 
@@ -400,13 +385,10 @@ function getTopCustomers(data) {
   //GET Recent Transactions
   const modifiedCustomers = _.map(data, (item) => {
     return {
-      _id: item?._id,
-      email: item?.info?.agentEmail || item?.info?.email || item?.phonenumber,
-      phonenumber:
-        item?.info?.agentPhoneNumber ||
-        item?.info?.mobileNo ||
-        item?.phonenumber,
-      amount: Number(item?.info?.amount || item?.amount),
+      id: item?.id,
+      email: item?.email,
+      phonenumber: item?.phonenumber,
+      amount: Number(item?.amount),
       createdAt: item?.updatedAt,
     };
   });
@@ -424,23 +406,20 @@ function getTopCustomers(data) {
 }
 
 async function getTopSellingProducts(data) {
-
-
   //GET Recent Transactions
-
   const cummulativeVouchers = data.flatMap(({ vouchers }) =>
-    JSON.parse(vouchers)
+    JSON.parse(vouchers),
   );
 
   const vouchers = cummulativeVouchers.map(async (id) => {
-    const voucher = await knex("vouchers")
-      .join("categories", "vouchers.category", "=", "categories._id")
-      .where("vouchers._id", id)
-      .select("vouchers._id as _id", "categories.voucherType as voucherType");
+    const voucher = await knex("vw_category_voucher_view")
+      .where("id", typeof id === "object" ? id?.id : id)
+      .select("id", "name")
+      .first();
 
     return {
-      _id: voucher[0]?._id,
-      type: voucher[0]?.voucherType,
+      id: voucher?.id,
+      type: voucher?.name,
     };
   });
 
@@ -454,45 +433,42 @@ async function getTopSellingProducts(data) {
       count: voucher[1]?.length,
     };
   });
-  
 
-  return _.orderBy(_.filter(topVouchers, (item) => item.type !== 'undefined'), "count", "desc");
+  return _.orderBy(
+    _.filter(topVouchers, (item) => item.type !== "undefined"),
+    "count",
+    "desc",
+  );
 }
 
 function getRangeTransactions(startDate, endDate, data) {
-
   const sDate = moment(startDate);
   const eDate = moment(endDate);
 
-
-
   const modifiedTransaction = data?.filter(({ createdAt }) => {
     // return moment(updatedAt).isBetween(sDate, eDate, "days", "[]");
-    return moment(createdAt).isBetween(sDate, eDate, null, '[]')
+    return moment(createdAt).isBetween(sDate, eDate, null, "[]");
   });
 
   const sortedTransaction = _.orderBy(
     modifiedTransaction,
     ["updatedAt"],
-    ["desc"]
+    ["desc"],
   );
 
   return sortedTransaction;
 }
 
-
 //TICKETS
 
 function getTodayScannedTicketsTransaction(data) {
-
   const modifiedTodayTransaction = data?.filter(
     (transaction) =>
-      moment(transaction?.updatedAt).format("l") === moment().format("l")
+      moment(transaction?.updatedAt).format("l") === moment().format("l"),
   );
 
-  return modifiedTodayTransaction.length
+  return modifiedTodayTransaction.length;
 }
-
 
 function getLastSevenDaysTicketTransactions(data) {
   const lastSevenDates = getDatesOfLastSevenDates("Do MMM");
@@ -502,16 +478,14 @@ function getLastSevenDaysTicketTransactions(data) {
       createdAt: date,
       value: 0,
     };
-
   });
 
-
-  let tickets = []
+  let tickets = [];
   if (data?.length > 0) {
     const lastSevenDatesTransactions = _.reverse(
       data?.filter(({ updatedAt }) =>
-        lastSevenDates.includes(moment(updatedAt).format("Do MMM"))
-      )
+        lastSevenDates.includes(moment(updatedAt).format("Do MMM")),
+      ),
     );
 
     //Filter out only amount and group transactions by date
@@ -519,38 +493,33 @@ function getLastSevenDaysTicketTransactions(data) {
       (transaction) => {
         return {
           createdAt: moment(transaction?.updatedAt).format("Do MMM"),
-          value: 1
-
+          value: 1,
         };
-      }
+      },
     );
 
     const ticketsLast7 = _.groupBy(
       [...initData, ...lastSevenDaysTicketsTransaction],
-      "createdAt"
+      "createdAt",
     );
 
     tickets = Object.values(ticketsLast7).map((item, index) => {
-      const totalValue = _.sumBy(item, "value")
+      const totalValue = _.sumBy(item, "value");
 
       return {
         date: lastSevenDates[index],
         label: lastSevenDates[index],
         value: totalValue,
-        dataPointText: totalValue?.toString()
-      }
-    }
-
-    );
+        dataPointText: totalValue?.toString(),
+      };
+    });
   }
 
   // const dataSet = _.zipWith(lastSevenDates, tickets, (date, value) => ({ date, value }));
   return {
     labels: lastSevenDates,
-    tickets
+    tickets,
     // dataSet
-
-
   };
 }
 
@@ -558,15 +527,12 @@ function getLastSevenDaysTicketTransactions(data) {
 function getRecentTicketTransaction(data, quantity) {
   const recentTransaction = _.orderBy(data, "updatedAt", "desc");
 
-
   //GET Recent Transactions
   return _.take(recentTransaction, quantity);
 }
 
-
 //Get total tickets by month
 function getScannedTicketsByMonth(data) {
-
   const months = [
     "January",
     "February",
@@ -605,13 +571,13 @@ function getScannedTicketsByMonth(data) {
     const modifiedTicket = currentYearTickets?.map((ticket) => {
       return {
         createdAt: moment(ticket?.updatedAt).format("MMMM"),
-        value: 1
+        value: 1,
       };
     });
 
     const groupedTickets = _.groupBy(
       [...initData, ...modifiedTicket],
-      "createdAt"
+      "createdAt",
     );
 
     items = Object.values(groupedTickets).map((item, index) => {
@@ -619,22 +585,18 @@ function getScannedTicketsByMonth(data) {
       return {
         label: months[index],
         value: totalValue,
-
-      }
-    }
-
-    );
+      };
+    });
   }
 
   return items;
 }
 
-
 function getTopScannedTickets(data) {
   //GET Recent Transactions
   const modifiedTickets = _.map(data, (item) => {
     return {
-      _id: item?._id,
+      id: item?.id,
       voucherType: item?.voucherType,
       value: 1,
       createdAt: item?.updatedAt,
@@ -652,16 +614,10 @@ function getTopScannedTickets(data) {
   const rankedTickets = _.take(_.orderBy(tickets, "value", "desc"), 5);
 
   return {
-    labels: _.map(rankedTickets, 'voucherType'),
-    data: _.map(rankedTickets, 'value'),
-  }
+    labels: _.map(rankedTickets, "voucherType"),
+    data: _.map(rankedTickets, "value"),
+  };
 }
-
-
-
-
-
-
 
 module.exports = {
   getTopCustomers,
@@ -686,5 +642,5 @@ module.exports = {
   getLastSevenDaysTicketTransactions,
   getScannedTicketsByMonth,
   getRecentTicketTransaction,
-  getTopScannedTickets
+  getTopScannedTickets,
 };

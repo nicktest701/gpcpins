@@ -1,6 +1,6 @@
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import React, { useState, useLayoutEffect } from "react";
-import { logoutUser } from "../../api/userAPI";
+import { logoutUser } from "@/api/userAPI";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -9,8 +9,8 @@ import {
   getUser,
   parseJwt,
   saveUser,
-} from "../../config/sessionHandler";
-import GlobalSpinner from "../../components/GlobalSpinner";
+} from "@/config/sessionHandler";
+import GlobalSpinner from "@/components/GlobalSpinner";
 
 export const AuthContext = React.createContext();
 function AuthProvider({ children }) {

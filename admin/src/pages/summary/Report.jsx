@@ -48,7 +48,7 @@ function Report() {
 
   const reportTransactions = useQuery({
     queryKey: ["report-transactions", sortValue, type],
-    queryFn: () => getReportTransaction(sortValue, type),
+    queryFn: () => getReportTransaction(sortValue, _.capitalize(type)),
     enabled: !!sortValue && !!type,
   });
 
@@ -69,7 +69,7 @@ function Report() {
 
   const sortedTransactions = useMemo(() => {
     if (type !== "All") {
-      return transactions?.data?.filter((item) => item.domain === type);
+      return transactions?.data?.filter((item) => item.service === type);
     }
 
     return transactions?.data;
@@ -125,11 +125,11 @@ function Report() {
             sx={{ width: 200, my: 2 }}
           >
             <MenuItem value="All">All</MenuItem>
-            <MenuItem value="Voucher">Vouchers</MenuItem>
-            <MenuItem value="Ticket">Tickets</MenuItem>
-            <MenuItem value="Prepaid">Prepaid Units</MenuItem>
-            <MenuItem value="Airtime">Airtime Transfers</MenuItem>
-            <MenuItem value="Bundle">Data Bundle</MenuItem>
+            <MenuItem value="voucher">Vouchers</MenuItem>
+            <MenuItem value="ticket">Tickets</MenuItem>
+            <MenuItem value="prepaid">Prepaid Units</MenuItem>
+            <MenuItem value="airtime">Airtime Transfers</MenuItem>
+            <MenuItem value="bundle">Data Bundle</MenuItem>
           </TextField>
 
           <ListItemText

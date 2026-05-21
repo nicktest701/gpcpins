@@ -59,11 +59,12 @@ function Sidebar() {
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
     initial: queryClient?.getQueryData(["notifications"]),
+    staleTime: 10 * 60 * 1000, // 10 minutes
   });
 
   const unReadNotifications = useMemo(
     () => notifications?.data?.filter((item) => item?.active === 1),
-    [notifications.data]
+    [notifications.data],
   );
 
   useEffect(() => {
@@ -156,26 +157,26 @@ function Sidebar() {
                       title={toggleWidth ? "" : " Tickets"}
                     >
                       <NavLinkItem
-                        to="evoucher/cinema"
+                        to="tickets?t=all-assigned-tickets&"
+                        title="Manage Tickets"
+                        icon={<AssignmentIndRounded />}
+                      />
+                      <NavLinkItem
+                        to="tickets/cinema"
                         title="Cinema"
                         icon={<TheatersRounded />}
                       />
 
                       <NavLinkItem
-                        to="evoucher/stadium"
+                        to="tickets/stadium"
                         title="Stadium"
                         icon={<SportsSoccerRounded />}
                       />
 
                       <NavLinkItem
-                        to="evoucher/bus"
+                        to="tickets/bus"
                         title="Bus"
                         icon={<CarRentalRounded />}
-                      />
-                      <NavLinkItem
-                        to="tickets?t=all&"
-                        title="Manage Tickets"
-                        icon={<AssignmentIndRounded />}
                       />
                     </NavLinkItemCollapse>
 

@@ -1,5 +1,7 @@
+
 import { Box, Stack, Typography } from "@mui/material";
-import MaterialTable, { MTableToolbar } from "material-table";
+import MaterialTable from '@material-table/core';
+ import { MTableToolbar } from '@material-table/core';
 
 import { tableIcons } from "../../config/tableIcons";
 import { DeleteRounded, InfoRounded, Refresh } from "@mui/icons-material";
@@ -40,6 +42,7 @@ const CustomizedMaterialTable = ({
     >
       <MaterialTable
         isLoading={isLoading}
+
         title={
           <>
             <Stack
@@ -109,6 +112,8 @@ const CustomizedMaterialTable = ({
             );
           },
         }}
+
+        
         localization={{
           body: {
             emptyDataSourceMessage: (

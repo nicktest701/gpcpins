@@ -5,10 +5,8 @@ export const getAdmin = async () => {
   try {
     const res = await api({
       method: "GET",
-      url: `/admin/auth`,
+      url: `/user/auth`,
     });
-
-    // saveUser(res.data?.user);
     return res.data;
   } catch (error) {
     throw error.response.data;
@@ -19,7 +17,7 @@ export const getAdminToken = async () => {
   try {
     const res = await api({
       method: "GET",
-      url: `/admin/token`,
+      url: `/users/token`,
     });
     saveToken(res.data?.accessToken, res.data?.refreshToken);
 
@@ -47,7 +45,7 @@ export const logoutAdmin = async (data) => {
   try {
     const res = await api({
       method: "POST",
-      url: `/admin/logout`,
+      url: `/users/logout`,
       data,
     });
 
@@ -75,7 +73,7 @@ export const verifyAdminOTP = async (data) => {
   try {
     const res = await api({
       method: "POST",
-      url: `/admin/verify-otp`,
+      url: `/users/verify-otp`,
       data,
     });
 
@@ -187,7 +185,7 @@ export const enableOrDisableAccount = async (info) => {
   try {
     const res = await api({
       method: "PUT",
-      url: `/admin/account`,
+      url: `/users/account`,
       data: info,
     });
 
@@ -202,7 +200,7 @@ export const getPhoneNumberToken = async ({ token }) => {
   try {
     const res = await api({
       method: "GET",
-      url: `/admin/phonenumber/token`,
+     url: `/wallet/pin-reset`,
       params: {
         code: token,
       },
@@ -220,7 +218,7 @@ export const verifyUserIdentity = async (data) => {
   try {
     const res = await api({
       method: "GET",
-      url: `/admin/verify-identity`,
+      url: `/users/verify-identity`,
       params: {
         ...data
       }

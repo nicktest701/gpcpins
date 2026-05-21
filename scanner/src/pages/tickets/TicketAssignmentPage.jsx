@@ -40,7 +40,7 @@ function TicketAssignmentPage() {
   });
   const [ticketType, setTicketType] = useState({
     id: "",
-    voucherType: "",
+    ticketName: "",
     pricing: [],
   });
 
@@ -64,7 +64,7 @@ function TicketAssignmentPage() {
     select: (veririfiers) => {
       return veririfiers?.map((verifier) => {
         return {
-          id: verifier?._id,
+          id: verifier?.id,
           name: verifier?.name,
         };
       });
@@ -96,9 +96,11 @@ function TicketAssignmentPage() {
   });
   const onSubmit = (values, options) => {
     const payload = {
-      category: ticketType.id,
+      category: values.ticketType.id,
       type: JSON.stringify(values.pricingType),
+      ticketName: values.ticketType.ticketName,
       verifier: values.selectedVerifier.id,
+      verifierName: values.selectedVerifier.name,
     };
 
     Swal.fire({
@@ -114,7 +116,7 @@ function TicketAssignmentPage() {
           },
           onSuccess: () => {
             customDispatch(
-              globalAlertType("info", "Ticket successfully assigned!")
+              globalAlertType("info", "Ticket successfully assigned!"),
             );
 
             setSearchParams((params) => {
@@ -165,7 +167,7 @@ function TicketAssignmentPage() {
                       setSelectedCategory(e.target.value);
                     }}
                     error={Boolean(
-                      touched.selectedCategory && errors.selectedCategory
+                      touched.selectedCategory && errors.selectedCategory,
                     )}
                     helperText={
                       touched.selectedCategory && errors.selectedCategory
@@ -189,7 +191,11 @@ function TicketAssignmentPage() {
                     // sx={{ minWidth: { xs: 300, sm: 400 } }}
                     onChange={(e, value) => {
                       setPricingType([]);
-                      setTicketType(value);
+                      setTicketType({
+                        id: value.id,
+                        ticketName: value.ticketName,
+                        pricing: value.pricing,
+                      });
                     }}
                     isOptionEqualToValue={(option, value) =>
                       value?.id === undefined ||
@@ -197,7 +203,7 @@ function TicketAssignmentPage() {
                       value?.id === "" ||
                       option?.id === value?.id
                     }
-                    getOptionLabel={(option) => option?.voucherType || ""}
+                    getOptionLabel={(option) => option?.ticketName || ""}
                     // readOnly={!_.isEmpty(id)}
                     renderInput={(params) => {
                       return (
@@ -206,7 +212,7 @@ function TicketAssignmentPage() {
                           //   label="Available Tickets"
                           // sx={{ minWidth: { xs: 300, sm: 400 } }}
                           error={Boolean(
-                            touched.ticketType?.id && errors.ticketType?.id
+                            touched.ticketType?.id && errors.ticketType?.id,
                           )}
                           helperText={
                             touched.ticketType?.id && errors.ticketType?.id
@@ -244,7 +250,7 @@ function TicketAssignmentPage() {
                         <TextField
                           {...params}
                           error={Boolean(
-                            touched.pricingType && errors.pricingType
+                            touched.pricingType && errors.pricingType,
                           )}
                           helperText={touched.pricingType && errors.pricingType}
                         />
@@ -280,7 +286,7 @@ function TicketAssignmentPage() {
                           // sx={{ minWidth: { xs: 300, sm: 400 } }}
                           error={Boolean(
                             touched.selectedVerifier?.id &&
-                              errors.selectedVerifier?.id
+                            errors.selectedVerifier?.id,
                           )}
                           helperText={
                             touched.selectedVerifier?.id &&

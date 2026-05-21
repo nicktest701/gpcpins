@@ -10,7 +10,7 @@ import CustomTitle from "../../../components/custom/CustomTitle";
 function Summary() {
   const [tab, setTab] = useState("1");
   return (
-    <Container maxWidth="lg">
+    < >
       <CustomTitle
         title="Summary"
         subtitle="View history and data about daily transactions."
@@ -38,7 +38,7 @@ function Summary() {
           <Report />
         </TabPanel>
       </TabContext>
-    </Container>
+    </>
   );
 }
 

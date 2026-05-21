@@ -30,14 +30,14 @@ import EmployeeCard from "./EmployeeCard";
 import { useMemo, useState } from "react";
 import { exportToCSV, exportToExcel, exportToPDF } from "../../config/export";
 
-const ViewEmployees = () => {
+const ViewVerifiers = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
 
   const verifiers = useQuery({
-    queryKey: ["verfifiers"],
+    queryKey: ["verifiers"],
     queryFn: getAllVerifiers,
-    // initialData: [],
+    initialData: [],
   });
 
   const modifiedVerifiers = useMemo(() => {
@@ -149,7 +149,7 @@ const ViewEmployees = () => {
             {modifiedVerifiers.length > 0 ? (
               <>
                 {modifiedVerifiers?.map((verifier) => {
-                  return <EmployeeCard {...verifier} key={verifier?._id} />;
+                  return <EmployeeCard {...verifier} key={verifier?.id} />;
                 })}
                 {/* <EmployeeCard /> */}
                 {/* <Box
@@ -260,4 +260,4 @@ const ContactCardSkeleton = () => {
   );
 };
 
-export default ViewEmployees;
+export default ViewVerifiers;

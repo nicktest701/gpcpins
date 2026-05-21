@@ -715,7 +715,7 @@ export const EMPLOYEES_ROLES = [
 ];
 
 export const LOGS_COLUMNS = [
-  { title: "ID", field: "_id", hidden: true },
+  { title: "ID", field: "id", hidden: true },
   { title: "Modified At", field: "modifiedAt" },
   { title: "Activity", field: "title" },
   {
@@ -835,7 +835,7 @@ export const RECENTLY_SCANNED_TICKET_COLUMNS = [
 export const BROADCAST_MESSAGES_COLUMNS = [
   {
     title: "ID",
-    field: "_id",
+    field: "id",
     hidden: true,
   },
   {
@@ -866,7 +866,7 @@ export const BROADCAST_MESSAGES_COLUMNS = [
     render: (rowData) => {
       return (
         <>
-          {rowData?.type === "SMS" ? (
+          {rowData?.type === "sms" ? (
             <ListItemText
               primary={rowData?.title}
               primaryTypographyProps={{
@@ -874,7 +874,7 @@ export const BROADCAST_MESSAGES_COLUMNS = [
                 color: "primary.main",
                 fontWeight: "700",
               }}
-              secondary={rowData?.message}
+              secondary={rowData?.body}
               secondaryTypographyProps={{
                 width: "50ch",
               }}
@@ -897,7 +897,7 @@ export const BROADCAST_MESSAGES_COLUMNS = [
               </Typography>
               <div
                 dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(rowData?.message),
+                  __html: DOMPurify.sanitize(rowData?.body),
                 }}
                 style={{
                   width: "30ch",
@@ -930,7 +930,7 @@ export const BROADCAST_MESSAGES_COLUMNS = [
 ];
 
 export const TICKETS_COLUMNS = [
-  { title: "ID", field: "_id", hidden: true },
+  { title: "ID", field: "id", hidden: true },
   // { title: "Title", field: "title" },
   //  { title: "Ticket", field: "type" },
   {
@@ -952,10 +952,10 @@ export const TICKETS_COLUMNS = [
       return (
         <Box>
           <Typography variant="body2" color="secondary">
-            {data?.voucherType}
+            {data?.ticketName}
           </Typography>
           <Typography variant="body2" textTransform="capitalize">
-            {data?.categoryType}
+            {data?.ticketType}
           </Typography>
           <Stack direction="row">
             {data?.type?.map((item) => (
@@ -985,7 +985,7 @@ export const TICKETS_COLUMNS = [
           color: "var(--primary)",
           // textDecoration: "none",
         }}
-        to={`/verifiers/${data?.verifierId}/ticket-details/${data?._id}`}
+        to={`/verifiers/${data?.verifierId}/scan-history/${data?.id}`}
       >
         {data?.verifierName}
       </Link>

@@ -408,10 +408,10 @@ export const TICKETS_COLUMNS = [
           status === "new"
             ? "success"
             : status === "sold"
-            ? "info"
-            : status === "used"
-            ? "error"
-            : "warning"
+              ? "info"
+              : status === "used"
+                ? "error"
+                : "warning"
         }
         size="small"
         label={_.capitalize(status)}
@@ -435,8 +435,8 @@ export const TICKETS_COLUMNS = [
       return category === "bus"
         ? details?.seatNo
         : ["stadium", "cinema"].includes(category)
-        ? details?.type
-        : null;
+          ? details?.type
+          : null;
     },
   },
 ];
@@ -882,7 +882,7 @@ export const USERS_COLUMNS = [
   },
   {
     title: "id",
-    field: "_id",
+    field: "id",
     hidden: true,
   },
 
@@ -980,7 +980,7 @@ export const USERS_COLUMNS = [
 export const EMPLOYEES_COLUMNS = [
   {
     title: "id",
-    field: "_id",
+    field: "id",
     hidden: true,
   },
   {
@@ -1089,7 +1089,7 @@ export const EMPLOYEES_COLUMNS = [
 export const AGENTS_COLUMNS = [
   {
     title: "id",
-    field: "_id",
+    field: "id",
     hidden: true,
   },
   {
@@ -1195,7 +1195,7 @@ export const AGENTS_COLUMNS = [
 export const BROADCAST_MESSAGES_COLUMNS = [
   {
     title: "ID",
-    field: "_id",
+    field: "id",
     hidden: true,
   },
   {
@@ -1281,7 +1281,7 @@ export const BROADCAST_MESSAGES_COLUMNS = [
               </Typography>
               <div
                 dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(rowData?.message),
+                  __html: DOMPurify.sanitize(rowData?.body),
                 }}
                 style={{ width: "30ch" }}
               ></div>
@@ -1418,16 +1418,16 @@ export const transactionsColumns = (type, refund) => [
     customFilterAndSearch: (data, { status }) => {
       return status?.toLowerCase().lastIndexOf(data?.toLowerCase()) > -1;
     },
-    render: ({ domain, status, isProcessed }) =>
-      domain === "Airtime" ? (
+    render: ({ service, status, isProcessed }) =>
+      service === "airtime" ? (
         <Button
           size="small"
           label={
             status === "completed" && Boolean(isProcessed)
               ? "Completed"
               : status === "refunded" && Boolean(isProcessed)
-              ? "Refunded"
-              : "Pending"
+                ? "Refunded"
+                : "Pending"
           }
           sx={{
             color: "#fff",
@@ -1435,16 +1435,16 @@ export const transactionsColumns = (type, refund) => [
               status === "completed" && Boolean(isProcessed)
                 ? "success.darker"
                 : status === "refunded" && Boolean(isProcessed)
-                ? "secondary.darker"
-                : "warning.darker",
+                  ? "secondary.darker"
+                  : "warning.darker",
             borderRadius: 1,
           }}
         >
           {status === "completed" && Boolean(isProcessed)
             ? "Completed"
             : status === "refunded" && Boolean(isProcessed)
-            ? "Refunded"
-            : "Pending"}
+              ? "Refunded"
+              : "Pending"}
         </Button>
       ) : (
         <Button
@@ -1453,8 +1453,8 @@ export const transactionsColumns = (type, refund) => [
             status === "completed"
               ? "Completed"
               : status === "refunded"
-              ? "Refunded"
-              : "Pending"
+                ? "Refunded"
+                : "Pending"
           }
           sx={{
             color: "#fff",
@@ -1462,23 +1462,22 @@ export const transactionsColumns = (type, refund) => [
               status === "completed"
                 ? "success.darker"
                 : status === "pending"
-                ? "warning.darker"
-                : "secondary.darker",
+                  ? "warning.darker"
+                  : "secondary.darker",
             borderRadius: 1,
           }}
         >
           {status === "completed"
             ? "Completed"
             : status === "refunded"
-            ? "Refunded"
-            : "Pending"}
+              ? "Refunded"
+              : "Pending"}
         </Button>
       ),
   },
   {
     title: "Id",
-    field: "_id",
-    width: 100,
+    field: "id",
   },
   {
     title: "External Transaction ID",
@@ -1496,13 +1495,15 @@ export const transactionsColumns = (type, refund) => [
       width: 100,
     },
   },
-  ["All", "Airtime"].includes(type) && {
+  {
     title: "Kind",
     field: "kind",
+    hidden: !["All", "airtime"].includes(type),
   },
   {
     title: "Domain",
-    field: "domain",
+    field: "service",
+    render: ({ service }) => _.capitalize(service),
   },
   {
     title: "Link",
@@ -1513,7 +1514,7 @@ export const transactionsColumns = (type, refund) => [
     title: type || "Recipient",
     field: "voucherType",
     render: (row) =>
-      row?.domain === "Airtime" ? (
+      row?.service === "airtime" ? (
         row?.kind === "bulk" ? (
           <Stack>
             {JSON.parse(row?.recipient)?.map((item) => (
@@ -1552,7 +1553,7 @@ export const transactionsColumns = (type, refund) => [
 
   {
     title: "Contact Info.",
-    field: null,
+    field: "email",
     searchable: true,
     customFilterAndSearch: (data, { email, phonenumber }) => {
       return (
@@ -1583,50 +1584,27 @@ export const transactionsColumns = (type, refund) => [
       maximumFractionDigits: 2,
     },
   },
-  ["All", "Prepaid", "Airtime"].includes(type) && {
+  {
     title: "Issuer ID",
     field: "issuer",
+    hidden: !["All", "prepaid", "airtime"].includes(type),
     customFilterAndSearch: (data, { issuer }) => {
       return issuer?.toLowerCase().lastIndexOf(data?.toLowerCase()) > -1;
     },
   },
-  ["All", "Prepaid", "Airtime"].includes(type) && {
+  {
     title: "Completed By",
     field: "issuerName",
+    hidden: !["All", "prepaid", "airtime"].includes(type),
     customFilterAndSearch: (data, { issuerName }) => {
       return issuerName?.toLowerCase().lastIndexOf(data?.toLowerCase()) > -1;
     },
   },
-  refund && {
+  {
     title: "Refunded By",
     field: "refunder",
+    hidden: !refund,
   },
-  // {
-  //   title: "View External Transaction ",
-  //   field: "partner",
-
-  //   render: ({ mode, partner, isProcessed }) =>
-  //     mode === "Mobile Money" ? (
-  //       <Button
-  //         size="small"
-  //         label="View External Transaction"
-  //         sx={{
-  //           color: "#fff",
-  //           bgcolor:
-  //             status === "completed"
-  //               ? "success.darker"
-  //               : status === "refunded"
-  //               ? "secondary.darker"
-  //               : "warning.main",
-  //           borderRadius: 1,
-  //         }}
-  //       >
-  //         View External Transaction
-  //       </Button>
-  //     ) : (
-  //       <></>
-  //     ),
-  // },
 ];
 
 export const bulkAirtimeTransactionsColumns = [
@@ -1644,6 +1622,16 @@ export const bulkAirtimeTransactionsColumns = [
     title: "UpdatedAt",
     field: "updatedAt",
     hidden: true,
+  },
+  {
+    title: "Id",
+    field: "id",
+    // hidden: true,
+  },
+  {
+    title: "ORDER ID",
+    field: "orderId",
+    // hidden: true,
   },
   {
     title: "Status",
@@ -1671,16 +1659,6 @@ export const bulkAirtimeTransactionsColumns = [
           : "Pending"}
       </Button>
     ),
-  },
-  {
-    title: "Id",
-    field: "_id",
-    // hidden: true,
-  },
-  {
-    title: "ORDER ID",
-    field: "orderId",
-    // hidden: true,
   },
 
   {
@@ -1747,17 +1725,17 @@ export const USERS_WALLET = (type) => [
   },
   {
     title: "ID",
-    field: "_id",
+    field: "id",
     hidden: true,
     export: true,
   },
   {
     title: "Name",
     field: "name",
-    render: ({ _id, name }) => {
+    render: ({ userId, name }) => {
       return (
         <Link
-          to={`/${type === "users" ? "users" : "airtime/agent"}/details/${_id}`}
+          to={`/${type === "users" ? "users" : "airtime/agent"}/details/${userId}`}
         >
           {name}
         </Link>
@@ -1807,7 +1785,7 @@ export const USERS_WALLET = (type) => [
 export const AGENT_TRANSACTIONS = [
   {
     title: "TRANSACTION ID",
-    field: "_id",
+    field: "id",
     export: true,
   },
   {
@@ -1837,8 +1815,8 @@ export const AGENT_TRANSACTIONS = [
           status === "completed"
             ? "Completed"
             : status === "refunded"
-            ? "Refunded"
-            : "Failed"
+              ? "Refunded"
+              : "Failed"
         }
         sx={{
           color: "white",
@@ -1846,8 +1824,8 @@ export const AGENT_TRANSACTIONS = [
             status === "completed"
               ? "success.darker"
               : status === "refunded"
-              ? "#000"
-              : "error.darker",
+                ? "#000"
+                : "error.darker",
           borderRadius: 1,
           p: 1,
         }}
@@ -1855,8 +1833,8 @@ export const AGENT_TRANSACTIONS = [
         {status === "completed"
           ? "Completed"
           : status === "refunded"
-          ? "Refunded"
-          : "Failed"}
+            ? "Refunded"
+            : "Failed"}
       </Button>
     ),
   },
@@ -1966,7 +1944,7 @@ export const WALLET_TOPUP_TRANSACTIONS = [
   },
   {
     title: "TRANSACTION ID",
-    field: "_id",
+    field: "id",
     export: true,
   },
   {
@@ -2033,13 +2011,14 @@ export const SERVICE_PROVIDER = [
 export const WALLET_TRANSACTIONS = (type) => [
   {
     title: "TRANSACTION ID",
-    field: "_id",
+    field: "id",
     export: true,
   },
   {
     title: "DATE",
-    field: "modifiedAt",
+    field: "createdAt",
     export: true,
+    hidden: true,
   },
   {
     title: "STATUS",
@@ -2051,8 +2030,8 @@ export const WALLET_TRANSACTIONS = (type) => [
           status === "completed"
             ? "Completed"
             : status === "refunded"
-            ? "Refunded"
-            : "Failed"
+              ? "Refunded"
+              : "Failed"
         }
         sx={{
           color: "white",
@@ -2060,8 +2039,8 @@ export const WALLET_TRANSACTIONS = (type) => [
             status === "completed"
               ? "success.darker"
               : status === "refunded"
-              ? "#000"
-              : "error.darker",
+                ? "#000"
+                : "error.darker",
           borderRadius: 1,
           p: 1,
         }}
@@ -2069,8 +2048,8 @@ export const WALLET_TRANSACTIONS = (type) => [
         {status === "completed"
           ? "Completed"
           : status === "refunded"
-          ? "Refunded"
-          : "Failed"}
+            ? "Refunded"
+            : "Failed"}
       </Button>
     ),
   },
@@ -2093,16 +2072,16 @@ export const WALLET_TRANSACTIONS = (type) => [
   },
   {
     title: "User",
-    field: "userName",
-    render: ({ userID, agentID, userName }) => {
+    field: "name",
+    render: ({ userId, name }) => {
       return (
         <Link
           // style={{ textDecoration: "underline" }}
           to={`/${type === "users" ? "users" : "airtime/agent"}/details/${
-            userID || agentID
+            userId
           }`}
         >
-          {userName}
+          {name}
         </Link>
       );
     },
@@ -2121,6 +2100,7 @@ export const WALLET_TRANSACTIONS = (type) => [
     },
   },
   { title: "Comment", field: "comment" },
+  { title: "Type", field: "type" },
   {
     title: "Attachment",
     field: "attachment",
@@ -2334,8 +2314,8 @@ export const CREATE_VOUCHER_ROLES = [
 ];
 
 export const LOGS_COLUMNS = [
-  { title: "ID", field: "_id", hidden: true },
-  { title: "Modified At", field: "modifiedAt" },
+  { title: "ID", field: "id", hidden: true },
+  { title: "Modified At", field: "createdAt" },
   { title: "Activity", field: "title" },
   {
     title: "Severity",
@@ -2393,7 +2373,7 @@ export const LOGS_COLUMNS = [
 ];
 
 export const METERS_COLUMNS = [
-  { title: "ID", field: "_id", hidden: true },
+  { title: "ID", field: "id", hidden: true },
   {
     title: "Status",
     field: "active",
@@ -2463,26 +2443,26 @@ export const PROCESSED_TRANSACTIONS = [
     title: "Contact",
     field: null,
     searchable: true,
-    customFilterAndSearch: (data, { email, mobileNo }) => {
+    customFilterAndSearch: (data, { email, phonenumber }) => {
       return (
         email?.toLowerCase().lastIndexOf(data.toLowerCase()) > -1 ||
-        mobileNo.toLowerCase().lastIndexOf(data.toLowerCase()) > -1
+        phonenumber.toLowerCase().lastIndexOf(data.toLowerCase()) > -1
       );
     },
-    render: ({ email, mobileNo }) => {
+    render: ({ email, phonenumber }) => {
       return (
         <Stack>
           <Typography variant="body2" color="info.main">
             {email}
           </Typography>
-          <Typography variant="body2">{mobileNo}</Typography>
+          <Typography variant="body2">{phonenumber}</Typography>
         </Stack>
       );
     },
   },
 
-  { title: "Mobile Number.", field: "info.mobileNo", hidden: true },
-  { title: "Customer Email.", field: "info.email", hidden: true },
+  { title: "Mobile Number.", field: "phonenumber", hidden: true },
+  { title: "Customer Email.", field: "email", hidden: true },
   { title: "Customer LastCharge", field: "info.lastCharge", hidden: true },
   {
     title: "Customer Last Month Consumption",
@@ -2517,8 +2497,8 @@ export const airtimeTransactionsColumns = (type) => [
           status === "completed" && Boolean(isProcessed)
             ? "Completed"
             : status === "refunded" && Boolean(isProcessed)
-            ? "Refunded"
-            : "Pending"
+              ? "Refunded"
+              : "Pending"
         }
         sx={{
           color: "#fff",
@@ -2526,22 +2506,22 @@ export const airtimeTransactionsColumns = (type) => [
             status === "completed" && Boolean(isProcessed)
               ? "success.darker"
               : status === "refunded" && Boolean(isProcessed)
-              ? "secondary.main"
-              : "warning.darker",
+                ? "secondary.main"
+                : "warning.darker",
           borderRadius: 1,
         }}
       >
         {status === "completed" && Boolean(isProcessed)
           ? "Completed"
           : status === "refunded" && Boolean(isProcessed)
-          ? "Refunded"
-          : "Pending"}
+            ? "Refunded"
+            : "Pending"}
       </Button>
     ),
   },
   {
     title: "TRANSACTION Id",
-    field: "_id",
+    field: "id",
     // hidden: true,
   },
   {
@@ -2617,8 +2597,8 @@ export const userTransactionsColumns = (type) => [
           status === "completed"
             ? "Completed"
             : status === "refunded"
-            ? "Refunded"
-            : "Pending"
+              ? "Refunded"
+              : "Pending"
         }
         sx={{
           color: "#fff",
@@ -2626,27 +2606,30 @@ export const userTransactionsColumns = (type) => [
             status === "completed"
               ? "success.darker"
               : status === "refunded"
-              ? "secondary.main"
-              : "warning.darker",
+                ? "secondary.main"
+                : "warning.darker",
           borderRadius: 1,
         }}
       >
         {status === "completed"
           ? "Completed"
           : status === "refunded"
-          ? "Refunded"
-          : "Pending"}
+            ? "Refunded"
+            : "Pending"}
       </Button>
     ),
   },
   {
     title: "TRANSACTION Id",
-    field: "_id",
+    field: "id",
     // hidden: true,
   },
   {
     title: "Domain",
     field: "domain",
+    cellStyle: {
+      textTransform: "capitalize",
+    },
   },
   {
     title: "Link",
@@ -2654,23 +2637,23 @@ export const userTransactionsColumns = (type) => [
     hidden: true,
   },
 
-  type === "Prepaid"
+  type === "prepaid"
     ? {
         title: "Meter",
         field: "voucherType",
         render: (row) => row?.meter,
       }
-    : type === "Bundle"
-    ? {
-        title: "Bundle Name",
-        field: "kind",
-      }
-    : {
-        title: "Voucher/Ticket",
-        field: "voucherType",
-        render: (row) => row?.voucherType,
-      },
-  type === "Bundle"
+    : type === "bundle"
+      ? {
+          title: "Bundle Name",
+          field: "kind",
+        }
+      : {
+          title: "Voucher/Ticket",
+          field: "voucherType",
+          render: (row) => row?.voucherType,
+        },
+  type === "bundle"
     ? { title: "Volume", field: "volume" }
     : {
         title: "Type",
@@ -2721,8 +2704,8 @@ export const airtimeTransactionsByColumns = [
           status === "completed"
             ? "Completed"
             : status === "refunded"
-            ? "Refunded"
-            : "Failed"
+              ? "Refunded"
+              : "Failed"
         }
         sx={{
           color: "white",
@@ -2730,8 +2713,8 @@ export const airtimeTransactionsByColumns = [
             status === "completed"
               ? "success.darker"
               : status === "refunded"
-              ? "#000"
-              : "error.darker",
+                ? "#000"
+                : "error.darker",
           borderRadius: 1,
           p: 1,
         }}
@@ -2739,8 +2722,8 @@ export const airtimeTransactionsByColumns = [
         {status === "completed"
           ? "Completed"
           : status === "refunded"
-          ? "Refunded"
-          : "Failed"}
+            ? "Refunded"
+            : "Failed"}
       </Button>
     ),
   },

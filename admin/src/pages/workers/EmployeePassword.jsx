@@ -38,7 +38,13 @@ function EmployeePassword() {
     mutate(values, {
       onSuccess: (data) => {
         login(parseJwt(data?.acessToken));
-        navigate("/auth/login");
+        navigate(state?.reset ? "/auth/login?verified=true" : "/auth/login",{
+          state: {
+            success: state?.reset
+              ? "Password reset successful! Please login with your new password."
+              : ""
+          }
+        });
       },
 
       onError: (error) => {
@@ -96,7 +102,7 @@ function EmployeePassword() {
                   value={values.confirmPassword}
                   onChange={handleChange("confirmPassword")}
                   error={Boolean(
-                    touched.confirmPassword && errors.confirmPassword
+                    touched.confirmPassword && errors.confirmPassword,
                   )}
                   helperText={touched.confirmPassword && errors.confirmPassword}
                 />

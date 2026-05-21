@@ -202,7 +202,7 @@ export const getWalletBalance = async () => {
   try {
     const res = await api({
       method: "GET",
-      url: `/users/wallet/balance`,
+      url: `/wallet/balance`,
     });
 
     return res.data;
@@ -224,16 +224,3 @@ export const getWalletTransaction = async () => {
 };
 
 
-export const updateUserWalletPin = async (data) => {
-  try {
-    const res = await api({
-      method: "PUT",
-      url: `/users/wallet`,
-      data,
-    });
-
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};

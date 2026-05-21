@@ -1,79 +1,186 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useRef } from "react";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Stack,
+  TextField,
+  Autocomplete,
+  InputAdornment,
+  Typography,
+  Button,
+  IconButton,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  FormHelperText,
+  Avatar,
+  Box,
+} from "@mui/material";
 import LoadingButton from "@mui/lab/LoadingButton";
-import Autocomplete from "@mui/material/Autocomplete";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
-import InputAdornment from "@mui/material/InputAdornment";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
-import _ from "lodash";
+import { Close, CloudUpload } from "@mui/icons-material";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
 import { v4 as uuid } from "uuid";
+import _ from "lodash";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Formik } from "formik";
-import Compressor from "compressorjs";
+import moment from "moment";
 
 import { CustomContext } from "../../context/providers/CustomProvider";
 import { postCategory } from "../../api/categoryAPI";
 import { CATEGORY, currencyFormatter } from "../../constants";
-import moment from "moment";
 import { globalAlertType } from "../../components/alert/alertType";
 import Transition from "../../components/Transition";
 import CustomYearPicker from "../../components/inputs/CustomYearPicker";
 import { addWaecValidationSchema } from "../../config/validationSchema";
 import { WAEC_VOUCHER_PRICING } from "../../mocks/columns";
-import {
-  IconButton,
-  List,
-  ListItem,
-  ListItemSecondaryAction,
-  ListItemText,
-} from "@mui/material";
-import { Close } from "@mui/icons-material";
+import { uploadFile } from "@/lib/upload";
 
 const AddWAECCategory = () => {
-  //context
   const queryClient = useQueryClient();
   const { customState, customDispatch } = useContext(CustomContext);
 
-  //state
-  const [voucherType, setVoucherType] = useState("");
-  const [logo, setLogo] = useState(null);
+  // Local state
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
   const [year, setYear] = useState(moment().format("YYYY"));
-  const [price, setPrice] = useState(0);
   const [pricingList, setPricingList] = useState([]);
   const [pricingError, setPricingError] = useState("");
   const [pricingType, setPricingType] = useState("");
+  const [price, setPrice] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  const initialValues = {
-    category: "waec",
-    voucherType,
-    sellingPrice: 0,
-    voucherURL: "",
-  };
+  // Upload file ref
+  const fileInputRef = useRef(null);
 
+  // React Hook Form setup
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: yupResolver(addWaecValidationSchema()),
+    defaultValues: {
+      category: "waec",
+      voucherType: "",
+      sellingPrice: 0,
+      voucherURL: "",
+    },
+  });
+  const category = watch("category");
+
+  // Mutation for adding category
   const { mutateAsync, isLoading } = useMutation({
     mutationFn: postCategory,
+    onSettled: () => {
+      queryClient.invalidateQueries(["category", category]);
+    },
+    onSuccess: (data) => {
+      customDispatch(globalAlertType("info", data));
+      handleClose();
+      // Reset form and local state
+      reset();
+      setPricingList([]);
+      setLogoFile(null);
+      setLogoPreview(null);
+      setPricingType("");
+      setPrice(0);
+      setYear(moment().format("YYYY"));
+    },
+    onError: (error) => {
+      customDispatch(globalAlertType("error", error));
+    },
   });
-  const onSubmit = (values, option) => {
+
+  const handleClose = () => {
+    customDispatch({ type: "openAddWaecCategory", payload: { open: false } });
+    reset();
+  };
+
+  // Upload logo
+  const handleUploadFile = async (e) => {
+    setLoading(true);
+
+    try {
+      const file = e.target.files[0];
+      if (!file) return;
+      setLogoFile(file);
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = () => setLogoPreview(reader.result);
+      reader.readAsDataURL(file);
+
+      // Actually upload to Firebase
+      const { downloadURL } = await uploadFile({
+        folder: "category",
+        file,
+        onProgress: (progress) => {
+          setProgress(progress);
+        },
+      });
+      setLogoFile(downloadURL); // store final URL
+    } catch (error) {
+      customDispatch(
+        globalAlertType("error", "Something went wrong. Please try again."),
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add ticket pricing
+  const handleAddTicketType = () => {
+    setPricingError("");
+    if (!pricingType.trim()) {
+      setPricingError("Required*");
+      return;
+    }
+    if (!price || price <= 0) {
+      setPricingError("Valid price is required");
+      return;
+    }
+
+    const newItem = {
+      id: uuid(),
+      type: pricingType.trim().toUpperCase(),
+      price: Number(price),
+    };
+    setPricingList((prev) =>
+      _.orderBy(
+        _.values(_.merge(_.keyBy([...prev, newItem], "type"))),
+        "type",
+        "asc",
+      ),
+    );
+    setPricingType("");
+    setPrice(0);
+  };
+
+  const handleRemoveTicketType = (id) => {
+    setPricingList((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  // Submit handler
+  const onSubmit = (values) => {
     if (pricingList.length === 0) {
-      setPricingError("Please add at least one ticket !");
-      option.setSubmitting(false);
+      setPricingError("Please add at least one ticket price");
       return;
     }
 
     const isProtocolPresent = values.voucherURL?.includes("http");
-
     const newCategory = {
-      category: values.category,
-      voucherType: values.voucherType,
+      type: values.category,
+      name: values.voucherType,
       price: values.sellingPrice,
       details: {
         price: values.sellingPrice,
-        logo,
+        logo: logoFile, // uploaded URL
         voucherURL: isProtocolPresent
           ? values.voucherURL
           : `https://${values.voucherURL}`,
@@ -82,278 +189,259 @@ const AddWAECCategory = () => {
       year,
     };
 
-    option.setSubmitting(false);
-
-    mutateAsync(newCategory, {
-      onSettled: () => {
-        queryClient.invalidateQueries(["category"]);
-      },
-      onSuccess: (data) => {
-        customDispatch(globalAlertType("info", data));
-        handleClose();
-      },
-      onError: (error) => {
-        customDispatch(globalAlertType("error", error));
-      },
-    });
+    mutateAsync(newCategory);
   };
 
-  //Close Add Category
-  const handleClose = () => {
-    customDispatch({ type: "openAddWaecCategory", payload: { open: false } });
-  };
-
-  const handleUploadFile = (e) => {
-    e.preventDefault();
-    if (e.target.files) {
-      const image = e.target.files[0];
-
-      new Compressor(image, {
-        height: 200,
-        width: 200,
-        quality: 0.6,
-
-        success(data) {
-          const reader = new FileReader();
-          reader.onload = function (event) {
-            const ImageURL = event.target.result;
-            setLogo(ImageURL);
-          };
-
-          reader.readAsDataURL(data);
-        },
-      });
-    }
-  };
-
-  const handleAddTicketType = () => {
-    setPricingError("");
-    if (pricingType?.trim() === "") {
-      setPricingError("Required*");
-      return;
-    }
-
-    const item = {
-      id: uuid(),
-      type: pricingType.toUpperCase(),
-      price: Number(price),
-    };
-    setPricingList((prev) => {
-      return _.orderBy(
-        _.values(_.merge(_.keyBy([...prev, item], "type"))),
-        "type",
-        "asc"
-      );
-    });
-
-    setPricingError(" ");
-    setPricingType("");
-    setPrice(0);
-  };
-
-  const handleRemoveTicketType = (id) => {
-    const filteredTickets = pricingList.filter((item) => item.id !== id);
-    setPricingList(filteredTickets);
-  };
+  // Preview logo if uploaded
+  const LogoPreview = () => (
+    <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 2 }}>
+      {logoPreview && (
+        <Avatar
+          src={logoPreview}
+          variant="rounded"
+          sx={{ width: 60, height: 60, objectFit: "contain" }}
+        />
+      )}
+      <Button
+        variant="outlined"
+        startIcon={<CloudUpload />}
+        onClick={() => fileInputRef.current?.click()}
+        size="small"
+      >
+        {logoPreview ? "Change Logo" : "Upload Logo"}
+      </Button>
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        accept=".png,.jpg,.jpeg,.webp"
+        onChange={handleUploadFile}
+      />
+    </Box>
+  );
 
   return (
-    <Formik
-      initialValues={initialValues}
-      validationSchema={addWaecValidationSchema}
-      onSubmit={onSubmit}
-      enableReinitialize={true}
+    <Dialog
+      maxWidth="md"
+      fullWidth
+      TransitionComponent={Transition}
+      open={customState.category.open}
+      onClose={handleClose}
     >
-      {({ values, errors, touched, handleChange, handleSubmit }) => {
-        return (
-          <Dialog
-            maxWidth="sm"
-            fullWidth
-            TransitionComponent={Transition}
-            open={customState.category.open}
-            onClose={handleClose}
-          >
-            <DialogTitle>New WAEC Checker</DialogTitle>
-            <DialogContent>
-              <Stack rowGap={2} paddingY={2}>
+      <DialogTitle>Add New WAEC Checker</DialogTitle>
+      <form onSubmit={handleSubmit(onSubmit)} noValidate>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            {/* WAEC Checker Name */}
+            <Controller
+              name="voucherType"
+              control={control}
+              render={({ field }) => (
                 <Autocomplete
-                  size="small"
-                  options={CATEGORY.exams}
                   freeSolo
-                  noOptionsText="No option avaiable"
-                  value={voucherType || null}
-                  onInputChange={(e, value) => setVoucherType(value)}
+                  options={CATEGORY.exams}
+                  noOptionsText="No option available"
                   isOptionEqualToValue={(option, value) => option === value}
-                  renderInput={(props) => (
+                  onInputChange={(_, value) => {
+                    setValue("voucherType", value);
+                  }}
+                  value={field.value || null}
+                  renderInput={(params) => (
                     <TextField
-                      {...props}
-                      label="WAEC Checker"
-                      error={Boolean(touched.voucherType && errors.voucherType)}
-                      helperText={touched.voucherType && errors.voucherType}
+                      {...params}
+                      label="WAEC Checker Name"
+                      required
+                      error={!!errors.voucherType}
+                      helperText={errors.voucherType?.message}
+                      size="small"
                     />
                   )}
                 />
+              )}
+            />
 
-                <CustomYearPicker label="Year" year={year} setYear={setYear} />
+            {/* Year */}
+            <CustomYearPicker
+              label="Year"
+              year={year}
+              setYear={setYear}
+              size="small"
+            />
 
+            {/* Selling Price */}
+            <Controller
+              name="sellingPrice"
+              control={control}
+              render={({ field }) => (
                 <TextField
-                  size="small"
+                  {...field}
                   type="number"
-                  inputMode="decimal"
                   label="Selling Price"
-                  placeholder="Price here"
-                  value={values.sellingPrice}
-                  onChange={handleChange("sellingPrice")}
-                  error={Boolean(touched.sellingPrice && errors.sellingPrice)}
-                  helperText={touched.sellingPrice && errors.sellingPrice}
+                  required
                   InputProps={{
                     startAdornment: (
-                      <InputAdornment position="start">
-                        <Typography>GHS</Typography>
-                      </InputAdornment>
+                      <InputAdornment position="start">GH¢</InputAdornment>
                     ),
                     endAdornment: (
-                      <InputAdornment position="end">
-                        <Typography>p</Typography>
-                      </InputAdornment>
+                      <InputAdornment position="end">p</InputAdornment>
                     ),
                   }}
-                />
-                {/* Ticket type  */}
-                {pricingError && (
-                  <small
-                    style={{
-                      color: "red",
-                    }}
-                  >
-                    {pricingError}
-                  </small>
-                )}
-                <Stack
-                  direction={{ xs: "column", md: "row" }}
-                  spacing={2}
-                  alignItems="center"
-                >
-                  <Autocomplete
-                    options={WAEC_VOUCHER_PRICING}
-                    freeSolo
-                    closeText=""
-                    disableClearable
-                    fullWidth
-                    size="small"
-                    noOptionsText="No Quantity available"
-                    value={pricingType || ""}
-                    onInputChange={(e, value) => setPricingType(value)}
-                    isOptionEqualToValue={(option, value) =>
-                      option.toString() === value.toString()
-                    }
-                    renderInput={(props) => (
-                      <TextField
-                        {...props}
-                        label="Quantity Pricing"
-                        error={pricingError.trim() !== ""}
-                      />
-                    )}
-                  />
-                  <Typography color="primary">FOR</Typography>
-                  <TextField
-                    size="small"
-                    type="number"
-                    inputMode="numeric"
-                    label="Price"
-                    placeholder="Price here"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Typography>GHS</Typography>
-                        </InputAdornment>
-                      ),
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <Typography>p</Typography>
-                        </InputAdornment>
-                      ),
-                    }}
-                    error={Boolean(touched.price && errors.price)}
-                    helperText={touched.price && errors.price}
-                  />
-
-                  <Button
-                    variant="contained"
-                    size="small"
-                    onClick={handleAddTicketType}
-                  >
-                    Add
-                  </Button>
-                </Stack>
-                {pricingList.length !== 0 && (
-                  <List sx={{ maxHeight: 200, overflow: "auto" }}>
-                    {pricingList?.map((item) => (
-                      <ListItem key={item.id}>
-                        <ListItemText
-                          primary={`${
-                            item.type
-                          } Checker(s) for (${currencyFormatter(item?.price)})`}
-                          primaryTypographyProps={{
-                            fontSize: 11,
-                            color: "primary.main",
-                            fontWeight: "bolder",
-                          }}
-                        />
-                        <ListItemSecondaryAction>
-                          <IconButton
-                            color="primary"
-                            size="small"
-                            onClick={() => handleRemoveTicketType(item?.id)}
-                          >
-                            <Close />
-                          </IconButton>
-                        </ListItemSecondaryAction>
-                      </ListItem>
-                    ))}
-                  </List>
-                )}
-
-                <TextField
+                  error={!!errors.sellingPrice}
+                  helperText={errors.sellingPrice?.message}
                   size="small"
-                  type="url"
-                  inputMode="url"
-                  label="WAEC Website URL"
-                  value={values.voucherURL}
-                  onChange={handleChange("voucherURL")}
-                  error={Boolean(touched.voucherURL && errors.voucherURL)}
-                  helperText={
-                    errors.voucherURL
-                      ? errors.voucherURL
-                      : "eg. www.example.com"
-                  }
                 />
-                <div>
-                  <label htmlFor="cinema">Upload Logo</label>
-                  <input
-                    type="file"
-                    id="logo"
-                    accept=".png,.jpg,.jpeg,.webp"
-                    onChange={handleUploadFile}
-                  />
-                </div>
+              )}
+            />
+
+            {/* Pricing List Section */}
+            <Box>
+              <Typography variant="subtitle2" gutterBottom>
+                Ticket Pricing
+              </Typography>
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1} mb={2}>
+                <Autocomplete
+                  options={WAEC_VOUCHER_PRICING}
+                  freeSolo
+                  fullWidth
+                  size="small"
+                  value={pricingType}
+                  onInputChange={(_, val) => setPricingType(val)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Quantity / Type"
+                      error={!!pricingError}
+                      helperText={pricingError && " "}
+                    />
+                  )}
+                />
+                <TextField
+                  type="number"
+                  label="Price (GH¢)"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  size="small"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">GH¢</InputAdornment>
+                    ),
+                  }}
+                  sx={{ minWidth: 120 }}
+                />
+                <Button
+                  variant="contained"
+                  onClick={handleAddTicketType}
+                  sx={{ whiteSpace: "nowrap" }}
+                >
+                  Add
+                </Button>
               </Stack>
-            </DialogContent>
-            <DialogActions sx={{ padding: 1 }}>
-              <Button onClick={handleClose}>Cancel</Button>
-              <LoadingButton
-                variant="contained"
-                loading={isLoading}
-                onClick={handleSubmit}
-              >
-                Add Voucher
-              </LoadingButton>
-            </DialogActions>
-          </Dialog>
-        );
-      }}
-    </Formik>
+              {pricingError && (
+                <FormHelperText error>{pricingError}</FormHelperText>
+              )}
+              {pricingList.length > 0 && (
+                <List
+                  sx={{
+                    maxHeight: 200,
+                    overflow: "auto",
+                    bgcolor: "action.hover",
+                    borderRadius: 1,
+                    p: 1,
+                  }}
+                >
+                  {pricingList.map((item) => (
+                    <ListItem key={item.id} sx={{ py: 0.5 }}>
+                      <ListItemText
+                        primary={`${item.type} Checker(s) for ${currencyFormatter(item.price)}`}
+                        primaryTypographyProps={{
+                          variant: "body2",
+                          color: "text.primary",
+                        }}
+                      />
+                      <ListItemSecondaryAction>
+                        <IconButton
+                          edge="end"
+                          size="small"
+                          onClick={() => handleRemoveTicketType(item.id)}
+                          aria-label="remove"
+                        >
+                          <Close fontSize="small" />
+                        </IconButton>
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+            </Box>
+
+            {/* Voucher URL */}
+            <Controller
+              name="voucherURL"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="WAEC Website URL"
+                  type="url"
+                  placeholder="eg. www.example.com"
+                  error={!!errors.voucherURL}
+                  helperText={
+                    errors.voucherURL?.message || "Include https:// if needed"
+                  }
+                  size="small"
+                />
+              )}
+            />
+
+            {/* Logo Upload */}
+            <Box>
+              {loading && (
+                <Box sx={{ width: "100%", mb: 1 }}>
+                  <Typography variant="caption" color="textSecondary">
+                    Uploading... {Math.round(progress)}%
+                  </Typography>
+                  <Box
+                    sx={{
+                      height: 4,
+                      width: "100%",
+                      bgcolor: "action.hover",
+                      borderRadius: 1,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        height: "100%",
+                        width: `${progress}%`,
+                        bgcolor: "primary.main",
+                        transition: "width 0.3s ease",
+                      }}
+                    />
+                  </Box>
+                </Box>
+              )}
+
+              <Typography variant="subtitle2" gutterBottom>
+                Category Logo
+              </Typography>
+              <LogoPreview />
+            </Box>
+
+            
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handleClose}>Cancel</Button>
+          <LoadingButton
+            type="submit"
+            variant="contained"
+            loading={isSubmitting || isLoading}
+          >
+            Add Voucher
+          </LoadingButton>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 };
 

@@ -5,7 +5,7 @@ const bcrypt = require("bcryptjs");
 const { otpGen } = require("otp-gen-agent");
 const { signMainToken, signMainRefreshToken } = require("../config/token");
 const multer = require("multer");
-const moment = require('moment')
+const moment = require("moment");
 const { rateLimit } = require("express-rate-limit");
 const sendMail = require("../config/sendEmail");
 const {
@@ -23,15 +23,16 @@ const limit = rateLimit({
   message: "Too many requests! Please try again later.",
 });
 
-//model
-const { hasTokenExpired } = require("../config/dateConfigs");
-
 const knex = require("../db/knex");
 const { sendOTPSMS } = require("../config/sms");
 const generateId = require("../config/generateId");
 const { getVerifier } = require("./users/authUsers");
 const generateRandomNumber = require("../config/generateRandomCode");
 const redisClient = require("../config/redisClient");
+const verifyAdmin = require("../middlewares/verifyAdmin");
+const { verifyOTP, storeOTP } = require("../services/otp.services");
+const { safeJSON } = require("../config/helpers");
+const generateDeviceId = require("../utils/deviceFingerprint");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -48,46 +49,44 @@ const Upload = multer({ storage: Storage });
 
 // Define the route for getting all non-scanner verifiers
 router.get(
-  '/',
+  "/",
   verifyToken,
-  verifyScanner,
-  // Handle async errors
+  verifyAdmin,
   asyncHandler(async (req, res) => {
-    const { id } = req.user
-
     // Fetch all non-scanner verifiers from the database
-    const verifiers = await knex("verifiers")
+    const verifiers = await knex("vw_users_with_roles")
       .select(
-        "_id",
+        "id",
         "firstname",
         "lastname",
         "username",
-        knex.raw("CONCAT(firstname,' ',lastname) as name"),
+        "name",
         "email",
         "phonenumber",
         "nid",
         "dob",
         "residence",
+        "permissions",
         "role",
         "profile",
-        "active"
-      ).whereNot('_id', id);
-    // const verifiers = await knex('verifiers').whereNot('email', email);
+        "active",
+      )
+      .where("role", process.env.SCANNER_ID);
 
     // Map through the verifiers and modify the permissions property
-    const modifiedVerifiers = verifiers.map(({ role, permissions, ...rest }) => {
+    const modifiedVerifiers = verifiers.map(({ permissions, ...rest }) => {
       // Parse the permissions string to a JSON object
       return {
         ...rest,
-        // permissions: JSON.parse(permissions),
+        role: "Verifier",
+        permissions: safeJSON(permissions),
       };
     });
 
     // Send the modified verifiers as a JSON response with a 200 status code
     res.status(200).json(modifiedVerifiers);
-  })
+  }),
 );
-
 
 router.get(
   "/auth/token",
@@ -102,98 +101,117 @@ router.get(
     res.status(200).json({
       accessToken,
     });
-
-  })
+  }),
 );
-
-
 
 router.get(
   "/verify-identity",
   verifyToken,
   verifyScanner,
   asyncHandler(async (req, res) => {
-    const { id } = req.user
+    const { nid: userNID, dob: userDOB } = req.user;
     const { nid, dob } = req.query;
 
-
-    const verifiers = await knex("verifiers").where({ _id: id })
-      .select('nid', 'dob', knex.raw("DATE_FORMAT(dob,'%D %M %Y') as dobb"))
-      .limit(1);
-
-
-    if (_.isEmpty(verifiers[0])) {
-      return res.status(400).json('Invalid Request!');
+    // Validate at least one parameter is provided
+    if (!nid && !dob) {
+      return res
+        .status(400)
+        .json(
+          "Please provide either National ID (nid) or Date of Birth (dob) for verification.",
+        );
     }
 
-    if (nid && verifiers[0]?.nid !== nid) {
+    // Sanitize inputs
+    const sanitizedNID = nid?.trim();
+    const sanitizedDOB = dob?.trim();
 
-      return res.status(400).json("Sorry.We couldn't find your National ID.");
-    }
-
-    if (dob) {
-      const formattedDate = moment(dob).format('Do MMMM YYYY')
-
-      if (verifiers[0]?.dobb !== formattedDate) {
-
-        return res.status(400).json("Sorry.We couldn't find your date of birth.");
+    // Validate NID if provided
+    if (sanitizedNID) {
+      if (!userNID) {
+        // User record doesn't have NID stored
+        return res
+          .status(400)
+          .json("Unable to verify National ID. Please contact support.");
+      }
+      if (sanitizedNID !== userNID) {
+        // Log mismatched NID attempt for security monitoring
+        console.warn(
+          `Identity verification failed for user ${req.user.id}: NID mismatch`,
+        );
+        return res
+          .status(400)
+          .json("The National ID provided does not match our records.");
       }
     }
 
+    // Validate DOB if provided
+    if (sanitizedDOB) {
+      if (!userDOB) {
+        return res
+          .status(400)
+          .json("Unable to verify Date of Birth. Please contact support.");
+      }
 
-    return res.status(200).json('OK');
-  })
+      const storedDate = moment(userDOB);
+      const inputDate = moment(sanitizedDOB);
+
+      // Compare dates at day precision
+      if (!inputDate.isSame(storedDate, "day")) {
+        console.warn(
+          `Identity verification failed for user ${req.user.id}: DOB mismatch`,
+        );
+        return res
+          .status(400)
+          .json("The Date of Birth provided does not match our records.");
+      }
+    }
+
+    // All checks passed
+    res.status(200).json("OK");
+  }),
 );
 
 router.get(
   "/phonenumber/token",
   limit,
   verifyToken,
-  verifyScanner,
   asyncHandler(async (req, res) => {
-
-    const { id } = req.user;
+    const user = req.user;
     const { code } = req.query;
 
     if (code) {
-      const verifierToken = await knex("verify_tokens")
-        .select("_id", "code")
-        .where({
-          _id: id,
-          code,
-        })
-        .limit(1);
+      const result = await verifyOTP(user.id, Number(code));
 
-      if (_.isEmpty(verifierToken) || Number(code) !== Number(verifierToken[0]?.code)) {
-        return res.status(400).json("Invalid code.Try again");
+      if (!result.success) {
+        return res.status(400).json("Invalid Code");
       }
     } else {
-      const verifier = await knex("verifiers")
-        .select("_id", "phonenumber", "active")
-        .where("_id", id)
-        .limit(1);
-
-      if (_.isEmpty(verifier) && !verifier[0]?.phonenumber) {
+      if (_.isEmpty(user) && !user?.phonenumber) {
         return res.status(400).json("Invalid Request");
       }
 
       const code = await otpGen();
-      await knex("verify_tokens").upsert({
-        _id: id,
-        code,
-      });
-      console.log(code);
 
-      sendOTPSMS(`Please ignore this message if you did not request the OTP.Your verification code is ${code}.Don't share this code with anyone; Our employees will never ask for the code.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`, verifier[0]?.phonenumber);
+      if (process.env.NODE_ENV !== "production") {
+        console.log(code);
+      }
+
+      await storeOTP(user?.id, code);
+
+      await sendOTPSMS(
+        `Please ignore this message if you did not request the OTP.Your verification code is ${code}.Don't share this code with anyone; Our employees will never ask for the code.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`,
+        user?.phonenumber,
+      );
     }
 
     res.sendStatus(201);
-  })
+  }),
 );
 
 router.get(
   "/:id",
-  verifyToken, verifyScanner,
+  verifyToken,
+  verifyAdmin,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
@@ -201,13 +219,13 @@ router.get(
       return res.status(400).json("Invalid ID!");
     }
 
-    const verifier = await knex("verifiers")
+    const verifier = await knex("vw_users_with_roles")
       .select(
-        "_id",
+        "id",
         "firstname",
         "lastname",
         "username",
-        knex.raw("CONCAT(firstname,' ',lastname) as name"),
+        "name",
         "email",
         "nid",
         "dob",
@@ -216,12 +234,14 @@ router.get(
         "phonenumber",
         "role",
         "profile",
-        "active"
+        "active",
       )
       .where({
-        _id: id,
+        id: id,
       })
-      .limit(1).first();
+      .first();
+
+
 
     if (_.isEmpty(verifier)) {
       return res.status(400).json({});
@@ -231,83 +251,113 @@ router.get(
 
     const modifiedVerifier = {
       ...rest,
-      permissions: JSON.parse(permissions),
-      role: role === process.env.SCANNER_ID ? "Administrator" : "Verifier",
+      permissions: safeJSON(permissions),
+      role: "Verifier",
     };
 
     res.status(200).json(modifiedVerifier);
-  })
+  }),
 );
+
 router.post(
   "/",
   verifyToken,
-  verifyScanner,
+  verifyAdmin,
   Upload.single("profile"),
   asyncHandler(async (req, res) => {
-    const { id } = req.user;
+    const { id: USERID } = req.user;
     const newVerifier = req.body;
 
     const transx = await knex.transaction();
 
-    const doesVerifierExists = await transx("verifiers")
-      .select("email")
-      .where("email", newVerifier.email)
-      .limit(1);
-
-    if (!_.isEmpty(doesVerifierExists[0])) {
-      return res
-        .status(400)
-        .json("An verifier with this account already exists!");
-    }
-
-    const doesUserNameExists = await transx("verifiers")
-      .select("username")
-      .where("username", newVerifier?.username)
-      .limit(1);
-
-    if (!_.isEmpty(doesUserNameExists)) {
-      return res
-        .status(400)
-        .json(`Username, '${newVerifier?.username}' is not available!`);
-    }
-    newVerifier.role = process.env.SCANNER_ID;
-    newVerifier.profile = req.file?.filename;
-
-    if (req.file) {
-      const url = await uploadPhoto(req.file);
-      newVerifier.profile = url;
-    }
-
-    const _id = generateId();
-    const password = generateRandomNumber(10);
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const verifier = await transx("verifiers").insert({
-      _id,
-      ...newVerifier,
-      permissions: JSON.stringify([]),
-      password: hashedPassword,
-      isAdmin: req?.body?.isAdmin === 'true',
-      active: true,
-      isEnabled: true
-    });
-
-    if (_.isEmpty(verifier)) {
-      res.status(400).json("Error saving verifier information!");
-    }
-
-    //logs
-    await transx("verifier_activity_logs").insert({
-      _id: generateId(10),
-      verifier_id: id,
-      title: "Created new verifier account.",
-      severity: "info",
-    });
-
-
     try {
+      const doesVerifierExists = await transx("vw_users_with_roles")
+        .select("email")
+        .where("email", newVerifier.email)
+        .first();
 
-      const message = `<div>
+      if (!_.isEmpty(doesVerifierExists)) {
+        return res
+          .status(400)
+          .json("An verifier with this account already exists!");
+      }
+      const doesPhoneNumberExists = await transx("vw_users_with_roles")
+        .select("phonenumber")
+        .where("phonenumber", newVerifier.phonenumber)
+        .first();
+
+      if (!_.isEmpty(doesPhoneNumberExists)) {
+        return res
+          .status(400)
+          .json(`Phone number, '${newVerifier.phonenumber}' is not available!`);
+      }
+
+      const doesUserNameExists = await transx("vw_users_with_roles")
+        .select("username")
+        .where("username", newVerifier?.username)
+        .first();
+
+      if (!_.isEmpty(doesUserNameExists)) {
+        return res
+          .status(400)
+          .json(`Username, '${newVerifier?.username}' is not available!`);
+      }
+
+      newVerifier.role = process.env.SCANNER_ID;
+      let url = req.file?.filename;
+
+      if (req.file) {
+        url = await uploadPhoto(req.file);
+      }
+
+      const verifierId = generateId();
+      const password = generateRandomNumber(10);
+      const hashedPassword = await bcrypt.hash(password, 12);
+
+      const role = await transx("roles")
+        .select("id")
+        .where("code", process.env.SCANNER_ID)
+        .first();
+
+      const verifier = await transx("users").insert({
+        id: verifierId,
+        username: newVerifier.username,
+        email: newVerifier.email,
+        password: hashedPassword,
+        firstname: newVerifier.firstname,
+        lastname: newVerifier.lastname,
+        phonenumber: newVerifier.phonenumber,
+        profile: url,
+        dob: newVerifier.dob,
+        nid: newVerifier.nid,
+        residence: newVerifier.residence,
+        permissions: JSON.stringify([]),
+        role_id: role.id,
+        active: true,
+        is_enabled: true,
+      });
+
+      if (_.isEmpty(verifier)) {
+        res.status(400).json("Error saving verifier information!");
+      }
+
+      //logs
+      await transx("activity_logs").insert({
+        id: generateId(),
+        user_id: USERID,
+        title: "Created new verifier account.",
+        severity: "info",
+      });
+
+      await transx.commit();
+      res.status(201).json("Verifier saved successfully!!!");
+
+
+
+      setImmediate(async () => {
+        console.log('email', newVerifier?.email);
+        console.log('passwrod', password);
+        const message = `<div>
       <h1 style='text-transform:uppercase;'>Welcome to GAB POWERFUL CONSULT.</h1><br/>
       <div style='text-align:left;'>
 
@@ -330,133 +380,97 @@ router.post(
 
       </div>`;
 
-
-      await sendMail(newVerifier?.email, mailTextShell(message), "Welcome to GAB POWERFUL CONSULT.");
+        await sendMail(
+          newVerifier?.email,
+          mailTextShell(message),
+          "Welcome to GAB POWERFUL CONSULT.",
+        );
+      });
     } catch (error) {
       await transx.rollback();
 
       return res.status(400).json("An error has occurred.Try again later");
     }
-
-    await transx.commit();
-    res.status(201).json("Verifier saved successfully!!!");
-  })
+  }),
 );
 
-
 //@GET verifier by email
+//@GET user by email
 router.post(
   "/login",
   limit,
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
-    const verifier = await knex("verifiers")
-      .select("email", 'phonenumber', "password", "active")
-      .where("email", email)
-      .first();
+    try {
+      const user = await knex("users")
+        .join("roles", "users.role_id", "roles.id")
+        .select("email", "phonenumber", "password", "role_id", "code", "active")
+        .where("email", email)
+        .first();
 
-    if (_.isEmpty(verifier)) {
-      return res.status(400).json("Invalid Email or Password!!");
-    }
+      if (
+        [process.env.ADMIN_ID, process.env.SCANNER_ID].indexOf(user?.code) ===
+        -1
+      ) {
+        return res.status(401).json("Unauthorized Access!!");
+      }
+      console.log(user);
 
-    const passwordIsValid = await bcrypt.compare(
-      password,
-      verifier?.password
-    );
+      if (_.isEmpty(user)) {
+        return res.status(400).json("Invalid Email or Password!!");
+      }
 
-    if (!passwordIsValid) {
-      return res.status(400).json("Invalid Email or Password!");
-    }
+      const passwordIsValid = await bcrypt.compare(password, user?.password);
 
-    if (verifier?.active === 0) {
-      return res.status(400).json("Account disabled!");
-    }
+      if (!passwordIsValid) {
+        return res.status(400).json("Invalid Email or Password!");
+      }
 
-    const token = await otpGen();
+      if (user?.active === 0) {
+        return res.status(400).json("Account disabled!");
+      }
 
-    await knex("tokens").insert({
-      _id: generateId(),
-      token,
-      email: verifier?.email,
-    });
+      const otp = await otpGen();
 
-    const message = `
+      if (process.env.NODE_ENV !== "production") {
+        console.log(otp);
+      }
+
+      await storeOTP(user?.id, otp);
+
+      const message = `
         <div style="width:100%;max-width:500px;margin-inline:auto;">
       <p>Please ignore this message if you did not request the OTP.</p>
         <p>Your verification code is</p>
-        <h1>${token}</h1>
+        <h1>${otp}</h1>
         <p>If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.</p>
 
         <p>-- Gab Powerful Team --</p>
     </div>
         `;
 
-    if (process.env.NODE_ENV !== "production") {
-      console.log(token);
-    }
+      if (process.env.NODE_ENV !== "production") {
+        console.log(otp);
+      }
 
-    try {
-      await sendMail(verifier?.email, mailTextShell(message));
+      await sendMail(user?.email, mailTextShell(message));
 
       await sendOTPSMS(
-        `Please ignore this message if you did not request the OTP.Your verification code is ${token}.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`,
-        verifier?.phonenumber
+        `Please ignore this message if you did not request the OTP.Your verification code is ${otp}.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`,
+        user?.phonenumber,
       );
 
+      res.status(201).json({
+        id: user?.id,
+      });
     } catch (error) {
-      await knex("tokens").where("email", verifier?.email).del();
-
+      console.log(error);
       return res.status(500).json("An error has occurred!");
     }
-
-    res.sendStatus(201);
-  })
+  }),
 );
 
-router.post(
-  "/verify",
-  limit,
-  asyncHandler(async (req, res) => {
-    const { id, token } = req.body;
-
-    if (!id || !token) {
-      return res.status(400).json("An unknown error has occurred!");
-    }
-
-    const verifierToken = await knex("verify_tokens")
-      .where({
-        _id: id,
-        token,
-      })
-      .select("*");
-
-    if (_.isEmpty(verifierToken)) {
-      return res.status(400).json("An unknown error has occurred!");
-    }
-
-    if (hasTokenExpired(verifierToken[0]?.createdAt)) {
-      return res.status(400).json("Sorry! Your link has expired.");
-    }
-
-    await knex("verifiers")
-      .where("email", verifierToken[0]?.email)
-      .update({ active: 1 });
-
-    const verifier = await knex("verifiers")
-      .select("_id")
-      .where({
-        email: verifierToken[0]?.email,
-      })
-      .limit(1);
-
-    res.status(201).json({
-      user: {
-        id: verifier[0]?._id,
-      },
-    });
-  })
-);
 //Verify Email or Phonenumber
 router.post(
   "/send-otp",
@@ -465,19 +479,19 @@ router.post(
     const { contact, type } = req.body;
 
     let verifier = {};
-    if (type === 'phone') {
-
+    if (type === "phone") {
       verifier = await knex("verifiers")
         .select("_id", "phonenumber", "active")
         .where("phonenumber", contact)
-        .limit(1).first()
+        .limit(1)
+        .first();
     }
-    if (type === 'email') {
-
+    if (type === "email") {
       verifier = await knex("verifiers")
         .select("_id", "email", "active")
         .where("email", contact)
-        .limit(1).first()
+        .limit(1)
+        .first();
     }
 
     if (_.isEmpty(verifier)) {
@@ -486,24 +500,20 @@ router.post(
 
     if (Boolean(verifier?.active) !== true) {
       return res.status(400).json("Account disabled!");
-
     }
 
-
     const code = await otpGen();
-    await knex("tokens")
-      .upsert({
-        email: contact,
-        token: code,
-      })
+    await knex("tokens").upsert({
+      email: contact,
+      token: code,
+    });
 
     console.log(code);
 
-    if (type === 'phone') {
+    if (type === "phone") {
       sendOTPSMS(`Your verification code is ${code}.`, verifier?.phonenumber);
     }
-    if (type === 'email') {
-
+    if (type === "email") {
       const message = `
       <div style="width:100%;max-width:500px;margin-inline:auto;">
   
@@ -514,155 +524,142 @@ router.post(
   </div>
       `;
 
-
-
       try {
         await sendMail(verifier?.email, mailTextShell(message));
       } catch (error) {
-        await knex("tokens").where("_id", verifier?._id,).del();
+        await knex("tokens").where("_id", verifier?._id).del();
 
         return res.status(500).json("An error has occurred!");
       }
-
     }
 
-
     res.sendStatus(201);
-  })
+  }),
 );
-
 
 //Verify OTP
 router.post(
   "/verify-otp",
   limit,
   asyncHandler(async (req, res) => {
-    const { email, token, type, reset } = req.body;
-
-   
+    const { id, email, token } = req.body;
+    console.log(req.body);
     if (!email || !token) {
       return res.status(400).json("Invalid Code");
     }
 
-    const verifierToken = await knex("tokens")
-      .select("*")
-      .where({
-        email,
-        token,
-      })
-      .limit(1);
+    const result = await verifyOTP(id, Number(token));
 
-    if (_.isEmpty(verifierToken)) {
+    if (!result.success) {
       return res.status(400).json("Invalid Code");
     }
 
-    if (hasTokenExpired(verifierToken[0]?.createdAt)) {
-      return res.status(400).json("Sorry! Your code has expired.");
-    }
-    if (type === "email") {
-      await knex("verifiers")
-        .where("email", verifierToken[0]?.email)
-        .update({ active: 1 });
-    }
-    if (type === "phone") {
-      await knex("verifiers")
-        .where("phonenumber", verifierToken[0]?.email)
-        .update({ active: 1 });
-    }
+    await knex("users").where('email', email).update({ active: 1 });
 
+    let user = await knex("vw_users_with_roles")
+      .select("*")
+      .where('email', email)
+      .first();
 
-    const verifier = await knex("verifiers")
-
-      .select("_id ",
-        "_id as id",
-        "firstname",
-        "lastname",
-        knex.raw("CONCAT(firstname,' ',lastname) as name"),
-        "email",
-        "role",
-        "phonenumber",
-        "profile",
-        "isAdmin",
-        "active",
-        'createdAt')
-      .where("email", verifierToken[0]?.email)
-      .orWhere("phonenumber", verifierToken[0]?.email);
-
-    if (_.isEmpty(verifier)) {
+    if (_.isEmpty(user)) {
       return res.status(401).json("Authentication Failed!");
-
     }
-
-    if (reset) {
-      return res.json({ id: verifier[0]?._id })
-    }
-
-
-    const { active, isAdmin, permissions, ...rests } = verifier[0];
-
-    const authVerifier = {
-      ...rests,
-      active: Boolean(active),
-      isAdmin: Boolean(isAdmin)
-
+    let accessData = {
+      id: user.id,
+      name: user?.name,
+      firstname: user?.firstname,
+      lastname: user?.lastname,
+      email: user?.email,
+      dob: user?.dob,
+      nid: user?.nid,
+      phonenumber: user?.phonenumber,
+      role: user?.role,
+      profile: user?.profile,
+      active: Boolean(user?.active),
+      createdAt: user?.created_at,
+      permissions: JSON.parse(user.permissions),
     };
 
-    const updatedVerifier = {
-      id: verifier[0]?._id,
-      role: verifier[0]?.role,
-      active: verifier[0]?.active,
-      createdAt: verifier[0]?.createdAt,
-      isActive: Boolean(verifier[0]?.isActive),
+    if (user?.role === process.env.ADMIN_ID) {
+      accessData.isEnabled = true;
+      accessData.isAdmin = true;
+      accessData.isVerifierAdmin = true;
+    }
+
+    const updatedUser = {
+      id: user?.id,
+      role: user?.role,
+      active: Boolean(user?.active),
+      createdAt: user?.created_at,
     };
+    const deviceId = generateDeviceId(req);
 
-    const accessToken = await signMainToken(authVerifier, "180d");
-    const refreshToken = signMainRefreshToken(updatedVerifier, "365d");
-
-    const hashedToken = await bcrypt.hash(refreshToken, 10);
-
-    await knex("verifiers").where("_id", verifier[0]?._id).update({
-      token: hashedToken,
+    const [sessionId] = await knex("user_sessions").insert({
+      user_id: user.id,
+      device_id: deviceId,
+      device_name: req.headers["user-agent"],
+      ip_address: req.ip,
+      user_agent: req.headers["user-agent"],
     });
 
+    const accessToken = await signMainToken(accessData, "180d");
+    const refreshToken = signMainRefreshToken(updatedUser, "365d");
+
+    const expires = new Date();
+    expires.setDate(expires.getDate() + 7);
+
+    await knex("user_tokens").insert({
+      user_id: user.id,
+      session_id: sessionId,
+      refresh_token: refreshToken,
+      expiresAt: expires,
+    });
     //logs
-    await knex("verifier_activity_logs").insert({
-      _id: generateId(10),
-      verifier_id: verifier[0]?._id,
+    await knex("activity_logs").insert({
+      user_id: user.id,
       title: "Logged into account.",
       severity: "info",
     });
 
-    // if (isMobile(req)) {
-    res.status(201).json({
-      accessToken,
-      refreshToken,
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "Strict",
+      path: "/verifiers/auth/token",
     });
 
-
-
-  })
+    res.status(201).json({
+      refreshToken,
+      accessToken,
+    });
+  }),
 );
 
 router.post(
   "/logout",
   verifyToken,
-  verifyScanner,
   asyncHandler(async (req, res) => {
     const { id, jti } = req.user;
 
-    //logs
-    await knex("verifier_activity_logs").insert({
-      _id: generateId(10),
-      verifier_id: id,
+    res.clearCookie("refreshToken");
+
+    await knex("user_tokens")
+      .where({ user_id: id })
+      .update({ is_revoked: true });
+
+    await knex("activity_logs").insert({
+      user_id: id,
       title: "Logged out of account.",
       severity: "info",
     });
 
-    await redisClient.del(`user:${jti}`)
+    await redisClient.del(`user:${jti}`);
+
     req.user = null;
+    delete req.user;
 
     res.sendStatus(204);
-  })
+  }),
 );
 
 router.put(
@@ -670,14 +667,11 @@ router.put(
   verifyToken,
   verifyScanner,
   asyncHandler(async (req, res) => {
-    const { id } = req.user;
+    const { id: USERID } = req.user;
 
+    const { id, ...rest } = req.body;
 
-    const { _id, ...rest } = req.body;
-
-    const updatedVerifier = await knex("verifiers")
-      .where("_id", _id)
-      .update(rest);
+    const updatedVerifier = await knex("users").where("id", _id).update(rest);
 
     if (updatedVerifier !== 1) {
       return res.status(400).json("Error updating verifier information.");
@@ -685,11 +679,10 @@ router.put(
 
     const verifier = await getVerifier(_id);
 
-
     //logs
     await knex("verifier_activity_logs").insert({
       _id: generateId(10),
-      verifier_id: id,
+      user_id: USERID,
       title: "Updated account details.",
       severity: "info",
     });
@@ -697,49 +690,45 @@ router.put(
     const accessToken = await signMainToken(verifier, "180d");
 
     res.status(201).json({
-      accessToken
+      accessToken,
     });
-  })
+  }),
 );
 
 router.put(
   "/password",
   limit,
   verifyToken,
-  verifyScanner,
+  // verifyScanner,
   asyncHandler(async (req, res) => {
     const { id, oldPassword, password } = req.body;
 
-
-    const verifierPassword = await knex('verifiers').select('password').where('_id', id).first();
+    const verifierPassword = await knex("users")
+      .select("password")
+      .where("id", id)
+      .first();
 
     const passwordIsValid = await bcrypt.compare(
       oldPassword,
-      verifierPassword?.password
+      verifierPassword?.password,
     );
 
     if (!passwordIsValid) {
       return res.status(400).json("Invalid Password!");
     }
 
+    const hashedPassword = await bcrypt.hash(password, 12);
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const modifiedVerifier = await knex("verifiers").where("_id", id).update({
+    const modifiedVerifier = await knex("users").where("id", id).update({
       password: hashedPassword,
     });
 
-
     if (modifiedVerifier !== 1) {
       return res.status(404).json("Error! Could not save changes.");
-
     }
 
-    res.status(201).json('Changes Saved!')
-
-
-
-  })
+    res.status(201).json("Changes Saved!");
+  }),
 );
 
 router.put(
@@ -752,28 +741,19 @@ router.put(
       return res.status(400).json("Invalid Request!");
     }
 
+    const hashedPassword = await bcrypt.hash(password, 12);
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const modifiedVerifier = await knex("verifiers").where("_id", id).update({
+    const modifiedVerifier = await knex("users").where("id", id).update({
       password: hashedPassword,
     });
 
-
     if (modifiedVerifier !== 1) {
       return res.status(404).json("Failed! An unknown error has occurred.");
-
     }
 
-    res.sendStatus(204)
-
-
-
-  })
+    res.sendStatus(204);
+  }),
 );
-
-
-
 
 router.put(
   "/password/reset",
@@ -789,10 +769,10 @@ router.put(
     const code = await otpGen();
     const password = generateRandomNumber(10);
 
-    const newPassword = `${password}${code}@gpc`
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const newPassword = `${password}${code}@gpc`;
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-    const modifiedVerifier = await knex("verifiers").where("_id", id).update({
+    const modifiedVerifier = await knex("users").where("id", id).update({
       password: hashedPassword,
     });
 
@@ -800,7 +780,7 @@ router.put(
       return res.status(404).json("Error updating verifier information.");
     }
 
-    const verifier = await getVerifier(id)
+    const verifier = await getVerifier(id);
 
     const message = `<div>
     <h1 style='text-transform:uppercase;'>Welcome to GAB POWERFUL CONSULT.</h1><br/>
@@ -819,13 +799,19 @@ router.put(
     </div>
 
     </div>`;
+    res.status(200).send("Password reset complete!");
 
-    await sendMail(verifier?.email, mailTextShell(message), "Password Reset");
-    res.status(200).send('Password reset complete!')
-  })
+    setImmediate(async () => {
+      if (process.env.NODE_ENV !== "production") {
+        await sendMail(
+          verifier?.email,
+          mailTextShell(message),
+          "Password Reset",
+        );
+      }
+    });
+  }),
 );
-
-
 
 router.put(
   "/profile",
@@ -845,8 +831,8 @@ router.put(
       url = await uploadPhoto(req.file);
     }
 
-    const verifier = await knex("verifiers")
-      .where("_id", id)
+    const verifier = await knex("users")
+      .where("id", id)
       .update({ profile: url });
 
     if (verifier !== 1) {
@@ -854,15 +840,15 @@ router.put(
     }
 
     //logs
-    await knex("verifier_activity_logs").insert({
-      _id: generateId(10),
-      verifier_id: id,
+    await knex("activity_logs").insert({
+      id: generateId(10),
+      user_id: id,
       title: "Updated account profile!",
       severity: "info",
     });
 
     res.status(201).json(url);
-  })
+  }),
 );
 
 //Enable or Disable Verifier Account
@@ -872,34 +858,35 @@ router.put(
   verifyToken,
   verifyScanner,
   asyncHandler(async (req, res) => {
-    const { id: _id } = req.user;
+    const { id: USERID } = req.user;
     const { id, active } = req.body;
 
-    const updatedVerifier = await knex("verifiers")
-      .where("_id", id)
-      .update({ active: active });
+    const updatedVerifier = await knex("users")
+      .where("id", id)
+      .update({ active: active, is_enabled: active });
 
     if (updatedVerifier !== 1) {
       return res.status(400).json("Error updating verifier info");
     }
 
     //logs
-    await knex("verifier_activity_logs").insert({
-      _id: generateId(10),
-      verifier_id: _id,
-      title: `${Boolean(active) === true
-        ? "Activated an verifier account!"
-        : "Disabled an verifier account!"
-        }`,
+    await knex("activity_logs").insert({
+      id: generateId(10),
+      user_id: USERID,
+      title: `${
+        Boolean(active) === true
+          ? "Activated an verifier account!"
+          : "Disabled an verifier account!"
+      }`,
       severity: "warning",
     });
 
     res
       .status(201)
       .json(
-        Boolean(active) === true ? "Account enabled!" : "Account disabled!"
+        Boolean(active) === true ? "Account enabled!" : "Account disabled!",
       );
-  })
+  }),
 );
 
 //@DELETE verifier
@@ -908,7 +895,7 @@ router.delete(
   verifyToken,
   verifyScanner,
   asyncHandler(async (req, res) => {
-    const { id: _id } = req.user;
+    const { id: USERID } = req.user;
     const { id } = req.params;
 
     if (!isValidUUID2(id)) {
@@ -922,15 +909,15 @@ router.delete(
     }
 
     //logs
-    await knex("verifier_activity_logs").insert({
-      _id: generateId(10),
-      verifier_id: _id,
+    await knex("activity_logs").insert({
+      id: generateId(),
+      user_id: USERID,
       title: "Deleted an verifier account!",
       severity: "error",
     });
 
     res.status(200).json("Verifier Removed!");
-  })
+  }),
 );
 
 module.exports = router;

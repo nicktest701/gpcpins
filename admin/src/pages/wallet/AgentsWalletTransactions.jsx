@@ -23,8 +23,8 @@ import { generateRandomCode } from "../../config/generateRandomCode";
 import CustomTitle from "../../components/custom/CustomTitle";
 import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
 import {
-  geAllAgentWalletTransaction,
-  geAllAgentWalletTransactionReport,
+  geAllAgentWalletTransactions,
+  generateWalletTransactionReport,
 } from "../../api/transactionAPI";
 import { currencyFormatter } from "../../constants";
 import CustomDateRangePicker from "../../components/pickers/CustomDateRangePicker";
@@ -44,7 +44,7 @@ function AgentsWalletTransactions() {
   //Get all transactions by meter id
   const transactions = useQuery({
     queryKey: ["agents-wallet-transactions"],
-    queryFn: () => geAllAgentWalletTransaction(date[0]),
+    queryFn: () => geAllAgentWalletTransactions(date[0]),
     enabled: !!user?.id,
     initialData: [],
   });
@@ -59,7 +59,7 @@ function AgentsWalletTransactions() {
     ]);
 
   const { mutateAsync, isLoading, isSuccess, isError, data } = useMutation({
-    mutationFn: geAllAgentWalletTransactionReport,
+    mutationFn: generateWalletTransactionReport,
   });
   const generateReport = () => {
     mutateAsync(date[0]);

@@ -275,7 +275,7 @@ export const getWalletStatus = async () => {
   try {
     const res = await api({
       method: "GET",
-      url: `/agents/wallet/status`,
+      url: `/wallet/status`,
     });
 
     return res.data;
@@ -299,7 +299,7 @@ export const getWalletBalance = async () => {
   try {
     const res = await api({
       method: "GET",
-      url: `/agents/top-up/wallet`,
+      url: `/wallet/balance`,
     });
 
     return res.data;
@@ -427,8 +427,8 @@ export const getAgentLogs = async ({ startDate, endDate }) => {
       method: "GET",
       url: `/agents/logs`,
       params: {
-        startDate,
-        endDate,
+        startDate: startDate,
+        endDate: endDate,
       },
     });
 

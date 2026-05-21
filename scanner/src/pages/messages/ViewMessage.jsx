@@ -33,7 +33,7 @@ function ViewMessage() {
     enabled: !!searchParams.get("message"),
     initialData: queryClient
       .getQueryData(["broadcast-messages"])
-      ?.find((message) => message?._id === searchParams.get("message")),
+      ?.find((message) => message?.id === searchParams.get("message")),
   });
 
   const { mutateAsync: deleteMutateAsync, isLoading: dLoading } = useMutation({
@@ -46,7 +46,7 @@ function ViewMessage() {
       showCancelButton: true,
     }).then(({ isConfirmed }) => {
       if (isConfirmed) {
-        deleteMutateAsync(data?._id, {
+        deleteMutateAsync(data?.id, {
           onSettled: () => {
             queryClient.invalidateQueries(["broadcast-messages"]);
           },

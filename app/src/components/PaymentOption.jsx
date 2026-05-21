@@ -7,15 +7,19 @@ function PaymentOption({
   setPaymentMethod,
   error,
   helperText,
-  setWalletBalance,
+  value,
+  walletDetails,
   mobileMoneyDetails,
 }) {
   return (
     <FormControl sx={{ width: "100%", py: 2 }}>
       <FormLabel sx={{ pb: 1 }}>Select Payment Method</FormLabel>
-      <RadioGroup onChange={(e) => setPaymentMethod(e.target.value)}>
-        {showWallet && <WalletOption setValue={setWalletBalance} />}
-        {showMomo && <MobileMoneyOption {...mobileMoneyDetails} />}
+      <RadioGroup
+        value={value}
+        onChange={(e) => setPaymentMethod(e.target.value)}
+      >
+        {showWallet  && <WalletOption {...walletDetails} value={value} />}
+        {showMomo && <MobileMoneyOption {...mobileMoneyDetails} value={value} />}
       </RadioGroup>
       {error && <small style={{ color: "#B72136" }}>{helperText}</small>}
     </FormControl>

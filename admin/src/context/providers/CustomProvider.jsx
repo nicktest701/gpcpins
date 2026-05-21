@@ -110,6 +110,8 @@ function CustomProvider({ children }) {
     initialData: [],
     // refetchIntervalInBackground: true,
     // refetchInterval: 10000,
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
     onSuccess: (data) => {
       const unReadNotifications = data?.filter((item) => item?.active === 1);
 
@@ -131,7 +133,7 @@ function CustomProvider({ children }) {
             text: "New notification available!",
             position: "top-end",
             toast: true,
-            backdrop:false,
+            backdrop: false,
           }).then(({ isConfirmed }) => {
             if (isConfirmed) {
               setPlayed(true);
@@ -145,7 +147,7 @@ function CustomProvider({ children }) {
 
   useEffect(() => {
     const unReadNotifications = notifications?.data?.filter(
-      (item) => item?.active === 1
+      (item) => item?.active === 1,
     );
     if (
       unReadNotifications?.length > localStorage.getItem("no-notification") ??
@@ -176,7 +178,7 @@ function CustomProvider({ children }) {
 
   const [customState, customDispatch] = useReducer(
     CustomReducer,
-    initialValues
+    initialValues,
   );
 
   return (

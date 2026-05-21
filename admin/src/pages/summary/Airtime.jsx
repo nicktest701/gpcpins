@@ -26,6 +26,43 @@ function Airtime() {
   const summary = useQuery({
     queryKey: ["airtime-summary"],
     queryFn: () => getAirtimeTransaction(),
+    initialData: {
+      recent: [],
+      today: "GHS 0.00",
+      yesterday: "GHS 0.00",
+      lastSevenDaysTotal: "GHS 0.00",
+      lastSevenDays: {
+        labels: [
+          "Wed,25th Mar",
+          "Thu,26th Mar",
+          "Fri,27th Mar",
+          "Sat,28th Mar",
+          "Sun,29th Mar",
+          "Mon,30th Mar",
+          "Tue,31st Mar",
+        ],
+        data: [0, 0, 0, 0, 0, 0, 0],
+      },
+      thisMonth: "GHS 00.00",
+      thisYear: {
+        labels: [
+          "January",
+          "February",
+          "March",
+          "April",
+          "May",
+          "June",
+          "July",
+          "August",
+          "September",
+          "October",
+          "November",
+          "December",
+        ],
+        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      },
+      topCustomers: [],
+    },
   });
 
   if (summary?.isLoading) {

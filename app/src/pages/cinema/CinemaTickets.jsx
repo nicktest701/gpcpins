@@ -1,11 +1,11 @@
 import { CircularProgress, Container, Typography } from "@mui/material";
 import AvailableTickets from "./AvailableTickets";
-import MovieDropdown from "../../components/dropdowns/MovieDropdown";
+import MovieDropdown from "@/components/dropdowns/MovieDropdown";
 import { useEffect, useState, useTransition } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { IMAGES } from "../../constants";
-import Cinema from "../../components/jsx-icons/Cinema";
+import { IMAGES } from "@/constants";
+import Cinema from "@/components/jsx-icons/Cinema";
 
 function CinemaTickets() {
   const [loaded, setLoaded] = useState(false);

@@ -29,6 +29,7 @@ function AgentCommission() {
     queryFn: () => getAgentCommission(id),
     enabled: !!id,
     initialData: [],
+  //  staleTime: 30 * 60 * 1000, // 30 minutes
   });
 
   const { mutate, isLoading } = useMutation({

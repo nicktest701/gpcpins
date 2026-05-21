@@ -13,7 +13,7 @@ import _ from "lodash";
 import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
 import CustomDateRangePicker from "../../components/pickers/CustomDateRangePicker";
 import { NotificationsRounded, PaymentsRounded } from "@mui/icons-material";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAllElectricityPayment } from "../../api/paymentAPI";
 import { getAllNotifications } from "../../api/notificationAPI";
 import CustomTitle from "../../components/custom/CustomTitle";
@@ -27,6 +27,7 @@ import ActionMenu from "../../components/menu/ActionMenu";
 import { PROCESSED_TRANSACTIONS } from "../../mocks/columns";
 
 function ECGTransactions() {
+  const queryClient = useQueryClient();
   const { user } = useContext(AuthContext);
   const [showAlert, setShowAlert] = useState(true);
   const [isPlayed, setIsPlayed] = useState(false);
@@ -46,12 +47,16 @@ function ECGTransactions() {
     queryKey: ["ecg-transactions"],
     queryFn: () => getAllElectricityPayment(date[0]),
     enabled: !!date[0],
+    initialData: [],
   });
 
   const notifications = useQuery({
     queryKey: ["notifications"],
     queryFn: () => getAllNotifications(),
     enabled: !!user?.id,
+    initialData: queryClient?.getQueryData(["notifications"]),
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const notif = useMemo(() => {
@@ -60,7 +65,7 @@ function ECGTransactions() {
 
   const unprocessedTransactions = useMemo(() => {
     return transactions?.data?.filter(
-      ({ isProcessed }) => isProcessed === false
+      ({ isProcessed }) => isProcessed === false,
     );
   }, [transactions?.data]);
 
@@ -94,6 +99,8 @@ function ECGTransactions() {
     return transactions?.data;
   }, [transactions?.data, type]);
 
+  // console.log(sortedTransactions)
+
   const handleViewNotifications = () => {
     navigate(`/electricity/notifications`);
   };
@@ -117,14 +124,14 @@ function ECGTransactions() {
           <ActionMenu>
             <MenuItem
               sx={{ fontSize: 13 }}
-              onClick={() => viewTransactionStatus(data._id)}
+              onClick={() => viewTransactionStatus(data.id)}
             >
               View
             </MenuItem>
             {user?.permissions?.includes("Process Prepaid Transaction") && (
               <MenuItem
                 sx={{ fontSize: 13 }}
-                onClick={() => updateECGPayment(data?._id)}
+                onClick={() => updateECGPayment(data?.id)}
               >
                 {data?.isProcessed
                   ? "Reprocess Transaction"
@@ -136,8 +143,6 @@ function ECGTransactions() {
       },
     },
   ];
-
-
 
   return (
     <>
@@ -208,8 +213,8 @@ function ECGTransactions() {
                   title="Total"
                   total={currencyFormatter(
                     _.sumBy(sortedTransactions, (item) =>
-                      Number(item?.info?.amount)
-                    )
+                      Number(item?.info?.amount),
+                    ),
                   )}
                 />
               </Stack>
@@ -230,7 +235,7 @@ function ECGTransactions() {
             options={{
               exportAllData: true,
               exportButton: user?.permissions?.includes(
-                "Export Prepaid Transaction"
+                "Export Prepaid Transaction",
               ),
             }}
           />

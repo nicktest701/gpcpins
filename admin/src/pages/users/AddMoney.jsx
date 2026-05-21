@@ -16,7 +16,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
 import { Formik } from "formik";
 import { addWalletValidationSchema } from "../../config/validationSchema";
-import { topUpUserWallet } from "../../api/transactionAPI";
+import {  topUpWallet } from "../../api/transactionAPI";
 import { CustomContext } from "../../context/providers/CustomProvider";
 import { globalAlertType } from "../../components/alert/alertType";
 
@@ -42,7 +42,7 @@ function AddMoney() {
   };
 
   const { mutateAsync, isLoading } = useMutation({
-    mutationFn: topUpUserWallet,
+    mutationFn: topUpWallet,
   });
   const onSubmit = (values) => {
     Swal.fire({

@@ -1,7 +1,7 @@
 import { useContext } from "react";
 import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
 import Swal from "sweetalert2";
-import {  MenuItem } from "@mui/material";
+import { MenuItem } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ActionMenu from "../../components/menu/ActionMenu";
 import { useNavigate } from "react-router-dom";
@@ -27,6 +27,7 @@ const ViewUser = () => {
   const users = useQuery({
     queryKey: ["users"],
     queryFn: getAllUsers,
+    initialData: [],
   });
 
   const {
@@ -36,7 +37,7 @@ const ViewUser = () => {
     mutationFn: enableOrDisableAccount,
   });
 
-  function handleToggleUserAccount({ _id, active }) {
+  function handleToggleUserAccount({ id, active }) {
     Swal.fire({
       title: active ? "Disabling Account" : "Enabling account",
       text: active
@@ -46,7 +47,7 @@ const ViewUser = () => {
     }).then(({ isConfirmed }) => {
       if (isConfirmed) {
         toggleUserAccountMutateAsync(
-          { id: _id, active: !active },
+          { id: id, active: !active },
           {
             onSettled: () => {
               queryClient.invalidateQueries(["users"]);
@@ -58,7 +59,7 @@ const ViewUser = () => {
             onError: (error) => {
               customDispatch(globalAlertType("error", error));
             },
-          }
+          },
         );
       }
     });
@@ -88,7 +89,7 @@ const ViewUser = () => {
             onError: (error) => {
               customDispatch(globalAlertType("error", error));
             },
-          }
+          },
         );
       }
     });
@@ -110,7 +111,7 @@ const ViewUser = () => {
         <ActionMenu>
           <MenuItem
             sx={{ fontSize: 14 }}
-            onClick={() => handleViewAgent(rowData?._id)}
+            onClick={() => handleViewAgent(rowData?.id)}
           >
             View Account
           </MenuItem>
@@ -127,7 +128,7 @@ const ViewUser = () => {
           {user?.permissions?.includes("Delete users") && (
             <MenuItem
               sx={{ fontSize: 14 }}
-              onClick={() => handleRemoveUserAccount(rowData?._id)}
+              onClick={() => handleRemoveUserAccount(rowData?.id)}
             >
               Remove Account
             </MenuItem>
@@ -138,7 +139,7 @@ const ViewUser = () => {
   ];
   return (
     <>
-      < >
+      <>
         <CustomTitle
           title="Users Account"
           subtitle="Explore user profiles, account details, and other relevant information to better understand our user base."

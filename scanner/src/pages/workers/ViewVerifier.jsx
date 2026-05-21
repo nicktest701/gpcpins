@@ -39,7 +39,7 @@ import VerifierAssignedTickets from "./VerifierAssignedTickets";
 import CustomTitle from "../../components/custom/CustomTitle";
 import GlobalSpinner from "../../components/spinners/GlobalSpinner";
 
-const ViewEmployee = () => {
+const ViewVerifier = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
@@ -56,7 +56,7 @@ const ViewEmployee = () => {
     enabled: !!id,
     initialData: queryClient
       .getQueryData(["verifiers"])
-      ?.find((verifier) => verifier?._id === id),
+      ?.find((verifier) => verifier?.id === id),
   });
 
   const { mutateAsync: toggleVerifierAccountMutateAsync } = useMutation({
@@ -136,7 +136,7 @@ const ViewEmployee = () => {
     }).then(({ isConfirmed }) => {
       if (isConfirmed) {
         deleteMutateAsync(
-          { id: verifier?.data?._id },
+          { id: verifier?.data?.id },
           {
             onSettled: () => {
               queryClient.invalidateQueries(["verifiers"]);
@@ -159,6 +159,7 @@ const ViewEmployee = () => {
       `/verifiers/roles/${id}?permissions=${encodeURIComponent(permissions)}`
     );
   };
+
 
   const handleUploadFile = (e) => {
     if (e.target.files) {
@@ -441,4 +442,4 @@ const ViewEmployee = () => {
   );
 };
 
-export default ViewEmployee;
+export default ViewVerifier;

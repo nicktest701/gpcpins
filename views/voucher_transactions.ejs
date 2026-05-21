@@ -71,7 +71,7 @@
         <% transactions.forEach(transaction=> { %>
         <tr>
           <td><%= transaction?.modifiedAt %></td>
-          <td><%= transaction?._id %></td>
+          <td><%= transaction?.id %></td>
           <td><%= transaction?.reference %></td>
           <td><%= transaction?.voucherType %></td>
           <td><%= transaction?.type %></td>

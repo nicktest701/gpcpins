@@ -51,11 +51,11 @@ const MatchTicketCheckout = lazy(() =>
 
 const Prepaid = lazy(() => import("../electricity/Prepaid"));
 const Meters = lazy(() => import("../electricity/individual/Meters"));
+const ViewMeter = lazy(() => import("../electricity/meters/ViewMeter"));
 const BuyPrepaid = lazy(() => import("../electricity/BuyPrepaid"));
 const PaymentSuccess = lazy(() => import("../payment/PaymentSuccess"));
 import Organisation from "../organisation";
 import LostVoucher from "../evoucher/LostVoucher";
-import Pending from "../Pending";
 import { globalAlertType } from "../../components/alert/alertType";
 import AirtimeHome from "../airtime/AirtimeHome";
 import AirtimeBuy from "../airtime/AirtimeBuy";
@@ -63,6 +63,7 @@ import BulkAirtimeBuy from "../airtime/BulkAirtimeBuy";
 import GetStarted from "../GetStarted";
 import Error from "../Error";
 import VoucherPayment from "../payment/voucherPayment";
+import PaymentStatus from "../PaymentStatus";
 
 function Shell() {
   const { customDispatch } = useContext(CustomContext);
@@ -129,6 +130,15 @@ function Shell() {
                 </Suspense>
               }
             />
+            <Route
+              path="meters/:id"
+              element={
+                <Suspense fallback={<PayLoading />}>
+                  <ViewMeter />
+                </Suspense>
+              }
+            />
+
             <Route
               path="verify/:meterNo/:meterName"
               element={
@@ -386,7 +396,7 @@ function Shell() {
           path="confirm"
           element={
             <Suspense fallback={<PayLoading />}>
-              <Pending />
+              <PaymentStatus />
             </Suspense>
           }
         />

@@ -43,7 +43,7 @@ const EditAgent = () => {
     initialData: () => {
       return queryClient
         .getQueryData(["agents"])
-        .find((agent) => agent?._id === id);
+        .find((agent) => agent?.id === id);
     },
   });
 
@@ -64,7 +64,7 @@ const EditAgent = () => {
   };
 
   const personalValues = {
-    _id: data?._id,
+    id: data?.id,
     firstname: data?.firstname,
     lastname: data?.lastname,
     username: data?.username,
@@ -72,20 +72,20 @@ const EditAgent = () => {
     nid: data?.nid,
   };
   const contactValues = {
-    _id: data?._id,
+    id: data?.id,
     residence: data?.residence,
     email: data?.email,
     phonenumber: data?.phonenumber,
   };
   const businessValues = {
-    agent_id: data?._id,
-    business_name: data?.business_name,
-    business_location: data?.business_location,
-    business_description: data?.business_description,
-    business_email: data?.business_email,
-    business_phonenumber: data?.business_phonenumber,
+    agent_id: data?.id,
+    business_id: data?.businessId,
+    business_name: data?.businessName,
+    business_location: data?.businessLocation,
+    business_description: data?.businessDescription,
+    business_email: data?.businessEmail,
+    business_phonenumber: data?.businessPhonenumber,
   };
-
 
   const handleClose = () => {
     setSearchParams((params) => {
@@ -120,18 +120,18 @@ const EditAgent = () => {
   const initialValues = searchParams.get("personal")
     ? personalValues
     : searchParams?.get("contact")
-    ? contactValues
-    : searchParams?.get("business")
-    ? businessValues
-    : agentValues;
+      ? contactValues
+      : searchParams?.get("business")
+        ? businessValues
+        : agentValues;
 
   const validationSchema = searchParams.get("personal")
     ? agentPersonalValidationSchema
     : searchParams?.get("contact")
-    ? agentContactValidationSchema
-    : searchParams?.get("business")
-    ? agentBusinessValidationSchema
-    : agentValidationSchema;
+      ? agentContactValidationSchema
+      : searchParams?.get("business")
+        ? agentBusinessValidationSchema
+        : agentValidationSchema;
 
   const open =
     searchParams.get("personal") ||
@@ -222,7 +222,7 @@ const EditAgent = () => {
                       />
                       <CustomFormControl>
                         <CustomDatePicker
-                           format='Do MMMM,YYYY'
+                          format="Do MMMM,YYYY"
                           label="Date Of Birth"
                           value={values.dob}
                           setValue={setDob}
@@ -279,7 +279,7 @@ const EditAgent = () => {
                           value={values.phonenumber}
                           onChange={handleChange("phonenumber")}
                           error={Boolean(
-                            touched.phonenumber && errors.phonenumber
+                            touched.phonenumber && errors.phonenumber,
                           )}
                           helperText={touched.phonenumber && errors.phonenumber}
                         />
@@ -336,7 +336,7 @@ const EditAgent = () => {
                         value={values.business_name}
                         onChange={handleChange("business_name")}
                         error={Boolean(
-                          touched.business_name && errors.business_name
+                          touched.business_name && errors.business_name,
                         )}
                         helperText={
                           touched.business_name && errors.business_name
@@ -350,7 +350,7 @@ const EditAgent = () => {
                         value={values.business_location}
                         onChange={handleChange("business_location")}
                         error={Boolean(
-                          touched.business_location && errors.business_location
+                          touched.business_location && errors.business_location,
                         )}
                         helperText={
                           touched.business_location && errors.business_location
@@ -366,7 +366,7 @@ const EditAgent = () => {
                         onChange={handleChange("business_description")}
                         error={Boolean(
                           touched.business_description &&
-                            errors.business_description
+                          errors.business_description,
                         )}
                         helperText={
                           touched.business_description &&
@@ -384,7 +384,7 @@ const EditAgent = () => {
                           value={values.business_email}
                           onChange={handleChange("business_email")}
                           error={Boolean(
-                            touched.business_email && errors.business_email
+                            touched.business_email && errors.business_email,
                           )}
                           helperText={
                             touched.business_email && errors.business_email
@@ -400,7 +400,7 @@ const EditAgent = () => {
                           onChange={handleChange("business_phonenumber")}
                           error={Boolean(
                             touched.business_phonenumber &&
-                              errors.business_phonenumber
+                            errors.business_phonenumber,
                           )}
                           helperText={
                             touched.business_phonenumber &&

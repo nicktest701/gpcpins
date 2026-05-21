@@ -1,22 +1,22 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getCategoryByType } from '../api/categoryAPI';
-import isEmpty from 'lodash/isEmpty';
-import { getCategoryData } from '../config/getCategoryData';
-import { CustomContext } from '../context/providers/CustomProvider';
-import { useContext } from 'react';
-import { globalAlertType } from '../components/alert/alertType';
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getCategoryByType } from "../api/categoryAPI";
+import isEmpty from "lodash/isEmpty";
+import { getCategoryData } from "../config/getCategoryData";
+import { CustomContext } from "../context/providers/CustomProvider";
+import { useContext } from "react";
+import { globalAlertType } from "../components/alert/alertType";
 
-export const useGetCategoryByType = (category) => {
+export const useGetCategoryByType = (type) => {
   const queryClient = useQueryClient();
   const { customDispatch } = useContext(CustomContext);
 
   const cat = useQuery({
-    queryKey: ['category', category],
-    queryFn: () => getCategoryByType(category),
+    queryKey: ["category", type],
+    queryFn: () => getCategoryByType(type),
     initialData: queryClient
-      .getQueryData(['all-category'])
-      ?.filter((voucher) => voucher?.category === category),
-    enabled: !!category,
+      .getQueryData(["all-category"])
+      ?.filter((voucher) => voucher?.type === type),
+    enabled: !!type,
     select: (categories) => {
       if (!isEmpty(categories)) {
         const options = getCategoryData(categories);
@@ -27,7 +27,7 @@ export const useGetCategoryByType = (category) => {
     },
     onError: (error) => {
       customDispatch(
-        globalAlertType('error', 'An Unknown error has occurred!')
+        globalAlertType("error", "An Unknown error has occurred!"),
       );
     },
   });

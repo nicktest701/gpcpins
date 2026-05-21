@@ -8,6 +8,7 @@ const verifyAdmin = require("../middlewares/verifyAdmin");
 const { isValidUUID2 } = require("../config/validation");
 const knex = require("../db/knex");
 const generateId = require("../config/generateId");
+const { safeJSON } = require("../config/helpers");
 
 const ALLOWED_CATEGORIES = [
   "waec",
@@ -31,7 +32,7 @@ router.get(
     const categories = await knex("categories")
       .select("*")
       .where("active", 1)
-      .orderBy("createdAt", "desc");
+      .orderBy("created_at", "desc");
 
     const modifiedCategories = categories.map((category) => {
       const details = JSON.parse(category?.details);
@@ -51,7 +52,7 @@ router.get(
     });
 
     res.status(200).json(_.compact(modifiedCategories));
-  })
+  }),
 );
 
 //@GET Get all tickets
@@ -59,75 +60,59 @@ router.get(
   "/tickets",
   verifyToken,
   asyncHandler(async (req, res) => {
-    const category = req?.query?.category
+    const category = req?.query?.category;
     let categories = [];
-  
 
     if (category) {
       categories = await knex("categories")
         .select("*")
-        .where({ category: category, active: 1, })
-        .orderBy("createdAt", "desc");
+        .where({ type: category, active: 1 })
+        .orderBy("created_at", "desc");
     } else {
-
       categories = await knex("categories")
         .select("*")
         .where("active", 1)
-        .andWhere('category', "IN", ['bus', 'cinema', 'stadium'])
-        .orderBy("createdAt", "desc");
+        .andWhere("type", "IN", ["bus", "cinema", "stadium"])
+        .orderBy("created_at", "desc");
     }
 
-
-
-
     const modifiedCategories = categories.map((category) => {
-      const details = JSON.parse(category?.details);
-      // const date = moment(details?.date).add(12, "hours");
+      const details = safeJSON(category?.details);
 
-      // if (
-      //   ["cinema", "stadium", "bus"].includes(category?.category) &&
-      //   today.isAfter(date)
-      // ) {
-      //   return;
-      // } else {
       return {
         ...category,
         details,
       };
-      // }
     });
 
     res.status(200).json(_.compact(modifiedCategories));
-  })
+  }),
 );
-
 
 //@GET Get Ticket by ID
 router.get(
   "/tickets/:id",
   verifyToken,
   asyncHandler(async (req, res) => {
-    const id = req.params.id
+    const id = req.params.id;
     const category = await knex("categories")
       .select("*")
-      .where({ _id: id, active: 1 })
-      .orderBy("createdAt", "desc").limit(1)
-
+      .where({ id: id, active: 1 })
+      .orderBy("created_at", "desc")
+      .first();
 
     if (_.isEmpty(category)) {
-      return res.status(200).json({})
+      return res.status(200).json({});
     }
 
-
-    const details = JSON.parse(category[0]?.details)
+    const details = safeJSON(category?.details);
 
     res.status(200).json({
-      ...category[0],
-      details
+      ...category,
+      details,
     });
-  })
+  }),
 );
-
 
 router.get(
   "/main",
@@ -144,97 +129,91 @@ router.get(
       return res.status(400).json("Unknown Category");
     }
 
-    // const categories = await Category.find({ category }).sort({
-    //   createdAt: -1,
-    // });
-
     const categories = await knex("categories")
-      .where("category", category)
+      .where("type", category)
       .select("*")
-      .orderBy("createdAt", "desc");
+      .orderBy("created_at", "desc");
 
     const modifiedCategories = categories.map((category) => {
       return {
         ...category,
-        details: JSON.parse(category?.details),
+        createdAt: category.created_at,
+        details: safeJSON(category?.details),
       };
     });
 
+    // console.log(modifiedCategories);
+
     res.status(200).json(modifiedCategories);
-  })
+  }),
 );
 
 router.get(
   "/type",
   asyncHandler(async (req, res) => {
-    const { category, page } = req.query;
+    const { type, page = 1 } = req.query;
 
-    if (!category) {
-      return res.status(400).json("Missing Category");
+    // Validate type
+    if (!type) {
+      return res.status(400).json({ message: "Missing Category" });
     }
 
-    if (!ALLOWED_CATEGORIES.includes(category)) {
-      return res.status(400).json("Unknown Category");
+    if (!ALLOWED_CATEGORIES.includes(type)) {
+      return res.status(400).json({ message: "Unknown Category" });
     }
 
-    if (page) {
-      const _page = page || 1;
-      const limit = _page * 10;
+    // Pagination setup
+    const limit = 20;
+    const currentPage = Math.max(parseInt(page, 10) || 1, 1);
+    const offset = (currentPage - 1) * limit;
 
-      const categories = await knex("categories")
-        .select("*")
-        .where({ category: category, active: 1 })
-        .orderBy("createdAt", "desc")
-        .limit(limit);
-
-      if (_.isEmpty(categories)) {
-        return res.status(200).json([]);
-      }
-
-      const modifiedCategories = categories.map((category) => {
-        const details = JSON.parse(category?.details);
-        const date = moment(details?.date).add(12, "hours");
-
-        if (
-          ["cinema", "stadium", "bus"].includes(category?.category) &&
-          today.isAfter(date)
-        ) {
-          return;
-        } else {
-          return {
-            ...category,
-            details,
-          };
-        }
-      });
-
-      return res.status(200).json(_.compact(modifiedCategories));
-    }
-
-    const categories = await knex("categories")
+    // Base query
+    let query = knex("categories")
       .select("*")
-      .where({ category: category, active: 1 })
-      .orderBy("createdAt", "desc");
+      .where({ type, active: 1 })
+      .orderBy("created_at", "desc");
 
-    const modifiedCategories = categories.map((category) => {
-      const details = JSON.parse(category?.details);
-      const date = moment(details?.date).add(12, "hours");
+    if (req.query.page) {
+      query = query.limit(limit).offset(offset);
+    }
 
-      if (
-        ["cinema", "stadium", "bus"].includes(category?.category) &&
-        today.isAfter(date)
-      ) {
-        return;
-      } else {
-        return {
-          ...category,
-          details,
-        };
+    const categories = await query;
+
+    if (!categories.length) {
+      return res.status(200).json([]);
+    }
+
+    const now = moment(); // cache current time once
+    const restrictedTypes = new Set(["cinema", "stadium", "bus"]);
+
+    const result = [];
+
+    for (const category of categories) {
+      let details = null;
+
+      // Safe JSON parsing
+      try {
+        details = safeJSON(category.details);
+      } catch (err) {
+        continue; // skip invalid records
       }
-    });
 
-    res.status(200).json(_.compact(modifiedCategories));
-  })
+      const date = details?.date ? moment(details.date).add(12, "hours") : null;
+
+      // Filter expired categories
+      if (date && restrictedTypes.has(category.type) && now.isAfter(date)) {
+        continue;
+      }
+
+      result.push({
+        ...category,
+        details,
+      });
+    }
+
+  
+    return res.status(200).json(result);
+  }),
 );
 
 //GET all categories
@@ -253,14 +232,13 @@ router.get(
     const modifiedCategories = categories.map((category) => {
       return {
         ...category,
-        details: JSON.parse(category?.details),
+        details: safeJSON(category?.details),
       };
     });
 
     res.status(200).json(modifiedCategories);
-  })
+  }),
 );
-
 
 //GET all categories
 router.get(
@@ -275,9 +253,8 @@ router.get(
     const modifiedCategories = _.uniqBy(categories, "category");
 
     res.status(200).json(modifiedCategories);
-  })
+  }),
 );
-
 
 //GET BUS BY DESTINATION
 router.get(
@@ -317,7 +294,7 @@ router.get(
 
       return {
         ...item,
-        details: JSON.parse(item?.details),
+        details: safeJSON(item?.details),
         activeVouchers: activeVouchers[0]?.count,
       };
     });
@@ -325,7 +302,7 @@ router.get(
     const buses = await Promise.all(modifiedCategories);
 
     res.status(200).json(buses);
-  })
+  }),
 );
 
 router.get(
@@ -337,14 +314,13 @@ router.get(
       const module = await knex("modules")
         .select("*")
         .where("title", title)
-        .limit(1);
-
-      return res.status(200).json(module[0]);
+        .first();
+      return res.status(200).json(module);
     }
 
     const modules = await knex("modules").select("*");
     res.status(200).json(modules);
-  })
+  }),
 );
 
 router.get(
@@ -358,18 +334,18 @@ router.get(
 
     const category = await knex("categories")
       .select("*")
-      .where("_id", id)
-      .limit(1);
+      .where("id", id)
+      .first();
 
     if (_.isEmpty(category)) {
       return res.status(200).json("No results match your search!");
     }
 
     res.status(200).json({
-      ...category[0],
-      details: JSON.parse(category[0].details),
+      ...category,
+      details: JSON.parse(category.details),
     });
-  })
+  }),
 );
 
 router.post(
@@ -385,30 +361,38 @@ router.post(
     }
 
     const modifiedCategory = {
-      _id: generateId(),
+      id: generateId(),
       ...newCategory,
       details: JSON.stringify(newCategory?.details),
     };
 
-    // console.log(modifiedCategory)
+    if (newCategory.type === "waec") {
+      const isCategoryExists = await knex("categories").where({
+        name: newCategory.name,
+        year: newCategory.year,
+      });
+      if (!_.isEmpty(isCategoryExists)) {
+        return res.status(400).json("Category already exists!");
+      }
+    }
 
     const category = await knex("categories").insert(modifiedCategory);
 
     if (_.isEmpty(category)) {
       return res
         .status(200)
-        .json(`Error occurred! Failed to add ${newCategory.category}`);
+        .json(`Error occurred! Failed to add ${newCategory.name}`);
     }
 
     //logs
     await knex("activity_logs").insert({
-      employee_id: id,
-      title: `Created a new ${modifiedCategory?.category} category.`,
+      user_id: id,
+      title: `Created a new ${modifiedCategory?.name} category.`,
       severity: "info",
     });
 
     res.status(201).send(`Category Saved!`);
-  })
+  }),
 );
 router.post(
   "/module/status",
@@ -425,14 +409,15 @@ router.post(
 
     //logs
     await knex("activity_logs").insert({
-      employee_id: id,
-      title: `Updated ${title} module status to ${active ? "active" : "disabled"
-        }.`,
+      user_id: id,
+      title: `Updated ${title} module status to ${
+        active ? "active" : "disabled"
+      }.`,
       severity: "warning",
     });
 
     res.status(201).send(`Changes updated!`);
-  })
+  }),
 );
 
 router.put(
@@ -459,7 +444,7 @@ router.put(
     // delete newUpdatedCategory.id;
 
     const updatedCategory = await knex("categories")
-      .where("_id", id)
+      .where("id", id)
       .update(newUpdatedCategory);
 
     if (updatedCategory !== 1) {
@@ -468,13 +453,13 @@ router.put(
 
     //logs
     await knex("activity_logs").insert({
-      employee_id: _id,
+      user_id: _id,
       title: `Modified ${newUpdatedCategory?.voucherType} category.`,
       severity: "info",
     });
 
     res.status(200).json("Changes saved!");
-  })
+  }),
 );
 
 router.put(
@@ -504,7 +489,7 @@ router.put(
     });
 
     res.status(200).json("Vouchers removed!");
-  })
+  }),
 );
 
 router.patch(
@@ -530,19 +515,20 @@ router.patch(
     //logs
     await knex("activity_logs").insert({
       employee_id: _id,
-      title: `${Boolean(active) === true
-        ? "Activated a category!"
-        : "Disabled a category!"
-        }`,
+      title: `${
+        Boolean(active) === true
+          ? "Activated a category!"
+          : "Disabled a category!"
+      }`,
       severity: "warning",
     });
 
     res
       .status(201)
       .json(
-        Boolean(active) === true ? "Category enabled!" : "Category disabled!"
+        Boolean(active) === true ? "Category enabled!" : "Category disabled!",
       );
-  })
+  }),
 );
 
 router.delete(
@@ -572,7 +558,7 @@ router.delete(
     });
 
     res.status(200).json("Category Removed!");
-  })
+  }),
 );
 
 module.exports = router;

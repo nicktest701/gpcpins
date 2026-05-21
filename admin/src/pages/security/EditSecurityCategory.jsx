@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import LoadingButton from "@mui/lab/LoadingButton";
 import Autocomplete from "@mui/material/Autocomplete";
 import Button from "@mui/material/Button";
@@ -20,8 +20,10 @@ import { globalAlertType } from "../../components/alert/alertType";
 import moment from "moment";
 import CustomYearPicker from "../../components/inputs/CustomYearPicker";
 import { addWaecValidationSchema } from "../../config/validationSchema";
-import Compressor from "compressorjs";
 import DOMPurify from "dompurify";
+import { Avatar, Box } from "@mui/material";
+import { CloudUpload } from "@mui/icons-material";
+import { uploadFile } from "@/lib/upload";
 
 const EditSecurityCategory = () => {
   const queryClient = useQueryClient();
@@ -35,10 +37,16 @@ const EditSecurityCategory = () => {
   } = useContext(CustomContext);
   //state
   const [logo, setLogo] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [voucherType, setVoucherType] = useState("");
   const [price, setPrice] = useState(0);
   const [voucherURL, setVoucherURL] = useState("");
   const [year, setYear] = useState(moment().format("YYYY"));
+
+  // Upload file ref
+  const fileInputRef = useRef(null);
 
   const initialValues = {
     category: "security",
@@ -56,34 +64,45 @@ const EditSecurityCategory = () => {
     enabled: !!id,
     onSuccess: (security) => {
       setPrice(security?.price);
-      setVoucherType(security?.voucherType);
+      setVoucherType(security?.name);
       setVoucherURL(security?.details?.voucherURL);
       setYear(security?.year);
+      setLogo(security.details.logo)
+      setLogoPreview(security.details.logo)
     },
   });
 
-  const handleUploadFile = (e) => {
-    // e.preventDefault();
-    if (e.target.files) {
-      const image = e.target.files[0];
+  // Upload logo
+  const handleUploadFile = async (e) => {
+    setLoading(true);
 
-      new Compressor(image, {
-        height: 200,
-        width: 200,
-        quality: 0.6,
+    try {
+      const file = e.target.files[0];
+      if (!file) return;
+      setLogo(file);
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = () => setLogoPreview(reader.result);
+      reader.readAsDataURL(file);
 
-        success(data) {
-          const reader = new FileReader();
-          reader.onload = function (event) {
-            const ImageURL = event.target.result;
-            setLogo(ImageURL);
-          };
-
-          reader.readAsDataURL(data);
+      // Actually upload to Firebase
+      const { downloadURL } = await uploadFile({
+        folder: "category",
+        file,
+        onProgress: (progress) => {
+          setProgress(progress);
         },
       });
+      setLogo(downloadURL); // store final URL
+    } catch (error) {
+      customDispatch(
+        globalAlertType("error", "Something went wrong. Please try again."),
+      );
+    } finally {
+      setLoading(false);
     }
   };
+
   const { mutateAsync, isLoading } = useMutation({
     mutationFn: editCategory,
   });
@@ -91,9 +110,9 @@ const EditSecurityCategory = () => {
     const isProtocolPresent = values.voucherURL?.includes("http");
 
     const modifiedSecurityCategory = {
-      id: security.data?._id,
-      category: values.category,
-      voucherType: values.voucherType,
+      id: security.data?.id,
+      type: values.category,
+      name: values.voucherType,
       price: DOMPurify.sanitize(values.price),
       details: {
         voucherURL: isProtocolPresent
@@ -132,6 +151,34 @@ const EditSecurityCategory = () => {
     });
   };
 
+  // Preview logo if uploaded
+  const LogoPreview = () => (
+    <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 2 }}>
+      {logoPreview && (
+        <Avatar
+          src={logoPreview}
+          variant="rounded"
+          sx={{ width: 60, height: 60, objectFit: "contain" }}
+        />
+      )}
+      <Button
+        variant="outlined"
+        startIcon={<CloudUpload />}
+        onClick={() => fileInputRef.current?.click()}
+        size="small"
+      >
+        {logoPreview ? "Change Logo" : "Upload Logo"}
+      </Button>
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        accept=".png,.jpg,.jpeg,.webp"
+        onChange={handleUploadFile}
+      />
+    </Box>
+  );
+
   return (
     <Formik
       initialValues={initialValues}
@@ -151,15 +198,40 @@ const EditSecurityCategory = () => {
             <DialogTitle>Edit Security Service</DialogTitle>
             <DialogContent>
               <Stack rowGap={2} paddingY={2}>
-                <div>
-                  <label htmlFor="cinema">Upload Logo</label>
-                  <input
-                    type="file"
-                    id="profile"
-                    accept=".png,.jpg,.jpeg,.webp"
-                    onChange={handleUploadFile}
-                  />
-                </div>
+                {/* Logo Upload */}
+                <Box>
+                  {loading && (
+                    <Box sx={{ width: "100%", mb: 1 }}>
+                      <Typography variant="caption" color="textSecondary">
+                        Uploading... {Math.round(progress)}%
+                      </Typography>
+                      <Box
+                        sx={{
+                          height: 4,
+                          width: "100%",
+                          bgcolor: "action.hover",
+                          borderRadius: 1,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            height: "100%",
+                            width: `${progress}%`,
+                            bgcolor: "primary.main",
+                            transition: "width 0.3s ease",
+                          }}
+                        />
+                      </Box>
+                    </Box>
+                  )}
+
+                  <Typography variant="subtitle2" gutterBottom>
+                    Category Logo
+                  </Typography>
+                  <LogoPreview />
+                </Box>
+
                 <Autocomplete
                   options={CATEGORY.security}
                   freeSolo
@@ -216,10 +288,13 @@ const EditSecurityCategory = () => {
               </Stack>
             </DialogContent>
             <DialogActions sx={{ padding: 1 }}>
-              <Button onClick={handleClose}>Cancel</Button>
+              <Button onClick={handleClose} disabled={loading}>
+                Cancel
+              </Button>
               <LoadingButton
                 variant="contained"
                 loading={isLoading}
+                disabled={loading}
                 onClick={handleSubmit}
               >
                 Save Changes

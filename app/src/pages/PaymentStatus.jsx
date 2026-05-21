@@ -11,22 +11,22 @@ import { useLocation, useNavigate, Navigate, Link } from "react-router-dom";
 import Swal from "sweetalert2";
 import GlobalSpinner from "../components/GlobalSpinner";
 
-function Pending() {
+function PaymentStatus() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { pathname, state } = useLocation();
   const { customDispatch } = useContext(CustomContext);
 
   const confirmPayment = useQuery({
-    queryKey: ["confirm-payment", state?._id],
+    queryKey: ["confirm-payment", state?.id],
     queryFn: () =>
       ConfirmPayment({
-        id: state?._id,
-        type: state?.type,
+        id: state?.id,
+        type: state?.categoryType,
       }),
     refetchIntervalInBackground: true,
     retry: true,
-    enabled: !!state?._id && !!state?.type,
+    enabled: !!state?.id && !!state?.categoryType,
     onSuccess: (data) => {
       if (data && data?.status === "completed") {
         handleConfirmPayment();
@@ -59,19 +59,21 @@ function Pending() {
   const handleConfirmPayment = () => {
     mutateAsync(
       {
-        id: state?._id,
-        type: state?.type,
+        id: state?.id,
+        type: state?.categoryType,
         confirm: true,
       },
       {
         onSuccess: (data) => {
-          if (data?._id) {
+          if (data?.id) {
             if (state?.isWallet) {
               queryClient.getQueryData(["wallet-balance"]);
             }
 
             customDispatch(globalAlertType("info", "Transaction Confirmed!"));
-            if (["airtime", "prepaid", "bundle"].includes(state?.type)) {
+            if (
+              ["airtime", "prepaid", "bundle"].includes(state?.categoryType)
+            ) {
               navigate("/payment/success", {
                 replace: true,
                 state: {
@@ -80,11 +82,12 @@ function Pending() {
               });
             } else {
               customDispatch({ type: "loadVouchers", payload: data });
+
               navigate(`/checkout`, {
                 replace: true,
                 state: {
-                  transactionId: data?._id,
-                  type: data?.info.type,
+                  transactionId: data?.id,
+                  categoryType: data?.info?.categoryType,
                   path: pathname,
                 },
               });
@@ -94,7 +97,7 @@ function Pending() {
         onError: (error) => {
           customDispatch(globalAlertType("error", error));
         },
-      }
+      },
     );
   };
 
@@ -114,7 +117,7 @@ function Pending() {
     }).then(({ isConfirmed }) => {
       if (isConfirmed) {
         cancelPaymentMutateAsync(
-          { id: state?._id, type: state?.type },
+          { id: state?.id, type: state?.categoryType },
           {
             onSuccess: (data) => {
               customDispatch(globalAlertType("info", data));
@@ -123,13 +126,13 @@ function Pending() {
             onError: (error) => {
               customDispatch(globalAlertType("error", error));
             },
-          }
+          },
         );
       }
     });
   };
 
-  if (!state?._id) {
+  if (!state?.id) {
     return <Navigate to="/" />;
   }
 
@@ -296,4 +299,4 @@ function Pending() {
   );
 }
 
-export default Pending;
+export default PaymentStatus;

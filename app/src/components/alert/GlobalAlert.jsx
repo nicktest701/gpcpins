@@ -24,7 +24,7 @@ const GlobalAlert = () => {
         horizontal: "right",
         vertical: "top",
       }}
-      tr
+    
       // open={true}
       open={alertData?.open}
       autoHideDuration={5000}

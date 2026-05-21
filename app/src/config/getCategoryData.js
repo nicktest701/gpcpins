@@ -1,55 +1,54 @@
-import moment from 'moment';
+import moment from "moment";
 
 export function getCategoryData(data) {
-  switch (data[0].category) {
-    case 'university':
-      return data?.map(
-        ({ _id, category, voucherType, price, details, active }) => {
-          return {
-            id: _id,
-            category,
-            voucherType: `${voucherType}(${details.formType})`,
-            formType: details.formType,
-            logo: details.logo,
-            price,
-            active,
-          };
-        }
-      );
-
-    case 'bus':
-      return data?.map(
-        ({ _id, category, voucherType, price, details, active }) => {
-          const date = moment(new Date(details.date)).format('dddd,LL');
-          const time = moment(new Date(details.time)).format('h:mm a');
-          return {
-            id: _id,
-            category,
-            companyName: details?.companyName,
-            voucherType: `${voucherType} (${date},${time})`,
-            journey: voucherType,
-            report: details.report,
-            date: details.date,
-            time: details.time,
-            logo: details.logo,
-            noOfSeats: details?.noOfSeats,
-            vehicleNo: details?.vehicleNo,
-            price,
-            details,
-            active,
-          };
-        }
-      );
-
-    case 'cinema':
-      return data?.map(({ _id, category, voucherType, details, active }) => {
+  switch (data[0].type) {
+    case "university":
+      return data?.map(({ id, type,year, name, price, details, active }) => {
         return {
-          id: _id,
-          category,
-          profile: details.cinema,
-          voucherType,
+          id,
+          type,
+          year,
+          name: `${name}(${details.formType})`,
+          formType: details.formType,
+          logo: details.logo,
+          price,
+          active,
+        };
+      });
+
+    case "bus":
+      return data?.map(({ id, type, name,year, price, details, active }) => {
+        const date = moment(new Date(details.date)).format("dddd,LL");
+        const time = moment(new Date(details.time)).format("h:mm a");
+        return {
+          id,
+          type,
+          year,
           companyName: details?.companyName,
-          movie: voucherType,
+          name: `${name} (${date},${time})`,
+          journey: name,
+          report: details.report,
+          date: details.date,
+          time: details.time,
+          logo: details.logo,
+          noOfSeats: details?.noOfSeats,
+          vehicleNo: details?.vehicleNo,
+          price,
+          details,
+          active,
+        };
+      });
+
+    case "cinema":
+      return data?.map(({ id, type,year, name, details, active }) => {
+        return {
+          id,
+          type,
+          profile: details.cinema,
+          name,
+          year,
+          companyName: details?.companyName,
+          movie: name,
           theatre: details.theatre,
           location: details.location,
           date: details.date,
@@ -60,12 +59,13 @@ export function getCategoryData(data) {
         };
       });
 
-    case 'stadium':
-      return data?.map(({ _id, category, voucherType, details, active }) => {
+    case "stadium":
+      return data?.map(({ id, type,year, name, details, active }) => {
         return {
-          id: _id,
-          voucherType,
-          category,
+          id,
+          name,
+          type,
+          year,
           companyName: details?.companyName,
           matchType: details?.matchType,
           match: `${details.home} vs ${details.away}`,
@@ -78,12 +78,13 @@ export function getCategoryData(data) {
         };
       });
 
-    case 'waec':
-      return data?.map(({ _id, voucherType, category, details, active }) => {
+    case "waec":
+      return data?.map(({ id, name, type, year, details, active }) => {
         return {
-          id: _id,
-          voucherType,
-          category,
+          id,
+          name,
+          type,
+          year,
           price: details.price,
           pricing: details.pricing,
           logo: details.logo,
@@ -93,18 +94,17 @@ export function getCategoryData(data) {
       });
 
     default:
-      return data?.map(
-        ({ _id, voucherType, category, price, details, active }) => {
-          return {
-            id: _id,
-            voucherType,
-            category,
-            price,
-            details,
-            active,
-            logo: details.logo,
-          };
-        }
-      );
+      return data?.map(({ id, name, type, year,price, details, active }) => {
+        return {
+          id,
+          name,
+          type,
+          year,
+          price,
+          details,
+          active,
+          logo: details.logo,
+        };
+      });
   }
 }

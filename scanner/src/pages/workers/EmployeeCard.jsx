@@ -3,12 +3,12 @@ import SouthEastIcon from "@mui/icons-material/SouthEast";
 import { useNavigate } from "react-router-dom";
 import { getInitials } from "../../config/validation";
 
-function EmployeeCard({ _id, name, email, phonenumber, profile }) {
+function EmployeeCard({ id, name, email, phonenumber, profile }) {
   const navigate = useNavigate();
 
   //VIEW Employee Details
   const handleViewEmployee = () => {
-    navigate(`/verifiers/${_id}`);
+    navigate(`/verifiers/${id}`);
   };
 
   return (

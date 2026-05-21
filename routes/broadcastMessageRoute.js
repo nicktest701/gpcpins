@@ -22,19 +22,18 @@ router.get(
     const { role, createdAt } = req.user;
 
     const broadcastMessages = await knex("broadcast_messages")
-      .select("*")
-      .orderBy("createdAt", "desc");
+      .select("*",'is_delivered as isDelivered', "created_at as createdAt")
+      .orderBy("created_at", "desc");
 
     if (role === process.env.USER_ID) {
       const filteredMessages = broadcastMessages.filter((message) =>
-        moment(message.createdAt).isAfter(createdAt)
+        moment(message.createdAt).isAfter(createdAt),
       );
       return res.status(200).json(filteredMessages);
     }
-    // console.log(broadcastMessages)
 
     res.status(200).json(broadcastMessages);
-  })
+  }),
 );
 
 router.get(
@@ -49,12 +48,12 @@ router.get(
     }
 
     const broadcastMessage = await knex("broadcast_messages")
-      .select("*")
-      .where("_id", id)
+    .select("*",'is_delivered as isDelivered', "created_at as createdAt")
+      .where("id", id)
       .first();
 
     res.status(200).json(broadcastMessage);
-  })
+  }),
 );
 
 router.post(
@@ -62,29 +61,43 @@ router.post(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const { id } = req.user;
+    const { id:userID } = req.user;
     const { phoneNumber, email, group, ...newBroadcastMessage } = req.body;
   
-    const transx = await knex.transaction()
-    const _id = generateId();
+
+    const transx = await knex.transaction();
+    const id = generateId();
     try {
-
-     
       const broadcastMessage = await knex("broadcast_messages").insert({
-        _id,
+        id,
         ...newBroadcastMessage,
-        recipient: ['Customers', 'Employees', "Group"].includes(req.body?.recipient) ? newBroadcastMessage?.recipient :
-          newBroadcastMessage?.type === 'SMS' ? phoneNumber : email,
-        grouped: newBroadcastMessage?.recipient === 'Group' ? JSON.stringify(group) : JSON.stringify([]),
-        isDelivered: true
+        recipient: ["Customers", "Employees", "Group"].includes(
+          req.body?.recipient,
+        )
+          ? newBroadcastMessage?.recipient
+          : newBroadcastMessage?.type === "SMS"
+            ? phoneNumber
+            : email,
+        grouped:
+          newBroadcastMessage?.recipient === "Group"
+            ? JSON.stringify(group)
+            : JSON.stringify([]),
       });
-
 
       if (_.isEmpty(broadcastMessage)) {
         return res.status(404).json("Message Failed. An error has occurred.");
       }
 
-      res.status(201).json("Message sent!!!")
+          //logs
+      await transx("activity_logs").insert({
+        user_id: userID,
+        title: "Broadcasted a message!",
+        severity: "info",
+      });
+
+      await transx.commit();
+
+      res.status(201).json("Message sent!!!");
 
       const MAIL_TEXT = `<div>
     <h2>${newBroadcastMessage?.title}</h2>
@@ -101,64 +114,53 @@ router.post(
 
       //Individual
       if (req.body?.recipient === "Individual") {
-
         if (req.body?.type === "Email") {
-
           await sendEMail(email, mailTextShell(MAIL_TEXT));
         }
         if (req.body?.type === "SMS") {
-
           await sendSMS(MESSAGE_TEXT, phoneNumber);
         }
-
-
       }
 
       //Group
       if (req.body?.recipient === "Group") {
-
         if (req.body?.type === "Email") {
-
-
           await sendEMail(group, mailTextShell(MAIL_TEXT));
         }
         if (req.body?.type === "SMS") {
-
           await sendBatchSMS(MESSAGE_TEXT, group);
         }
-
-
       }
 
       //Customers
       if (req.body?.recipient === "Customers") {
-        const electricityTransactions = await transx("prepaid_transactions").select(
-          "email",
-          "mobileNo as phonenumber"
-        );
+
+        const electricityTransactions = await transx(
+          "electricity_transactions",
+        ).select("email", "phonenumber");
         const transactions = await transx("voucher_transactions").select(
           "email",
-          "phonenumber"
+          "phonenumber",
         );
 
-        const users = await transx("users").select("email", "phonenumber");
-        const employees = await transx("employees").select("email", "phonenumber");
+        const users = await transx("vw_users_with_roles")
+        .select("email", "phonenumber")
+        .where("role", process.env.USER_ID);
 
         info = [
           ...electricityTransactions,
           ...transactions,
           ...users,
-          ...employees,
         ];
       }
 
       if (req.body?.recipient === "Employees") {
-        info = await transx("employees").select("email", "phonenumber");
+        info =  await transx("vw_users_with_roles")
+        .select("email", "phonenumber")
+        .where("role", process.env.EMPLOYEE_ID);
       }
 
       if (["Employees", "Customers"].includes(req.body?.recipient)) {
-
-
         if (req.body?.type === "Email") {
           const emails = _.uniqWith(_.compact(_.map(info, "email")), _.isEqual);
           await sendEMail(emails, mailTextShell(MAIL_TEXT));
@@ -167,29 +169,27 @@ router.post(
         if (req.body?.type === "SMS") {
           const numbers = _.uniqWith(
             _.compact(_.map(info, "phonenumber")),
-            _.isEqual
+            _.isEqual,
           );
 
           await sendBatchSMS(MESSAGE_TEXT, numbers);
         }
       }
-      //logs
-      await transx("activity_logs").insert({
-        employee_id: id,
-        title: "Broadcasted a message!",
-        severity: "info",
-      });
 
-      await transx.commit()
-
+  
     } catch (error) {
-      await transx.rollback()
-      await knex("broadcast_messages").where("_id", _id).update({ isDelivered: false });
+      await transx.rollback();
+      console.log(error);
+
+      await knex("broadcast_messages")
+        .where("id", id)
+        .update({ is_delivered: false });
+
       return res.status(404).json("Message Failed. An error has occurred.");
     }
 
-    // return res.status(201).json("Message sent!!!");
-  })
+
+  }),
 );
 
 router.put(
@@ -201,9 +201,8 @@ router.put(
 
     const newBroadcastMessage = await knex("broadcast_messages")
       .select("*")
-      .where("_id", id)
+      .where("id", id)
       .first();
-
 
     const MAIL_TEXT = `<div>
     <h2>${newBroadcastMessage?.title}</h2>
@@ -218,49 +217,55 @@ router.put(
     let info = [];
 
     try {
-      if (!['Customers', 'Employees', "Group"].includes(newBroadcastMessage?.recipient)) {
-
+      if (
+        !["Customers", "Employees", "Group"].includes(
+          newBroadcastMessage?.recipient,
+        )
+      ) {
         if (newBroadcastMessage?.type === "Email") {
-
-          await sendEMail(newBroadcastMessage?.recipient, mailTextShell(MAIL_TEXT));
+          await sendEMail(
+            newBroadcastMessage?.recipient,
+            mailTextShell(MAIL_TEXT),
+          );
         }
         if (newBroadcastMessage?.type === "SMS") {
-
           await sendSMS(MESSAGE_TEXT, newBroadcastMessage?.recipient);
         }
 
         return res.status(201).json("Message sent!!!");
       }
 
-
-      if (newBroadcastMessage?.recipient === 'Group') {
-
+      if (newBroadcastMessage?.recipient === "Group") {
         if (newBroadcastMessage?.type === "Email") {
-
-          await sendEMail(JSON.parse(newBroadcastMessage?.grouped), mailTextShell(MAIL_TEXT));
+          await sendEMail(
+            JSON.parse(newBroadcastMessage?.grouped),
+            mailTextShell(MAIL_TEXT),
+          );
         }
         if (newBroadcastMessage?.type === "SMS") {
-
-          await sendBatchSMS(MESSAGE_TEXT, JSON.parse(newBroadcastMessage?.grouped));
+          await sendBatchSMS(
+            MESSAGE_TEXT,
+            JSON.parse(newBroadcastMessage?.grouped),
+          );
         }
 
         return res.status(201).json("Message sent!!!");
       }
 
-
-
       if (newBroadcastMessage?.recipient === "Customers") {
-        const electricityTransactions = await knex("prepaid_transactions").select(
-          "email",
-          "mobileNo as phonenumber"
-        );
+        const electricityTransactions = await knex(
+          "prepaid_transactions",
+        ).select("email", "mobileNo as phonenumber");
         const transactions = await knex("voucher_transactions").select(
           "email",
-          "phonenumber"
+          "phonenumber",
         );
 
         const users = await knex("users").select("email", "phonenumber");
-        const employees = await knex("employees").select("email", "phonenumber");
+        const employees = await knex("employees").select(
+          "email",
+          "phonenumber",
+        );
 
         info = [
           ...electricityTransactions,
@@ -282,20 +287,19 @@ router.put(
       if (newBroadcastMessage?.type === "SMS") {
         const numbers = _.uniqWith(
           _.compact(_.map(info, "phonenumber")),
-          _.isEqual
+          _.isEqual,
         );
 
         await sendBatchSMS(MESSAGE_TEXT, numbers);
       }
-      await knex("broadcast_messages").where("_id", _id).update({ isDelivered: true });
+      await knex("broadcast_messages")
+        .where("id", id)
+        .update({ isDelivered: true });
       return res.status(201).json("Message sent!!!");
     } catch (error) {
-
       return res.status(404).json("Message Failed. An error has occurred.");
     }
-
-
-  })
+  }),
 );
 
 router.put(
@@ -305,14 +309,11 @@ router.put(
   asyncHandler(async (req, res) => {
     const { messages } = req.body;
 
-    await knex("broadcast_messages")
-      .where("_id", "IN", messages)
-      .del();
+    await knex("broadcast_messages").where("id", "IN", messages).del();
 
-    res.sendStatus(204)
-  })
+    res.sendStatus(204);
+  }),
 );
-
 
 router.delete(
   "/",
@@ -326,14 +327,14 @@ router.delete(
     }
 
     const broadcastMessage = await knex("broadcast_messages")
-      .where("_id", id)
+      .where("id", id)
       .del();
 
     if (broadcastMessage !== 1) {
       return res.status(404).json("An error has occurred!");
     }
     res.status(200).json("Message removed.");
-  })
+  }),
 );
 
 module.exports = router;

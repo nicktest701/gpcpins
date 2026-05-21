@@ -7,7 +7,7 @@ const generateVoucherTemplate = async (data) => {
 
   return new Promise((resolve, reject) => {
     fs.readFile(
-      path.join(process.cwd(), "/views/", `${data?.info?.type}.ejs`),
+      path.join(process.cwd(), "/views/", `${data?.info?.categoryType}.ejs`),
       { encoding: "utf8" },
       (err, compiledHtmlText) => {
         if (err) reject(err);

@@ -25,7 +25,7 @@ function AssignedTicketDetails() {
     queryFn: () => getAssignedTicketByID(ticketId),
     initialData: queryClient
       .getQueryData(["assigned-tickets", id])
-      ?.find((item) => item?._id === ticketId),
+      ?.find((item) => item?.id === ticketId),
     enabled: !!id,
   });
 
@@ -38,6 +38,7 @@ function AssignedTicketDetails() {
   if (ticket.isLoading) {
     return <PayLoading />;
   }
+  console.log(ticket.data)
 
   return (
     <Container>
@@ -48,7 +49,7 @@ function AssignedTicketDetails() {
         }}
       />
       <CustomTitle
-        title={ticket.data?.voucherType}
+        title={ticket.data?.ticketName}
         subtitle="Details and History of ticket"
         // icon={
         //   <EmergencyRecording sx={{ width: 50, height: 50 }} color="primary" />

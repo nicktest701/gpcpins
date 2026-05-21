@@ -1,34 +1,49 @@
-import Dialog from "@mui/material/Dialog";
-import Typography from "@mui/material/Typography";
-import DialogContent from "@mui/material/DialogContent";
-import Stack from "@mui/material/Stack";
-import Radio from "@mui/material/Radio";
-import RadioGroup from "@mui/material/RadioGroup";
-import Box from "@mui/material/Box";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Tooltip from "@mui/material/Tooltip";
-import Button from "@mui/material/Button";
-import DialogActions from "@mui/material/DialogActions";
-import CircularProgress from "@mui/material/CircularProgress";
+import { useContext, useState, useMemo } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogActions,
+  Typography,
+  Box,
+  Grid,
+  Card,
+  CardContent,
+  TextField,
+  InputAdornment,
+  CircularProgress,
+  Alert,
+  Button,
+  Tooltip,
+  Stack,
+  IconButton,
+} from "@mui/material";
 import LoadingButton from "@mui/lab/LoadingButton";
-import { useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { getBundleList } from "../../api/paymentAPI";
-import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
-import { useContext, useState } from "react";
+import { useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import { getBundleList } from "../../api/paymentAPI";
 import { currencyFormatter } from "../../constants";
 import { generateRandomCode } from "../../config/generateRandomCode";
 import { CustomContext } from "../../context/providers/CustomProvider";
+import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
+import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
 
 function BundleList({ setSelectedBundle, selectedBundle }) {
   const { customDispatch } = useContext(CustomContext);
   const { state } = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [bundleType, setBundleType] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const bundles = useQuery({
+  // Fetch bundles
+  const {
+    data: bundles,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: [
       "bundle-list",
       state?.bundleInfo?.type,
@@ -39,24 +54,36 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
       state?.bundleInfo?.type === "Bundle" &&
       state?.bundleInfo?.provider !== "None" &&
       !!state?.bundleInfo?.network,
+    retry: 1,
   });
 
-  const handleChange = (e) => {
-    setBundleType(e.target.value);
-    const bundle = bundles?.data?.find(
-      (bundle) => bundle?.plan_id === e.target.value
+  // Filter bundles by search term
+  const filteredBundles = useMemo(() => {
+    if (!bundles) return [];
+    if (!searchTerm.trim()) return bundles;
+    const term = searchTerm.trim().toLowerCase();
+    return bundles.filter(
+      (bundle) =>
+        bundle.plan_name?.toLowerCase().includes(term) ||
+        bundle.volume?.toLowerCase().includes(term) ||
+        bundle.category?.toLowerCase().includes(term)
     );
+  }, [bundles, searchTerm]);
+
+  const handleSelectBundle = (bundle) => {
     setSelectedBundle(bundle);
   };
 
   const handleProceed = () => {
+    if (!selectedBundle) return;
+
     setSearchParams((params) => {
       params.set("kyTNM", generateRandomCode(150));
-      params.set("plan_id", selectedBundle?.plan_id);
-      params.set("plan_name", selectedBundle?.plan_name);
-      params.set("plan_volume", selectedBundle?.volume);
-      params.set("plan_price", selectedBundle?.price);
-      params.set("amount", selectedBundle?.price);
+      params.set("plan_id", selectedBundle.plan_id);
+      params.set("plan_name", selectedBundle.plan_name);
+      params.set("plan_volume", selectedBundle.volume);
+      params.set("plan_price", selectedBundle.price);
+      params.set("amount", selectedBundle.price);
       params.delete("show_list");
       return params;
     });
@@ -64,16 +91,17 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
 
   const handleClose = () => {
     Swal.fire({
-      title: "Processing",
-      text: `Do you wish to cancel your transaction?`,
+      title: "Cancel bundle selection?",
+      text: "Are you sure you want to cancel?",
+      icon: "question",
       showCancelButton: true,
-    }).then(({ isConfirmed }) => {
-      if (isConfirmed) {
+      confirmButtonText: "Yes, cancel",
+    }).then((result) => {
+      if (result.isConfirmed) {
         customDispatch({
           type: "set_Airtime_Bundle_Amount",
           payload: 0,
         });
-
         setSearchParams((params) => {
           params.delete("show_list");
           return params;
@@ -85,116 +113,153 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
     });
   };
 
+  const clearSearch = () => setSearchTerm("");
+
   return (
     <Dialog
       open={Boolean(searchParams?.get("show_list"))}
       maxWidth="md"
       fullWidth
+      onClose={handleClose}
     >
       <CustomDialogTitle
-        title={`${state?.bundleInfo?.provider} Data Bundle`}
-        subtitle="Select your preferred bundle"
+        title={`${state?.bundleInfo?.provider} Data Bundles`}
+        subtitle="Select a data bundle to top up"
         onClose={handleClose}
       />
+
       <DialogContent>
-        {bundles.isLoading ? (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              height: "30svh",
-            }}
-          >
+        {/* Search input */}
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Search by name, volume, or category..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          sx={{ mb: 2 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+            endAdornment: searchTerm && (
+              <InputAdornment position="end">
+                <IconButton size="small" onClick={clearSearch}>
+                  <ClearIcon fontSize="small" />
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+        />
+
+        {/* Loading state */}
+        {isLoading && (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
             <CircularProgress />
-          </div>
-        ) : bundles?.isError ? (
-          <Stack>
-            <Typography textAlign="center">
-              An unknown error has occurred!
-            </Typography>
-          </Stack>
-        ) : (
-          <RadioGroup value={bundleType} onChange={handleChange}>
-            <Box style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-              {bundles.data?.map((bundle) => {
-                return (
+          </Box>
+        )}
+
+        {/* Error state */}
+        {isError && (
+          <Alert
+            severity="error"
+            action={
+              <Button color="inherit" size="small" onClick={() => refetch()}>
+                Retry
+              </Button>
+            }
+          >
+            Failed to load bundles. {error?.message || "Please try again."}
+          </Alert>
+        )}
+
+        {/* Empty state */}
+        {!isLoading && !isError && filteredBundles.length === 0 && (
+          <Alert severity="info">
+            {searchTerm
+              ? `No bundles match "${searchTerm}". Try a different search.`
+              : "No bundles available for this provider."}
+          </Alert>
+        )}
+
+        {/* Bundle grid */}
+        {!isLoading && !isError && filteredBundles.length > 0 && (
+          <Grid container spacing={2}>
+            {filteredBundles.map((bundle) => {
+              const isSelected = selectedBundle?.plan_id === bundle.plan_id;
+              return (
+                <Grid item xs={12} sm={6} md={4} key={bundle.plan_id}>
                   <Tooltip
-                    key={bundle?.plan_id}
                     title={
-                      <Stack>
-                        <small>{bundle?.category}</small>
-                        <small>{bundle?.plan_name}</small>
-                        <small>{bundle?.type}</small>
-                        <small>{bundle?.volume}</small>
-                        <small> {currencyFormatter(bundle?.price)}</small>
-                        <small>
-                          {" "}
-                          {isNaN(bundle?.validity)
-                            ? bundle?.validity
-                            : `${bundle?.validity} days`}
-                        </small>
+                      <Stack spacing={0.5}>
+                        <Typography variant="caption">
+                          <strong>Category:</strong> {bundle.category}
+                        </Typography>
+                        <Typography variant="caption">
+                          <strong>Type:</strong> {bundle.type}
+                        </Typography>
+                        <Typography variant="caption">
+                          <strong>Validity:</strong>{" "}
+                          {isNaN(bundle.validity)
+                            ? bundle.validity
+                            : `${bundle.validity} days`}
+                        </Typography>
                       </Stack>
                     }
-                    placement="bottom"
+                    placement="top"
                   >
-                    <FormControlLabel
-                      control={<Radio />}
-                      label={
-                        <Stack>
-                          {/* <small> {bundle?.category}</small> */}
-                          <Typography
-                            variant="caption"
-                            fontWeight="bold"
-                            textTransform="capitalize"
-                          >
-                            {bundle?.plan_name}
-                          </Typography>
-                          <Typography variant="caption" color="primary">
-                            {bundle?.volume}
-                          </Typography>
-                          <Typography variant="caption">
-                            {currencyFormatter(bundle?.price)}
-                          </Typography>
-                          <small>
-                            {" "}
-                            {isNaN(bundle?.validity)
-                              ? bundle?.validity
-                              : `${bundle?.validity} days`}
-                          </small>
-                        </Stack>
-                      }
-                      value={bundle?.plan_id}
+                    <Card
+                      variant="outlined"
                       sx={{
-                        flex: { xs: 1, md: 0.5 },
-                        border: "1px solid lightgray",
-                        borderRadius: 1,
-                        p: 1,
-                        bgcolor:
-                          bundleType === bundle?.plan_id
-                            ? "secondary.main"
-                            : "white",
-                        color:
-                          bundleType === bundle?.plan_id
-                            ? "white"
-                            : "secondary.main",
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                        bgcolor: isSelected ? "primary.main" : "background.paper",
+                        color: isSelected ? "white" : "text.primary",
+                        borderColor: isSelected ? "primary.main" : "divider",
                         "&:hover": {
-                          bgcolor: "whitesmoke",
+                          transform: "translateY(-4px)",
+                          boxShadow: 2,
+                          borderColor: "primary.main",
                         },
                       }}
-                    />
+                      onClick={() => handleSelectBundle(bundle)}
+                    >
+                      <CardContent>
+                        <Typography
+                          variant="subtitle1"
+                          fontWeight="bold"
+                          gutterBottom
+                        >
+                          {bundle.plan_name}
+                        </Typography>
+                        <Typography variant="body2" color={isSelected ? "white" : "text.secondary"}>
+                          {bundle.volume}
+                        </Typography>
+                        <Typography variant="h6" fontWeight="bold" mt={1}>
+                          {currencyFormatter(bundle.price)}
+                        </Typography>
+                        <Typography variant="caption" display="block">
+                          Valid for{" "}
+                          {isNaN(bundle.validity)
+                            ? bundle.validity
+                            : `${bundle.validity} days`}
+                        </Typography>
+                      </CardContent>
+                    </Card>
                   </Tooltip>
-                );
-              })}
-            </Box>
-          </RadioGroup>
+                </Grid>
+              );
+            })}
+          </Grid>
         )}
       </DialogContent>
+
       <DialogActions>
         <Button onClick={handleClose}>Cancel</Button>
         <LoadingButton
           variant="contained"
-          disabled={bundleType === ""}
+          disabled={!selectedBundle}
           onClick={handleProceed}
         >
           Proceed

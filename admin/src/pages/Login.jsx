@@ -52,9 +52,10 @@ const Login = () => {
     };
 
     mutate(user, {
-      onSuccess: () => {
+      onSuccess: (data) => {
         navigate("/auth/code", {
           state: {
+            id: data.id,
             email: values?.email,
             password: values?.password,
             path: state?.path,
@@ -105,7 +106,16 @@ const Login = () => {
           bgcolor: "#fff",
         }}
       >
-        {searchParams.get("e") !== null && (
+        {searchParams.get("verified") === "true" && (
+          <Alert
+            variant="filled"
+            severity="success"
+            sx={{ mb: 1, borderRadius: 0 }}
+          >
+            {state.success ?? ""}
+          </Alert>
+        )}
+        {searchParams.get("e") === "true" && (
           <Alert
             variant="filled"
             severity="error"

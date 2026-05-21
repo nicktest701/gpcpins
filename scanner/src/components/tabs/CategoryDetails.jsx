@@ -36,7 +36,7 @@ function CategoryDetails() {
     queryFn: () => getTicketByID(id),
     initialData: queryClient
       .getQueryData(["categories", category])
-      ?.find((item) => item?._id === id),
+      ?.find((item) => item?.id === id),
     enabled: !!id,
     select: (data) => {
       return getFormatttedCategory(data);
@@ -193,7 +193,7 @@ function CategoryDetails() {
                   title: "",
                   width: "20%",
                   render: (data) => (
-                    <Link to={`/verifiers/${data?.verifierId}`}>View</Link>
+                    <Link to={`/verifiers/${data?.verifierId}/scan-history/${id}`}>View</Link>
                   ),
                 },
                 // { field: "type", title: "Verifier" },

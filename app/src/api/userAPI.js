@@ -176,7 +176,7 @@ export const createNewAgent = async (agentInfo) => {
   try {
     const res = await api({
       method: "POST",
-      url: `/agents/request`,
+      url: `/users/agents/request`,
       data: agentInfo,
     });
 
@@ -217,32 +217,8 @@ export const deleteUser = async (id) => {
   }
 };
 
-export const sendTopUpRequest = async (data) => {
-  try {
-    const res = await api({
-      method: "POST",
-      url: `/users/wallet/request`,
-      data,
-    });
 
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
 
-export const getWalletBalance = async (id) => {
-  try {
-    const res = await api({
-      method: "GET",
-      url: `/users/wallet/balance?id=${id}`,
-    });
-
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
 export const getWalletTransaction = async ({ startDate, endDate }) => {
   try {
     const res = await api({
@@ -280,7 +256,7 @@ export const getWalletStatus = async () => {
   try {
     const res = await api({
       method: "GET",
-      url: `/users/wallet/status`,
+      url: `/wallet/status`,
     });
 
     return res.data;

@@ -16,7 +16,8 @@ import { AuthContext } from "../../../context/providers/AuthProvider";
 import { verifyPin } from "../../../config/validation";
 
 import Swal from "sweetalert2";
-import { updateAgentWalletPin } from "../../../api/agentAPI";
+import { updateWalletPin } from "@/api/transactionAPI";
+
 
 function ChangePin() {
   const { user } = useContext(AuthContext);
@@ -29,7 +30,7 @@ function ChangePin() {
 
   //Change pin number
   const { mutateAsync: pinMutateAsync, isLoading: pinIsLoading } = useMutation({
-    mutationFn: updateAgentWalletPin,
+    mutationFn: updateWalletPin,
   });
 
   const handleChangePin = () => {
@@ -45,7 +46,7 @@ function ChangePin() {
     const sanitizedPin = DOMPurify.sanitize(pin?.trim());
 
     const data = {
-      _id: id,
+      id: id,
       pin: sanitizedPin,
       agentEmail: user?.email,
       isAdmin: true,

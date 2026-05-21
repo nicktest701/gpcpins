@@ -22,10 +22,12 @@ function AllTickets() {
   const tickets = useQuery({
     queryKey: ["all-assigned-tickets"],
     queryFn: () => getAllAssignedTickets(),
+    initialData:[]
   });
 
   const handleOpenTicketDetails = (category, id) => {
-    navigate(`/evoucher/${category}/${id}`);
+    // console.log(category,id)
+    navigate(`/tickets/${category}/${id}`);
   };
 
   const {
@@ -34,7 +36,7 @@ function AllTickets() {
   } = useMutation({
     mutationFn: enableOrDisableTicket,
   });
-  function handleToggleUserTicket({ _id, active }) {
+  function handleToggleUserTicket({ id, active }) {
     Swal.fire({
       title: active ? "Disabling Ticket" : "Enabling ticket",
       text: active
@@ -44,7 +46,7 @@ function AllTickets() {
     }).then(({ isConfirmed }) => {
       if (isConfirmed) {
         toggleUserTicketMutateAsync(
-          { id: _id, active: !active },
+          { id: id, active: !active },
           {
             onSettled: () => {
               queryClient.invalidateQueries(["all-assigned-tickets"]);
@@ -66,9 +68,9 @@ function AllTickets() {
     {
       title: "Status",
       field: "active",
-      render: ({ _id, active }) => (
+      render: ({ id, active }) => (
         <Active
-          handleOnClick={() => handleToggleUserTicket({ _id, active })}
+          handleOnClick={() => handleToggleUserTicket({ id, active })}
           active={active}
         />
       ),
@@ -78,20 +80,22 @@ function AllTickets() {
       title: "Action",
       export: false,
       width: 40,
-      render: ({ _id, categoryType, categoryId, active }) => (
+      render: ({ id, ticketType, categoryId, active }) => (
         <ActionMenu>
           <MenuItem
-            onClick={() => handleOpenTicketDetails(categoryType, categoryId)}
+            onClick={() => handleOpenTicketDetails(ticketType, categoryId)}
           >
             View Details
           </MenuItem>
-          <MenuItem onClick={() => handleToggleUserTicket({ _id, active })}>
+          <MenuItem onClick={() => handleToggleUserTicket({ id, active })}>
             {active ? " Disable Ticket" : "Activate Ticket"}
           </MenuItem>
         </ActionMenu>
       ),
     },
   ];
+
+ 
 
   return (
     <div>

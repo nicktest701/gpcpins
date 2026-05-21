@@ -68,6 +68,45 @@ function hasTokenExpired(date) {
   return minutesDifference > 15;
 }
 
+function parseDateRange(startDate, endDate) {
+  if (!startDate || !endDate) {
+    return { error: "startDate and endDate are required" };
+  }
+
+  const isDateOnly = (val) => /^\d{4}-\d{2}-\d{2}$/.test(val);
+  const isISO = (val) => !isNaN(new Date(val).getTime());
+
+  let start, end;
+
+  // Handle startDate
+  if (isDateOnly(startDate)) {
+    start = new Date(`${startDate}T00:00:00.000Z`);
+  } else if (isISO(startDate)) {
+    start = new Date(startDate);
+  } else {
+    return { error: "Invalid startDate format" };
+  }
+
+  // Handle endDate
+  if (isDateOnly(endDate)) {
+    end = new Date(`${endDate}T23:59:59.999Z`);
+  } else if (isISO(endDate)) {
+    end = new Date(endDate);
+  } else {
+    return { error: "Invalid endDate format" };
+  }
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return { error: "Invalid date values" };
+  }
+
+  if (start > end) {
+    return { error: "startDate cannot be greater than endDate" };
+  }
+
+  return { start, end };
+}
+
 module.exports = {
   getWeekNumber,
   getDatesInWeek,
@@ -75,4 +114,5 @@ module.exports = {
   groupDatesByMonth,
   getDatesOfLastSevenDates,
   hasTokenExpired,
+  parseDateRange
 };

@@ -3,6 +3,8 @@ import { LoadingButton } from "@mui/lab";
 import _ from "lodash";
 import {
   Autocomplete,
+  Avatar,
+  Box,
   Button,
   Container,
   Dialog,
@@ -32,8 +34,8 @@ import { globalAlertType } from "../../components/alert/alertType";
 import { Close } from "@mui/icons-material";
 import { addStadiumValidationSchema } from "../../config/validationSchema";
 import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
-import Compressor from "compressorjs";
 import DOMPurify from "dompurify";
+import { uploadFile } from "@/lib/upload";
 const EditStadiumCategory = () => {
   //context
   const queryClient = useQueryClient();
@@ -44,6 +46,9 @@ const EditStadiumCategory = () => {
     customDispatch,
   } = useContext(CustomContext);
 
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [homeTeamImage, setHomeTeamImage] = useState(null);
   const [awayTeamImage, setAwayTeamImage] = useState(null);
   const [matchType, setMatchType] = useState("");
@@ -77,7 +82,7 @@ const EditStadiumCategory = () => {
     queryFn: () => getCategory(id),
     initialData: queryClient
       .getQueryData(["all-category"])
-      ?.find((item) => item?._id === id),
+      ?.find((item) => item?.id === id),
     enabled: !!id,
     refetchOnMount: false,
     onSuccess: (stadium) => {
@@ -91,11 +96,13 @@ const EditStadiumCategory = () => {
       setMessage(stadium.details.message);
       setStandsList(stadium.details?.pricing);
       setCompanyName(stadium.details?.companyName);
+      setHomeTeamImage(stadium.details?.homeImage);
+      setAwayTeamImage(stadium.details?.awayImage);
     },
   });
 
   const { mutateAsync } = useMutation({
-    mutationFn:editCategory,
+    mutationFn: editCategory,
   });
   const onSubmit = (values, options) => {
     setStandError("");
@@ -106,10 +113,10 @@ const EditStadiumCategory = () => {
     }
 
     const updatedStadiumTicket = {
-      id: stadium.data?._id,
-      category: values.category,
-      voucherType: DOMPurify.sanitize(
-        `${values.home} Vs ${values.away}(${values.matchType})`
+      id: stadium.data?.id,
+      type: values.category,
+      name: DOMPurify.sanitize(
+        `${values.home} Vs ${values.away}(${values.matchType})`,
       ),
       details: {
         homeImage: homeTeamImage || stadium?.data?.details?.homeImage,
@@ -127,19 +134,10 @@ const EditStadiumCategory = () => {
       },
     };
 
-    // if (_.isEmpty(homeTeamImage) || _.isNull(homeTeamImage)) {
-    //   delete updatedStadiumTicket.details?.homeImage;
-    // }
-
-    // if (_.isEmpty(awayTeamImage) || _.isNull(awayTeamImage)) {
-    //   delete updatedStadiumTicket.details?.awayImage;
-    // }
-
     mutateAsync(updatedStadiumTicket, {
       onSettled: () => {
         options.setSubmitting(false);
         queryClient.invalidateQueries(["category"]);
-       
       },
       onSuccess: (data) => {
         customDispatch(globalAlertType("info", data));
@@ -185,51 +183,64 @@ const EditStadiumCategory = () => {
     });
   };
 
-  const handleHomeTeamFile = (e) => {
-    // e.preventDefault();
-    if (e.target.files) {
-      const image = e.target.files[0];
+  // Upload logo
+  const handleUploadFile = async (e) => {
+    setLoading(true);
 
-      new Compressor(image, {
-        height: 200,
-        width: 200,
-        quality: 0.6,
+    try {
+      const file = e.target.files[0];
+      if (!file) return;
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = () => setLogoPreview(reader.result);
+      reader.readAsDataURL(file);
 
-        success(data) {
-          const reader = new FileReader();
-          reader.onload = function (event) {
-            const ImageURL = event.target.result;
-            setHomeTeamImage(ImageURL);
-          };
-
-          reader.readAsDataURL(data);
+      // Actually upload to Firebase
+      const { downloadURL } = await uploadFile({
+        folder: "category",
+        file,
+        onProgress: (progress) => {
+          setProgress(progress);
         },
       });
+      return downloadURL; // store final URL
+    } catch (error) {
+      customDispatch(
+        globalAlertType("error", "Something went wrong. Please try again."),
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleAwayTeamFile = (e) => {
-    // e.preventDefault();
+  const handleHomeTeamFile = async (e) => {
+    e.preventDefault();
     if (e.target.files) {
-      const image = e.target.files[0];
-
-      new Compressor(image, {
-        height: 200,
-        width: 200,
-        quality: 0.6,
-
-        success(data) {
-          const reader = new FileReader();
-          reader.onload = function (event) {
-            const ImageURL = event.target.result;
-            setAwayTeamImage(ImageURL);
-          };
-
-          reader.readAsDataURL(data);
-        },
-      });
+      const ImageURL = await handleUploadFile(e);
+      setHomeTeamImage(ImageURL);
     }
   };
+
+  const handleAwayTeamFile = async (e) => {
+    e.preventDefault();
+    if (e.target.files) {
+      const ImageURL = await handleUploadFile(e);
+      setAwayTeamImage(ImageURL);
+    }
+  };
+
+  // Preview logo if uploaded
+  const LogoPreview = ({ preview }) => (
+    <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 2 }}>
+      {preview && (
+        <Avatar
+          src={preview}
+          variant="rounded"
+          sx={{ width: 60, height: 60, objectFit: "contain" }}
+        />
+      )}
+    </Box>
+  );
 
   return (
     <Formik
@@ -280,46 +291,85 @@ const EditStadiumCategory = () => {
                     )}
                   />
 
-                  <div>
-                    <label htmlFor="homeTeam">Home Team logo</label>
-                    <input
-                      type="file"
-                      id="homeTeam"
-                      onChange={(e) => handleHomeTeamFile(e)}
-                      accept=".png,.jpg,.jpeg,.webp"
-                    />
-                  </div>
+                  {loading && (
+                    <Box sx={{ width: "100%", mb: 1 }}>
+                      <Typography variant="caption" color="textSecondary">
+                        Uploading... {Math.round(progress)}%
+                      </Typography>
+                      <Box
+                        sx={{
+                          height: 4,
+                          width: "100%",
+                          bgcolor: "action.hover",
+                          borderRadius: 1,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            height: "100%",
+                            width: `${progress}%`,
+                            bgcolor: "primary.main",
+                            transition: "width 0.3s ease",
+                          }}
+                        />
+                      </Box>
+                    </Box>
+                  )}
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <Box>
+                      <div>
+                        <label htmlFor="homeTeam">Home Team logo</label>
+                        <input
+                          type="file"
+                          id="homeTeam"
+                          onChange={(e) => handleHomeTeamFile(e)}
+                          accept=".png,.jpg,.jpeg,.webp"
+                        />
+                        <LogoPreview preview={homeTeamImage} />
+                      </div>
 
-                  <TextField
-                    size="small"
-                    label="Home Team"
-                    value={home}
-                    onChange={(e) => setHome(e.target.value)}
-                    error={Boolean(touched.home && errors.home)}
-                    helperText={
-                      touched.home && errors.home ? errors.home : "eg. TeamA"
-                    }
-                  />
-                  <div>
-                    <label htmlFor="awayTeam">Away Team logo</label>
-                    <input
-                      type="file"
-                      id="awayTeam"
-                      onChange={(e) => handleAwayTeamFile(e)}
-                      accept=".png,.jpg,.jpeg,.webp"
-                    />
-                  </div>
+                      <TextField
+                        size="small"
+                        label="Home Team"
+                        fullWidth
+                        value={home}
+                        onChange={(e) => setHome(e.target.value)}
+                        error={Boolean(touched.home && errors.home)}
+                        helperText={
+                          touched.home && errors.home
+                            ? errors.home
+                            : "eg. TeamA"
+                        }
+                      />
+                    </Box>
+                    <Box>
+                      <div>
+                        <label htmlFor="awayTeam">Away Team logo</label>
+                        <input
+                          type="file"
+                          id="awayTeam"
+                          onChange={(e) => handleAwayTeamFile(e)}
+                          accept=".png,.jpg,.jpeg,.webp"
+                        />
+                        <LogoPreview preview={homeTeamImage} />
+                      </div>
 
-                  <TextField
-                    size="small"
-                    label="Away Team"
-                    value={away}
-                    onChange={(e) => setAway(e.target.value)}
-                    error={Boolean(touched.away && errors.away)}
-                    helperText={
-                      touched.away && errors.away ? errors.away : "eg. TeamB"
-                    }
-                  />
+                      <TextField
+                        size="small"
+                        label="Away Team"
+                        fullWidth
+                        value={away}
+                        onChange={(e) => setAway(e.target.value)}
+                        error={Boolean(touched.away && errors.away)}
+                        helperText={
+                          touched.away && errors.away
+                            ? errors.away
+                            : "eg. TeamB"
+                        }
+                      />
+                    </Box>
+                  </Stack>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <Autocomplete
                       fullWidth

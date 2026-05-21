@@ -46,7 +46,8 @@ function AgentDetails() {
     enabled: !!id,
     initialData: queryClient
       .getQueryData(["agents"])
-      ?.find((agent) => agent?._id === id),
+      ?.find((agent) => agent?.id === id),
+        //  staleTime: 15 * 60 * 1000, // 15 minutes
   });
 
   const { mutateAsync: toggleEmployeeAccountMutateAsync } = useMutation({
@@ -148,7 +149,7 @@ function AgentDetails() {
         >
           <ListItemText
             primary="Business Name"
-            secondary={data?.business_name}
+            secondary={data?.businessName}
             primaryTypographyProps={{
               textTransform: "uppercase",
               fontSize: 12,

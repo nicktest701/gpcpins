@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import { LoadingButton } from "@mui/lab";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
@@ -22,6 +22,8 @@ import { globalAlertType } from "../../components/alert/alertType";
 
 import {
   Autocomplete,
+  Avatar,
+  Box,
   Container,
   IconButton,
   List,
@@ -30,12 +32,12 @@ import {
   ListItemText,
 } from "@mui/material";
 import { currencyFormatter } from "../../constants";
-import { Close } from "@mui/icons-material";
+import { Close, CloudUpload } from "@mui/icons-material";
 import { CINEMA_TICKET_TYPE } from "../../mocks/columns";
 import { addCinemaValidationSchema } from "../../config/validationSchema";
 import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
-import Compressor from "compressorjs";
 import DOMPurify from "dompurify";
+import { uploadFile } from "@/lib/upload";
 const EditCinemaCategory = () => {
   //context
   const queryClient = useQueryClient();
@@ -48,7 +50,10 @@ const EditCinemaCategory = () => {
   } = useContext(CustomContext);
 
   const [companyName, setCompanyName] = useState("");
-  const [cinemaImage, setCinemaImage] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [logo, setLogo] = useState(null);
   const [voucherType, setVoucherType] = useState("");
   const [theatre, setTheatre] = useState("");
   const [location, setLocation] = useState("");
@@ -61,6 +66,9 @@ const EditCinemaCategory = () => {
   const [ticketTypeList, setTicketTypeList] = useState([]);
   const [message, setMessage] = useState("");
   const [description, setDescription] = useState("");
+
+  // Upload file ref
+  const fileInputRef = useRef(null);
 
   const initialValues = {
     category: "cinema",
@@ -78,11 +86,11 @@ const EditCinemaCategory = () => {
     queryFn: () => getCategory(id),
     initialData: queryClient
       .getQueryData(["all-category"])
-      ?.find((item) => item?._id === id),
+      ?.find((item) => item?.id === id),
     enabled: !!id,
 
     onSuccess: (cinema) => {
-      setVoucherType(cinema?.voucherType);
+      setVoucherType(cinema?.name);
       setTheatre(cinema?.details?.theatre);
       setLocation(cinema?.details?.location);
       setTicketTypeList(cinema?.details.pricing);
@@ -91,29 +99,39 @@ const EditCinemaCategory = () => {
       setMessage(cinema?.details?.message);
       setCompanyName(cinema?.details?.companyName);
       setDescription(cinema?.details?.description);
+      setLogoPreview(cinema?.details?.cinema);
+      setLogo(cinema?.details?.cinema);
     },
   });
 
-  const handleUploadFile = (e) => {
-    // e.preventDefault();
-    if (e.target.files) {
-      const image = e.target.files[0];
+  // Upload logo
+  const handleUploadFile = async (e) => {
+    setLoading(true);
 
-      new Compressor(image, {
-        height: 200,
-        width: 200,
-        quality: 0.6,
+    try {
+      const file = e.target.files[0];
+      if (!file) return;
+      setLogo(file);
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = () => setLogoPreview(reader.result);
+      reader.readAsDataURL(file);
 
-        success(data) {
-          const reader = new FileReader();
-          reader.onload = function (event) {
-            const ImageURL = event.target.result;
-            setCinemaImage(ImageURL);
-          };
-
-          reader.readAsDataURL(data);
+      // Actually upload to Firebase
+      const { downloadURL } = await uploadFile({
+        folder: "category",
+        file,
+        onProgress: (progress) => {
+          setProgress(progress);
         },
       });
+      setLogo(downloadURL); // store final URL
+    } catch (error) {
+      customDispatch(
+        globalAlertType("error", "Something went wrong. Please try again."),
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -128,9 +146,9 @@ const EditCinemaCategory = () => {
     }
 
     const newCinemaTicket = {
-      id: cinema.data?._id,
-      category: values.category,
-      voucherType: values.voucherType,
+      id: cinema.data?.id,
+      type: values.category,
+      name: values.voucherType,
       details: {
         movie: DOMPurify.sanitize(values.voucherType),
         theatre: DOMPurify.sanitize(values.theatre),
@@ -142,7 +160,7 @@ const EditCinemaCategory = () => {
         message: DOMPurify.sanitize(values.message),
         description: DOMPurify.sanitize(values.description),
         companyName: DOMPurify.sanitize(values.companyName),
-        cinema: cinemaImage || cinema?.data?.details?.cinema,
+        cinema: logo || cinema?.data?.details?.cinema,
       },
     };
 
@@ -203,6 +221,34 @@ const EditCinemaCategory = () => {
     });
   };
 
+  // Preview logo if uploaded
+  const LogoPreview = () => (
+    <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 2 }}>
+      {logoPreview && (
+        <Avatar
+          src={logoPreview}
+          variant="rounded"
+          sx={{ width: 60, height: 60, objectFit: "contain" }}
+        />
+      )}
+      <Button
+        variant="outlined"
+        startIcon={<CloudUpload />}
+        onClick={() => fileInputRef.current?.click()}
+        size="small"
+      >
+        {logoPreview ? "Change Cover Image" : "Upload Cover Image"}
+      </Button>
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        accept=".png,.jpg,.jpeg,.webp"
+        onChange={handleUploadFile}
+      />
+    </Box>
+  );
+
   return (
     <Formik
       initialValues={initialValues}
@@ -228,15 +274,39 @@ const EditCinemaCategory = () => {
                     error={Boolean(touched.companyName && errors.companyName)}
                     helperText={touched.companyName && errors.companyName}
                   />
-                  <div>
-                    <label htmlFor="cinema">Movie Album</label>
-                    <input
-                      type="file"
-                      id="logo"
-                      accept=".png,.jpg,.jpeg,.webp"
-                      onChange={handleUploadFile}
-                    />
-                  </div>
+                  {/* Logo Upload */}
+                  <Box>
+                    {loading && (
+                      <Box sx={{ width: "100%", mb: 1 }}>
+                        <Typography variant="caption" color="textSecondary">
+                          Uploading... {Math.round(progress)}%
+                        </Typography>
+                        <Box
+                          sx={{
+                            height: 4,
+                            width: "100%",
+                            bgcolor: "action.hover",
+                            borderRadius: 1,
+                            overflow: "hidden",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              height: "100%",
+                              width: `${progress}%`,
+                              bgcolor: "primary.main",
+                              transition: "width 0.3s ease",
+                            }}
+                          />
+                        </Box>
+                      </Box>
+                    )}
+
+                    <Typography variant="subtitle2" gutterBottom>
+                      Cinema Album
+                    </Typography>
+                    <LogoPreview />
+                  </Box>
                   <TextField
                     size="small"
                     label="Movie Name"
@@ -403,10 +473,13 @@ const EditCinemaCategory = () => {
                 maxWidth="md"
                 sx={{ display: "flex", justifyContent: "flex-end" }}
               >
-                <Button onClick={handleClose}>Cancel</Button>
+                <Button onClick={handleClose} disabled={loading}>
+                  Cancel
+                </Button>
                 <LoadingButton
                   variant="contained"
                   loading={isLoading}
+                  disabled={loading}
                   onClick={handleSubmit}
                 >
                   Save Changes

@@ -14,6 +14,9 @@ import {
   Skeleton,
   Alert,
   CircularProgress,
+  alpha,
+  Fade,
+  Typography,
 } from "@mui/material";
 import {
   FacebookRounded,
@@ -27,27 +30,28 @@ import {
   SearchRounded,
   Close,
   MapOutlined,
+  Menu as MenuIcon,
+  MyLocation as MyLocationIcon,
 } from "@mui/icons-material";
 import Menu from "@mui/material/Menu";
-import MenuIcon from "@mui/icons-material/Menu";
-import MyLocationIcon from "@mui/icons-material/MyLocation";
+import MenuItem from "@mui/material/MenuItem";
 import Swal from "sweetalert2";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { IMAGES, currencyFormatter } from "../../constants";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import EvoucherDropdown from "../../components/dropdowns/EvoucherDropdown";
-import { getInitials } from "../../config/validation";
-import PrepaidDropdown from "../../components/dropdowns/PrepaidDropdown";
-import NotificationDropdown from "../../components/dropdowns/NotificationDropdown";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import { IMAGES, currencyFormatter } from "@/constants";
+import { CustomContext } from "@/context/providers/CustomProvider";
+import EvoucherDropdown from "@/components/dropdowns/EvoucherDropdown";
+import { getInitials } from "@/config/validation";
+import PrepaidDropdown from "@/components/dropdowns/PrepaidDropdown";
+import NotificationDropdown from "@/components/dropdowns/NotificationDropdown";
+import { AuthContext } from "@/context/providers/AuthProvider";
 import { useGoogleOneTapLogin } from "@react-oauth/google";
-import api from "../../api/customAxios";
-import { globalAlertType } from "../../components/alert/alertType";
-import { getAllBroadcastMessages } from "../../api/broadcastMessageAPI";
+import api from "@/api/customAxios";
+import { globalAlertType } from "@/components/alert/alertType";
+import { getAllBroadcastMessages } from "@/api/broadcastMessageAPI";
 import { useQuery, useIsFetching, useQueryClient } from "@tanstack/react-query";
-import { saveToken } from "../../config/sessionHandler";
-import { getWalletBalance } from "../../api/userAPI";
-import GlobalSpinner from "../../components/GlobalSpinner";
+import { saveToken } from "@/config/sessionHandler";
+import { getWalletBalance } from "@/api/walletAPI";
+import GlobalSpinner from "@/components/GlobalSpinner";
 
 function Header() {
   const { user, login, logout } = useContext(AuthContext);
@@ -58,14 +62,10 @@ function Header() {
   const { pathname } = useLocation();
   const {
     customState: { openSidebar, globalAlert },
-
     customDispatch,
   } = useContext(CustomContext);
 
-  const {
-    palette,
-    typography: { button },
-  } = useTheme();
+  const theme = useTheme();
 
   const [photo, setPhoto] = useState(null);
   const [shadow, setShadow] = useState("none");
@@ -88,10 +88,12 @@ function Header() {
     queryFn: () => getAllBroadcastMessages(),
     enabled: !!user?.id,
     initialData: queryClient?.getQueryData(["notifications"]),
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const unReadNotifications = notifications?.data?.filter(
-    (item) => item?.active === 1
+    (item) => item?.active === 1,
   );
 
   useGoogleOneTapLogin({
@@ -102,9 +104,7 @@ function Header() {
         const res = await api({
           method: "POST",
           url: "/users/login-google-tap",
-          data: {
-            credential,
-          },
+          data: { credential },
           withCredentials: true,
         });
 
@@ -112,9 +112,7 @@ function Header() {
         login(res.data?.accessToken);
 
         if (res.data?.register) {
-          navigate("/user/started", {
-            state: { google: true },
-          });
+          navigate("/user/started", { state: { google: true } });
         } else {
           login(res.data?.accessToken);
           navigate(pathname);
@@ -155,7 +153,7 @@ function Header() {
 
   window.onscroll = function () {
     if (window.scrollY > 5) {
-      setShadow("2px 3px 5px rgba(0,0,0,0.15)");
+      setShadow(theme.shadows[2]);
     } else {
       setShadow("none");
     }
@@ -176,30 +174,36 @@ function Header() {
   const closeGlobalAlert = () => {
     customDispatch({
       type: "setGlobalAlert",
-      payload: {
-        open: false,
-      },
+      payload: { open: false },
     });
   };
 
-  const myLinkStyles = ({ isActive }) => {
-    return {
-      // textTransform: "uppercase",
-      fontFamily: button.fontFamily,
-      // fontSize: button.fontSize,
-      textDecoration: "none",
-      borderBottom: isActive ? `solid 1px ${palette.primary.main}` : null,
-      color: isActive ? palette.primary.main : "#333",
-
-      fontWeight: isActive ? "bold" : "400",
-    };
-  };
+  const myLinkStyles = ({ isActive }) => ({
+    fontFamily: theme.typography.button.fontFamily,
+    fontSize: theme.typography.button.fontSize,
+    fontWeight: isActive ? 600 : 500,
+    textDecoration: "none",
+    color: isActive ? theme.palette.primary.main : theme.palette.text.primary,
+    borderBottom: isActive
+      ? `2px solid ${theme.palette.primary.main}`
+      : "2px solid transparent",
+    paddingBottom: "4px",
+    transition: theme.transitions.create(["color", "border-bottom-color"], {
+      duration: theme.transitions.duration.short,
+    }),
+    "&:hover": {
+      color: theme.palette.primary.main,
+      borderBottomColor: alpha(theme.palette.primary.main, 0.4),
+    },
+  });
 
   const handleLogOut = () => {
     Swal.fire({
       title: "Logging out",
-      text: `Do you want to log out?`,
+      text: "Do you want to log out?",
       showCancelButton: true,
+      confirmButtonColor: theme.palette.error.main,
+      cancelButtonColor: theme.palette.grey[500],
     }).then(async ({ isConfirmed }) => {
       if (isConfirmed) {
         logout();
@@ -224,206 +228,274 @@ function Header() {
       sx={{
         position: "sticky",
         top: 0,
-        color: "primary",
-        backgroundColor: "#fff",
-        borderBottom: "1px solid #ccc",
-        zIndex: 999,
+        backgroundColor: theme.palette.background.paper,
+        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+        zIndex: 1200,
         boxShadow: shadow,
-        width: "100%",
+        transition: theme.transitions.create("box-shadow"),
       }}
       color="inherit"
     >
-      <Container sx={{ py: 1 }}>
-        {showAlert && (
+      <Container maxWidth="xl" sx={{ py: 1 }}>
+        {/* Top announcement bar */}
+        <Fade in={showAlert} timeout={800}>
           <Box
             sx={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "flex-start",
+              justifyContent: "space-between",
               gap: 2,
               pb: 1,
+              fontSize: "0.875rem",
+              color: theme.palette.text.secondary,
             }}
           >
-            <div style={{ flexGrow: "1" }}>
-              <small>Download our free mobile apps here.</small>
-
-              <Link
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <span>Download our free mobile apps here.</span>
+              <Button
+                component={Link}
                 to="/downloads"
-                style={{
-                  color: "#fff",
-                  backgroundColor: "var(--primary)",
-                  paddingBlock: "2px",
-                  paddingInline: "4px",
-                  fontSize: "12px",
-                  borderRadius: "4px",
-                  marginLeft: "2px",
+                size="small"
+                variant="contained"
+                sx={{
+                  minWidth: "auto",
+                  py: 0.5,
+                  px: 1.5,
+                  fontSize: "0.75rem",
+                  borderRadius: 1.5,
+                  boxShadow: "none",
+                  "&:hover": {
+                    boxShadow: theme.shadows[2],
+                  },
                 }}
               >
                 Download
-              </Link>
-            </div>
-            <Close onClick={() => setShowAlert(false)} />
+              </Button>
+            </Box>
+            <IconButton
+              size="small"
+              onClick={() => setShowAlert(false)}
+              sx={{
+                transition: theme.transitions.create([
+                  "background-color",
+                  "transform",
+                ]),
+                "&:hover": {
+                  bgcolor: alpha(theme.palette.grey[500], 0.1),
+                  transform: "scale(1.1)",
+                },
+              }}
+            >
+              <Close fontSize="small" />
+            </IconButton>
           </Box>
-        )}
+        </Fade>
 
+        {/* Top contact & social row (desktop) */}
         <Box
           sx={{
             display: { xs: "none", md: "flex" },
             justifyContent: "space-between",
             alignItems: "center",
-            paddingBlock: "8px",
+            py: 1,
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.4)}`,
+            mb: 1,
           }}
         >
           <Avatar
             alt="logo"
             src={IMAGES.coat_of_arms}
             sx={{
-              width: 60,
-              height: 60,
+              width: 56,
+              height: 56,
               cursor: "pointer",
-              display: { xs: "none", md: "inline-flex" },
+              transition: theme.transitions.create("transform"),
+              "&:hover": { transform: "scale(1.02)" },
             }}
             onClick={goHome}
           />
 
-          <Stack
-            direction="row"
-            alignItems="flex-start"
-            justifyContent="flex-start"
-            spacing={2}
-          >
-            <div className="footer-contact-item">
-              <MyLocationIcon fontSize="small" />
-              <span> AK-004-5284</span>
-            </div>
-            <div className="footer-contact-item">
-              <Mail fontSize="small" />
-              <a
+          <Stack direction="row" spacing={3} alignItems="center">
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <MyLocationIcon
+                fontSize="small"
+                sx={{ color: theme.palette.text.secondary }}
+              />
+              <Typography variant="body2" color="text.secondary">
+                AK-004-5284
+              </Typography>
+            </Box>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <Mail
+                fontSize="small"
+                sx={{ color: theme.palette.text.secondary }}
+              />
+              <Link
+                to="mailto:info@gpcpins.com"
                 style={{
-                  color: "var(--secondary)",
+                  color: theme.palette.primary.main,
+                  textDecoration: "none",
                 }}
-                href="mailto:info@gpcpins.com"
               >
-                {" "}
                 info@gpcpins.com
-              </a>
-            </div>
-            <div className="footer-contact-item">
-              <PhoneCallback fontSize="small" />
-              <a
+              </Link>
+            </Box>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <PhoneCallback
+                fontSize="small"
+                sx={{ color: theme.palette.text.secondary }}
+              />
+              <Link
+                to="tel:0322036582"
                 style={{
-                  color: "var(--secondary)",
+                  color: theme.palette.primary.main,
+                  textDecoration: "none",
                 }}
-                href="tel:0322036582"
               >
                 0322036582
-              </a>
-            </div>
+              </Link>
+            </Box>
             <Button
               variant="outlined"
               size="small"
-              sx={{ py: 0, px: 1 }}
               startIcon={<MapOutlined />}
               onClick={getLocation}
+              sx={{
+                borderRadius: 2,
+                borderColor: alpha(theme.palette.primary.main, 0.5),
+                color: theme.palette.primary.main,
+                "&:hover": {
+                  borderColor: theme.palette.primary.main,
+                  bgcolor: alpha(theme.palette.primary.main, 0.04),
+                },
+              }}
             >
               Get Directions
             </Button>
           </Stack>
-          <Stack
-            direction="row"
-            alignItems="flex-start"
-            justifyContent="flex-start"
-            spacing={2}
-          >
-            <FacebookRounded />
-            <WhatsApp />
-            <Twitter />
-            <Instagram />
+
+          <Stack direction="row" spacing={1}>
+            {[FacebookRounded, WhatsApp, Twitter, Instagram].map(
+              (Icon, idx) => (
+                <IconButton
+                  key={idx}
+                  size="small"
+                  sx={{
+                    color: theme.palette.text.secondary,
+                    transition: theme.transitions.create([
+                      "color",
+                      "transform",
+                    ]),
+                    "&:hover": {
+                      color: theme.palette.primary.main,
+                      transform: "scale(1.15)",
+                    },
+                  }}
+                >
+                  <Icon fontSize="small" />
+                </IconButton>
+              ),
+            )}
           </Stack>
         </Box>
 
-        <div
-          style={{
+        {/* Main header row */}
+        <Box
+          sx={{
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "center",
-            // border:'1px solid red',
+            justifyContent: "space-between",
+            gap: 2,
           }}
         >
-          <IconButton color="inherit" sx={{ mr: 4 }} onClick={toggleSideBar}>
-            <MenuIcon />
-          </IconButton>
-          {user?.id && (
-            <Box
+          {/* Left side: menu icon + mobile wallet info */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <IconButton
+              onClick={toggleSideBar}
               sx={{
-                display: { xs: "flex", md: "none" },
-                justifyContent: "flex-end",
-                alignItems: "center",
-                width: "100%",
-                gap: 2,
+                transition: theme.transitions.create("transform"),
+                "&:hover": { transform: "scale(1.1)" },
               }}
             >
-              {walletBalance.isLoading ? (
-                <Skeleton variant="rectangular" width={80} height={30} />
-              ) : (
-                <>
-                  <Box sx={{ position: "relative" }}>
-                    <Tooltip title="Search for transaction">
-                      <a href="#lost">
-                        <IconButton
-                          sx={{ bgcolor: "lightgray" }}
-                          onClick={handleOpenSearch}
-                          size="small"
-                        >
-                          <SearchRounded sx={{ width: 20, height: 20 }} />
-                        </IconButton>
-                      </a>
+              <MenuIcon />
+            </IconButton>
+
+            {/* Mobile wallet balance (visible only on xs) */}
+            {user?.id && (
+              <Box
+                sx={{
+                  display: { xs: "flex", md: "none" },
+                  alignItems: "center",
+                  gap: 1,
+                }}
+              >
+                {walletBalance.isLoading ? (
+                  <Skeleton variant="rounded" width={80} height={32} />
+                ) : (
+                  <>
+                    <Tooltip title="Search">
+                      <IconButton
+                        size="small"
+                        onClick={handleOpenSearch}
+                        sx={{
+                          bgcolor: alpha(theme.palette.grey[500], 0.1),
+                          transition: theme.transitions.create("transform"),
+                          "&:hover": { transform: "scale(1.1)" },
+                        }}
+                      >
+                        <SearchRounded fontSize="small" />
+                      </IconButton>
                     </Tooltip>
-                  </Box>
-                  <Tooltip title="Wallet Balance">
-                    <Link to="/wallet?_pid=1">
+                    <Tooltip title="Wallet Balance">
                       <Button
+                        component={Link}
+                        to="/wallet?_pid=1"
                         size="small"
                         variant="outlined"
                         startIcon={<WalletRounded />}
-                        sx={{ fontSize: 12, borderRadius: 1 }}
+                        sx={{
+                          fontSize: "0.75rem",
+                          borderRadius: 2,
+                          borderColor: alpha(theme.palette.primary.main, 0.5),
+                          "&:hover": {
+                            borderColor: theme.palette.primary.main,
+                            bgcolor: alpha(theme.palette.primary.main, 0.04),
+                          },
+                        }}
                       >
                         {currencyFormatter(walletBalance.data)}
                       </Button>
-                    </Link>
-                  </Tooltip>
-                </>
-              )}
-            </Box>
-          )}
+                    </Tooltip>
+                  </>
+                )}
+              </Box>
+            )}
+          </Box>
 
+          {/* Desktop navigation links */}
           <Stack
             direction="row"
-            spacing={1}
-            flexGrow={1}
+            spacing={4}
             sx={{
               display: { xs: "none", md: "flex" },
-              justifyContent: "center",
               alignItems: "center",
-              position: "relative",
-              gap: 1,
             }}
           >
             <NavLink to="/" style={myLinkStyles} className="nav-item">
               Home
             </NavLink>
-            <div
-              style={{ position: "relative" }}
+            <Box
+              sx={{ position: "relative" }}
               onMouseEnter={() => setShowEvoucherDropdown(true)}
               onMouseLeave={() => setShowEvoucherDropdown(false)}
             >
               <NavLink to="evoucher" style={myLinkStyles} className="nav-item">
-                Vouchers &#38; Tickets
+                Vouchers & Tickets
               </NavLink>
               <EvoucherDropdown display={showEvoucherDropdown} />
-            </div>
-            <div
-              style={{ position: "relative" }}
+            </Box>
+            <Box
+              sx={{ position: "relative" }}
               onMouseEnter={() => setShowPrepaidDropdown(true)}
               onMouseLeave={() => setShowPrepaidDropdown(false)}
             >
@@ -435,178 +507,225 @@ function Header() {
                 Prepaid Units
               </NavLink>
               <PrepaidDropdown display={showPrepaidDropdown} />
-            </div>
+            </Box>
             <NavLink to="airtime" style={myLinkStyles} className="nav-item">
-              Airtime &#38; Data Bundle
+              Airtime & Data Bundle
             </NavLink>
           </Stack>
 
+          {/* Right side: desktop actions */}
           <Stack
             direction="row"
             spacing={2}
-            sx={{ display: { xs: "none", md: "flex" } }}
             alignItems="center"
+            sx={{ display: { xs: "none", md: "flex" } }}
           >
-            <>
-              <Tooltip title="Search for transaction">
-                <a href="#lost">
-                  <IconButton
-                    sx={{ bgcolor: "lightgray" }}
-                    onClick={handleOpenSearch}
-                  >
-                    <SearchRounded />
-                  </IconButton>
-                </a>
-              </Tooltip>
-              {user?.id ? (
-                <>
-                  {walletBalance.isLoading ? (
-                    <Skeleton variant="rounded" width={80} height={40} />
-                  ) : (
-                    <Tooltip title="Wallet Balance">
-                      <Link to="/wallet?_pid=1">
-                        <Button
-                          variant="outlined"
-                          color="secondary"
-                          startIcon={<WalletRounded />}
-                        >
-                          {currencyFormatter(walletBalance.data)}
-                        </Button>
-                      </Link>
-                    </Tooltip>
-                  )}
-                  <div style={{ position: "relative" }}>
-                    <Tooltip title="Notifications">
-                      <IconButton onClick={toggleNotification}>
-                        <Badge
-                          badgeContent={unReadNotifications?.length}
-                          color="error"
-                        >
-                          <NotificationsSharp />
-                        </Badge>
-                      </IconButton>
-                    </Tooltip>
-                    <NotificationDropdown
-                      notifications={notifications?.data}
-                      display={showNotificationDropdown}
-                      setClose={setShowNotificationDropdown}
-                    />
-                  </div>
-                  <Tooltip title="Profile">
-                    <Avatar
-                      sx={{ bgcolor: "secondary.main", cursor: "pointer" }}
-                      aria-controls={open ? "account-menu" : undefined}
-                      aria-haspopup="true"
-                      aria-expanded={open ? "true" : undefined}
-                      onClick={handleClick}
-                      src={photo}
-                      alt="profile_icon"
-                    >
-                      {getInitials(user?.email)}
-                    </Avatar>
-                  </Tooltip>
-                </>
-              ) : (
-                <>
-                  <NavLink
-                    to="/user/login"
-                    state={{ path: pathname, redirectURL: pathname }}
-                    className="nav-item"
-                    style={myLinkStyles}
-                  >
-                    LOG IN
-                  </NavLink>
-                  <NavLink
-                    to="/user/register"
-                    state={{ path: pathname, redirectURL: pathname }}
-                    className="primary-btn"
-                    style={{
-                      // borderRadius: '8px',
-                      paddingBlock: "8px",
-                      textTransform: "uppercase",
-                    }}
-                    end
-                  >
-                    Sign up
-                  </NavLink>
-                </>
-              )}
-            </>
-          </Stack>
-          <Menu
-            id="account-menu"
-            elevation={1}
-            MenuListProps={{
-              "aria-labelledby": "account-menu",
-            }}
-            anchorEl={anchorEl}
-            open={open}
-            onClose={handleClose}
-            sx={{ p: 4 }}
-            // PaperProps={{
-            //   style: {
-            //     maxHeight: ITEM_HEIGHT * 4.5,
-            //     fontSize: "14px !important",
-            //   },
-            // }}
-          >
-            <Link
-              to="/profile"
-              style={{
-                textAlign: "center",
-                display: "block",
-                textDecoration: "none",
-                color: "#083d77",
-                padding: "8px 12px",
-              }}
-            >
-              Profile
-            </Link>
+            <Tooltip title="Search transactions">
+              <IconButton
+                onClick={handleOpenSearch}
+                sx={{
+                  bgcolor: alpha(theme.palette.grey[500], 0.1),
+                  transition: theme.transitions.create([
+                    "background-color",
+                    "transform",
+                  ]),
+                  "&:hover": {
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    transform: "scale(1.1)",
+                  },
+                }}
+              >
+                <SearchRounded />
+              </IconButton>
+            </Tooltip>
 
-            <Divider />
-            <a
-              onClick={handleLogOut}
-              style={{
-                textAlign: "center",
-                display: "block",
-                textDecoration: "none",
-                color: "#083d77",
-                padding: "8px 12px",
-                cursor: "pointer",
-              }}
-            >
-              Log out
-            </a>
-          </Menu>
-        </div>
+            {user?.id ? (
+              <>
+                {walletBalance.isLoading ? (
+                  <Skeleton variant="rounded" width={100} height={40} />
+                ) : (
+                  <Tooltip title="Wallet Balance">
+                    <Button
+                      component={Link}
+                      to="/wallet?_pid=1"
+                      variant="outlined"
+                      color="primary"
+                      startIcon={<WalletRounded />}
+                      sx={{
+                        borderRadius: 2,
+                        borderColor: alpha(theme.palette.primary.main, 0.5),
+                        "&:hover": {
+                          borderColor: theme.palette.primary.main,
+                          bgcolor: alpha(theme.palette.primary.main, 0.04),
+                        },
+                      }}
+                    >
+                      {currencyFormatter(walletBalance.data)}
+                    </Button>
+                  </Tooltip>
+                )}
+
+                <Box sx={{ position: "relative" }}>
+                  <Tooltip title="Notifications">
+                    <IconButton
+                      onClick={toggleNotification}
+                      sx={{
+                        transition: theme.transitions.create("transform"),
+                        "&:hover": { transform: "scale(1.1)" },
+                      }}
+                    >
+                      <Badge
+                        badgeContent={unReadNotifications?.length}
+                        color="error"
+                        sx={{
+                          "& .MuiBadge-badge": {
+                            animation: unReadNotifications?.length
+                              ? "pulse 1.5s infinite"
+                              : "none",
+                          },
+                        }}
+                      >
+                        <NotificationsSharp />
+                      </Badge>
+                    </IconButton>
+                  </Tooltip>
+                  <NotificationDropdown
+                    notifications={notifications?.data}
+                    open={showNotificationDropdown}
+                    onClose={setShowNotificationDropdown}
+                  />
+                </Box>
+
+                <Tooltip title="Profile">
+                  <Avatar
+                    sx={{
+                      bgcolor: theme.palette.secondary.main,
+                      cursor: "pointer",
+                      transition: theme.transitions.create("transform"),
+                      "&:hover": { transform: "scale(1.05)" },
+                    }}
+                    aria-controls={open ? "account-menu" : undefined}
+                    aria-haspopup="true"
+                    aria-expanded={open ? "true" : undefined}
+                    onClick={handleClick}
+                    src={photo}
+                    alt="profile"
+                  >
+                    {getInitials(user?.email)}
+                  </Avatar>
+                </Tooltip>
+              </>
+            ) : (
+              <>
+                <NavLink
+                  to="/user/login"
+                  state={{ path: pathname, redirectURL: pathname }}
+                  style={myLinkStyles}
+                >
+                  Log in
+                </NavLink>
+                <Button
+                  component={NavLink}
+                  to="/user/register"
+                  state={{ path: pathname, redirectURL: pathname }}
+                  variant="contained"
+                  size="small"
+                  sx={{
+                    borderRadius: 2,
+                    boxShadow: "none",
+                    "&:hover": {
+                      boxShadow: theme.shadows[2],
+                    },
+                  }}
+                >
+                  Sign up
+                </Button>
+              </>
+            )}
+          </Stack>
+        </Box>
       </Container>
+
+      {/* Profile menu */}
+      <Menu
+        id="account-menu"
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        TransitionComponent={Fade}
+        PaperProps={{
+          elevation: 3,
+          sx: {
+            borderRadius: 2,
+            mt: 1,
+            minWidth: 150,
+            "& .MuiMenuItem-root": {
+              fontSize: "0.875rem",
+              px: 2,
+              py: 1,
+              transition: theme.transitions.create("background-color"),
+            },
+          },
+        }}
+      >
+        <MenuItem component={Link} to="/profile" onClick={handleClose}>
+          Profile
+        </MenuItem>
+        <Divider />
+        <MenuItem
+          onClick={() => {
+            handleClose();
+            handleLogOut();
+          }}
+          sx={{ color: theme.palette.error.main }}
+        >
+          Log out
+        </MenuItem>
+      </Menu>
+
+      {/* Global alert */}
       {globalAlert?.open && pathname !== "/profile" && (
-        <Alert severity="info" sx={{ fontSize: 14 }} onClose={closeGlobalAlert}>
+        <Alert
+          severity="info"
+          sx={{
+            fontSize: "0.875rem",
+            borderRadius: 0,
+            "& .MuiAlert-message": { width: "100%" },
+          }}
+          onClose={closeGlobalAlert}
+        >
           {globalAlert?.message === "incomplete-profile" ? (
             <>
-              Your profile is incomplete.Please complete it by clicking
-              <Link to="profile"> here</Link> .
+              Your profile is incomplete. Please complete it by clicking{" "}
+              <Link
+                to="profile"
+                style={{ fontWeight: 600, textDecoration: "underline" }}
+              >
+                here
+              </Link>
+              .
             </>
           ) : (
             globalAlert?.message
           )}
         </Alert>
       )}
+
+      {/* Loading indicators */}
       {isGoogleLoading && <GlobalSpinner />}
-      {/* <GlobalSpinner /> */}
-      {isFetching > 0 ? (
-        <div
-          style={{
-            display: "flex",
-            gap: "8px",
+      {isFetching > 0 && (
+        <Box
+          sx={{
             position: "fixed",
             top: 70,
             left: 20,
+            display: "flex",
+            gap: 1,
           }}
         >
-          <CircularProgress color="secondary" size={16} thickness={5} />
-        </div>
-      ) : null}
+          <CircularProgress size={16} thickness={5} color="secondary" />
+        </Box>
+      )}
     </AppBar>
   );
 }

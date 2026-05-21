@@ -1,115 +1,130 @@
-import { useContext, useEffect, useState } from "react";
-import InputAdornment from "@mui/material/InputAdornment";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import Container from "@mui/material/Container";
+import { useContext, useEffect, useMemo, useState } from "react";
 import {
+  Container,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+  Button,
   IconButton,
   List,
   ListItem,
-  ListItemSecondaryAction,
   ListItemText,
+  InputAdornment,
+  Alert,
+  Box,
+  Divider,
 } from "@mui/material";
 import { ArrowForward, Close } from "@mui/icons-material";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import { v4 as uuid } from "uuid";
-import { currencyFormatter } from "../../constants";
-import _ from "lodash";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import ServiceProvider from "../../components/ServiceProvider";
 import { AuthContext } from "../../context/providers/AuthProvider";
+import ServiceProvider from "../../components/ServiceProvider";
 import {
   getInternationalMobileFormat,
   isValidPartner,
 } from "../../constants/PhoneCode";
+import { currencyFormatter } from "../../constants";
 
-function AddBulk() {
+// Validation schema for each entry
+const entrySchema = yup.object({
+  provider: yup.string().required("Network provider is required"),
+  phoneNumber: yup
+    .string()
+    .required("Recipient number is required")
+    .test(
+      "valid-phone",
+      "Invalid phone number for selected provider",
+      function (value) {
+        const { provider } = this.parent;
+        return isValidPartner(provider, getInternationalMobileFormat(value));
+      }
+    ),
+  confirmPhonenumber: yup
+    .string()
+    .required("Please confirm the number")
+    .oneOf([yup.ref("phoneNumber"), null], "Numbers must match"),
+  price: yup
+    .number()
+    .typeError("Amount must be a number")
+    .required("Amount is required")
+    .min(10, "Minimum amount is GHS 10")
+    .max(1000, "Maximum amount is GHS 1000"),
+});
+
+const AddBulk = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { user } = useContext(AuthContext);
-  const [provider, setProvider] = useState("None");
-  const [providerErr, setProviderErr] = useState("");
-  const [price, setPrice] = useState(0);
   const [pricingList, setPricingList] = useState([]);
-  const [pricingError, setPricingError] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState(user?.phonenumber);
-  const [phoneNumberErr, setPhoneNumberErr] = useState("");
-  const [confirmPhonenumber, setConfirmPhonenumber] = useState(
-    user?.phonenumber
-  );
-  const [confirmPhonenumberErr, setConfirmPhonenumberErr] = useState("");
 
+  // Load existing list from URL if present
   useEffect(() => {
-    if (searchParams.get("info") !== null) {
-      setPricingList(JSON.parse(searchParams.get("info")));
+    const info = searchParams.get("info");
+    if (info) {
+      try {
+        setPricingList(JSON.parse(info));
+      } catch (e) {
+        console.error("Failed to parse bulk info", e);
+      }
     }
   }, [searchParams]);
 
-  const handleAddAirtimeType = () => {
-    setPricingError("");
-    setProviderErr("");
-    setPhoneNumberErr("");
-    setConfirmPhonenumberErr("");
-    if (provider === "None") {
-      setProviderErr("Required*");
-      return;
-    }
+  // React Hook Form
+  const {
+    control,
+    handleSubmit,
+    watch,
+    reset,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: yupResolver(entrySchema),
+    defaultValues: {
+      provider: "None",
+      phoneNumber: "",
+      confirmPhonenumber: "",
+      price: "",
+    },
+  });
 
-    if (phoneNumber === "") {
-      setPhoneNumberErr("Required*");
-      return;
-    }
+  const provider = watch("provider");
+  const phoneNumber = watch("phoneNumber");
+  const confirmPhonenumber = watch("confirmPhonenumber");
+  const price = watch("price");
 
-    if (!isValidPartner(provider, getInternationalMobileFormat(phoneNumber))) {
-      setPhoneNumberErr(`Invalid ${provider} number`);
-      return;
-    }
-
-    if (phoneNumber !== confirmPhonenumber) {
-      setConfirmPhonenumberErr("Recipient Numbers do not match*");
-      return;
-    }
-
-    if (price === "") {
-      setPricingError("Required*");
-      return;
-    }
-    if (price < 10) {
-      setPricingError("Mininum Amount you can transfer is GHS 10*");
-      return;
-    }
-    const item = {
+  // Add a new entry to the list
+  const onAdd = (data) => {
+    const formattedNumber = getInternationalMobileFormat(data.phoneNumber);
+    const newEntry = {
       id: uuid(),
-      type: provider,
-      recipient: getInternationalMobileFormat(phoneNumber),
-      price: Number(price),
+      type: data.provider,
+      recipient: formattedNumber,
+      price: Number(data.price),
     };
-
-    setPricingList((prev) => {
-      return _.values(_.merge(_.keyBy([...prev, item], "type")));
+    setPricingList((prev) => [...prev, newEntry]);
+    // Reset form
+    reset({
+      provider: "None",
+      phoneNumber: "",
+      confirmPhonenumber: "",
+      price: "",
     });
-
-    setProviderErr("");
-    setPhoneNumber("");
-    setConfirmPhonenumber("");
-    setConfirmPhonenumberErr("");
-    setPricingError("");
-    setProvider("None");
-    setPrice(0);
   };
 
-  const handleRemoveAirtimeType = (id) => {
-    const filteredAirtimes = pricingList.filter((item) => item.id !== id);
-    setPricingList(filteredAirtimes);
+  // Remove an entry
+  const handleRemove = (id) => {
+    setPricingList((prev) => prev.filter((item) => item.id !== id));
   };
 
+  // Proceed to checkout
   const handleProceed = () => {
-    sessionStorage.setItem(
-      "value-x",
-      _.sumBy(pricingList, ({ price }) => Number(price))
-    );
+    const total = pricingList.reduce((sum, item) => sum + item.price, 0);
+    sessionStorage.setItem("value-x", total);
 
     if (!user?.id) {
       navigate(
@@ -127,125 +142,154 @@ function AddBulk() {
     );
   };
 
+  const totalAmount = useMemo(
+    () => pricingList.reduce((sum, item) => sum + item.price, 0),
+    [pricingList]
+  );
+
   return (
-    <Container
-      maxWidth="xs"
-      sx={{
-        py: 4,
-        my: 4,
-        boxShadow: "20px 20px 60px #d9d9d9,-20px -20px 60px #ffffff",
-        borderRadius: 2,
-      }}
-    >
-      <Stack spacing={2} alignItems="center">
-        <ServiceProvider
-          size="large"
-          value={provider}
-          setValue={setProvider}
-          error={providerErr !== ""}
-          helperText={providerErr}
-        />
-        <TextField
-          type="tel"
-          inputMode="tel"
-          variant="outlined"
-          label="Recipient Number"
-          fullWidth
-          required
-          value={phoneNumber}
-          onChange={(e) => setPhoneNumber(e.target.value)}
-          error={phoneNumberErr ? true : false}
-          helperText={phoneNumberErr}
-        />
-        <TextField
-          type="tel"
-          inputMode="tel"
-          variant="outlined"
-          label="Confirm Recipient Number"
-          fullWidth
-          required
-          value={confirmPhonenumber}
-          onChange={(e) => setConfirmPhonenumber(e.target.value)}
-          error={Boolean(confirmPhonenumberErr)}
-          helperText={confirmPhonenumberErr}
-          margin="dense"
-        />
+    <Container maxWidth="sm" sx={{ py: 4 }}>
+      <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+        <Typography variant="h5" gutterBottom>
+          Add Bulk Airtime
+        </Typography>
+        <Typography variant="body2" color="text.secondary" paragraph>
+          Add one or more airtime top-ups. Each entry requires a network, recipient number, and amount.
+        </Typography>
 
-        <TextField
-          fullWidth
-          type="number"
-          inputMode="decimal"
-          label="Amount"
-          placeholder="Amount here"
-          value={price}
-          onChange={(e) => setPrice(e.target.valueAsNumber)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Typography>GHS</Typography>
-              </InputAdornment>
-            ),
-            endAdornment: (
-              <InputAdornment position="end">
-                <Typography>p</Typography>
-              </InputAdornment>
-            ),
-          }}
-          error={Boolean(pricingError)}
-          helperText={pricingError}
-        />
+        <form onSubmit={handleSubmit(onAdd)} noValidate>
+          <Stack spacing={2}>
+            {/* Network Provider */}
+            <ServiceProvider
+              size="medium"
+              value={provider}
+              setValue={(val) => setValue("provider", val)}
+              error={!!errors.provider}
+              helperText={errors.provider?.message}
+            />
 
-        <Button
-          variant="contained"
-          size="small"
-          fullWidth
-          onClick={handleAddAirtimeType}
-        >
-          Add
-        </Button>
-      </Stack>
-      {pricingList.length !== 0 && (
-        <List sx={{ bgcolor: "secondary.main", mt: 2 }}>
-          {pricingList?.map((item) => (
-            <ListItem key={item.id} divider>
-              <ListItemText
-                primary={`${item.type}  (${item?.recipient})`}
-                primaryTypographyProps={{
-                  fontWeight: "bold",
-                  color: "primary.contrastText",
-                }}
-              />
-              <ListItemSecondaryAction sx={{ color: "white" }}>
-                ({currencyFormatter(item?.price)})
-                <IconButton
-                  color="primary"
-                  size="small"
-                  onClick={() => handleRemoveAirtimeType(item?.id)}
+            {/* Recipient Number */}
+            <Controller
+              name="phoneNumber"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  type="tel"
+                  label="Recipient Number"
+                  error={!!errors.phoneNumber}
+                  helperText={errors.phoneNumber?.message}
+                />
+              )}
+            />
+
+            {/* Confirm Number */}
+            <Controller
+              name="confirmPhonenumber"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  type="tel"
+                  label="Confirm Recipient Number"
+                  error={!!errors.confirmPhonenumber}
+                  helperText={errors.confirmPhonenumber?.message}
+                />
+              )}
+            />
+
+            {/* Amount */}
+            <Controller
+              name="price"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  type="number"
+                  label="Amount (GHS)"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">GH¢</InputAdornment>
+                    ),
+                  }}
+                  error={!!errors.price}
+                  helperText={errors.price?.message}
+                />
+              )}
+            />
+
+            <Button type="submit" variant="contained" size="large" fullWidth>
+              Add Entry
+            </Button>
+          </Stack>
+        </form>
+
+        {pricingList.length > 0 && (
+          <Box sx={{ mt: 4 }}>
+            <Divider sx={{ mb: 2 }} />
+            <Typography variant="subtitle1" gutterBottom>
+              Added Entries ({pricingList.length})
+            </Typography>
+            <List disablePadding>
+              {pricingList.map((item) => (
+                <ListItem
+                  key={item.id}
+                  secondaryAction={
+                    <IconButton
+                      edge="end"
+                      size="small"
+                      onClick={() => handleRemove(item.id)}
+                      aria-label="remove"
+                    >
+                      <Close fontSize="small" />
+                    </IconButton>
+                  }
+                  sx={{
+                    bgcolor: "action.hover",
+                    borderRadius: 1,
+                    mb: 1,
+                    "&:hover": { bgcolor: "action.selected" },
+                  }}
                 >
-                  <Close />
-                </IconButton>
-              </ListItemSecondaryAction>
-            </ListItem>
-          ))}
-          {pricingList.length > 0 && (
-            <div style={{ width: "300px", marginInline: "auto" }}>
-              <Typography color="success.main" textAlign="right" paragraph>
-                {currencyFormatter(_.sumBy(pricingList, "price"))}
+                  <ListItemText
+                    primary={`${item.type} - ${item.recipient}`}
+                    secondary={currencyFormatter(item.price)}
+                    primaryTypographyProps={{ fontWeight: "medium" }}
+                  />
+                </ListItem>
+              ))}
+            </List>
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+              sx={{ mt: 2, pt: 1 }}
+            >
+              <Typography variant="h6" fontWeight="bold">
+                Total:
               </Typography>
-              <Button
-                variant="contained"
-                onClick={handleProceed}
-                endIcon={<ArrowForward />}
-                fullWidth
-              >
-                Proceed to Recharge
-              </Button>
-            </div>
-          )}
-        </List>
-      )}
+              <Typography variant="h6" color="primary.main">
+                {currencyFormatter(totalAmount)}
+              </Typography>
+            </Stack>
+            <Button
+              variant="contained"
+              size="large"
+              endIcon={<ArrowForward />}
+              onClick={handleProceed}
+              fullWidth
+              sx={{ mt: 2 }}
+            >
+              Proceed to Checkout
+            </Button>
+          </Box>
+        )}
+      </Paper>
     </Container>
   );
-}
+};
 
 export default AddBulk;

@@ -229,20 +229,12 @@ export const makeElectricityPayment = async (paymentInfo) => {
 };
 
 export const updateElectricityPayment = async (paymentInfo) => {
-  const formData = new FormData();
-  formData.append("_id", paymentInfo?._id);
-  formData.append("receipt", paymentInfo?.receipt);
-  formData.append("data", JSON.stringify(paymentInfo?.data));
-
-
   try {
     const res = await api({
       method: "PUT",
       url: `/payment/electricity`,
-      data: formData,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+      data: paymentInfo
+    
     });
 
     return res.data;

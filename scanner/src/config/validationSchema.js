@@ -119,7 +119,7 @@ export const ticketsValidationSchema = () => {
     }),
     ticketType: object().shape({
       id: string().required("Required*"),
-      voucherType: string().required("Required*"),
+      ticketName: string().required("Required*"),
     }),
  
   });

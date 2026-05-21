@@ -1,28 +1,23 @@
 import { useState, useContext } from "react";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
-
 import Autocomplete from "@mui/material/Autocomplete";
-import DOMPurify from "dompurify";
 import { Formik } from "formik";
 //components
 
-import { currencyFormatter, IMAGES } from "../../constants";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import { useGetCategoryByType } from "../../hooks/useGetCategoryByType";
-import { waecValidationSchema } from "../../config/validationSchema";
-import CustomWrapper from "../../components/custom/CustomWrapper";
+import { currencyFormatter, IMAGES } from "@/constants";
+import { CustomContext } from "@/context/providers/CustomProvider";
+import { useGetCategoryByType } from "@/hooks/useGetCategoryByType";
+import { waecValidationSchema } from "@/config/validationSchema";
+import CustomWrapper from "@/components/custom/CustomWrapper";
 import { Helmet } from "react-helmet-async";
 import { Container, Typography } from "@mui/material";
-import { AuthContext } from "../../context/providers/AuthProvider";
-import PaymentOption from "../../components/PaymentOption";
 import { useNavigate } from "react-router-dom";
 
 function WAECChecker() {
   const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
+
   const { customDispatch } = useContext(CustomContext);
-  const [paymentMethod, setPaymentMethod] = useState("");
   const [pricingType, setPricingType] = useState({
     id: "",
     type: "",
@@ -31,66 +26,44 @@ function WAECChecker() {
   const [pricingList, setPricingList] = useState([]);
   const [categoryType, setCategoryType] = useState({
     id: "",
-    voucherType: "",
+    name: "",
     price: 0,
     image: "",
+    year: "",
   });
 
-  const [mobilePartner, setMobilePartner] = useState("");
   const [email, setEmail] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [confirmPhonenumber, setConfirmPhonenumber] = useState("");
   ///Get All waec categories
   const { categories, loading, fetching } = useGetCategoryByType("waec");
 
-  ///Service Provider Info
-  // const getServiceProviderInfo = useMemo(() => {
-  //   return getCode(phoneNumber);
-  // }, [phoneNumber]);
-
   const initialValues = {
-    category: "waec",
+    type: "waec",
     categoryType,
     pricingType,
     email,
-    phoneNumber,
-    confirmPhonenumber,
-    mobilePartner,
-    paymentMethod,
   };
+  // console.log(categories)
 
   const onSubmit = (values) => {
     const paymentInfo = {
-      category: values?.category,
+      category: values?.type,
       categoryId: values?.categoryType?.id,
-      voucherType: values?.categoryType?.voucherType,
+      voucherName: values?.categoryType?.name,
       price: values?.categoryType?.details?.price,
       quantity: Number(values?.pricingType.type),
       totalAmount: values?.pricingType.price,
-      user: {
-        name: user?.name?.split(" ")[0] || "GPC",
-        email: DOMPurify.sanitize(email),
-        phoneNumber: DOMPurify.sanitize(phoneNumber) || user?.phonenumber,
-        provider: values?.mobilePartner,
-      },
-      isWallet: paymentMethod === "wallet",
+      email: values?.email,
     };
-    
 
     customDispatch({
       type: "getVoucherPaymentDetails",
       payload: { data: paymentInfo },
-      // payload: { open: true, data: paymentInfo },
     });
 
     navigate(`/evoucher/voucher-payment`, {
       replace: true,
     });
   };
-
-  // if (loading) {
-  //   return <PayLoading />;
-  // }
 
   return (
     <>
@@ -109,7 +82,7 @@ function WAECChecker() {
       <CustomWrapper img={IMAGES.main} title="WAEC CHECKERS" item=" WAEC">
         <Formik
           initialValues={initialValues}
-          validationSchema={waecValidationSchema(paymentMethod === "momo")}
+          validationSchema={waecValidationSchema}
           enableReinitialize={true}
           onSubmit={onSubmit}
         >
@@ -163,7 +136,10 @@ function WAECChecker() {
                     value.id === "" ||
                     option.id === value.id
                   }
-                  getOptionLabel={(option) => option.voucherType || ""}
+                  getOptionLabel={(option) =>
+                    `${option?.name}${option?.year ? ` (${option.year})` : ""}` ||
+                    "Select Checker Type"
+                  }
                   renderInput={(params) => {
                     return (
                       <TextField
@@ -171,12 +147,12 @@ function WAECChecker() {
                         label="Select Checker"
                         size="small"
                         error={Boolean(
-                          touched?.categoryType?.voucherType &&
-                            errors?.categoryType?.voucherType
+                          touched?.categoryType?.name &&
+                          errors?.categoryType?.name,
                         )}
                         helperText={
-                          touched?.categoryType?.voucherType &&
-                          errors?.categoryType?.voucherType
+                          touched?.categoryType?.name &&
+                          errors?.categoryType?.name
                         }
                       />
                     );
@@ -200,7 +176,7 @@ function WAECChecker() {
                   getOptionLabel={(option) =>
                     option?.id
                       ? `${option?.type} checker(s) for ${currencyFormatter(
-                          option?.price
+                          option?.price,
                         )}`
                       : "" || ""
                   }
@@ -212,7 +188,7 @@ function WAECChecker() {
                         size="small"
                         error={Boolean(
                           touched?.pricingType?.type &&
-                            errors?.pricingType?.type
+                          errors?.pricingType?.type,
                         )}
                         helperText={
                           touched?.pricingType?.type &&
@@ -236,42 +212,13 @@ function WAECChecker() {
                   helperText={touched.email && errors.email}
                 />
 
-                <PaymentOption
-                  showWallet={user?.id}
-                  showMomo
-                  setPaymentMethod={setPaymentMethod}
-                  error={Boolean(touched.paymentMethod && errors.paymentMethod)}
-                  helperText={errors.paymentMethod}
-                  mobileMoneyDetails={{
-                    mobilePartner,
-                    setMobilePartner,
-                    mobilePartnerErr: Boolean(
-                      touched.mobilePartner && errors.mobilePartner
-                    ),
-                    mobilePartnerHelperText: errors.mobilePartner,
-                    phonenumber: phoneNumber,
-                    setPhonenumber: setPhoneNumber,
-                    phonenumberErr: Boolean(
-                      touched.phoneNumber && errors.phoneNumber
-                    ),
-                    phonenumberHelperText: errors.phoneNumber,
-                    //
-                    confirmPhonenumber,
-                    setConfirmPhonenumber,
-                    confirmPhonenumberErr: Boolean(
-                      touched.phoneNumber && errors.confirmPhonenumber
-                    ),
-                    confirmPhonenumberHelperText: errors.confirmPhonenumber,
-                  }}
-                />
-
                 <Button
                   variant="contained"
                   size="small"
                   onClick={handleSubmit}
                   fullWidth
                 >
-                  Buy
+                  Proceed to buy
                 </Button>
               </Container>
             );

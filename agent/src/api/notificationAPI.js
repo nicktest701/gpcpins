@@ -31,6 +31,20 @@ export const getNotification = async () => {
   }
 };
 
+export const markAllNotificationsAsRead = async (ids) => {
+  try {
+    const res = await api({
+      method: "PUT",
+      url: `/notifications/mark-all-read`,
+      data: { ids },
+    });
+
+    return res.data;
+  } catch (error) {
+    throw error.response.data;
+  }
+};
+
 export const updateNotification = async () => {
   try {
     const res = await api({

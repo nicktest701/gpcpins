@@ -26,9 +26,10 @@ function MobileMoneyOption({
   setConfirmPhonenumber,
   confirmPhonenumberErr,
   confirmPhonenumberHelperText,
+  value
 }) {
   const { user } = useContext(AuthContext);
-  const [expand, setExpand] = useState(false);
+  const [expand, setExpand] = useState(value === "momo");
 
   const handleChecked = (e) => {
     if (e.target.checked) {

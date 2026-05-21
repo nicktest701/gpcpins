@@ -51,7 +51,7 @@ api.interceptors.response.use(
         // Initiate token refresh
         const res = await axios({
           method: "GET",
-          url: `${BASE_URL}/admin/auth/token`,
+          url: `${BASE_URL}/users/auth/token`,
           withCredentials: true,
           headers: {
             Authorization: refreshToken ? `Bearer ${refreshToken}` : "",

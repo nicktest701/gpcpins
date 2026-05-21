@@ -61,7 +61,10 @@ function Header() {
     queryKey: ["notifications"],
     queryFn: () => getAllNotifications(),
     enabled: !!user?.id,
-    initialData: [],
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    initialData: []
   });
 
   const unReadNotifications = notifications?.data?.filter(

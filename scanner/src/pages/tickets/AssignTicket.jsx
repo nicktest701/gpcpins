@@ -45,7 +45,7 @@ function AssignTicket() {
   });
   const [ticketType, setTicketType] = useState({
     id: "",
-    voucherType: "",
+    ticketName: "",
   });
 
   const categories = useQuery({
@@ -66,7 +66,7 @@ function AssignTicket() {
     queryFn: () => getTicketByID(id),
     initialData: queryClient
       .getQueryData(["categories", category])
-      ?.find((item) => item?._id === id),
+      ?.find((item) => item?.id === id),
     enabled: !!id,
     select: (data) => {
       const ticket = getFormatttedCategory(data);
@@ -76,7 +76,7 @@ function AssignTicket() {
     onSuccess: (ticket) => {
       setTicketType({
         id: ticket?.id,
-        voucherType: ticket?.voucherType,
+        ticketName: ticket?.ticketName,
       });
     },
   });
@@ -88,7 +88,7 @@ function AssignTicket() {
     select: (veririfiers) => {
       return veririfiers?.map((verifier) => {
         return {
-          id: verifier?._id,
+          id: verifier?.id,
           name: verifier?.name,
         };
       });
@@ -122,7 +122,12 @@ function AssignTicket() {
       category: id,
       type: JSON.stringify(values.pricingType),
       verifier: values.selectedVerifier.id,
+      ticketName: values.ticketType.ticketName,
+      verifierName: selectedVerifier.name,
     };
+
+    // console.log(payload)
+    // return
 
     Swal.fire({
       title: "Assigning Ticket",
@@ -132,7 +137,7 @@ function AssignTicket() {
       if (isConfirmed) {
         mutateAsync(payload, {
           onSettled: () => {
-            queryClient.invalidateQueries(["employees"]);
+            queryClient.invalidateQueries(["verifiers"]);
             options.setSubmitting(false);
           },
           onSuccess: (data) => {
@@ -188,7 +193,7 @@ function AssignTicket() {
                       readOnly: !_.isEmpty(id),
                     }}
                     error={Boolean(
-                      touched.selectedCategory && errors.selectedCategory
+                      touched.selectedCategory && errors.selectedCategory,
                     )}
                     helperText={
                       touched.selectedCategory && errors.selectedCategory
@@ -218,7 +223,7 @@ function AssignTicket() {
                       value?.id === "" ||
                       option?.id === value?.id
                     }
-                    getOptionLabel={(option) => option?.voucherType || ""}
+                    getOptionLabel={(option) => option?.ticketName || ""}
                     readOnly={!_.isEmpty(id)}
                     renderInput={(params) => {
                       return (
@@ -227,7 +232,7 @@ function AssignTicket() {
                           //   label="Available Tickets"
                           // sx={{ minWidth: { xs: 300, sm: 400 } }}
                           error={Boolean(
-                            touched.ticketType?.id && errors.ticketType?.id
+                            touched.ticketType?.id && errors.ticketType?.id,
                           )}
                           helperText={
                             touched.ticketType?.id && errors.ticketType?.id
@@ -265,7 +270,7 @@ function AssignTicket() {
                         <TextField
                           {...params}
                           error={Boolean(
-                            touched.pricingType && errors.pricingType
+                            touched.pricingType && errors.pricingType,
                           )}
                           helperText={touched.pricingType && errors.pricingType}
                         />
@@ -302,7 +307,7 @@ function AssignTicket() {
                           // sx={{ minWidth: { xs: 300, sm: 400 } }}
                           error={Boolean(
                             touched.selectedVerifier?.id &&
-                              errors.selectedVerifier?.id
+                            errors.selectedVerifier?.id,
                           )}
                           helperText={
                             touched.selectedVerifier?.id &&

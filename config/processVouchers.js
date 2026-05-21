@@ -8,11 +8,11 @@ const limit = pLimit(5);
 const processVouchers = async (transaction) => {
   let chunkSize = 3;
 
-  if (transaction?.info?.type === "waec") {
+  if (transaction?.info?.categoryType === "waec") {
     chunkSize = 15;
   }
 
-  if (["cinema", "bus"].includes(transaction?.info?.type)) {
+  if (["cinema", "bus"].includes(transaction?.info?.categoryType)) {
     chunkSize = 3;
   }
 
@@ -33,7 +33,7 @@ const processVouchers = async (transaction) => {
     //WAIT for templates to finish
     const template = await Promise.all(chunkedVouchers);
 
-    const result = await generateArrayVoucher(template, transaction?._id);
+    const result = await generateArrayVoucher(template, transaction?.id);
     // const result = limit(() =>
     //   generateArrayVoucher(template, transaction?._id)
     // );
@@ -41,6 +41,7 @@ const processVouchers = async (transaction) => {
       return "done";
     }
   } catch (error) {
+    console.log(error);
    
     throw "An error has occured.Please try again";
   }

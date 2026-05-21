@@ -3,7 +3,7 @@ import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
-import MaterialTable, { MTableToolbar } from "material-table";
+import MaterialTable, { MTableToolbar } from "@material-table/core";
 import { useContext, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
@@ -49,6 +49,7 @@ const LoadVoucher = () => {
   const [checkerType, setCheckerType] = useState({
     id: "",
     voucherType: "",
+    year: "",
   });
   const [voucherData, setVoucherData] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
@@ -73,6 +74,7 @@ const LoadVoucher = () => {
     setSearchParams((params) => {
       params.set("_pid", value?.id);
       params.set("type", value?.voucherType);
+      params.set("year", value?.year);
       return params;
     });
 
@@ -103,6 +105,7 @@ const LoadVoucher = () => {
         setCheckerType({
           id: "",
           voucherType: "",
+          year: "",
         });
       }
       setVoucherData([]);
@@ -111,7 +114,10 @@ const LoadVoucher = () => {
       if (_.isEmpty(categories)) {
         return [];
       }
+      // console.log(categories)
       const options = getCategoryData(categories);
+
+      // console.log(options);
 
       const filtered = options.map((voucher) => {
         return {
@@ -124,6 +130,7 @@ const LoadVoucher = () => {
             vehicleNo: voucher?.details?.vehicleNo || 0,
             quantity: voucher?.details?.quantity || 0,
           },
+          year: voucher?.year || "",
         };
       });
 
@@ -143,7 +150,7 @@ const LoadVoucher = () => {
         }
         setVoucherData([]);
       },
-    }
+    },
   );
 
   const handleChangeSortValue = (event) => {
@@ -189,7 +196,7 @@ const LoadVoucher = () => {
   };
 
   const handleSelectionChange = (data) => {
-    const ids = data?.map(({ _id }) => _id);
+    const ids = data?.map(({ id }) => id);
     setSelectedItems(ids);
   };
 
@@ -224,14 +231,14 @@ const LoadVoucher = () => {
   }
 
   const IS_LOAD_AVAILABLE = user?.permissions?.includes(
-    getLoadPermission(category)
+    getLoadPermission(category),
   );
   const IS_DELETE_AVAILABLE = user?.permissions?.includes(
-    getDeletePinsPermission(category)
+    getDeletePinsPermission(category),
   );
 
   const IS_EXPORT_AVAILABLE = user?.permissions?.includes(
-    getExportPinsPermission(category)
+    getExportPinsPermission(category),
   );
 
   return (
@@ -276,7 +283,9 @@ const LoadVoucher = () => {
                       value?.id === "" ||
                       option?.id === value?.id
                     }
-                    getOptionLabel={(option) => option?.voucherType || ""}
+                    getOptionLabel={(option) => {
+                      return `${option?.voucherType}-${option.year}` || "";
+                    }}
                     renderInput={(params) => {
                       return (
                         <TextField
@@ -396,6 +405,11 @@ const LoadVoucher = () => {
                           value="sold"
                           control={<Radio />}
                           label="Sold"
+                        />
+                        <FormControlLabel
+                          value="reserved"
+                          control={<Radio />}
+                          label="Reserved"
                         />
                         {isTicket && (
                           <>

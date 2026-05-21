@@ -11,7 +11,6 @@ const knex = require("../db/knex");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const { verifyToken } = require("../middlewares/verifyToken");
 
-
 router.get(
   "/",
   asyncHandler(async (req, res) => {
@@ -19,29 +18,63 @@ router.get(
 
     if (meterNo) {
       const meter = await knex("meters")
-        .select("*")
+        .select(
+          "id",
+          "name",
+          "number",
+          "type",
+          "spn",
+          "address",
+          "district",
+          "geo_code as geoCode",
+          "account_number as accountNumber",
+          "created_at as createdAt",
+          "updated_at as updatedAt",
+        )
         .where("number", meterNo)
-        .limit(1);
+        .first();
 
-      return res.status(200).json(meter[0]);
+      return res.status(200).json(meter);
     }
 
     // const meters = await Meter.find({});
-    const meters = await knex("meters").select(
-      "*",
-      knex.raw("DATE_FORMAT(createdAt,'%D %M %Y 🔸 %r') as modifiedAt")
-    ).orderBy('createdAt','desc')
+    const meters = await knex("meters")
+      .select(
+        "id",
+        "name",
+        "number",
+        "type",
+        "spn",
+        "address",
+        "district",
+        "active",
+        "geo_code as geoCode",
+        "account_number as accountNumber",
+        "created_at as createdAt",
+        "updated_at as updatedAt",
+        knex.raw("DATE_FORMAT(created_at,'%D %M %Y 🔸 %r') as modifiedAt"),
+      )
+      .orderBy("created_at", "desc");
+
+    // console.log(meters);
+
     res.status(200).json(meters);
-  })
+  }),
 );
 
 router.get(
   "/all",
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const meters = await knex("meters").select("*");
+    const meters = await knex("meters").select(
+      "*",
+      "geo_code as geoCode",
+      "account_number as accountNumber",
+      "created_at as createdAt",
+      "updated_at as updatedAt",
+    );
     res.status(200).json(meters);
-  })
+  }),
 );
 
 router.get(
@@ -52,10 +85,25 @@ router.get(
       return res.status(400).json("Invalid Request ID!");
     }
 
-    const meter = await knex("meters").select("*").where("_id", id).limit(1);
+    const meter = await knex("meters")
+      .select(
+        "id",
+        "name",
+        "number",
+        "type",
+        "spn",
+        "address",
+        "district",
+        "geo_code as geoCode",
+        "account_number as accountNumber",
+        "created_at as createdAt",
+        "updated_at as updatedAt",
+      )
+      .where("id", id)
+      .first();
 
-    res.status(200).json(meter[0]);
-  })
+    res.status(200).json(meter);
+  }),
 );
 router.get(
   "/user/:id",
@@ -67,12 +115,24 @@ router.get(
     }
 
     const meters = await knex("meters")
-      .select("*")
-      .where("user", id)
-      .orderBy("createdAt", "desc");
+      .select(
+        "id",
+        "name",
+        "number",
+        "type",
+        "spn",
+        "address",
+        "district",
+        "geo_code as geoCode",
+        "account_number as accountNumber",
+        "created_at as createdAt",
+        "updated_at as updatedAt",
+      )
+      .where("user_id", id)
+      .orderBy("created_at", "desc");
 
     res.status(200).json(meters);
-  })
+  }),
 );
 
 router.post(
@@ -81,17 +141,19 @@ router.post(
   asyncHandler(async (req, res) => {
     const newMeter = req.body;
 
-    const ifMeterExists = await knex("meters").where({
-      number: newMeter?.number,
-      user: newMeter.user,
-    });
+    const ifMeterExists = await knex("meters")
+      .where({
+        number: newMeter?.number,
+        user_id: newMeter.user_id,
+      })
+      .first();
 
     if (!_.isEmpty(ifMeterExists)) {
       return res.status(404).json("Meter already exist!.");
     }
 
     const meter = await knex("meters").insert({
-      _id: generateId(),
+      id: generateId(),
       ...newMeter,
     });
 
@@ -100,7 +162,7 @@ router.post(
     }
 
     res.status(201).json("Meter saved!");
-  })
+  }),
 );
 
 router.put(
@@ -112,13 +174,13 @@ router.put(
       return res.status(400).json("Invalid Request!");
     }
 
-    const meter = await knex("meters").where("_id", _id).update(rest);
+    const meter = await knex("meters").where("id", _id).update(rest);
 
     if (meter !== 1) {
       return res.status(404).json("Error updating meter information!");
     }
     res.status(201).json("Meter info updated successfully!!!");
-  })
+  }),
 );
 
 router.delete(
@@ -131,13 +193,13 @@ router.delete(
       return res.status(400).json("Invalid Request!");
     }
 
-    const meter = await knex("meters").where("_id", id).del();
+    const meter = await knex("meters").where("id", id).del();
 
     if (meter !== 1) {
       return res.status(404).json("Error removing meter!");
     }
     res.status(200).json("Meter removed!");
-  })
+  }),
 );
 
 module.exports = router;

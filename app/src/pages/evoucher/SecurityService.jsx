@@ -9,34 +9,29 @@ import Grid from "@mui/material/Grid";
 import Container from "@mui/material/Container";
 import { Formik } from "formik";
 import { Helmet } from "react-helmet-async";
-import { currencyFormatter } from "../../constants";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import { universityValidationSchema } from "../../config/validationSchema";
-import CustomWrapper from "../../components/custom/CustomWrapper";
-import { useGetCategoryByType } from "../../hooks/useGetCategoryByType";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import { currencyFormatter } from "@/constants";
+import { CustomContext } from "@/context/providers/CustomProvider";
+import { universityValidationSchema } from "@/config/validationSchema";
+import CustomWrapper from "@/components/custom/CustomWrapper";
+import { useGetCategoryByType } from "@/hooks/useGetCategoryByType";
 import { LoadingButton } from "@mui/lab";
-import DOMPurify from "dompurify";
-import PaymentOption from "../../components/PaymentOption";
 import { useNavigate } from "react-router-dom";
 
 function SecurityService() {
   const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
+
   const { customDispatch } = useContext(CustomContext);
 
   const [categoryType, setCategoryType] = useState({
     id: "",
-    voucherType: "",
+    name: "",
     price: 0,
   });
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [mobilePartner, setMobilePartner] = useState("");
+
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [quantity, setQuantity] = useState(0);
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [confirmPhonenumber, setConfirmPhonenumber] = useState("");
+
   ///Get All waec categories
   const { categories, loading } = useGetCategoryByType("security");
 
@@ -47,33 +42,24 @@ function SecurityService() {
   }, [categoryType, quantity]);
 
   const initialValues = {
-    category: "security",
+    type: "security",
     categoryType,
     quantity,
     totalAmount: grandTotal,
     fullName,
     email,
-    phoneNumber,
-    confirmPhonenumber,
-    mobilePartner,
-    paymentMethod,
   };
 
   const onSubmit = (values) => {
     const paymentInfo = {
-      category: values?.category,
+      category: values?.type,
       categoryId: values?.categoryType?.id,
-      voucherType: values?.categoryType?.voucherType,
+      voucherName: values?.categoryType?.name,
       price: values?.categoryType?.price,
       quantity: Number(values?.quantity),
       totalAmount: values.totalAmount,
-      user: {
-        name: DOMPurify.sanitize(values.fullName),
-        email: DOMPurify.sanitize(email),
-        phoneNumber: DOMPurify.sanitize(phoneNumber) || user?.phonenumber,
-        provider: values?.mobilePartner,
-      },
-      isWallet: paymentMethod === "wallet",
+      email: values?.email,
+      fullName: values?.fullName,
     };
 
     customDispatch({
@@ -106,9 +92,7 @@ function SecurityService() {
       >
         <Formik
           initialValues={initialValues}
-          validationSchema={universityValidationSchema(
-            paymentMethod === "momo"
-          )}
+          validationSchema={universityValidationSchema}
           enableReinitialize={true}
           onSubmit={onSubmit}
         >
@@ -151,9 +135,9 @@ function SecurityService() {
                         }
                         getOptionLabel={(option) => {
                           return !option.id
-                            ? option.voucherType || ""
-                            : `${option.voucherType} -${currencyFormatter(
-                                option?.price
+                            ? option.name || ""
+                            : `${option.name} -${currencyFormatter(
+                                option?.price,
                               )}` || "";
                         }}
                         renderInput={(params) => {
@@ -166,12 +150,12 @@ function SecurityService() {
                                 label="Select Security Form"
                                 size="small"
                                 error={Boolean(
-                                  touched?.categoryType?.voucherType &&
-                                    errors?.categoryType?.voucherType
+                                  touched?.categoryType?.name &&
+                                  errors?.categoryType?.name,
                                 )}
                                 helperText={
-                                  touched?.categoryType?.voucherType &&
-                                  errors?.categoryType?.voucherType
+                                  touched?.categoryType?.name &&
+                                  errors?.categoryType?.name
                                 }
                               />
                             </Tooltip>
@@ -242,72 +226,6 @@ function SecurityService() {
                         error={Boolean(touched.email && errors.email)}
                         helperText={touched.email && errors.email}
                       />
-
-                      <PaymentOption
-                        showWallet={user?.id}
-                        showMomo
-                        setPaymentMethod={setPaymentMethod}
-                        error={Boolean(
-                          touched.paymentMethod && errors.paymentMethod
-                        )}
-                        helperText={errors.paymentMethod}
-                        mobileMoneyDetails={{
-                          mobilePartner,
-                          setMobilePartner,
-                          mobilePartnerErr: Boolean(
-                            touched.mobilePartner && errors.mobilePartner
-                          ),
-                          mobilePartnerHelperText: errors.mobilePartner,
-                          phonenumber: phoneNumber,
-                          setPhonenumber: setPhoneNumber,
-                          phonenumberErr: Boolean(
-                            touched.phoneNumber && errors.phoneNumber
-                          ),
-                          phonenumberHelperText: errors.phoneNumber,
-                          //
-                          confirmPhonenumber,
-                          setConfirmPhonenumber,
-                          confirmPhonenumberErr: Boolean(
-                            touched.phoneNumber && errors.confirmPhonenumber
-                          ),
-                          confirmPhonenumberHelperText:
-                            errors.confirmPhonenumber,
-                        }}
-                      />
-                      {/* <MobilePartner
-                        value={mobilePartner}
-                        setValue={setMobilePartner}
-                        error={Boolean(
-                          touched.mobilePartner && errors.mobilePartner
-                        )}
-                        helperText={
-                          touched.mobilePartner && errors.mobilePartner
-                        }
-                      />
-                      <TextField
-                        size='small'
-                        type='tel'
-                        inputMode='tel'
-                        label='Mobile Money Number'
-                        required
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        error={Boolean(
-                          touched.phoneNumber && errors.phoneNumber
-                        )}
-                        helperText={touched.phoneNumber && errors.phoneNumber}
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position='start'>
-                              <Avatar
-                                variant='square'
-                                src={getServiceProviderInfo?.image}
-                                sx={{ width: 25, height: 20, marginRight: 1 }}
-                              />
-                            </InputAdornment>
-                          ),
-                        }}
-                      /> */}
                     </Stack>
                   </Grid>
                 </Grid>

@@ -3,6 +3,7 @@ import api from "./customAxios";
 export const getTransactions = async ({
   date: { startDate, endDate },
   sort,
+  type,
 }) => {
   try {
     const res = await api({
@@ -10,6 +11,7 @@ export const getTransactions = async ({
       url: `/transaction/agent/transaction`,
       params: {
         sort: sort?.toLowerCase(),
+        type: type || "all",
         startDate: startDate || new Date("2023-01-01"),
         endDate: endDate || new Date(),
       },
@@ -52,12 +54,19 @@ export const makeTransaction = async (transactionInfo) => {
     throw error.response.data;
   }
 };
-export const getTransactionReport = async (data) => {
+export const getTransactionReport = async ({ sort, date, type }) => {
+  const { startDate, endDate } = date;
   try {
     const res = await api({
-      method: "POST",
-      url: `/transaction/agent/transactions/report`,
-      data,
+      method: "GET",
+      url: `/transaction/agent/transaction`,
+      params: {
+        sort: sort?.toLowerCase(),
+        type: type || "all",
+        startDate: startDate || new Date("2023-01-01"),
+        endDate: endDate || new Date(),
+        report: true,
+      },
     });
 
     return res.data;
@@ -233,5 +242,3 @@ export const removeAnyTransaction = async (ids) => {
     throw error.response.data;
   }
 };
-
-

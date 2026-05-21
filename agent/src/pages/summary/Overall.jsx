@@ -26,7 +26,7 @@ import { useTheme } from "@emotion/react";
 import { recentTransactionColumns } from "@/mocks/columns";
 import PayLoading from "@/components/PayLoading";
 import CustomTitle from "@/components/custom/CustomTitle";
-import { IMAGES } from "@/constants";
+import { currencyFormatter, IMAGES } from "@/constants";
 import CountUp from "react-countup";
 import Community from "@/components/home/Community";
 import { AuthContext } from "@/context/providers/AuthProvider";
@@ -38,6 +38,41 @@ function Overall() {
   const summary = useQuery({
     queryKey: ["total-sales"],
     queryFn: () => getTotalSales(),
+    initialData: {
+      totalSales: {
+        airtime: 0,
+        bundle: 0,
+        total: 0,
+      },
+      totalCount: {
+        labels: [],
+        data: [],
+      },
+      recents: [],
+      today: {
+        airtime: 0,
+        bundle: 0,
+      },
+      sevenDays: {
+        labels: [],
+        voucher: {
+          data: [],
+        },
+        ecg: {
+          data: [],
+        },
+      },
+      transactionByMonth: {
+        labels: [],
+        voucher: {
+          data: [],
+        },
+        ecg: {
+          data: [],
+        },
+      },
+    },
+    enabled: !!user?.id,
   });
 
   if (summary?.isLoading) {
@@ -138,10 +173,12 @@ function Overall() {
           <ItemCard
             title="Total"
             icon={<BarChartRounded htmlColor="rgb(0, 20, 34)" />}
-            value={
+            value={currencyFormatter(summary?.data?.totalSales?.total)}
+            component={
+              // 0
               <CountUp
                 start={0}
-                end={summary?.data?.totalSales?.total || 0}
+                end={summary?.data?.totalSales?.total}
                 prefix="GHS "
                 decimals={3}
               />
@@ -152,10 +189,12 @@ function Overall() {
           <ItemCard
             title="Data Bundle"
             icon={<PaymentRounded color="secondary" />}
-            value={
+            value={currencyFormatter(summary?.data?.totalSales?.bundle)}
+            component={
+              // 0
               <CountUp
                 start={0}
-                end={summary?.data?.totalSales?.bundle || 0}
+                end={summary?.data?.totalSales?.bundle}
                 prefix="GHS "
                 decimals={3}
               />
@@ -165,11 +204,12 @@ function Overall() {
 
           <ItemCard
             title="Airtime"
+            value={currencyFormatter(summary?.data?.totalSales?.airtime)}
             icon={<PhoneInTalk htmlColor="rgba(12, 126, 5)" />}
-            value={
+            component={
               <CountUp
                 start={0}
-                end={summary?.data?.totalSales?.airtime || 0}
+                end={summary?.data?.totalSales?.airtime}
                 prefix="GHS "
                 decimals={3}
                 enableScrollSpy={true}
@@ -214,11 +254,12 @@ function Overall() {
               >
                 <ItemCard
                   title="Data Bundle"
+                  value={currencyFormatter(summary?.data?.today?.bundle || 0)}
                   icon={<PaymentRounded color="warning" />}
-                  value={
+                  component={
                     <CountUp
                       start={0}
-                      end={summary?.data?.today?.bundle}
+                      end={summary?.data?.today?.bundle || 0}
                       prefix="GHS "
                       decimals={3}
                     />
@@ -229,11 +270,12 @@ function Overall() {
                 <ItemCard
                   title="Airtime Transfers"
                   icon={<PhoneInTalk htmlColor="rgb(12, 126, 5)" />}
-                  // value={summary?.data?.today?.ecg}
-                  value={
+value={summary?.data?.today?.airtime || 0}
+                  
+                  component={
                     <CountUp
                       start={0}
-                      end={summary?.data?.today?.airtime}
+                      end={summary?.data?.today?.airtime || 0}
                       prefix="GHS "
                       decimals={3}
                     />

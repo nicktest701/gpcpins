@@ -35,9 +35,9 @@ function App() {
   const { reset } = useQueryErrorResetBoundary();
 
   return (
+        <ThemeProvider>
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
           <ErrorBoundary FallbackComponent={Error} onReset={reset}>
             <AuthProvider>
               <GoogleOAuthProvider clientId={CLIENT_ID}>
@@ -49,9 +49,9 @@ function App() {
               </GoogleOAuthProvider>
             </AuthProvider>
           </ErrorBoundary>
-        </ThemeProvider>
       </QueryClientProvider>
     </HelmetProvider>
+        </ThemeProvider>
   );
 }
 

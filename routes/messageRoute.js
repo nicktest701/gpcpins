@@ -33,26 +33,30 @@ router.get(
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const messages = await knex("messages")
-      .select("_id", "body as message", "email as title", "createdAt")
+      .select("id", "body as message", "title", "created_at as createdAt")
       .orderBy("createdAt", "desc");
-
-
     res.status(200).json(messages);
-  })
+  }),
 );
-
 
 router.get(
   "/verifier",
-  verifyToken, verifyScanner,
+  verifyToken,
+  // verifyScanner,
   asyncHandler(async (req, res) => {
     const messages = await knex("verifier_messages")
-      .select("_id", "type", "message", "title", "createdAt", 'active')
+      .select(
+        "id",
+        "title",
+        "type",
+        "body",
+        "created_at as createdAt",
+        "active",
+      )
       .orderBy("createdAt", "desc");
 
-
     res.status(200).json(messages);
-  })
+  }),
 );
 
 router.get(
@@ -62,31 +66,31 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const message = await knex("messages")
-      .select("_id", "body as message", "email as title", "createdAt")
-      .where("_id", id)
+      .select("id", "body as message", "email as title", "createdAt")
+      .where("id", id)
       .limit(1);
 
     if (_.isEmpty(message)) res.status(200).json({});
 
     res.status(200).json(message[0]);
-  })
+  }),
 );
-
 
 router.get(
   "/verifier/:id",
-  verifyToken, verifyScanner,
+  verifyToken,
+  // verifyScanner,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const message = await knex("verifier_messages")
-      .select("_id", "type", "message", "title", "createdAt", 'active')
-      .where("_id", id)
-      .limit(1).first()
+      .select("id", "type", "body", "title", "created_at as createdAt", "active")
+      .where("id", id)
+      .first();
 
     if (_.isEmpty(message)) res.status(200).json({});
 
     res.status(200).json(message);
-  })
+  }),
 );
 
 router.post(
@@ -96,7 +100,7 @@ router.post(
     const newMessage = req.body;
 
     const message = await knex("messages").insert({
-      _id: generateId(),
+      id: generateId(),
       ...newMessage,
     });
 
@@ -117,55 +121,76 @@ router.post(
     await sendEMail(
       process.env.MAIL_CLIENT_USER,
       mailTextShell(body),
-      "Customer Care & Support"
+      "Customer Care & Support",
     );
 
     res.status(201).json("Message sent!!!");
-  })
+  }),
 );
+
 router.post(
   "/verifier",
-  verifyToken, verifyScanner,
+  verifyToken,
   asyncHandler(async (req, res) => {
-    const newInsertMessages = req.body;
+    const { id: userId } = req.user;
+    const { title, message } = req.body;
 
-    const transx = await knex.transaction();
+    // 🔒 Validate input
+    if (!title || !message) {
+      return res.status(400).json("title and message are required");
+    }
+
+    const trx = await knex.transaction();
 
     try {
-
-
-      await transx("verifier_messages").insert({
-        _id: generateId(),
-        ...newInsertMessages
+      // 1. Insert main message
+      await trx("verifier_messages").insert({
+        id: generateId(),
+        user_id: userId,
+        title,
+        body: message,
+        type: "sms",
       });
 
-      const verifiers = await transx('verifiers').where('active', true).select('_id');
+      // 2. Fetch verifiers
+      const verifiers = await trx("vw_users_with_roles")
+        .where({
+          active: true,
+          role: process.env.SCANNER_ID,
+        })
+        .pluck("id"); // 🔥 only get ids (lighter + faster)
 
-      const newInsertNotifications = verifiers.map(verifier => {
-        return {
-          _id: generateId(),
-          verifier_id: verifier?._id,
-          ...newInsertMessages
-        }
-      })
-
-      const notification = await transx("verifier_notifications").insert(newInsertNotifications);
-
-      if (_.isEmpty(notification)) {
-        await transx.rollback();
-        return res.status(404).json("Error saving message!");
+      // Early exit if no verifiers
+      if (verifiers.length === 0) {
+        await trx.commit();
+        return res.status(201).json({
+          message: "Message saved, but no verifiers found",
+        });
       }
 
-      await transx.commit();
+      // 3. Prepare notifications (lean)
+      const notifications = verifiers.map((id) => ({
+        id: generateId(),
+        user_id: id,
+        title,
+        body: message,
+        type: "verifier",
+      }));
 
+      // 4. Bulk insert
+      await trx.batchInsert("notifications", notifications, 100); // chunk size = 100
 
-      res.status(201).json("Message Sent!");
+      await trx.commit();
+
+      return res.status(201).json("Message sent successfully");
     } catch (error) {
-      await transx.rollback();
-      return res.status(500).json("Error Processing your request! Please try again later.");
+      await trx.rollback();
 
+      return res
+        .status(500)
+        .json("Error processing request. Please try again later.");
     }
-  })
+  }),
 );
 
 router.post(
@@ -189,11 +214,11 @@ router.post(
     await sendEMail(
       process.env.MAIL_CLIENT_USER,
       mailTextShell(body),
-      "Request for hosting services"
+      "Request for hosting services",
     );
 
     res.status(201).json("Request received.We will contact you shortly!!!");
-  })
+  }),
 );
 
 router.post(
@@ -233,68 +258,55 @@ router.post(
     await sendEMail(
       process.env.MAIL_CLIENT_USER,
       mailTextShell(body),
-      "Request for Services"
+      "Request for Services",
     );
 
     res.status(201).json("Request received.We will contact you shortly!!!");
-  })
+  }),
 );
 router.post(
   "/tawk",
   limit,
   asyncHandler(async (req, res) => {
-   // if (!verifySignature(req.rawBody, req.headers["x-tawk-signature"])) {
-      // verification failed
-   // }
+    // if (!verifySignature(req.rawBody, req.headers["x-tawk-signature"])) {
+    // verification failed
+    // }
     // verification successfull
 
     res.status(201).json("Request received.We will contact you shortly!!!");
-  })
+  }),
 );
-
 
 router.put(
   "/verifier/delete-all",
-  verifyToken, verifyScanner,
+  verifyToken,
+  verifyScanner,
   asyncHandler(async (req, res) => {
     const { messages } = req.body;
 
-    await knex("verifier_messages")
-      .where("_id", "IN", messages)
-      .del();
+    await knex("verifier_messages").where("id", "IN", messages).del();
 
-    res.sendStatus(204)
-  })
+    res.sendStatus(204);
+  }),
 );
-
 
 router.delete(
   "/verifier",
-  verifyToken, verifyScanner,
+  verifyToken,
+  verifyScanner,
   asyncHandler(async (req, res) => {
     const { id } = req.query;
 
-
     const verifierMessage = await knex("verifier_messages")
-      .where("_id", id)
+      .where("id", id)
       .del();
 
     if (verifierMessage !== 1) {
       return res.status(404).json("An error has occurred!");
     }
     res.status(200).json("Message removed.");
-  })
+  }),
 );
-
-
-
-
-
-
-
-
-
-
 
 function verifySignature(body, signature) {
   const digest = crypto
@@ -314,7 +326,7 @@ router.post(
     } catch (error) {
       return res.status(400).json(error);
     }
-  })
+  }),
 );
 
 router.post(
@@ -333,7 +345,7 @@ router.post(
     } catch (error) {
       return res.status(400).json(error);
     }
-  })
+  }),
 );
 
 router.get(
@@ -347,15 +359,14 @@ router.get(
     } else {
       res.sendStatus(400);
     }
-  })
+  }),
 );
 
 router.post(
   "/whatsapp/callback/471045af9f65250818faa85d8d24912d7501d47114ff1841568267fed07f68dd",
   asyncHandler(async (req, res) => {
-
-    res.status(200).json('done');
-  })
+    res.status(200).json("done");
+  }),
 );
 
 module.exports = router;

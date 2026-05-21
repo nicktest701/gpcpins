@@ -21,6 +21,8 @@ const AgentProfile = ({ values }) => {
     });
   };
 
+// console.log(values)
+
   return (
     <Box
       sx={{
@@ -137,26 +139,26 @@ const AgentProfile = ({ values }) => {
         <Stack spacing={2}>
           <PersonalDetailsItem
             label="Business Name"
-            value={values?.business_name}
+            value={values?.businessName}
           />
           <PersonalDetailsItem
             label="Location"
-            value={values?.business_location}
+            value={values?.businessLocation}
           />
           <PersonalDetailsItem
             label="Description"
-            value={values?.business_description}
+            value={values?.businessDescription}
           />
 
           <CustomFormControl>
             <PersonalDetailsItem
               label="Telephone No."
-              value={values?.business_phonenumber}
+              value={values?.businessPhonenumber}
             />
 
             <PersonalDetailsItem
               label="Email Address"
-              value={values?.business_email}
+              value={values?.businessEmail}
             />
           </CustomFormControl>
         </Stack>

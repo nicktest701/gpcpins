@@ -13,12 +13,81 @@ import { useQuery } from "@tanstack/react-query";
 import { recentTransactionColumns, topSoldColumns } from "../../mocks/columns";
 import LoadingSpinner from "../../components/spinners/LoadingSpinner";
 import CustomTitle from "../../components/custom/CustomTitle";
+import { currencyFormatter } from "@/constants";
 
 function Products() {
   const { palette } = useTheme();
   const summary = useQuery({
     queryKey: ["products-summary"],
     queryFn: () => getProductsTransaction(),
+    initialData: {
+      category: {
+        total: 0,
+        voucher: 0,
+        ticket: 0,
+      },
+      pin: {
+        total: 0,
+        voucher: 0,
+        ticket: 0,
+      },
+      topSold: {
+        voucher: [],
+        ticket: [],
+      },
+      grouped: {
+        voucher: [0, 0, 0],
+        ticket: [0, 0, 0, 0],
+      },
+      recent: {
+        voucher: [],
+        recent: [],
+      },
+      today: {
+        total: 0,
+        voucher: currencyFormatter(0),
+        ticket: currencyFormatter(0),
+      },
+      yesterday: {
+        total: currencyFormatter(0),
+        voucher: currencyFormatter(0),
+        ticket: currencyFormatter(0),
+      },
+      lastSevenDaysTotal: {
+        voucherLastSevenDaysTotal: 0,
+        ticketLastSevenDaysTotal: 0,
+      },
+      lastSevenDays: {
+        labels: [
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+        ],
+        voucher: [0, 0, 0, 0, 0, 0, 0],
+        ticket: [0, 0, 0, 0, 0, 0, 0],
+      },
+      thisYear: {
+        labels: [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ],
+        voucher: [],
+        ticket: [],
+      },
+    },
   });
 
   return (

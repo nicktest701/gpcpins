@@ -26,10 +26,10 @@ function AgentsWallet() {
     initialData: [],
   });
 
-  const openAddMoney = (data) => {
+  const openAddMoney = ({userId}) => {
     setSearchParams((params) => {
       params.set("WujEuJWE", generateRandomCode(200));
-      params.set("rowID", data?._id);
+      params.set("rowID", userId);
       params.set("type", "agent");
       params.set("top-up-money", "true");
       return params;

@@ -3,21 +3,15 @@ const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
 const bcrypt = require("bcryptjs");
 const { otpGen } = require("otp-gen-agent");
-const { signMainToken, signMainRefreshToken } = require("../config/token");
+const { signMainToken } = require("../config/token");
 const multer = require("multer");
-const moment = require('moment')
 const { rateLimit } = require("express-rate-limit");
 const sendMail = require("../config/sendEmail");
-const {
-  verifyToken,
-  verifyRefreshToken,
-} = require("../middlewares/verifyToken");
+const { verifyToken } = require("../middlewares/verifyToken");
 const { isValidUUID2 } = require("../config/validation");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const { uploadPhoto } = require("../config/uploadFile");
 const { mailTextShell } = require("../config/mailText");
-
-
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
@@ -32,6 +26,7 @@ const knex = require("../db/knex");
 const { sendOTPSMS } = require("../config/sms");
 const generateId = require("../config/generateId");
 const redisClient = require("../config/redisClient");
+const { storeOTP, verifyOTP } = require("../services/otp.services");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -46,204 +41,35 @@ const Storage = multer.diskStorage({
 
 const Upload = multer({ storage: Storage });
 
-// Define the route for getting all non-admin employees
+// Define the route for getting all non-admin users
 router.get(
-  '/',
-  verifyToken,
-  verifyAdmin,
-
-  asyncHandler(async (req, res) => {
-    const { email } = req.user
-
-    // Fetch all non-admin employees from the database
-    const employees = await knex('employees').where({ isAdmin: 0 }).whereNot('email', email);
-
-    // Map through the employees and modify the permissions property
-    const modifiedEmployees = employees.map(({ role, permissions, password, ...rest }) => {
-      // Parse the permissions string to a JSON object
-      return {
-        ...rest,
-        role: role === process.env.ADMIN_ID ? "Administrator" : "Employee",
-        permissions: JSON.parse(permissions),
-      };
-    });
-
-    // Send the modified employees as a JSON response with a 200 status code
-    res.status(200).json(modifiedEmployees);
-  })
-);
-
-
-router.get(
-  "/auth/token",
-  limit,
-  verifyRefreshToken,
-  asyncHandler(async (req, res) => {
-    const authEmployee = req.user;
-
-    const accessToken = await signMainToken(authEmployee, "15m");
-
-    res.status(200).json({
-      accessToken,
-    });
-
-  })
-);
-
-router.get(
-  "/verify-identity",
-  limit,
+  "/",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const { id } = req.user
-    const { nid, dob } = req.query;
+    const { email } = req.user;
 
+    // Fetch all non-admin users from the database
+    const users = await knex("vw_users_with_roles")
+      .where({ role: process.env.EMPLOYEE_ID })
+      .whereIn("role", "IN", [process.env.EMPLOYEE_ID, process.env.ADMIN_ID])
+      .whereNot("email", email);
 
-    const employees = await knex("employees").where({ _id: id })
-      .select('nid', 'dob', knex.raw("DATE_FORMAT(dob,'%D %M %Y') as dobb"))
-      .limit(1);
-
-
-    if (_.isEmpty(employees[0])) {
-      return res.status(400).json('Invalid Request!');
-    }
-
-    if (nid && employees[0]?.nid !== nid) {
-
-      return res.status(400).json("Sorry.We couldn't find your National ID.");
-    }
-
-    if (dob) {
-      const formattedDate = moment(dob).format('Do MMMM YYYY')
-
-      if (employees[0]?.dobb !== formattedDate) {
-
-        return res.status(400).json("Sorry.We couldn't find your date of birth.");
-      }
-    }
-
-
-    return res.status(200).json('OK');
-  })
-);
-
-router.get(
-  "/phonenumber/token",
-  limit,
-  verifyToken,
-  verifyAdmin,
-  asyncHandler(async (req, res) => {
-
-    const { id } = req.user;
-    const { code } = req.query;
-
-    if (code) {
-      const employeeToken = await knex("verify_tokens")
-        .select("_id", "code")
-        .where({
-          _id: id,
-          code,
-        })
-        .limit(1);
-
-      if (_.isEmpty(employeeToken) || Number(code) !== Number(employeeToken[0]?.code)) {
-        return res.status(400).json("Invalid code.Try again");
-      }
-    } else {
-      const employee = await knex("employees")
-        .select("_id", "phonenumber", "active")
-        .where("_id", id)
-        .limit(1);
-
-      if (_.isEmpty(employee) && !employee[0]?.phonenumber) {
-        return res.status(400).json("Invalid Request");
-      }
-
-      const code = await otpGen();
-      await knex("verify_tokens").upsert({
-        _id: id,
-        code,
-      });
-      console.log(code);
-
-      await sendOTPSMS(`Please ignore this message if you did not request the OTP.Your verification code is ${code}.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`, employee[0]?.phonenumber);
-    }
-
-    res.sendStatus(201);
-  })
-);
-
-
-//@GET employee by email
-router.post(
-  "/login",
-  limit,
-  asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
-
-    const employee = await knex("employees")
-      .select("email", "phonenumber", "password", "active")
-      .where("email", email)
-      .first();
-
-    if (_.isEmpty(employee)) {
-      return res.status(400).json("Invalid Email or Password!!");
-    }
-
-    const passwordIsValid = await bcrypt.compare(
-      password,
-      employee?.password
+    // Map through the users and modify the permissions property
+    const modifiedusers = users.map(
+      ({ role, permissions, password, ...rest }) => {
+        // Parse the permissions string to a JSON object
+        return {
+          ...rest,
+          role: role === process.env.ADMIN_ID ? "Administrator" : "user",
+          permissions: JSON.parse(permissions),
+        };
+      },
     );
 
-    if (!passwordIsValid) {
-      return res.status(400).json("Invalid Email or Password!");
-    }
-
-    if (employee?.active === 0) {
-      return res.status(400).json("Account disabled!");
-    }
-
-    const token = await otpGen();
-
-    await knex("tokens").insert({
-      _id: generateId(),
-      token,
-      email: employee?.email,
-    });
-
-    const message = `
-        <div style="width:100%;max-width:500px;margin-inline:auto;">
-      <p>Please ignore this message if you did not request the OTP.</p>
-        <p>Your verification code is</p>
-        <h1>${token}</h1>
-        <p>If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.</p>
-
-        <p>-- Gab Powerful Team --</p>
-    </div>
-        `;
-
-    if (process.env.NODE_ENV !== "production") {
-      console.log(token);
-    }
-
-    try {
-      await sendMail(employee?.email, mailTextShell(message));
-
-      // if (type === "phone") {
-      await sendOTPSMS(
-        `Please ignore this message if you did not request the OTP.Your verification code is ${token}.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`,
-        employee?.phonenumber
-      );
-      // }
-    } catch (error) {
-      await knex("tokens").where("email", employee?.email).del();
-
-      return res.status(500).json("An error has occurred!");
-    }
-
-    res.sendStatus(201);
-  })
+    // Send the modified users as a JSON response with a 200 status code
+    res.status(200).json(modifiedusers);
+  }),
 );
 
 router.post(
@@ -251,197 +77,136 @@ router.post(
   limit,
   asyncHandler(async (req, res) => {
     const { id, token } = req.body;
+    console.log(req.body);
 
     if (!id || !isValidUUID2(id) || !token) {
       return res.status(400).json("An unknown error has occurred!");
     }
 
-    const employeeToken = await knex("tokens")
-      .where({
-        _id: id,
-        token,
-      })
-      .select("*");
+    const result = await verifyOTP(
+      id,
+      token,
+      "gpcpins_password_reset",
+      "gpcpins_password_reset_attempts",
+    );
 
-    if (_.isEmpty(employeeToken)) {
-      return res.status(400).json("An unknown error has occurred!");
+    if (!result.success) {
+      return res.status(400).json("Invalid or expired token!");
     }
-
-    if (hasTokenExpired(employeeToken[0]?.createdAt)) {
-      return res.status(400).json("Sorry! Your link has expired.");
-    }
-
-    await knex("employees")
-      .where("email", employeeToken[0]?.email)
-      .update({ active: 1 });
-
-    const employee = await knex("employees")
-      .select("_id")
-      .where({
-        email: employeeToken[0]?.email,
-      })
-      .limit(1);
 
     res.status(201).json({
       user: {
-        id: employee[0]?._id,
+        id,
       },
     });
-  })
+  }),
 );
 
-//Verify OTP
+//@GET user by email
 router.post(
-  "/verify-otp",
+  "/login",
   limit,
   asyncHandler(async (req, res) => {
-    const { email, token } = req.body;
+    const { email, password } = req.body;
 
-    if (!email || !token) {
-      return res.status(400).json("Invalid Code");
+    try {
+      const user = await knex("users")
+        .join("roles", "users.role_id", "roles.id")
+        .select("email", "phonenumber", "password", "role_id", "code", "active")
+        .where("email", email)
+        .first();
+
+      if (
+        [process.env.ADMIN_ID, process.env.EMPLOYEE_ID].indexOf(user?.code) ===
+        -1
+      ) {
+        return res.status(401).json("Unauthorized Access!!");
+      }
+
+      if (_.isEmpty(user)) {
+        return res.status(400).json("Invalid Email or Password!!");
+      }
+
+      const passwordIsValid = await bcrypt.compare(password, user?.password);
+
+      if (!passwordIsValid) {
+        return res.status(400).json("Invalid Email or Password!");
+      }
+
+      if (user?.active === 0) {
+        return res.status(400).json("Account disabled!");
+      }
+
+      const otp = await otpGen();
+
+      if (process.env.NODE_ENV !== "production") {
+        console.log(otp);
+      }
+
+      await storeOTP(user?.id, otp);
+
+      const message = `
+        <div style="width:100%;max-width:500px;margin-inline:auto;">
+      <p>Please ignore this message if you did not request the OTP.</p>
+        <p>Your verification code is</p>
+        <h1>${otp}</h1>
+        <p>If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.</p>
+
+        <p>-- Gab Powerful Team --</p>
+    </div>
+        `;
+
+      if (process.env.NODE_ENV !== "production") {
+        console.log(otp);
+      }
+
+      await sendMail(user?.email, mailTextShell(message));
+
+      await sendOTPSMS(
+        `Please ignore this message if you did not request the OTP.Your verification code is ${otp}.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`,
+        user?.phonenumber,
+      );
+
+      res.status(201).json({
+        id: user?.id,
+      });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json("An error has occurred!");
     }
-
-    const employeeToken = await knex("tokens")
-      .select("*")
-      .where({
-        email,
-        token,
-      })
-      .limit(1);
-
-    if (_.isEmpty(employeeToken)) {
-      return res.status(400).json("Invalid Code");
-    }
-
-    if (hasTokenExpired(employeeToken[0]?.createdAt)) {
-      return res.status(400).json("Sorry! Your code has expired.");
-    }
-
-    await knex("employees")
-      .where("email", employeeToken[0]?.email)
-      .update({ active: 1 });
-
-    const employee = await knex("employees")
-
-      .select("_id ",
-        "_id as id",
-        "firstname",
-        "lastname",
-        knex.raw("CONCAT(firstname,' ',lastname) as name"),
-        "email",
-        "role",
-        "permissions",
-        "phonenumber",
-        "profile",
-        "isAdmin",
-        "isEnabled",
-        "active",
-        'createdAt')
-      .where("email", employeeToken[0]?.email);
-
-    if (_.isEmpty(employee)) {
-      return res.status(401).json("Authentication Failed!");
-
-    }
-
-    const { active, isAdmin, permissions, isEnabled, ...rests } = employee[0];
-
-    const authEmployee = {
-      ...rests,
-      permissions: JSON.parse(permissions),
-      active: Boolean(active),
-      isAdmin: Boolean(isAdmin),
-      isEnabled: Boolean(isEnabled),
-
-    };
-
-
-
-    const accessToken = await signMainToken(authEmployee, "15m");
-    const refreshToken = signMainRefreshToken(authEmployee, "24h");
-
-
-    const hashedToken = await bcrypt.hash(refreshToken, 10);
-
-    await knex("employees").where("_id", employee[0]?._id).update({
-      token: hashedToken,
-    });
-
-    //logs
-    await knex("activity_logs").insert({
-      employee_id: employee[0]?._id,
-      title: "Logged into account.",
-      severity: "info",
-    });
-
-
-    res.status(201).json({
-
-      accessToken,
-      refreshToken,
-    });
-
-
-  })
+  }),
 );
 
-router.post(
-  "/logout",
-  verifyToken,
-  verifyAdmin,
-  asyncHandler(async (req, res) => {
-    const { id, jti } = req.user;
-
-    //logs
-    await knex("activity_logs").insert({
-      employee_id: id,
-      title: "Logged out of account.",
-      severity: "info",
-    });
-
-    await redisClient.del(`user:${jti}`)
-    req.user = null;
-
-    res.sendStatus(204);
-  })
-);
-
-
-
-router.get('/sms',
+router.get(
+  "/sms",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
     try {
-
-      const sms = await redisClient.get('sms');
+      const sms = await redisClient.get("sms");
       res.json({ sms });
     } catch (error) {
-      console.log(error)
-      res.status(500).json({ error: 'Error fetching from Redis' });
+      console.log(error);
+      res.status(500).json({ error: "Error fetching from Redis" });
     }
-  })
+  }),
 );
 
 router.post(
-  '/sms',
+  "/sms",
   verifyToken,
   verifyAdmin,
-
   asyncHandler(async (req, res) => {
     const { api } = req.body;
 
     try {
-
-      await redisClient.set('sms', api);
-      res.json('SMS API saved successfully');
+      await redisClient.set("sms", api);
+      res.json("SMS API saved successfully");
     } catch (error) {
-
-      res.status(500).json('Error saving to Redis');
+      res.status(500).json("Error saving to Redis");
     }
-  })
+  }),
 );
-
 
 router.put(
   "/",
@@ -452,62 +217,43 @@ router.put(
     const { id } = req.user;
     const { _id, ...rest } = req.body;
 
-    const updatedEmployee = await knex("employees")
-      .where("_id", _id)
-      .update(rest);
+    const updateduser = await knex("users").where("id", _id).update(rest);
 
-    if (updatedEmployee !== 1) {
-      return res.status(400).json("Error updating employee information.");
+    if (updateduser !== 1) {
+      return res.status(400).json("Error updating user information.");
     }
     //logs
     await knex("activity_logs").insert({
-      employee_id: id,
+      user_id: id,
       title: "Updated account details.",
       severity: "info",
     });
 
+    const user = await knex("vw_users_with_roles")
+      .select("*")
+      .where("id", _id)
+      .first();
 
-    const employee = await knex("employees")
-      .select(
-        "_id as id",
-        "firstname",
-        "lastname",
-        knex.raw("CONCAT(firstname,' ',lastname) as name"),
-        "email",
-        "role",
-        "permissions",
-        "phonenumber",
-        "profile",
-        "isEnabled",
-        "isAdmin",
-        "active",
-        'createdAt'
-      )
-      .where("_id", _id).limit(1)
-    if (_.isEmpty(employee)) {
+    if (_.isEmpty(user)) {
       return res.status(404).json("Error! Could not save changes.");
     }
 
+    const { active, isAdmin, permissions, isEnabled, ...rests } = user;
 
-
-    const { active, isAdmin, permissions, isEnabled, ...rests } = employee[0];
-
-    const authEmployee = {
+    const authUser = {
       ...rests,
       permissions: JSON.parse(permissions),
       active: Boolean(active),
       isAdmin: Boolean(isAdmin),
       isEnabled: Boolean(isEnabled),
-
     };
 
-    const accessToken = await signMainToken(authEmployee, "15m");
+    const accessToken = await signMainToken(authUser, "15m");
 
     res.status(201).json({
       accessToken,
-
     });
-  })
+  }),
 );
 
 router.put(
@@ -516,149 +262,67 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id, password } = req.body;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
-    const modifiedEmployee = await knex("employees").where("_id", id).update({
+    const modifiedUser = await knex("users").where("id", id).update({
       password: hashedPassword,
     });
 
-    if (modifiedEmployee !== 1) {
-      return res.status(404).json("Error updating employee information.");
+    if (modifiedUser !== 1) {
+      return res.status(404).json("Error updating userinformation.");
     }
-    const employee = await knex("employees")
-      .select(
-        "_id as id",
-        "firstname",
-        "lastname",
-        knex.raw("CONCAT(firstname,' ',lastname) as name"),
-        "email",
-        "role",
-        "permissions",
-        "phonenumber",
-        "profile",
-        "isAdmin",
-        "isEnabled",
-        "active",
-        'createdAt'
-      )
-      .where("_id", id).limit(1)
-
-    if (_.isEmpty(employee)) {
-      return res.status(404).json("Error! Could not save changes.");
-    }
-
-
-    const { active, isAdmin, permissions, isEnabled, ...rests } = employee[0];
-
-
-    const authEmployee = {
-      ...rests,
-      permissions: JSON.parse(permissions),
-      active: Boolean(active),
-      isAdmin: Boolean(isAdmin),
-      isEnabled: Boolean(isEnabled)
-
-    };
-
-    const accessToken = await signMainToken(authEmployee, "15m");
 
     //logs
     await knex("activity_logs").insert({
-      employee_id: id,
+      user_id: id,
       title: "Updated account password!",
       severity: "info",
     });
 
-
-    res.status(201).json({
-      accessToken,
-    });
-
-
-
-  })
+    res.status(201).json("ok");
+  }),
 );
-
 
 router.put(
   "/password-reset",
   limit,
-  verifyToken, verifyAdmin,
+  verifyToken,
+  verifyAdmin,
   asyncHandler(async (req, res) => {
     const { id, oldPassword, password } = req.body;
 
-
-    const employeePassword = await knex('employees').select('password').where('_id', id).limit(1);
+    const userPassword = await knex("users")
+      .select("password")
+      .where("id", id)
+      .first();
 
     const passwordIsValid = await bcrypt.compare(
       oldPassword,
-      employeePassword[0]?.password
+      userPassword?.password,
     );
 
     if (!passwordIsValid) {
       return res.status(400).json("Invalid Password!");
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
-    const modifiedEmployee = await knex("employees").where("_id", id).update({
+    const modifiedUser = await knex("users").where("id", id).update({
       password: hashedPassword,
     });
 
-    if (modifiedEmployee !== 1) {
-      return res.status(404).json("Error updating employee information.");
+    if (modifiedUser !== 1) {
+      return res.status(404).json("Error updating user information.");
     }
-    const employee = await knex("employees")
-      .select(
-        "_id as id",
-        "firstname",
-        "lastname",
-        knex.raw("CONCAT(firstname,' ',lastname) as name"),
-        "email",
-        "role",
-        "permissions",
-        "phonenumber",
-        "profile",
-        "isAdmin",
-        "isEnabled",
-        "active",
-        'createdAt'
-      )
-      .where("_id", _id).limit(1)
-
-
-    if (_.isEmpty(employee)) {
-      return res.status(404).json("Error! Could not save changes.");
-    }
-
-    const { active, isAdmin, permissions, isEnabled, ...rests } = employee[0];
-
-
-    const authEmployee = {
-      ...rests,
-      permissions: JSON.parse(permissions),
-      active: Boolean(active),
-      isAdmin: Boolean(isAdmin),
-      isEnabled: Boolean(isEnabled)
-
-    };
-
-    const accessToken = await signMainToken(authEmployee, "15m");
-
     //logs
     await knex("activity_logs").insert({
-      employee_id: id,
+      user_id: id,
       title: "Updated account password!",
       severity: "info",
     });
 
-
-    res.status(201).json({
-      accessToken,
-    });
-
-
-  })
+    res.status(201).json("ok");
+  }),
 );
 
 router.put(
@@ -680,59 +344,21 @@ router.put(
       url = await uploadPhoto(req.file);
     }
 
-    const employee = await knex("employees")
-      .where("_id", id)
-      .update({ profile: url });
+    const user = await knex("users").where("_id", id).update({ profile: url });
 
-    if (employee !== 1) {
+    if (user !== 1) {
       return res.status(404).json("An unknown error has occurred!");
     }
 
     //logs
     await knex("activity_logs").insert({
-      employee_id: id,
+      user_id: id,
       title: "Updated account profile!",
       severity: "info",
     });
 
     res.status(201).json(url);
-  })
-);
-
-//Enable or Disable Employee Account
-router.put(
-  "/account",
-  limit,
-  verifyToken,
-  verifyAdmin,
-  asyncHandler(async (req, res) => {
-    const { id: _id } = req.user;
-    const { id, active } = req.body;
-
-    const updatedEmployee = await knex("employees")
-      .where("_id", id)
-      .update({ active: active });
-
-    if (updatedEmployee !== 1) {
-      return res.status(400).json("Error updating employee info");
-    }
-
-    //logs
-    await knex("activity_logs").insert({
-      employee_id: _id,
-      title: `${Boolean(active) === true
-        ? "Activated an employee account!"
-        : "Disabled an employee account!"
-        }`,
-      severity: "warning",
-    });
-
-    res
-      .status(201)
-      .json(
-        Boolean(active) === true ? "Account enabled!" : "Account disabled!"
-      );
-  })
+  }),
 );
 
 //@DELETE student
@@ -749,21 +375,21 @@ router.delete(
       return res.status(401).json("Invalid Request!");
     }
 
-    const employee = await knex("employees").where("_id", id).del();
+    const user = await knex("users").where("id", id).del();
 
-    if (!employee) {
+    if (!user) {
       return res.status(500).json("Invalid Request!");
     }
 
     //logs
     await knex("activity_logs").insert({
-      employee_id: _id,
-      title: "Deleted an employee account!",
+      user_id: _id,
+      title: "Deleted an user account!",
       severity: "error",
     });
 
-    res.status(200).json("Employee Removed!");
-  })
+    res.status(200).json("User Removed!");
+  }),
 );
 
 module.exports = router;

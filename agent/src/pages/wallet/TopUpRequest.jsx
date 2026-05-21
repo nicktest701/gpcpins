@@ -9,9 +9,9 @@ import { LoadingButton } from "@mui/lab";
 import { useSearchParams } from "react-router-dom";
 import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
 import { useMutation } from "@tanstack/react-query";
-import { sendTopUpRequest } from "../../api/agentAPI";
 import { globalAlertType } from "../../components/alert/alertType";
 import { CustomContext } from "../../context/providers/CustomProvider";
+import { sendWalletTopUpRequest } from "@/api/walletAPI";
 
 function TopUpRequest() {
   const { customDispatch } = useContext(CustomContext);
@@ -20,7 +20,7 @@ function TopUpRequest() {
   const [amountErr, setAmountErr] = useState("");
 
   const { mutateAsync, isLoading } = useMutation({
-    mutationFn: sendTopUpRequest,
+    mutationFn: sendWalletTopUpRequest,
   });
 
   const handleSubmit = () => {

@@ -31,7 +31,7 @@ import { globalAlertType } from "../../components/alert/alertType";
 import CustomTotal from "../../components/custom/CustomTotal";
 
 const startDate = moment("2024-01-01").format("YYYY-MM-DD");
-  const endDate = moment().format("YYYY-MM-DD");
+const endDate = moment().format("YYYY-MM-DD");
 function Transactions() {
   const { customDispatch } = useContext(CustomContext);
 
@@ -62,18 +62,11 @@ function Transactions() {
   }, [showRange, startDate, endDate]);
 
   const transactions = useQuery({
-    queryKey: ["products-transactions", sortValue, date],
-    queryFn: () => getTransactions({ date: date[0], sort: sortValue }),
+    queryKey: ["products-transactions", sortValue, date, type],
+    queryFn: () => getTransactions({ date: date[0], sort: sortValue, type }),
     enabled: !!sortValue,
     initialData: [],
   });
-
-  const sortedTransactions = useMemo(() => {
-    if (type !== "All") {
-      return transactions?.data?.filter((item) => item.type === type);
-    }
-    return transactions?.data;
-  }, [transactions?.data, type]);
 
   //Generate report
 
@@ -83,11 +76,10 @@ function Transactions() {
 
   const handleGenerateReport = () => {
     const data = {
-      ...date,
-      type: type,
-      transactions: {
-        transactions: sortedTransactions,
-      },
+      date: date[0],
+      sort: sortValue,
+      type,
+      report: true,
     };
 
     reportMutate.mutateAsync(data, {
@@ -122,8 +114,8 @@ function Transactions() {
             reportMutate.isLoading
               ? "info"
               : reportMutate.isError
-              ? "error"
-              : "success"
+                ? "error"
+                : "success"
           }
         >
           {reportMutate.isLoading ? (
@@ -153,7 +145,7 @@ function Transactions() {
           search
           isLoading={transactions.isLoading}
           columns={airtimeTransactionsColumns}
-          data={sortedTransactions}
+          data={transactions?.data}
           showExportButton={true}
           onRefresh={transactions.refetch}
           autocompleteComponent={
@@ -233,9 +225,9 @@ function Transactions() {
                   <CustomTotal
                     title="Total"
                     total={currencyFormatter(
-                      _.sumBy(sortedTransactions, (item) =>
-                        Number(item?.amount)
-                      )
+                      _.sumBy(transactions?.data, (item) =>
+                        Number(item?.amount),
+                      ),
                     )}
                   />
                 </Stack>
@@ -262,7 +254,7 @@ function Transactions() {
                   onClick={handleGenerateReport}
                   loading={reportMutate.isLoading}
                   disabled={
-                    reportMutate.isLoading || sortedTransactions?.length === 0
+                    reportMutate.isLoading || transactions?.data?.length === 0
                   }
                 >
                   {reportMutate.isLoading

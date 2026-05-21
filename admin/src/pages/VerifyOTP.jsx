@@ -13,7 +13,7 @@ import { globalAlertType } from "../components/alert/alertType";
 import { loginAdmin, verifyAdminOTP } from "../api/adminAPI";
 import { parseJwt } from "../config/sessionHandler";
 
-function EmailSent() {
+function VerifyOTP() {
   const { customDispatch } = useContext(CustomContext);
   const navigate = useNavigate();
   const [seconds, setSeconds] = useState(60);
@@ -57,12 +57,14 @@ function EmailSent() {
     const tokent = DOMPurify.sanitize(token);
 
     const user = {
+      id: state.id,
       email: email,
       token: tokent,
+      type: "email",
     };
 
     mutateAsync(user, {
-      onSuccess: (data) => {      
+      onSuccess: (data) => {
         login(parseJwt(data?.accessToken));
         navigate(state?.path || "/");
       },
@@ -91,7 +93,7 @@ function EmailSent() {
         onError: () => {
           setErr("An unknown error has occured!");
         },
-      }
+      },
     );
   };
 
@@ -131,7 +133,6 @@ function EmailSent() {
             A verification code has been sent to <b>{state?.email}</b>.
           </Typography>
           <TextField
-          
             type="number"
             inputMode="numeric"
             placeholder="Enter 6-digit code"
@@ -154,7 +155,7 @@ function EmailSent() {
             fullWidth
             disabled={isLoading || isResendLoading}
             loading={isLoading}
-            sx={{ width: 200,borderRadius:0 }}
+            sx={{ width: 200, borderRadius: 0 }}
             onClick={handleSubmit}
           >
             Verify
@@ -171,7 +172,7 @@ function EmailSent() {
                 style={{
                   color: "#FFA48D",
                   paddingLeft: "4px",
-                  paddingTop:'4px',
+                  paddingTop: "4px",
                   textTransform: "lowercase",
                 }}
               >
@@ -188,4 +189,4 @@ function EmailSent() {
   );
 }
 
-export default EmailSent;
+export default VerifyOTP;

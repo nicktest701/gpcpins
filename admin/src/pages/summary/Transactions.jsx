@@ -72,18 +72,21 @@ function Transactions() {
   const transactionUsers = useQuery({
     queryKey: ["employees"],
     queryFn: () => getAllEmployees("search"),
+    initialData: [],
   });
 
   const transactions = useQuery({
     queryKey: ["products-transactions", sortValue],
     queryFn: () => getTransactions({ date: date[0], sort: sortValue }),
     enabled: !!sortValue,
+    initialData: [],
   });
+
 
   const sortedTransactions = useMemo(() => {
     let modifiedTransactions = transactions.data;
 
-    if (!["All", "Airtime", "Prepaid"].includes(type)) {
+    if (!["All", "airtime", "prepaid"].includes(type)) {
       setUsers("All");
     } else {
       if (users !== "All") {
@@ -94,12 +97,12 @@ function Transactions() {
     }
 
     if (type !== "All") {
-      if (type === "Airtime") {
+      if (type === "airtime") {
         return modifiedTransactions?.filter(
-          (item) => item.domain === type && item.kind === airtimeType
+          (item) => item.service === type && item.kind === airtimeType,
         );
       } else {
-        return modifiedTransactions?.filter((item) => item.domain === type);
+        return modifiedTransactions?.filter((item) => item.service === type);
       }
     }
     return modifiedTransactions;
@@ -119,6 +122,7 @@ function Transactions() {
   const { mutateAsync, isLoading } = useMutation({
     mutationFn: resendVoucherORReceipt,
   });
+
   const handleResend = (data) => {
     mutateAsync(data, {
       onSuccess: () => {
@@ -130,10 +134,10 @@ function Transactions() {
     });
   };
 
-  const handleCheckStatus = (refId, domain) => {
+  const handleCheckStatus = (refId, service) => {
     setSearchParams((params) => {
       params.set("payment_reference", refId);
-      params.set("type", domain);
+      params.set("type", service);
       params.set("open", true);
       return params;
     });
@@ -164,6 +168,9 @@ function Transactions() {
     });
   };
 
+
+
+
   const modifiedColumns = [
     ...transactionsColumns(type),
     {
@@ -171,25 +178,26 @@ function Transactions() {
       title: "Action",
       export: false,
       render: (data) => {
-        // console.log(data)
         return (
           <ActionMenu>
             {data?.mode === "Mobile Money" && (
               <MenuItem
                 sx={{ fontSize: 13 }}
-                onClick={() => handleCheckStatus(data?.reference, data?.domain)}
+                onClick={() =>
+                  handleCheckStatus(data?.reference, data?.service)
+                }
               >
                 Check Status
               </MenuItem>
             )}
-            {["Voucher", "Ticket"].includes(data?.domain) &&
+            {["voucher", "ticket"].includes(data?.service) &&
               data?.status === "completed" && (
                 <>
                   <MenuItem
                     sx={{ fontSize: 13 }}
                     onClick={() =>
                       handleResend({
-                        id: data?._id,
+                        id: data?.id,
                         email: data?.email,
                         // phone: data?.phone,
                         downloadLink: data?.downloadLink,
@@ -201,27 +209,25 @@ function Transactions() {
                   <MenuItem
                     sx={{ fontSize: 13 }}
                     onClick={() =>
-                      handleDownload(data?._id, data?.downloadLink)
+                      handleDownload(data?.id, data?.downloadLink)
                     }
                   >
                     Download
                   </MenuItem>
                 </>
               )}
-            {/* <MenuItem
-              sx={{ fontSize: 13 }}
-                onClick={() => removeTransaction(data?._id)}
-            >
-              Remove
-            </MenuItem> */}
           </ActionMenu>
         );
       },
     },
   ];
+
+
   const result =
     reportMutate.isLoading || reportMutate.isError || reportMutate.isSuccess;
-  return (
+
+
+    return (
     <>
       <CustomTitle
         title="Transactions"
@@ -249,8 +255,8 @@ function Transactions() {
               reportMutate.isLoading
                 ? "info"
                 : reportMutate.isError
-                ? "error"
-                : "success"
+                  ? "error"
+                  : "success"
             }
           >
             {reportMutate.isLoading ? (
@@ -283,6 +289,7 @@ function Transactions() {
           search={true}
           isLoading={transactions.isLoading}
           columns={modifiedColumns}
+          // data={[]}
           data={sortedTransactions}
           showExportButton={true}
           onRefresh={transactions.refetch}
@@ -296,7 +303,7 @@ function Transactions() {
               <CustomTotal
                 title="Total"
                 total={currencyFormatter(
-                  _.sumBy(sortedTransactions, (item) => Number(item?.amount))
+                  _.sumBy(sortedTransactions, (item) => Number(item?.amount)),
                 )}
               />
               <Box
@@ -373,13 +380,13 @@ function Transactions() {
                     sx={{ width: 200, my: 2 }}
                   >
                     <MenuItem value="All">All</MenuItem>
-                    <MenuItem value="Voucher">Vouchers</MenuItem>
-                    <MenuItem value="Ticket">Tickets</MenuItem>
-                    <MenuItem value="Prepaid">Prepaid Units </MenuItem>
-                    <MenuItem value="Airtime">Airtime Transfer </MenuItem>
-                    <MenuItem value="Bundle">Data Bundle </MenuItem>
+                    <MenuItem value="voucher">Vouchers</MenuItem>
+                    <MenuItem value="ticket">Tickets</MenuItem>
+                    <MenuItem value="prepaid">Prepaid Units </MenuItem>
+                    <MenuItem value="airtime">Airtime Transfer </MenuItem>
+                    <MenuItem value="bundle">Data Bundle </MenuItem>
                   </TextField>
-                  {type === "Airtime" && (
+                  {type === "airtime" && (
                     <TextField
                       select
                       label="Airtime Type"
@@ -393,7 +400,7 @@ function Transactions() {
                     </TextField>
                   )}
 
-                  {["All", "Airtime", "Prepaid"].includes(type) && (
+                  {["All", "airtime", "prepaid"].includes(type) && (
                     <TextField
                       select
                       label="Select Issuer"
@@ -440,15 +447,12 @@ function Transactions() {
               </div>
             </div>
           }
-          options={{
-            exportAllData: true,
-            exportButton: user?.permissions?.includes("Export Transactions"),
-            searchText: searchParams.get("_search"),
-          }}
+      
         />
         {isLoading && <LoadingSpinner value="Resending.Please wait..." />}
+        {transactions.isLoading && <LoadingSpinner value="Please wait..." />}
       </>
-      <TransactionStatus />
+      {/* <TransactionStatus /> */}
 
       <CustomDateRangePicker
         open={openPicker}

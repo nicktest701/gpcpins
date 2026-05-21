@@ -285,7 +285,7 @@ async function sendBundle(info) {
           "You have successfully recharged 233543772591 with 7.27GB, you were charged GHS 3.00 and your current balance is GHS 292.00",
         trxn: "4cc825c0c87511ee805699cce7947402",
         "status-code": "00",
-        "local-trxn-code": "73fa4584-66fc-421c-a482-4e7c00aa6a8b",
+        "local-trxn-code": info.transaction_reference,
         balance_before: "295.0000",
         balance_after: 292,
       };

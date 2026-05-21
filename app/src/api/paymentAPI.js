@@ -4,7 +4,7 @@ export const makeMomoTransaction = async (paymentInfo) => {
   try {
     const res = await api({
       method: "POST",
-      url: `/payment/momo`,
+      url: `/payment`,
       data: paymentInfo,
     });
 
@@ -64,7 +64,6 @@ export const ConfirmPayment = async ({ id, type, confirm }) => {
 };
 
 export const CancelPayment = async ({ id, type }) => {
- 
   try {
     const res = await api({
       method: "GET",

@@ -8,7 +8,7 @@ export default function Button(theme) {
       defaultProps: {
         disableElevation: true,
         sx: {
-          borderRadius: 0,
+          borderRadius: 1,
           paddingY: '12px',
           paddingX: 3,
           boxShadow: 'none',
@@ -16,7 +16,7 @@ export default function Button(theme) {
       },
       styleOverrides: {
         root: {
-          borderRadius: 0,
+          borderRadius: 1,
           boxShadow: 'none',
           '&:hover': {
             boxShadow: 'none',

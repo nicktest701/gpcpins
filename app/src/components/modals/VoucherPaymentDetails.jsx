@@ -10,15 +10,15 @@ import Swal from "sweetalert2";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import { currencyFormatter } from "../../constants";
-import { makeMomoTransaction } from "../../api/paymentAPI";
+import { CustomContext } from "@/context/providers/CustomProvider";
+import { currencyFormatter } from "@/constants";
+import { makeMomoTransaction } from "@/api/paymentAPI";
 import VoucherPlaceHolderItem from "../items/VoucherPlaceHolderItem";
 import { globalAlertType } from "../alert/alertType";
 import CustomDialogTitle from "../dialogs/CustomDialogTitle";
-import { disableWallet, getNonUser, getWalletStatus } from "../../api/userAPI";
-import { AuthContext } from "../../context/providers/AuthProvider";
-import { verifyPin } from "../../config/validation";
+import { disableWallet, getNonUser, getWalletStatus } from "@/api/userAPI";
+import { AuthContext } from "@/context/providers/AuthProvider";
+import { verifyPin } from "@/config/validation";
 import { CircularProgress } from "@mui/material";
 
 function VoucherPaymentDetails() {

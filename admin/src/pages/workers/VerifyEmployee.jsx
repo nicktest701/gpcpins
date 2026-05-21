@@ -3,13 +3,11 @@ import { Link, Navigate, useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import PayLoading from "../../components/PayLoading";
-import { useContext } from "react";
-import { AuthContext } from "../../context/providers/AuthProvider";
 import { IMAGES } from "../../constants";
 import { verifyAdmin } from "../../api/adminAPI";
 
 function VerifyEmployee() {
-  const { login } = useContext(AuthContext);
+  
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -31,6 +29,7 @@ function VerifyEmployee() {
           id: data?.user?.id,
           success: "Email Address Verified!",
           new: searchParams.get("type") === "new",
+          reset: searchParams.get("reset") === "true",
         },
       });
     },
@@ -49,7 +48,9 @@ function VerifyEmployee() {
           <PayLoading />
         ) : isError ? (
           <Typography>
-            Registration was not successful.An error has occurred.
+            {searchParams.get("reset") === "true"
+              ? "Invalid or expired password reset token!"
+              : "Registration was not successful.An error has occurred.!"}
           </Typography>
         ) : (
           <>
@@ -63,7 +64,10 @@ function VerifyEmployee() {
               }}
             />
             <Typography textAlign="center" variant="body2">
-              Registration Complete.Your account has been verified!
+              {searchParams.get("reset") === "true"
+                ? "Verification Successful!"
+                : "Registration Complete"}{" "}
+              .Your account has been verified!
             </Typography>
             <Link
               to="/"

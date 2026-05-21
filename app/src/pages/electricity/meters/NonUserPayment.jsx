@@ -12,22 +12,18 @@ import {
 } from "@mui/material";
 import LoadingButton from "@mui/lab/LoadingButton";
 import Swal from "sweetalert2";
-import CheckOutItem from "../../../components/items/CheckOutItem";
-import { currencyFormatter } from "../../../constants";
-import CustomDialogTitle from "../../../components/dialogs/CustomDialogTitle";
-import Transition from "../../../components/Transition";
-import { CustomContext } from "../../../context/providers/CustomProvider";
+import CheckOutItem from "@/components/items/CheckOutItem";
+import { currencyFormatter } from "@/constants";
+import CustomDialogTitle from "@/components/dialogs/CustomDialogTitle";
+import Transition from "@/components/Transition";
+import { CustomContext } from "@/context/providers/CustomProvider";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { makeElectricityPayment } from "../../../api/paymentAPI";
-import { globalAlertType } from "../../../components/alert/alertType";
-import {
-  disableWallet,
-  getNonUser,
-  getWalletStatus,
-} from "../../../api/userAPI";
-import { AuthContext } from "../../../context/providers/AuthProvider";
-import { verifyPin } from "../../../config/validation";
+import { makeElectricityPayment } from "@/api/paymentAPI";
+import { globalAlertType } from "@/components/alert/alertType";
+import { disableWallet, getNonUser, getWalletStatus } from "@/api/userAPI";
+import { AuthContext } from "@/context/providers/AuthProvider";
+import { verifyPin } from "@/config/validation";
 
 function NonUserPayment() {
   const { user } = useContext(AuthContext);
@@ -74,18 +70,19 @@ function NonUserPayment() {
         ["wallet-balance", user?.id],
         {
           exact: true,
-        }
+        },
       );
 
       if (Number(walletBalance) < Number(verifyPrepaid.details?.amount)) {
         customDispatch(
           globalAlertType(
             "error",
-            "Insufficient Wallet Balance.Please request for a top up."
-          )
+            "Insufficient Wallet Balance.Please request for a top up.",
+          ),
         );
         return;
       }
+
       verifyPrepaid.details.token = token;
     }
 
@@ -100,6 +97,7 @@ function NonUserPayment() {
       showCancelButton: true,
     }).then(({ isConfirmed }) => {
       if (isConfirmed) {
+
         mutate(verifyPrepaid.details, {
           onSuccess: (data) => {
             if (data) {
@@ -132,7 +130,11 @@ function NonUserPayment() {
             }
           },
         });
+
+
+
       }
+
     });
   };
 
@@ -266,19 +268,19 @@ function NonUserPayment() {
                         <CheckOutItem
                           title="Top Up Amount"
                           value={currencyFormatter(
-                            verifyPrepaid?.details?.topup
+                            verifyPrepaid?.details?.topup,
                           )}
                         />
                         <CheckOutItem
                           title="Charges"
                           value={currencyFormatter(
-                            verifyPrepaid?.details?.charges
+                            verifyPrepaid?.details?.charges,
                           )}
                         />
                         <CheckOutItem
                           title=" Total Amount"
                           value={currencyFormatter(
-                            verifyPrepaid?.details?.amount
+                            verifyPrepaid?.details?.amount,
                           )}
                         />
                       </>

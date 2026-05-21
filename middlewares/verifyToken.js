@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const knex = require("../db/knex");
 const redisClient = require("../config/redisClient");
+const { signMainRefreshToken } = require("../config/token");
 
 const verifyToken = (req, res, next) => {
   req.user = null;
@@ -8,15 +9,11 @@ const verifyToken = (req, res, next) => {
   const authHeader =
     req.headers["authorization"] || req.headers["Authorization"];
 
-
-
   if (!authHeader) {
     return res.status(401).json("Unauthorized Access");
   }
 
-
   const token = authHeader?.split(" ")[1];
-  
 
   if (!token) {
     return res.status(401).json("Unauthorized Access");
@@ -24,11 +21,9 @@ const verifyToken = (req, res, next) => {
 
   jwt.verify(token, process.env.TOKEN, async (err, user) => {
     if (err) {
-      
-      
       return res.status(403).json("Session has expired.");
     }
-    
+
     const jti = user?.jti;
 
     // Now you can check Redis for validity
@@ -37,28 +32,22 @@ const verifyToken = (req, res, next) => {
       return res.status(403).json("Session has expired");
     }
 
-    // console.log(authUser[0])
-    // if (Number(user?.isEnabled) !== 1) {
-    //   return res.status(403).json("Session has expired.");
-    // }
-  
     req.user = user;
 
     next();
   });
-
 };
 
-const verifyRefreshToken = (req, res, next) => {
-
-
+const verifyRefreshToken = async (req, res, next) => {
   const authHeader =
     req.headers["authorization"] || req.headers["Authorization"];
+
+  const cookieToken = req.cookies.refreshToken;
+  console.log("Cookie token:", cookieToken);
 
   if (!authHeader) {
     return res.status(401).json("Unauthorized Access");
   }
-
 
   const token = authHeader?.split(" ")[1];
 
@@ -66,78 +55,90 @@ const verifyRefreshToken = (req, res, next) => {
     return res.status(401).json("Unauthorized Access");
   }
 
+  const stored = await knex("user_tokens")
+    .where({ refresh_token: token })
+    .first();
+
+  if (!stored || Boolean(stored.is_revoked)) return res.sendStatus(403);
+
   jwt.verify(token, process.env.TOKEN_REFRESH, async (err, user) => {
-
     if (err) {
-
-
       return res.status(403).json("Session has expired.");
     }
-    let authUser = {};
-    const userRole = Number(user?.role)
+    let authUser = await knex("vw_users_with_roles")
+      .select("*")
+      .where("id", user?.id)
+      .first();
 
-    if (
-      userRole === Number(process.env.ADMIN_ID) ||
-      userRole === Number(process.env.EMPLOYEE_ID)
-    ) {
-      authUser = await knex("employees")
-        .select("*")
-        .where("_id", user?.id)
-        .limit(1);
-    } else if (userRole === Number(process.env.AGENT_ID)) {
-      authUser = await knex("agents")
-        .select("*")
-        .where("_id", user?.id)
-        .limit(1);
-    } else if (userRole === Number(process.env.SCANNER_ID)) {
-      authUser = await knex("verifiers")
-        .select("*")
-        .where("_id", user?.id)
-        .limit(1);
-
-
-    } else {
-      authUser = await knex("users")
-        .select("*")
-        .where("_id", user?.id)
-        .limit(1);
-    }
-
-
-    if (Number(authUser[0]?.isEnabled) !== 1) {
-
+    if (Boolean(authUser?.is_enabled) === false) {
       return res.status(403).json("Session has expired.");
     }
-
-
-
 
     let newUser = {
-      id: authUser[0]?._id,
-      role: authUser[0]?.role,
-      active: authUser[0]?.active,
-      createdAt: authUser[0]?.createdAt,
-      email: authUser[0]?.email,
+      id: authUser?.id,
+      lastname: authUser?.lastname,
+      firstname: authUser?.firstname,
+      name: authUser?.name,
+      profile: authUser?.profile,
+      email: authUser?.email,
+      phonenumber: authUser?.phonenumber,
+      nid: authUser?.nid,
+      dob: authUser?.dob,
+      role: authUser?.role,
+      active: authUser?.active,
+      createdAt: authUser?.created_at,
+      permissions: JSON.parse(authUser?.permissions || "[]"),
     };
 
-    if (user?.role === process.env.ADMIN_ID || user?.role === Number(process.env.SCANNER_ID)) {
+    const updatedUser = {
+      id: user?.id,
+      role: user?.role,
+      active: Boolean(user?.active),
+      createdAt: user?.created_at,
+    };
 
-      newUser.profile = authUser[0]?.profile;
-      newUser.firstname = authUser[0]?.firstname;
-      newUser.lastname = authUser[0]?.lastname;
-      newUser.name = `${authUser[0]?.firstname} ${authUser[0]?.lastname}`;
-      newUser.phonenumber = authUser[0]?.phonenumber;
-      newUser.isAdmin = Boolean(authUser[0]?.isAdmin);
-      newUser.isEnabled = Boolean(authUser[0]?.isEnabled);
-      newUser.permissions = JSON.parse(authUser[0]?.permissions)
+    // if (
+
+    //  user?.role === Number(process.env.AGENT_ID)
+    // ) {
+    //   newUser.isAgent = true;
+    //   newUser.isAgent = true;
+
+    // }
+    if (
+      user?.role === process.env.ADMIN_ID ||
+      user?.role === Number(process.env.SCANNER_ID)
+    ) {
+      newUser.isAdmin = true;
     }
+
+    const newRefreshToken = signMainRefreshToken(updatedUser, "365d");
+
+    await knex("user_tokens")
+      .where({ id: stored.id })
+      .update({ is_revoked: true });
+
+    const expires = new Date();
+    expires.setDate(expires.getDate() + 7);
+
+    await knex("user_tokens").insert({
+      user_id: user.id,
+      session_id: stored.session_id,
+      refresh_token: newRefreshToken,
+      expiresAt: expires,
+    });
+
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "Strict",
+      path: "/users/auth/token",
+    });
 
     req.user = newUser;
 
     next();
   });
-
-
 };
 
 module.exports = {

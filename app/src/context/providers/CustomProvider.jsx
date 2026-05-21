@@ -1,7 +1,7 @@
 import React, { useContext, useReducer, useState } from "react";
 import { CustomReducer } from "../reducers/CustomReducer";
 import { useQuery } from "@tanstack/react-query";
-import { getWalletBalance } from "../../api/userAPI";
+import { getWalletBalance } from "../../api/walletAPI";
 import { AuthContext } from "./AuthProvider";
 import { getAllBroadcastMessages } from "../../api/broadcastMessageAPI";
 import { getAllCategory } from "../../api/categoryAPI";

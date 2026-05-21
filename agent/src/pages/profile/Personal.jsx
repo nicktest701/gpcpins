@@ -86,16 +86,6 @@ const Personal = () => {
               }}
             />
           </CustomFormControl>
-          {/* <TextField
-            size="small"
-            label="username"
-            fullWidth
-            required
-            value={user?.username}
-            InputProps={{
-              readOnly: true,
-            }}
-          /> */}
 
           <TextField
             size="small"
@@ -144,7 +134,6 @@ const Personal = () => {
                 </InputAdornment>
               ),
               readOnly: !_.isEmpty(user?.phonenumber),
-              // disabled: !_.isEmpty(user?.phonenumber),
             }}
           />
         </Stack>

@@ -57,6 +57,7 @@ function EmailSent() {
     const tokent = DOMPurify.sanitize(token);
 
     const data = {
+      id: state?.id,
       email,
       type: state?.type,
       token: tokent,
@@ -76,7 +77,6 @@ function EmailSent() {
         } else {
           navigate("/");
         }
-        // navigate(state?.redirectURL || '/');
       },
       onError: (error) => {
         setErr(error);
@@ -102,7 +102,7 @@ function EmailSent() {
         onError: () => {
           setErr("An unknown error has occured!");
         },
-      }
+      },
     );
   };
 

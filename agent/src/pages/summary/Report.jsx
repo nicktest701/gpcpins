@@ -48,29 +48,22 @@ function Report() {
   });
 
   const transactions = useQuery({
-    queryKey: ["products-transactions", sortValue],
+    queryKey: ["products-transactions", sortValue, type],
     queryFn: () =>
       getTransactions({
         date,
         sort: "All",
+        type,
       }),
     enabled: !!sortValue,
     select: (transactions) => {
       return transactions?.filter(
-        (transaction) => moment(transaction.createdAt).year() == sortValue
+        (transaction) => moment(transaction.createdAt).year() == sortValue,
       );
     },
   });
 
-  const sortedTransactions = useMemo(() => {
-    if (type !== "All") {
-      return transactions?.data?.filter(
-        (item) => _.capitalize(item.type) === type
-      );
-    }
 
-    return transactions?.data;
-  }, [transactions?.data, type]);
 
   return (
     <>
@@ -101,7 +94,7 @@ function Report() {
             onChange={(e) => setSortValue(e.target.value)}
             sx={{ width: 200, my: 2 }}
           >
-  <MenuItem value="2024">2024</MenuItem>
+            <MenuItem value="2024">2024</MenuItem>
             <MenuItem value="2025">2025</MenuItem>
             <MenuItem value="2026">2026</MenuItem>
             <MenuItem value="2027">2027</MenuItem>
@@ -125,7 +118,7 @@ function Report() {
           <CustomTotal
             title="Total"
             total={currencyFormatter(
-              _.sumBy(sortedTransactions, (item) => Number(item?.amount))
+              _.sumBy(transactions?.data, (item) => Number(item?.amount)),
             )}
           />
         </Stack>
@@ -160,8 +153,8 @@ function Report() {
                         type === "bundle"
                           ? palette.secondary.main
                           : type === "airtime"
-                          ? palette.success.main
-                          : palette.primary.main,
+                            ? palette.success.main
+                            : palette.primary.main,
                     },
                   ]
             }
@@ -173,7 +166,7 @@ function Report() {
           search
           isLoading={transactions.isLoading}
           columns={airtimeTransactionsColumns}
-          data={sortedTransactions}
+          data={transactions?.data || []}
           showExportButton={true}
           onRefresh={() => {
             reportTransactions.refetch();

@@ -16,7 +16,10 @@ function Meters() {
     queryKey: ["meters"],
     queryFn: () => getAllMeters(),
     enabled: !!user?.id,
+    initialData: [],
   });
+
+  // console.log(meters.data)
 
   return (
     <>

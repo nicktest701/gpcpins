@@ -2,11 +2,11 @@ import { Box, Stack, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
 
-function AvailableCinemaTicketItem({ _id, details }) {
+function AvailableCinemaTicketItem({ id, details }) {
   const navigate = useNavigate();
 
   const handleNavigate = () => {
-    navigate(`movie/${_id}`);
+    navigate(`movie/${id}`);
   };
 
   return (

@@ -23,6 +23,7 @@ const ViewAgents = () => {
   const agents = useQuery({
     queryKey: ["agents"],
     queryFn: () => getAllAgents(),
+    initialData: [],
   });
 
   const handleOpenNewAgent = () => {
@@ -48,7 +49,7 @@ const ViewAgents = () => {
       width: 40,
       render: (rowData) => (
         <ActionMenu>
-          <MenuItem onClick={() => handleViewAgent(rowData?._id)}>
+          <MenuItem onClick={() => handleViewAgent(rowData?.id)}>
             View Account
           </MenuItem>
         </ActionMenu>
@@ -93,7 +94,7 @@ const ViewAgents = () => {
         options={{
           exportAllData: true,
           exportButton: user?.permissions?.includes(
-            "Export agents information"
+            "Export agents information",
           ),
         }}
       />

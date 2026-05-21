@@ -39,7 +39,7 @@ const PaymentReceipt = () => {
     const link = document.createElement('a');
     link.href = ecgTransactionInfo?.details?.info?.downloadLink;
     link.target = '_blank';
-    link.download = `${ecgTransactionInfo?.details?._id}.pdf`;
+    link.download = `${ecgTransactionInfo?.details?.id}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -66,7 +66,7 @@ const PaymentReceipt = () => {
           />
           <CheckOutItem
             title='Transaction No.'
-            value={ecgTransactionInfo?.details?._id}
+            value={ecgTransactionInfo?.details?.id}
           />
           <CheckOutItem
             title='Order No.'
@@ -91,11 +91,11 @@ const PaymentReceipt = () => {
           <CheckOutItem title='Payment Method' value='Mobile Money' />
           <CheckOutItem
             title='Received Amount'
-            value={currencyFormatter(ecgTransactionInfo?.details?.info?.amount)}
+            value={currencyFormatter(ecgTransactionInfo?.details?.amount)}
           />
 
         
-          <CheckOutItem title='Issuer' value={ecgTransactionInfo?.details?.issuer||"Gab Powerful Consult"} />
+          <CheckOutItem title='Issuer' value={ecgTransactionInfo?.details?.issuerName||"Gab Powerful Consult"} />
         </Stack>
         <Typography fontWeight='bold' textAlign='center' paragraph>
           {ecgTransactionInfo?.details?.info?.orderNo}

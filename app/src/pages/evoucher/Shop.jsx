@@ -1,9 +1,9 @@
 import { Container, Alert, Typography, Divider } from "@mui/material";
-import ShopCard from "../../components/ShopCard";
-import { shopRows } from "../../mocks/columns";
-import AnimatedContainer from "../../components/animations/AnimatedContainer";
+import ShopCard from "@/components/ShopCard";
+import { shopRows } from "@/mocks/columns";
+import AnimatedContainer from "@/components/animations/AnimatedContainer";
 import RetrieveVoucher from "./RetrieveVoucher";
-import AnimatedWrapper from "../../components/animations/AnimatedWrapper";
+import AnimatedWrapper from "@/components/animations/AnimatedWrapper";
 
 function Shop() {
   let delay = 5;

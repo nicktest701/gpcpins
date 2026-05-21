@@ -1,10 +1,10 @@
-import api from './customAxios';
+import api from "./customAxios";
 
 export const getAllMeters = async (meterNo) => {
   try {
     const res = await api({
       url: `/meters`,
-      method: 'GET',
+      method: "GET",
       params: {
         meterNo,
       },
@@ -19,7 +19,7 @@ export const getAllMetersById = async (meterId) => {
   try {
     const res = await api({
       url: `/meters/${meterId}`,
-      method: 'GET',
+      method: "GET",
     });
     return res.data;
   } catch (error) {
@@ -30,7 +30,19 @@ export const getAllMetersByUserId = async (userId) => {
   try {
     const res = await api({
       url: `/meters/user/${userId}`,
-      method: 'GET',
+      method: "GET",
+    });
+    return res.data;
+  } catch (error) {
+    throw error.response.data;
+  }
+};
+
+export const getMeterById = async (meterId) => {
+  try {
+    const res = await api({
+      url: `/meters/${meterId}`,
+      method: "GET",
     });
     return res.data;
   } catch (error) {
@@ -43,7 +55,7 @@ export const postMeter = async (newMeter) => {
   try {
     const res = await api({
       url: `/meters`,
-      method: 'POST',
+      method: "POST",
       data: newMeter,
     });
     return res.data;
@@ -57,7 +69,7 @@ export const putMeter = async (updatedMeter) => {
   try {
     const res = await api({
       url: `/meters`,
-      method: 'PUT',
+      method: "PUT",
       data: updatedMeter,
     });
     return res.data;
@@ -71,7 +83,7 @@ export const deleteMeter = async (id) => {
   try {
     const res = await api({
       url: `/meters`,
-      method: 'DELETE',
+      method: "DELETE",
       params: {
         id,
       },

@@ -1,76 +1,109 @@
 import { useContext, useEffect, useState } from "react";
-import Dialog from "@mui/material/Dialog";
-import DialogContent from "@mui/material/DialogContent";
-import TextField from "@mui/material/TextField";
-import Button from "@mui/material/Button";
-import Stack from "@mui/material/Stack";
-import Avatar from "@mui/material/Avatar";
-import Typography from "@mui/material/Typography";
+import {
+  Dialog,
+  DialogContent,
+  TextField,
+  Button,
+  Stack,
+  Avatar,
+  Typography,
+  CircularProgress,
+  Alert,
+  Paper,
+} from "@mui/material";
 import LoadingButton from "@mui/lab/LoadingButton";
 import Swal from "sweetalert2";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import { currencyFormatter, getCode } from "../../constants";
-import { makeAirtimeTransaction } from "../../api/paymentAPI";
+import { CustomContext } from "@/context/providers/CustomProvider";
+import { currencyFormatter, getCode } from "@/constants";
+import { makeAirtimeTransaction } from "@/api/paymentAPI";
+import { disableWallet, getNonUser, getWalletStatus } from "@/api/userAPI";
+import { AuthContext } from "@/context/providers/AuthProvider";
+import { verifyPin } from "@/config/validation";
 import VoucherPlaceHolderItem from "../items/VoucherPlaceHolderItem";
-import { globalAlertType } from "../alert/alertType";
 import CustomDialogTitle from "../dialogs/CustomDialogTitle";
-import { disableWallet, getNonUser, getWalletStatus } from "../../api/userAPI";
-import { AuthContext } from "../../context/providers/AuthProvider";
-import { verifyPin } from "../../config/validation";
-import { CircularProgress } from "@mui/material";
+import { globalAlertType } from "@/components/alert/alertType";
 
 function AirtimePaymentDetails() {
   const [searchParams] = useSearchParams();
   const { user } = useContext(AuthContext);
   const { customDispatch } = useContext(CustomContext);
-  const [pricingList, setPricingList] = useState([]);
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
-  const [token, setToken] = useState("");
-  const [err, setErr] = useState("");
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState("");
   const [failureCount, setFailCount] = useState(3);
 
   const isWallet =
     searchParams.get("preload") === "3e6810ec81036d2f7088231351b3097b";
-  // Get wallet status
-  const { data, isLoading: isLoadingWalletStatus } = useQuery({
+  const amount = sessionStorage.getItem("value-x");
+
+
+  
+  // Wallet status query
+  const { data: walletStatus, isLoading: isLoadingWalletStatus } = useQuery({
     queryKey: ["wallet-status"],
     queryFn: () => getWalletStatus(),
     enabled: !!user?.id && isWallet,
   });
 
-  useEffect(() => {
-    if (searchParams.get("info") !== null) {
-      setPricingList(JSON.parse(searchParams.get("info")));
-    }
-  }, [searchParams]);
-
-  //Make Payment
-  const paymentMutate = useMutation({
+  // Payment mutation
+  const paymentMutation = useMutation({
     mutationFn: makeAirtimeTransaction,
-    retry: false,
+    onSuccess: (data) => {
+      sessionStorage.removeItem("value-x");
+      navigate("/confirm", {
+        replace: true,
+        state: {
+          _id: data?.id,
+          categoryType: searchParams.get("type") === "Bundle" ? "bundle" : "airtime",
+          path: pathname,
+          isWallet,
+        },
+      });
+    },
+    onError: async (error) => {
+      if (error === "Invalid pin!") {
+        const newCount = failureCount - 1;
+        setFailCount(newCount);
+        if (newCount > 0) {
+          setPinError(`${error} ${newCount} attempt(s) left.`);
+        } else {
+          setPinError(`${error}. No attempts left. Wallet disabled.`);
+          await disableWallet();
+        }
+      } else {
+        customDispatch(globalAlertType("error", error));
+      }
+    },
   });
 
-  const { mutateAsync, isSuccess, isLoading } = useMutation({
+  // Guest user check mutation (for non‑logged‑in users)
+  const guestMutation = useMutation({
     mutationFn: getNonUser,
-    retry: false,
+    onSuccess: () => {
+      // After guest check, proceed with payment
+      handlePayment();
+    },
+    onError: () => {
+      customDispatch(
+        globalAlertType("error", "Failed to verify user. Please try again."),
+      );
+    },
   });
 
   const handlePayment = () => {
-    if (!searchParams.get("type")) {
-      navigate("/airtime", { replace: true });
-      return;
-    }
-
+    // Validation
     if (isWallet) {
-      if (token.trim() === "") {
-        return setErr("Pin is required*");
+      if (!pin.trim()) {
+        setPinError("Pin is required");
+        return;
       }
-      if (token.trim().length !== 4 || !verifyPin(token?.trim())) {
-        return setErr("Please enter a valid pin!");
+      if (pin.trim().length !== 4 || !verifyPin(pin.trim())) {
+        setPinError("Please enter a valid 4‑digit pin");
+        return;
       }
     }
 
@@ -81,15 +114,12 @@ function AirtimePaymentDetails() {
       email: searchParams.get("email") || user?.email,
       provider: searchParams.get("provider"),
       type: searchParams.get("type"),
-      isWallet: isWallet,
+      service: searchParams.get("type")?.toLowerCase(),
+      isWallet,
     };
 
     if (isWallet) {
-      payload.token = token.trim();
-    }
-
-    if (searchParams.get("type") === "Bulk") {
-      payload.pricing = searchParams.get("info");
+      payload.token = pin.trim();
     }
 
     if (searchParams.get("type") === "Bundle") {
@@ -100,244 +130,152 @@ function AirtimePaymentDetails() {
       };
     }
 
-    // Check if user exists
+    // If user not logged in, run guest check first
     if (!user?.id) {
-      mutateAsync({});
-      if (isSuccess) {
-        paymentMutate.mutateAsync(payload, {
-          onSettled: () => {},
-          onSuccess: (data) => {
-            sessionStorage.removeItem("value-x");
-            if (data) {
-              navigate(`/confirm`, {
-                replace: true,
-                state: {
-                  _id: data?._id,
-                  type:
-                    searchParams.get("type") === "Bundle"
-                      ? "bundle"
-                      : "airtime",
-                  path: pathname,
-                  isWallet: payload?.isWallet,
-                },
-              });
-            }
-          },
-          onError: (error) => {
-            customDispatch(globalAlertType("error", error));
-          },
-        });
-      }
+      guestMutation.mutate({});
     } else {
-      paymentMutate.mutateAsync(payload, {
-        onSettled: () => {},
-        onSuccess: (data) => {
-          sessionStorage.removeItem("value-x");
-          if (data) {
-            navigate(`/confirm`, {
-              replace: true,
-              state: {
-                _id: data?._id,
-                type:
-                  searchParams.get("type") === "Bundle" ? "bundle" : "airtime",
-                path: pathname,
-                isWallet: payload?.isWallet,
-              },
-            });
-          }
-        },
-        onError: async (error) => {
-          if (error === "Invalid pin!") {
-            setFailCount((prevState) => prevState - 1);
-
-            if (failureCount <= 3) {
-              setErr(`${error} .${failureCount - 1} attempt(s) left.`);
-              if (failureCount <= 1) {
-                await disableWallet();
-              }
-            } else {
-              setErr(error);
-            }
-          } else {
-            customDispatch(globalAlertType("error", error));
-          }
-        },
-      });
+      paymentMutation.mutate(payload);
     }
   };
 
-  //close Payment Details
-
   const handleClose = () => {
     Swal.fire({
-      title: "Processing",
-      text: `Do you want to cancel transaction?`,
+      title: "Cancel transaction?",
+      text: "Are you sure you want to cancel?",
+      icon: "warning",
       showCancelButton: true,
-    }).then(({ isConfirmed }) => {
-      if (isConfirmed) {
-        paymentMutate.reset();
+      confirmButtonText: "Yes, cancel",
+    }).then((result) => {
+      if (result.isConfirmed) {
         handleGoBack();
       }
     });
   };
 
   const handleGoBack = () => {
-    customDispatch({
-      type: "set_Airtime_Bundle_Amount",
-      payload: 0,
-    });
+    customDispatch({ type: "set_Airtime_Bundle_Amount", payload: 0 });
     navigate("/airtime", { replace: true });
   };
+
+  // Check if amount matches the one in URL (security check)
+  const isValidAmount = Number(amount) === Number(searchParams.get("amount"));
+
+  // If wallet disabled or wallet status indicates inactive, show disabled state
+  const isWalletDisabled = isWallet && walletStatus && !walletStatus.active;
 
   return (
     <Dialog
       open={Boolean(searchParams.get("open-preview"))}
       maxWidth="xs"
       fullWidth
+      onClose={handleClose}
     >
       {isWallet && isLoadingWalletStatus ? (
-        <Stack justifyContent="center" alignItems="center" height={200}>
+        <Stack justifyContent="center" alignItems="center" minHeight={200}>
           <CircularProgress />
         </Stack>
+      ) : isWalletDisabled ? (
+        <Paper sx={{ p: 4, textAlign: "center" }}>
+          <Typography variant="h6" gutterBottom>
+            Wallet Disabled
+          </Typography>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            Your wallet is currently disabled. Please contact support for
+            assistance.
+          </Typography>
+          {walletStatus?.timeOut && (
+            <Typography variant="caption">
+              Try again in <strong>{walletStatus.timeOut}</strong> minutes.
+            </Typography>
+          )}
+          <Button onClick={handleGoBack} sx={{ mt: 2 }}>
+            Go Back
+          </Button>
+        </Paper>
       ) : (
         <>
-          {isWallet && (failureCount <= 0 || (data && !data?.active)) ? (
-            <Stack p={4} alignItems="center" spacing={1}>
-              <Typography variant="h6" paragraph>
-                Wallet Account Disabled
-              </Typography>
-              <Typography variant="caption">
-                Please contact us for further assistance.
-              </Typography>
-              {data?.timeOut && (
+          <CustomDialogTitle
+            title="Payment Details"
+            subtitle="Confirm your transaction"
+            onClose={!paymentMutation.isLoading ? handleClose : undefined}
+          />
+          <DialogContent>
+            <Stack spacing={2} sx={{ py: 1 }}>
+              {/* Summary items */}
+              <VoucherPlaceHolderItem
+                title="Recipient Number"
+                value={searchParams.get("recipient")}
+              />
+              {searchParams.get("plan_name") && (
+                <VoucherPlaceHolderItem
+                  title="Bundle"
+                  value={`${searchParams.get("plan_name")} (${searchParams.get("plan_volume")})`}
+                />
+              )}
+              <VoucherPlaceHolderItem
+                title="Amount"
+                value={currencyFormatter(amount)}
+              />
+              <VoucherPlaceHolderItem
+                title="Payment Method"
+                value={isWallet ? "Wallet" : "Mobile Money"}
+              />
+              {!isWallet && (
+                <VoucherPlaceHolderItem
+                  title="Mobile Money Number"
+                  value={searchParams.get("phonenumber")}
+                  img={
+                    <Avatar
+                      src={getCode(searchParams.get("phonenumber"))?.money}
+                      variant="square"
+                      sx={{ width: 40, height: 20 }}
+                    />
+                  }
+                />
+              )}
+
+              {isWallet && (
                 <>
-                  <span>OR</span>
-                  <Typography variant="caption">
-                    Try again in{" "}
-                    <span style={{ color: "red" }}>{data?.timeOut || 0}</span>
+                  <Typography variant="subtitle2" sx={{ mt: 1 }}>
+                    Wallet Pin
                   </Typography>
+                  <TextField
+                    size="small"
+                    type="password"
+                    inputMode="numeric"
+                    placeholder="Enter 4‑digit pin"
+                    value={pin}
+                    onChange={(e) => {
+                      setPin(e.target.value);
+                      if (pinError) setPinError("");
+                    }}
+                    error={Boolean(pinError)}
+                    helperText={pinError}
+                    fullWidth
+                  />
                 </>
               )}
-              <Button onClick={handleGoBack}>Go Back</Button>
+
+              {!isValidAmount && (
+                <Alert severity="error" sx={{ my: 1 }}>
+                  Amount mismatch. Please start over.
+                </Alert>
+              )}
+
+              <LoadingButton
+                variant="contained"
+                onClick={handlePayment}
+                loading={paymentMutation.isLoading || guestMutation.isLoading}
+                disabled={!isValidAmount}
+                fullWidth
+                sx={{ mt: 2 }}
+              >
+                {paymentMutation.isLoading || guestMutation.isLoading
+                  ? "Processing..."
+                  : "Pay Now"}
+              </LoadingButton>
             </Stack>
-          ) : (
-            <>
-              <CustomDialogTitle
-                title="Payment Details"
-                subtitle="Overview of Payment Information"
-                onClose={!paymentMutate.isLoading ? handleClose : () => {}}
-              />
-              <DialogContent>
-                <Stack spacing={1} paddingY={2}>
-                  {searchParams.get("bulk") ? (
-                    <div
-                      style={{
-                        paddingBlock: "16px",
-                        borderBottom: "1px solid lightgray",
-                      }}
-                    >
-                      <Typography variant="caption">Recipients</Typography>
-                      {pricingList.map((item) => {
-                        return (
-                          <VoucherPlaceHolderItem
-                            key={item?.id}
-                            title={`${item?.type} (${item?.recipient})`}
-                            value={currencyFormatter(item?.price)}
-                          />
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <VoucherPlaceHolderItem
-                      title="Recipient Number"
-                      value={searchParams.get("recipient")}
-                    />
-                  )}
-                  {searchParams.get("plan_name") && (
-                    <VoucherPlaceHolderItem
-                      title="Bundle Type"
-                      value={searchParams.get("plan_name")}
-                    />
-                  )}
-                  {searchParams.get("plan_volume") && (
-                    <VoucherPlaceHolderItem
-                      title="Bundle Volume"
-                      value={searchParams.get("plan_volume")}
-                    />
-                  )}
-
-                  <VoucherPlaceHolderItem
-                    title="Amount"
-                    value={currencyFormatter(sessionStorage.getItem("value-x"))}
-                  />
-                  <VoucherPlaceHolderItem
-                    title="Payment Method"
-                    value={
-                      searchParams.get("preload") ===
-                      "3e6810ec81036d2f7088231351b3097b"
-                        ? "Wallet"
-                        : "Mobile Money"
-                    }
-                  />
-                  {searchParams.get("preload") !==
-                    "3e6810ec81036d2f7088231351b3097b" && (
-                    <VoucherPlaceHolderItem
-                      title="Mobile Number"
-                      value={searchParams.get("phonenumber")}
-                      img={
-                        <Avatar
-                          src={getCode(searchParams.get("phonenumber")).money}
-                          variant="square"
-                          sx={{ width: 40, height: 20, alignSelf: "center" }}
-                        />
-                      }
-                    />
-                  )}
-                  {searchParams.get("bulk") && (
-                    <VoucherPlaceHolderItem
-                      title="Email Address"
-                      value={searchParams.get("email")}
-                    />
-                  )}
-                </Stack>
-
-                {isWallet && (
-                  <Stack py={2}>
-                    <Typography variant="h6">Wallet Pin</Typography>
-
-                    <TextField
-                      size="small"
-                      type="password"
-                      inputMode="numeric"
-                      placeholder="Enter 4-digit pin"
-                      value={token}
-                      onChange={(e) => setToken(e.target.value)}
-                      error={Boolean(err)}
-                      helperText={err}
-                      margin="dense"
-                      sx={{ textAlign: "center", width: 100 }}
-                    />
-                  </Stack>
-                )}
-
-                <LoadingButton
-                  variant="contained"
-                  onClick={handlePayment}
-                  fullWidth
-                  loading={isLoading || paymentMutate.isLoading}
-                  sx={{ my: 2 }}
-                  disabled={
-                    Number(sessionStorage.getItem("value-x")) !==
-                    Number(searchParams.get("amount"))
-                  }
-                >
-                  {isLoading || paymentMutate.isLoading
-                    ? "Please Wait..."
-                    : " Pay"}
-                </LoadingButton>
-              </DialogContent>
-            </>
-          )}
+          </DialogContent>
         </>
       )}
     </Dialog>

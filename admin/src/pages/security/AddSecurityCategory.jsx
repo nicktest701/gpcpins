@@ -1,27 +1,29 @@
-import { useContext, useState } from 'react';
-import LoadingButton from '@mui/lab/LoadingButton';
-import Autocomplete from '@mui/material/Autocomplete';
-import Button from '@mui/material/Button';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogTitle from '@mui/material/DialogTitle';
-import InputAdornment from '@mui/material/InputAdornment';
-import Stack from '@mui/material/Stack';
-import TextField from '@mui/material/TextField';
-import Typography from '@mui/material/Typography';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Formik } from 'formik';
-import { CustomContext } from '../../context/providers/CustomProvider';
-import { postCategory } from '../../api/categoryAPI';
-import Transition from '../../components/Transition';
-import { globalAlertType } from '../../components/alert/alertType';
-import { CATEGORY } from '../../constants';
-import moment from 'moment';
-import CustomYearPicker from '../../components/inputs/CustomYearPicker';
-import { addWaecValidationSchema } from '../../config/validationSchema';
-import Compressor from 'compressorjs';
-import DOMPurify from 'dompurify';
+import { useContext, useRef, useState } from "react";
+import LoadingButton from "@mui/lab/LoadingButton";
+import Autocomplete from "@mui/material/Autocomplete";
+import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import InputAdornment from "@mui/material/InputAdornment";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Formik } from "formik";
+import { CustomContext } from "../../context/providers/CustomProvider";
+import { postCategory } from "../../api/categoryAPI";
+import Transition from "../../components/Transition";
+import { globalAlertType } from "../../components/alert/alertType";
+import { CATEGORY } from "../../constants";
+import moment from "moment";
+import CustomYearPicker from "../../components/inputs/CustomYearPicker";
+import { addWaecValidationSchema } from "../../config/validationSchema";
+import DOMPurify from "dompurify";
+import { Avatar, Box } from "@mui/material";
+import { CloudUpload } from "@mui/icons-material";
+import { uploadFile } from "@/lib/upload";
 
 const AddSecurityCategory = () => {
   //context
@@ -30,47 +32,61 @@ const AddSecurityCategory = () => {
 
   //state
   const [logo, setLogo] = useState(null);
-  const [voucherType, setVoucherType] = useState('');
-  const [year, setYear] = useState(moment().format('YYYY'));
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [voucherType, setVoucherType] = useState("");
+  const [year, setYear] = useState(moment().format("YYYY"));
+
+  // Upload file ref
+  const fileInputRef = useRef(null);
 
   const initialValues = {
-    category: 'security',
+    category: "security",
     voucherType,
     price: 0,
-    voucherURL: '',
+    voucherURL: "",
   };
 
-  const handleUploadFile = (e) => {
-    e.preventDefault();
-    if (e.target.files) {
-      const image = e.target.files[0];
+  // Upload logo
+  const handleUploadFile = async (e) => {
+    setLoading(true);
 
-      new Compressor(image, {
-        height: 200,
-        width: 200,
-        quality: 0.6,
+    try {
+      const file = e.target.files[0];
+      if (!file) return;
+      setLogo(file);
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = () => setLogoPreview(reader.result);
+      reader.readAsDataURL(file);
 
-        success(data) {
-          const reader = new FileReader();
-          reader.onload = function (event) {
-            const ImageURL = event.target.result;
-            setLogo(ImageURL);
-          };
-
-          reader.readAsDataURL(data);
+      // Actually upload to Firebase
+      const { downloadURL } = await uploadFile({
+        folder: "category",
+        file,
+        onProgress: (progress) => {
+          setProgress(progress);
         },
       });
+      setLogo(downloadURL); // store final URL
+    } catch (error) {
+      customDispatch(
+        globalAlertType("error", "Something went wrong. Please try again."),
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
   const { mutateAsync, isLoading } = useMutation({ mutationFn: postCategory });
   //
   const onSubmit = (values, option) => {
-    const isProtocolPresent = values.voucherURL?.includes('http');
+    const isProtocolPresent = values.voucherURL?.includes("http");
 
     const newCategory = {
-      category: values.category,
-      voucherType: values.voucherType,
+      type: values.category,
+      name: values.voucherType,
       price: DOMPurify.sanitize(values.price),
       details: {
         voucherURL: isProtocolPresent
@@ -86,14 +102,14 @@ const AddSecurityCategory = () => {
       onSettled: () => {
         option.setSubmitting(false);
 
-        queryClient.invalidateQueries(['category']);
+        queryClient.invalidateQueries(["category"]);
       },
       onSuccess: (data) => {
-        customDispatch(globalAlertType('info', data));
+        customDispatch(globalAlertType("info", data));
         handleClose();
       },
       onError: (error) => {
-        customDispatch(globalAlertType('error', error));
+        customDispatch(globalAlertType("error", error));
       },
     });
   };
@@ -101,10 +117,38 @@ const AddSecurityCategory = () => {
   //Close Add Category
   const handleClose = () => {
     customDispatch({
-      type: 'openAddSecurityCategory',
+      type: "openAddSecurityCategory",
       payload: { open: false },
     });
   };
+
+  // Preview logo if uploaded
+  const LogoPreview = () => (
+    <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 2 }}>
+      {logoPreview && (
+        <Avatar
+          src={logoPreview}
+          variant="rounded"
+          sx={{ width: 60, height: 60, objectFit: "contain" }}
+        />
+      )}
+      <Button
+        variant="outlined"
+        startIcon={<CloudUpload />}
+        onClick={() => fileInputRef.current?.click()}
+        size="small"
+      >
+        {logoPreview ? "Change Logo" : "Upload Logo"}
+      </Button>
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        accept=".png,.jpg,.jpeg,.webp"
+        onChange={handleUploadFile}
+      />
+    </Box>
+  );
 
   return (
     <Formik
@@ -116,7 +160,7 @@ const AddSecurityCategory = () => {
       {({ values, errors, touched, handleChange, handleSubmit }) => {
         return (
           <Dialog
-            maxWidth='xs'
+            maxWidth="xs"
             fullWidth
             TransitionComponent={Transition}
             open={customState.securityCategory.open}
@@ -124,76 +168,104 @@ const AddSecurityCategory = () => {
           >
             <DialogTitle>New Security Service </DialogTitle>
             <DialogContent>
-              <div>
-                <label htmlFor='cinema'>Upload Logo</label>
-                <input
-                  type='file'
-                  id='profile'
-                  accept='.png,.jpg,.jpeg,.webp'
-                  onChange={handleUploadFile}
-                />
-              </div>
+              {/* Logo Upload */}
+              <Box>
+                {loading && (
+                  <Box sx={{ width: "100%", mb: 1 }}>
+                    <Typography variant="caption" color="textSecondary">
+                      Uploading... {Math.round(progress)}%
+                    </Typography>
+                    <Box
+                      sx={{
+                        height: 4,
+                        width: "100%",
+                        bgcolor: "action.hover",
+                        borderRadius: 1,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          height: "100%",
+                          width: `${progress}%`,
+                          bgcolor: "primary.main",
+                          transition: "width 0.3s ease",
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                )}
+
+                <Typography variant="subtitle2" gutterBottom>
+                  Category Logo
+                </Typography>
+                <LogoPreview />
+              </Box>
+
               <Stack rowGap={2} paddingY={2}>
                 <Autocomplete
                   options={CATEGORY.security}
                   freeSolo
-                  noOptionsText='No option avaiable'
+                  noOptionsText="No option avaiable"
                   value={voucherType || null}
                   onInputChange={(e, value) => setVoucherType(value)}
                   isOptionEqualToValue={(option, value) => option === value}
                   renderInput={(props) => (
                     <TextField
                       {...props}
-                      label='Security Service'
+                      label="Security Service"
                       error={Boolean(touched.voucherType && errors.voucherType)}
                       helperText={touched.voucherType && errors.voucherType}
                     />
                   )}
                 />
 
-                <CustomYearPicker label='Year' year={year} setYear={setYear} />
+                <CustomYearPicker label="Year" year={year} setYear={setYear} />
                 <TextField
-                  type='number'
-                  inputMode='decimal'
-                  label='Price'
-                  placeholder='Price here'
+                  type="number"
+                  inputMode="decimal"
+                  label="Price"
+                  placeholder="Price here"
                   value={values.price}
-                  onChange={handleChange('price')}
+                  onChange={handleChange("price")}
                   error={Boolean(touched.price && errors.price)}
                   helperText={touched.price && errors.price}
                   InputProps={{
                     startAdornment: (
-                      <InputAdornment position='start'>
+                      <InputAdornment position="start">
                         <Typography>GHS</Typography>
                       </InputAdornment>
                     ),
                     endAdornment: (
-                      <InputAdornment position='end'>
+                      <InputAdornment position="end">
                         <Typography>p</Typography>
                       </InputAdornment>
                     ),
                   }}
                 />
                 <TextField
-                  type='url'
-                  inputMode='url'
-                  label='Security Service Website URL'
+                  type="url"
+                  inputMode="url"
+                  label="Security Service Website URL"
                   value={values.voucherURL}
-                  onChange={handleChange('voucherURL')}
+                  onChange={handleChange("voucherURL")}
                   error={Boolean(touched.voucherURL && errors.voucherURL)}
                   helperText={
                     errors.voucherURL
                       ? errors.voucherURL
-                      : 'eg. www.example.com'
+                      : "eg. www.example.com"
                   }
                 />
               </Stack>
             </DialogContent>
             <DialogActions sx={{ padding: 1 }}>
-              <Button onClick={handleClose}>Cancel</Button>
+              <Button onClick={handleClose} disabled={loading}>
+                Cancel
+              </Button>
               <LoadingButton
-                variant='contained'
+                variant="contained"
                 loading={isLoading}
+                disabled={loading}
                 onClick={handleSubmit}
               >
                 Add Voucher

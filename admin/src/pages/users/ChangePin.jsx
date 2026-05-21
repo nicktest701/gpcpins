@@ -3,7 +3,6 @@ import {
   Dialog,
   DialogContent,
   TextField,
-  Typography,
   Stack,
 } from "@mui/material";
 import DOMPurify from "dompurify";
@@ -15,9 +14,10 @@ import { globalAlertType } from "../../components/alert/alertType";
 import { CustomContext } from "../../context/providers/CustomProvider";
 import { AuthContext } from "../../context/providers/AuthProvider";
 import { verifyPin } from "../../config/validation";
-import { updateUserWalletPin } from "../../api/userAPI";
+
 
 import Swal from "sweetalert2";
+import { updateWalletPin } from "@/api/transactionAPI";
 
 function ChangePin() {
   const { user } = useContext(AuthContext);
@@ -30,8 +30,10 @@ function ChangePin() {
 
   //Change pin number
   const { mutateAsync: pinMutateAsync, isLoading: pinIsLoading } = useMutation({
-    mutationFn: updateUserWalletPin,
+    mutationFn: updateWalletPin,
   });
+
+
 
   const handleChangePin = () => {
     if (pin.trim() === "") {
@@ -46,11 +48,14 @@ function ChangePin() {
     const sanitizedPin = DOMPurify.sanitize(pin?.trim());
 
     const data = {
-      _id: id,
+      id: id,
       pin: sanitizedPin,
       userEmail: user?.email,
       isAdmin: true,
     };
+    // console.log(data);
+    // return
+
 
     Swal.fire({
       title: "Updating Wallet Pin",

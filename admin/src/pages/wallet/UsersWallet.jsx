@@ -1,4 +1,4 @@
-import {  Button, Box } from "@mui/material";
+import { Button, Box } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { ViewAgendaOutlined, WalletOutlined } from "@mui/icons-material";
 import _ from "lodash";
@@ -21,7 +21,7 @@ function UsersWallet() {
 
   const transactions = useQuery({
     queryKey: ["user_wallets"],
-    queryFn: () => AllUsersWallet(),
+    queryFn: AllUsersWallet,
     enabled: !!user?.id,
     initialData: [],
   });
@@ -29,7 +29,7 @@ function UsersWallet() {
   const openAddMoney = (data) => {
     setSearchParams((params) => {
       params.set("WujEuJWE", generateRandomCode(200));
-      params.set("rowID", data?._id);
+      params.set("rowID", data?.userId);
       params.set("type", "user");
       params.set("top-up-money", "true");
       return params;
@@ -64,57 +64,57 @@ function UsersWallet() {
         subtitle="Manage and View all the wallet top ups"
         icon={<WalletOutlined sx={{ width: 50, height: 50 }} color="primary" />}
       />
-    
-        <CustomizedMaterialTable
-          title="Wallet Balance"
-          isLoading={transactions.isLoading}
-          columns={columns}
-          data={transactions?.data}
-          onRefresh={transactions.refetch}
-          showExportButton={true}
-          search={true}
-          autocompleteComponent={
-            <Box
-              sx={{
-                width: "100%",
-                display: "flex",
-                flexDirection: { xs: "column", sm: "row" },
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 4,
-              }}
-            >
-              {user?.permissions?.includes("View user wallet Transaction") && (
-                <Button
-                  variant="contained"
-                  startIcon={<ViewAgendaOutlined />}
-                  onClick={openUserWalletTransactions}
-                  // sx={{ alignSelf: "flex-end" }}
-                >
-                  View Wallet Transactions
-                </Button>
-              )}
 
-              <CustomTotal
-                title="NUMBER OF WALLETS"
-                total={transactions?.data?.length}
-              />
-              <CustomTotal
-                title="total Amount"
-                total={currencyFormatter(
-                  _.sumBy(transactions?.data, (item) => Number(item?.amount))
-                )}
-              />
-            </Box>
-          }
-          options={{
-            exportAllData: true,
-            exportButton: user?.permissions?.includes(
-              "Export user wallet balance"
-            ),
-          }}
-        />
-   
+      <CustomizedMaterialTable
+        title="Wallet Balance"
+        isLoading={transactions.isLoading}
+        columns={columns}
+        data={transactions?.data}
+        onRefresh={transactions.refetch}
+        showExportButton={true}
+        search={true}
+        autocompleteComponent={
+          <Box
+            sx={{
+              width: "100%",
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            {user?.permissions?.includes("View user wallet Transaction") && (
+              <Button
+                variant="contained"
+                startIcon={<ViewAgendaOutlined />}
+                onClick={openUserWalletTransactions}
+                // sx={{ alignSelf: "flex-end" }}
+              >
+                View Wallet Transactions
+              </Button>
+            )}
+
+            <CustomTotal
+              title="NUMBER OF WALLETS"
+              total={transactions?.data?.length}
+            />
+            <CustomTotal
+              title="total Amount"
+              total={currencyFormatter(
+                _.sumBy(transactions?.data, (item) => Number(item?.amount)),
+              )}
+            />
+          </Box>
+        }
+        options={{
+          exportAllData: true,
+          exportButton: user?.permissions?.includes(
+            "Export user wallet balance",
+          ),
+        }}
+      />
+
       {/* <AddMoney /> */}
     </>
   );

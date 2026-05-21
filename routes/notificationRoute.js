@@ -9,14 +9,16 @@ const { verifyToken } = require("../middlewares/verifyToken");
 const verifyAgent = require("../middlewares/verifyAgent");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const verifyScanner = require("../middlewares/verifyScanner");
+const { safeJSON } = require("../config/helpers");
+const { parseDateRange } = require("../config/dateConfigs");
 
 router.get(
   "/",
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const { id, createdAt: modifiedAt } = req.user;
-    const { title } = req.query
+    const { id, created_at: modifiedAt } = req.user;
+    const { title } = req.query;
 
     let notification = [];
 
@@ -24,120 +26,324 @@ router.get(
       return res.status(400).json("Invalid Request!");
     }
     if (title) {
-      notification = await knex("notifications").where('title', title).select("*");
-
+      notification = await knex("notifications")
+        .where("title", title)
+        .select("*");
     } else {
       notification = await knex("notifications").select("*");
-      // const broadcastMessages = await knex("broadcast_messages")
-      //   .where("recipient", "Employees")
-      //   .select("*");
-
-      // notification = [
-      //   ...broadcastMessages,
-      //   ...allNotifications,
-      // ]
-
     }
 
-
-    notification.filter(({ createdAt }) => {
-      return moment(createdAt).isSameOrAfter(moment(modifiedAt));
+    notification.filter(({ created_at }) => {
+      return moment(created_at).isSameOrAfter(moment(modifiedAt));
     });
 
-    const notifications = _.orderBy(notification, "createdAt", "desc");
+    const notifications = _.orderBy(notification, "created_at", "desc");
 
     res.status(200).json(notifications);
-  })
+  }),
 );
 
 router.get(
   "/user",
   verifyToken,
   asyncHandler(async (req, res) => {
-    const { id, createdAt: modifiedAt } = req.user;
+    const { id: userId, createdAt: userCreatedAt } = req.user;
 
-    if (!isValidUUID2(id)) {
-      return res.status(400).json("Invalid Request!");
+    // ---------- VALIDATION ----------
+    if (!isValidUUID2(userId)) {
+      return res.status(400).json({ message: "Invalid user identifier" });
     }
-    const broadcastMessages = await knex("broadcast_messages")
+
+    // ---------- PAGINATION ----------
+    let { page = 1, limit = 50 } = req.query;
+    page = Math.max(1, Number(page) || 1);
+    limit = Math.min(Number(limit) || 50, 100); // enforce max 100 per page
+    const offset = (page - 1) * limit;
+
+    // ---------- DATE FILTER ----------
+    // Use the user's creation date as the lower bound for notifications
+    const startDate = moment(userCreatedAt).toDate();
+
+    // ---------- COUNT TOTAL ITEMS ----------
+    const [broadcastCount, notificationCount] = await Promise.all([
+      knex("broadcast_messages")
+        .where("recipient", "Customers")
+        .where("created_at", ">=", startDate)
+        .count("id as count")
+        .first(),
+
+      knex("notifications")
+        .where("user_id", userId)
+        .where("created_at", ">=", startDate)
+        .count("id as count")
+        .first(),
+    ]);
+
+    // const total =
+    //   (broadcastCount?.count || 0) + (notificationCount?.count || 0);
+    // const totalPages = Math.ceil(total / limit);
+
+    // ---------- UNION QUERY (PAGINATED) ----------
+    const broadcastSubquery = knex("broadcast_messages")
+      .select(
+        "id",
+        "type",
+        "title",
+        "body",
+        "info",
+        "link",
+        "photo",
+        "active",
+        "created_at",
+        "updated_at",
+        knex.raw("? as user_id", userId), // assign current user ID to broadcasts
+      )
       .where("recipient", "Customers")
-      .select("*");
+      .where("created_at", ">=", startDate);
 
-    const userNotifications = await knex("user_notifications")
-      .select("*")
-      .where("user_id", id);
+    const notificationsSubquery = knex("notifications")
+      .select(
+        "id",
+        "user_id",
+        "type",
+        "title",
+        "body",
+        "info",
+        "link",
+        "photo",
+        "active",
+        "created_at",
+        "updated_at",
+      )
+      .where("user_id", userId)
+      .where("created_at", ">=", startDate);
 
-    const recentNotifications = [
-      ...broadcastMessages,
-      ...userNotifications,
-    ].filter(({ createdAt }) =>
-      moment(createdAt).isSameOrAfter(moment(modifiedAt))
-    );
+    const unionQuery = knex
+      .unionAll([broadcastSubquery, notificationsSubquery])
+      .orderBy("created_at", "desc")
+      .offset(offset)
+      .limit(limit);
 
-    const notifications = _.orderBy(recentNotifications, "createdAt", "desc");
+    const results = await unionQuery;
 
+    // ---------- NORMALIZATION ----------
+    // Convert snake_case to camelCase and safely parse JSON info
+    const normalize = (item) => ({
+      id: item.id,
+      userId: item.user_id,
+      type: item.type,
+      title: item.title,
+      body: item.body,
+      info: item.info ? safeJSON(item.info) : null,
+      link: item.link,
+      photo: item.photo,
+      active: item.active,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    });
+
+    const notifications = results.map(normalize);
+
+    // ---------- RESPONSE ----------
     res.status(200).json(notifications);
-  })
+    // res.status(200).json({
+    //   data: notifications,
+    //   pagination: {
+    //     page,
+    //     limit,
+    //     total,
+    //     totalPages,
+    //   },
+    // });
+  }),
 );
 
 router.get(
   "/agent",
   verifyToken,
-  verifyAgent,
   asyncHandler(async (req, res) => {
-    const { id, createdAt: modifiedAt } = req.user;
+    const { id: userId, createdAt: userCreatedAt } = req.user;
 
-    if (!isValidUUID2(id)) {
-      return res.status(400).json("Invalid Request!");
+ 
+    // ---------- VALIDATION ----------
+    if (!isValidUUID2(userId)) {
+      return res.status(400).json({ message: "Invalid user identifier" });
     }
-    const broadcastMessages = await knex("broadcast_messages")
+
+    // ---------- DATE FILTER ----------
+    // Use the user's creation date as the lower bound for notifications
+    const { start: startDate } = parseDateRange(userCreatedAt, new Date());
+
+  
+    // ---------- UNION QUERY (PAGINATED) ----------
+    const broadcastSubquery = knex("broadcast_messages")
+      .select(
+        "id",
+        "type",
+        "title",
+        "body",
+        "info",
+        "link",
+        "photo",
+        "active",
+        "created_at",
+        "updated_at",
+        knex.raw("? as user_id", userId), // assign current user ID to broadcasts
+      )
       .where("recipient", "Customers")
-      .select("*");
+      .where("created_at", ">=", startDate);
 
-    const agentNotifications = await knex("agent_notifications")
-      .select("*")
-      .where("agent_id", id);
+    const notificationsSubquery = knex("notifications")
+      .select(
+        "id",
+        "type",
+        "title",
+        "body",
+        "info",
+        "link",
+        "photo",
+        "active",
+        "created_at",
+        "updated_at",
+        "user_id",
+      )
+      .where("user_id", userId)
+      .where("created_at", ">=", startDate);
 
-    const recentNotifications = [
-      ...broadcastMessages,
-      ...agentNotifications,
-    ].filter(({ createdAt }) =>
-      moment(createdAt).isSameOrAfter(moment(modifiedAt))
-    );
 
-    const notifications = _.orderBy(recentNotifications, "createdAt", "desc");
+    const unionQuery = knex
+      .unionAll([broadcastSubquery, notificationsSubquery])
+      .orderBy("created_at", "desc")
+      // .offset(offset)
+      // .limit(limit);
+
+    const results = await unionQuery;
+   
+
+    // ---------- NORMALIZATION ----------
+    // Convert snake_case to camelCase and safely parse JSON info
+    const normalize = (item) => ({
+      id: item.id,
+      userId: item.user_id,
+      type: item.type,
+      title: item.title,
+      body: item.body,
+      info: item.info ? safeJSON(item.info) : null,
+      link: item.link,
+      photo: item.photo,
+      active: item.active,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    });
+
+    const notifications = results.map(normalize);
+
+    // ---------- RESPONSE ----------
+
+  
     res.status(200).json(notifications);
-  })
+
+    // res.status(200).json({
+    //   data: notifications,
+    //   pagination: {
+    //     page,
+    //     limit,
+    //     total,
+    //     totalPages,
+    //   },
+    // });
+  }),
 );
+
 
 router.get(
   "/verifier",
   verifyToken,
-   verifyScanner,
   asyncHandler(async (req, res) => {
-    const { id, createdAt: modifiedAt } = req.user;
+    console.log(req.user)
+    const { id: userId, createdAt: userCreatedAt } = req.user;
 
-
-    if (!isValidUUID2(id)) {
-      return res.status(400).json("Invalid Request!");
+ 
+    // ---------- VALIDATION ----------
+    if (!isValidUUID2(userId)) {
+      return res.status(400).json({ message: "Invalid user identifier" });
     }
 
-    const verifierNotifications = await knex("verifier_notifications")
-      .select("*")
-      .where("verifier_id", id);
+    // ---------- DATE FILTER ----------
+    // Use the user's creation date as the lower bound for notifications
+    const { start: startDate } = parseDateRange(userCreatedAt, new Date());
+
+  
+    // ---------- UNION QUERY (PAGINATED) ----------
+    const broadcastSubquery = knex("broadcast_messages")
+      .select(
+        "id",
+        "type",
+        "title",
+        "body",
+        "info",
+        "link",
+        "photo",
+        "active",
+        "created_at",
+        "updated_at",
+        knex.raw("? as user_id", userId), // assign current user ID to broadcasts
+      )
+      .where("recipient", "Customers")
+      .where("created_at", ">=", startDate);
+
+    const notificationsSubquery = knex("notifications")
+      .select(
+        "id",
+        "type",
+        "title",
+        "body",
+        "info",
+        "link",
+        "photo",
+        "active",
+        "created_at",
+        "updated_at",
+        "user_id",
+      )
+      .where("user_id", userId)
+      .where("created_at", ">=", startDate);
 
 
+    const unionQuery = knex
+      .unionAll([broadcastSubquery, notificationsSubquery])
+      .orderBy("created_at", "desc")
+      // .offset(offset)
+      // .limit(limit);
 
-    const recentNotifications =
-      verifierNotifications.filter(({ createdAt }) =>
-        moment(createdAt).isSameOrAfter(moment(modifiedAt))
-      );
+    const results = await unionQuery;
+   
 
-    const notifications = _.orderBy(recentNotifications, "createdAt", "desc");
+    // ---------- NORMALIZATION ----------
+    // Convert snake_case to camelCase and safely parse JSON info
+    const normalize = (item) => ({
+      id: item.id,
+      userId: item.user_id,
+      type: item.type,
+      title: item.title,
+      body: item.body,
+      info: item.info ? safeJSON(item.info) : null,
+      link: item.link,
+      photo: item.photo,
+      active: item.active,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    });
+
+    const notifications = results.map(normalize);
+    console.log(notifications)
+
+    // ---------- RESPONSE ----------
     res.status(200).json(notifications);
-  })
-);
 
+ 
+  }),
+);
 
 
 router.get(
@@ -151,20 +357,19 @@ router.get(
 
     const notification = await knex("notifications")
       .select("*")
-      .where("_id", id)
+      .where("id", id)
       .limit(1);
 
     res.status(200).json(notification[0]);
-  })
+  }),
 );
-
 
 router.post(
   "/",
   asyncHandler(async (req, res) => {
     const newNotification = req.body;
     const notification = await knex("notifications").insert({
-      _id: generateId(),
+      id: generateId(),
       ...newNotification,
     });
 
@@ -172,32 +377,37 @@ router.post(
       return res.status(404).json("Error saving notification!");
     }
     res.status(201).json("Notification  saved!");
-  })
+  }),
 );
 
 router.post(
   "/verifier",
-  verifyToken, verifyScanner,
+  verifyToken,
+  verifyScanner,
   asyncHandler(async (req, res) => {
     const newNotification = req.body;
 
-    const verifiers = await knex('verifiers').where('active', true).select('_id');
+    const verifiers = await knex("verifiers")
+      .where("active", true)
+      .select("id");
 
-    const newInsertNotifications = verifiers.map(verifier => {
+    const newInsertNotifications = verifiers.map((verifier) => {
       return {
-        _id: generateId(),
-        verifier_id: verifier?._id,
-        ...newNotification
-      }
-    })
+        id: generateId(),
+        verifier_id: verifier?.id,
+        ...newNotification,
+      };
+    });
 
-    const notification = await knex("verifier_notifications").insert(newInsertNotifications);
+    const notification = await knex("verifier_notifications").insert(
+      newInsertNotifications,
+    );
 
     if (_.isEmpty(notification)) {
       return res.status(404).json("Error saving notification!");
     }
     res.status(201).json("Notification  saved!");
-  })
+  }),
 );
 
 router.put(
@@ -205,28 +415,39 @@ router.put(
   asyncHandler(async (req, res) => {
     const { ids } = req.body;
 
-
     if (ids) {
-
       await knex("notifications")
-        .where("_id", "IN", ids)
+        .where("id", "IN", ids)
         .update({ active: false });
       await knex("broadcast_messages")
-        .where("_id", "IN", ids)
+        .where("id", "IN", ids)
         .update({ active: false });
     } else {
-      await knex("broadcast_messages")
-        .update({ active: false });
-      await knex("notifications")
-        .update({ active: false });
-
+      await knex("broadcast_messages").update({ active: false });
+      await knex("notifications").update({ active: false });
     }
 
-
     res.sendStatus(204);
-  })
+  }),
 );
 
+//Mark all verifier notifications as read
+router.put(
+  "/mark-all-read",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+
+
+    const { ids } = req.body;
+
+    await knex("notifications")
+      .where("user_id",id)
+      .update({ active: false });
+
+    res.sendStatus(204);
+  }),
+);
 
 //Mark user notifications as read
 router.put(
@@ -235,13 +456,10 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = req.user;
 
-    await knex("user_notifications")
-      .where("user_id", id)
-      .update({ active: false });
-
+    await knex("notifications").where("user_id", id).update({ active: false });
 
     res.sendStatus(204);
-  })
+  }),
 );
 
 //Mark agent notifications as read
@@ -250,53 +468,45 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = req.user;
 
-    await knex("agent_notifications")
-      .where("agent_id", id)
+    await knex("notifications")
+      .where("user_id", id)
       .update({ active: false });
 
-
     res.sendStatus(204);
-  })
+  }),
 );
 
 
 //Mark all verifier notifications as read
 router.put(
   "/verifier",
-  verifyToken, verifyScanner,
+  verifyToken,
+  verifyScanner,
   asyncHandler(async (req, res) => {
-    const { ids } = req.body
-
+    const { ids } = req.body;
 
     await knex("verifier_notifications")
-      .where("_id", "IN", ids)
+      .where("id", "IN", ids)
       .update({ active: false });
 
     res.sendStatus(204);
-  })
+  }),
 );
-
 
 
 //Mark agent notifications as read
 router.put(
   "/verifier/remove",
-  verifyToken, verifyScanner,
+  verifyToken,
+  verifyScanner,
   asyncHandler(async (req, res) => {
-    const { ids } = req.body
+    const { ids } = req.body;
 
-
-    await knex("verifier_notifications")
-      .where("_id", "IN", ids)
-      .del();
-
+    await knex("verifier_notifications").where("id", "IN", ids).del();
 
     res.sendStatus(204);
-  })
+  }),
 );
-
-
-
 
 // Delete a notification
 router.delete(
@@ -304,17 +514,15 @@ router.delete(
   asyncHandler(async (req, res) => {
     const { id, all } = req.body;
 
-
     if (all && !_.isEmpty(all)) {
-      await knex("notifications").where("_id", "IN", all).del();
+      await knex("notifications").where("id", "IN", all).del();
     } else {
-      await knex("notifications").where("_id", id).del();
+      await knex("notifications").where("id", id).del();
     }
 
     res.status(200).json("Notifications removed!");
-  })
+  }),
 );
-
 
 router.delete(
   "/user",
@@ -322,16 +530,14 @@ router.delete(
   asyncHandler(async (req, res) => {
     const { id } = req.user;
 
-    notification = await knex("user_notifications").where("user_id", id).del();
+    notification = await knex("notifications").where("user_id", id).del();
 
     if (!notification) {
       return res.status(404).json("Error removing notifications!");
     }
     res.status(200).json("Notifications removed!");
-  })
+  }),
 );
-
-
 
 router.delete(
   "/agent",
@@ -339,13 +545,11 @@ router.delete(
   asyncHandler(async (req, res) => {
     const { id } = req.user;
 
-    await knex("agent_notifications").where("agent_id", id).del();
-
+    await knex("notifications").where("user_id", id).del();
 
     res.status(200).json("Notifications removed!");
-  })
+  }),
 );
-
 
 router.delete(
   "/agent",
@@ -355,12 +559,9 @@ router.delete(
 
     await knex("verifier_notifications").where("verifier_id", id).del();
 
-
     res.status(200).json("Notifications removed!");
-  })
+  }),
 );
-
-
 
 router.delete(
   "/user/:id",
@@ -368,15 +569,14 @@ router.delete(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    notification = await knex("user_notifications").where("_id", id).del();
+    notification = await knex("notifications").where("id", id).del();
 
     if (!notification) {
       return res.status(404).json("Error removing notification!");
     }
     res.status(200).json("Notification removed!");
-  })
+  }),
 );
-
 
 router.delete(
   "/agent/:id",
@@ -384,18 +584,13 @@ router.delete(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    notification = await knex("agent_notifications").where("_id", id).del();
+    notification = await knex("notifications").where("id", id).del();
 
     if (!notification) {
       return res.status(404).json("Error removing notification!");
     }
     res.status(200).json("Notification removed!");
-  })
+  }),
 );
-
-
-
-
-
 
 module.exports = router;

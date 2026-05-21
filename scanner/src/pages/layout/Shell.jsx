@@ -16,8 +16,8 @@ import ManageTickets from "../tickets/ManageTickets";
 
 const Layout = lazy(() => import("./Layout"));
 const EVoucher = lazy(() => import("../evoucher/EVoucher"));
-const CategoryDetails = lazy(() =>
-  import("../../components/tabs/CategoryDetails")
+const CategoryDetails = lazy(
+  () => import("../../components/tabs/CategoryDetails"),
 );
 const VerifierAssignedTickets = lazy(() => import("../verifiers"));
 const Voucher = lazy(() => import("../evoucher/add/Voucher"));
@@ -26,17 +26,17 @@ const Summary = lazy(() => import("../summary"));
 const Profile = lazy(() => import("../profile"));
 const Personal = lazy(() => import("../profile/Personal"));
 const Updates = lazy(() => import("../profile/Updates"));
-const ViewEmployees = lazy(() => import("../workers/ViewEmployees"));
-const ViewEmployee = lazy(() => import("../workers/ViewEmployee"));
+const ViewVerifiers = lazy(() => import("../workers/ViewVerifiers"));
+const ViewVerifier = lazy(() => import("../workers/ViewVerifier"));
 const NewEmployee = lazy(() => import("../workers/NewEmployee"));
 const UpdateVerifier = lazy(() => import("../workers/UpdateVerifier"));
 const Tickets = lazy(() => import("../tickets"));
 const AssignTicket = lazy(() => import("../tickets/AssignTicket"));
-const AssignedTicketDetails = lazy(() =>
-  import("../tickets/AssignedTicketDetails")
+const AssignedTicketDetails = lazy(
+  () => import("../tickets/AssignedTicketDetails"),
 );
-const TicketAssignmentPage = lazy(() =>
-  import("../tickets/TicketAssignmentPage")
+const TicketAssignmentPage = lazy(
+  () => import("../tickets/TicketAssignmentPage"),
 );
 
 const Notification = lazy(() => import("../notifications"));
@@ -56,7 +56,7 @@ function Shell() {
 
     const handleOffline = () => {
       customDispatch(
-        globalAlertType("error", "Internet Connection Lost! Try reconnecting.")
+        globalAlertType("error", "Internet Connection Lost! Try reconnecting."),
       );
     };
 
@@ -91,13 +91,21 @@ function Shell() {
           {/* Evoucher */}
 
           <Route
-            path="evoucher"
+            path="tickets"
             element={
               <Suspense fallback={<PayLoading />}>
                 <EVoucher />
               </Suspense>
             }
           >
+            <Route
+              index
+              element={
+                <Suspense fallback={<PayLoading />}>
+                  <ManageTickets />
+                </Suspense>
+              }
+            />
             <Route
               path=":category"
               element={
@@ -175,7 +183,7 @@ function Shell() {
               index
               element={
                 <Suspense fallback={<PayLoading />}>
-                  <ViewEmployees />
+                  <ViewVerifiers />
                 </Suspense>
               }
             />
@@ -192,12 +200,12 @@ function Shell() {
               path=":id"
               element={
                 <Suspense fallback={<PayLoading />}>
-                  <ViewEmployee />
+                  <ViewVerifier />
                 </Suspense>
               }
             />
             <Route
-              path=":id/ticket-details/:ticketId"
+              path=":id/scan-history/:ticketId"
               element={
                 <Suspense fallback={<PayLoading />}>
                   <AssignedTicketDetails />
@@ -212,7 +220,6 @@ function Shell() {
                 </Suspense>
               }
             />
-     
           </Route>
 
           {/* Summary  */}

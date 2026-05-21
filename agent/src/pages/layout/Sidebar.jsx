@@ -51,7 +51,10 @@ function Sidebar() {
     refetchOnMount: false,
     refetchOnReconnect: false,
     refetchOnWindowFocus: false,
-    initial: queryClient?.getQueryData(["notifications"]),
+    initialData: queryClient?.getQueryData(["notifications"]),
+        retry: 1,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+
   });
 
   useEffect(() => {

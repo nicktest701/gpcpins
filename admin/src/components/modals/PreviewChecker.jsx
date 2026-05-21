@@ -12,7 +12,7 @@ import _ from "lodash";
 import Swal from "sweetalert2";
 import { CustomContext } from "../../context/providers/CustomProvider";
 import PropTypes from "prop-types";
-import MaterialTable from "material-table";
+import MaterialTable from "@material-table/core";
 import { tableIcons } from "../../config/tableIcons";
 import { useParams, useSearchParams } from "react-router-dom";
 import CustomDialogTitle from "../dialogs/CustomDialogTitle";
@@ -149,7 +149,7 @@ function PreviewChecker() {
                 title: "Seat",
                 field: "id",
                 hidden: category !== "bus",
-                render: (rowData) => parseInt(rowData?.id) + 1,
+                render: (rowData) => parseInt(rowData?.id),
               },
               {
                 title: "Type",
