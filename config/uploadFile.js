@@ -91,20 +91,22 @@ async function uploadToFirebase({
     });
 
     throw new Error("File upload failed");
-  } finally {
-    //
-    // ALWAYS CLEAN TEMP FILE
-    //
-    try {
-      if (fs.existsSync(localFilePath)) {
-        await fsPromises.unlink(localFilePath);
-
-        // console.log("Temporary file deleted:", localFilePath);
-      }
-    } catch (cleanupError) {
-      console.error("Cleanup Error:", cleanupError.message);
-    }
   }
+
+  // finally {
+  //   //
+  //   // ALWAYS CLEAN TEMP FILE
+  //   //
+  //   try {
+  //     if (fs.existsSync(localFilePath)) {
+  //       await fsPromises.unlink(localFilePath);
+
+  //       // console.log("Temporary file deleted:", localFilePath);
+  //     }
+  //   } catch (cleanupError) {
+  //     console.error("Cleanup Error:", cleanupError.message);
+  //   }
+  // }
 }
 
 /**
@@ -149,7 +151,6 @@ async function uploadVoucherFile(fileName) {
     fileName,
     localDirectory: "vouchers",
     storageDirectory: "gpcpins/vouchers",
-    makePublic: true,
     metadata: {
       type: "voucher",
     },
@@ -166,7 +167,6 @@ async function uploadReceiptFile(fileName) {
     fileName,
     localDirectory: "receipts",
     storageDirectory: "gpcpins/receipts",
-    makePublic: true,
     metadata: {
       type: "receipt",
     },
@@ -207,7 +207,6 @@ async function uploadAttachment(file) {
     fileName: file.filename,
     localDirectory: "images/attachments",
     storageDirectory: "gpcpins/attachments",
-    makePublic: true,
     metadata: {
       type: "attachment",
     },

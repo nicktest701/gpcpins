@@ -51,7 +51,7 @@ function UniversityForms() {
 
   const onSubmit = (values) => {
     const paymentInfo = {
-      category: values?.category,
+      category: values?.type,
       categoryId: values?.categoryType?.id,
       voucherName: values?.categoryType?.name,
       price: values?.categoryType?.price,

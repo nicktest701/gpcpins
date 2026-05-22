@@ -164,7 +164,7 @@
 
                                 <small class="title">Ticket No.</small>
                                 <p class="value">
-                                    <%= voucher?._id %>
+                                    <%= voucher?.id %>
                                 </p>
                             </div>
                         </div>
@@ -218,10 +218,10 @@
 
 
                 <div class="qrbox">
-                    <p style="font-style: italic; text-align: center;"> <%= _id %></p>
+                    <p style="font-style: italic; text-align: center;"> <%= id %></p>
                     <img src=<%=voucher?.qrCode %>
                     alt="code">
-                    <p style="font-style: italic; text-align: center;"> <%= voucher?._id %></p>
+                    <p style="font-style: italic; text-align: center;"> <%= voucher?.id %></p>
                 </div>
 
             </div>
