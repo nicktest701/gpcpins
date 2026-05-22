@@ -1,31 +1,26 @@
-// Import the functions you need from the SDKs you need
-const { initializeApp } = require('firebase/app');
-const { getStorage } = require('firebase/storage');
 
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+//
+// -----------------------------------------------------------------------------
+// FIREBASE ADMIN INITIALIZATION
+// -----------------------------------------------------------------------------
+const admin = require("firebase-admin");
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: process.env.apiKey,
-  authDomain: process.env.authDomain,
-  projectId: process.env.projectId,
-  storageBucket: process.env.storageBucket,
-  messagingSenderId: process.env.messagingSenderId,
-  appId: process.env.appId,
-  measurementId: process.env.measurementId,
-};
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+    }),
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-// const analytics = getAnalytics(app);
-// const firestore = getFirestore(firebaseApp);
-const storage = getStorage(app);
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+  });
+}
+
+const bucket = admin.storage().bucket();
+const app = admin.app();
 
 module.exports = {
   app,
-  //   analytics,
-  storage,
-  //   firestore,
-}
+  storage: bucket,
+};

@@ -207,8 +207,6 @@ router.post(
       ...rest
     } = req.body;
 
-   
-
     try {
       const body = `<div>
       <h1 style='text-transform:uppercase;'> Application to Become an Agent</h1><br/>
@@ -805,7 +803,6 @@ router.post(
     }
 
     const result = await verifyOTP(id, Number(token));
-   
 
     if (!result.success) {
       return res.status(400).json("Invalid Code");
@@ -836,7 +833,7 @@ router.post(
       profile: user?.profile,
       active: Boolean(user?.active),
       createdAt: user?.created_at,
-      permissions:safeJSON(user.permissions),
+      permissions: safeJSON(user.permissions),
     };
 
     if (user?.role === process.env.ADMIN_ID) {
@@ -890,8 +887,6 @@ router.post(
       refreshToken,
       accessToken,
     });
-
-
   }),
 );
 

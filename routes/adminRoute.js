@@ -352,7 +352,7 @@ router.put(
       url = await uploadPhoto(req.file);
     }
 
-    const user = await knex("users").where("_id", id).update({ profile: url });
+    const user = await knex("users").where("id", id).update({ profile: url });
 
     if (user !== 1) {
       return res.status(404).json("An unknown error has occurred!");
@@ -376,7 +376,7 @@ router.delete(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const { id: _id } = req.user;
+    const { id: USERID } = req.user;
     const { id } = req.params;
 
     if (!isValidUUID2(id)) {
@@ -391,7 +391,7 @@ router.delete(
 
     //logs
     await knex("activity_logs").insert({
-      user_id: _id,
+      user_id: USERID,
       title: "Deleted an user account!",
       severity: "error",
     });

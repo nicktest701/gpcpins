@@ -36,7 +36,6 @@ async function verifyOTP(
   const key = `${OTP_PREFIX}:${userId}`;
   const attemptsKey = `${ATTEMPT_PREFIX}:${userId}`;
 
-
   const storedOTP = await redis.get(key);
 
   if (!storedOTP) {
@@ -49,10 +48,9 @@ async function verifyOTP(
     return { success: false, message: "Too many attempts" };
   }
 
-  if (storedOTP !== otp.toString()) {
+  if (storedOTP.toString() !== otp.toString()) {
     await redis.incr(attemptsKey);
     await redis.expire(attemptsKey, OTP_TTL);
-
 
     return { success: false, message: "Invalid OTP" };
   }

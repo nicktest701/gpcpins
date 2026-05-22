@@ -1,23 +1,23 @@
 const nodemailer = require("nodemailer");
 const { resendMailText } = require("./mailText");
-const { Resend } = require("resend");
+// const { Resend } = require("resend");
 const { thankYouText } = (require = require("./mailText"));
 
-// const transportMail = nodemailer.createTransport({
-//   host: process.env.MAIL_CLIENT_SERVICE,
-//   port: 465,
-//   secure: true,
-//   auth: {
-//     user: process.env.MAIL_CLIENT_USER,
-//     pass: process.env.MAIL_CLIENT_PASS,
-//   },
-//   connectionTimeout: 15000,
-//   tls: {
-//     rejectUnauthorized: false,
-//   },
-// });
+const transportMail = nodemailer.createTransport({
+  host: process.env.MAIL_CLIENT_SERVICE,
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.MAIL_CLIENT_USER,
+    pass: process.env.MAIL_CLIENT_PASS,
+  },
+  connectionTimeout: 15000,
+  tls: {
+    rejectUnauthorized: false,
+  },
+});
 
-const resend = new Resend(process.env.MAIL_RESEND_API_KEY);
+// const resend = new Resend(process.env.MAIL_RESEND_API_KEY);
 
 const sendMail = async (transaction_id, email_address) => {
   if (process.env.NODE_ENV !== "production") return true;
@@ -37,11 +37,11 @@ const sendMail = async (transaction_id, email_address) => {
     ],
   };
   try {
-    // const mailResult = await transportMail.sendMail(mailOptions);
-    const mailResult = await resend.emails.send({
-      ...mailOptions,
-      from: process.env.MAIL_CLIENT_USER,
-    });
+    const mailResult = await transportMail.sendMail(mailOptions);
+    // const mailResult = await resend.emails.send({
+    //   ...mailOptions,
+    //   from: process.env.MAIL_CLIENT_USER,
+    // });
     return mailResult.data;
   } catch (error) {
     console.log(error);
@@ -70,11 +70,11 @@ const sendTicketMail = async (
     ],
   };
   try {
-    // const mailResult = await transportMail.sendMail(mailOptions);
-    const mailResult = await resend.emails.send({
-      ...mailOptions,
-      from: process.env.MAIL_CLIENT_USER,
-    });
+    const mailResult = await transportMail.sendMail(mailOptions);
+    // const mailResult = await resend.emails.send({
+    //   ...mailOptions,
+    //   from: process.env.MAIL_CLIENT_USER,
+    // });
     return mailResult.data;
   } catch (error) {
     // throw error.message;
@@ -98,11 +98,11 @@ const resendReceiptMail = async (
     html: resendMailText(transaction_id, downloadLink),
   };
   try {
-    // const mailResult = await transportMail.sendMail(mailOptions);
-    const mailResult = await resend.emails.send({
-      ...mailOptions,
-      from: process.env.MAIL_CLIENT_USER,
-    });
+    const mailResult = await transportMail.sendMail(mailOptions);
+    // const mailResult = await resend.emails.send({
+    //   ...mailOptions,
+    //   from: process.env.MAIL_CLIENT_USER,
+    // });
     return mailResult.data;
   } catch (error) {
     console.log(error);
@@ -133,11 +133,11 @@ const sendReportMail = async (
     ],
   };
   try {
-    // const mailResult = await transportMail.sendMail(mailOptions);
-    const mailResult = await resend.emails.send({
-      ...mailOptions,
-      from: process.env.MAIL_CLIENT_USER,
-    });
+    const mailResult = await transportMail.sendMail(mailOptions);
+    // const mailResult = await resend.emails.send({
+    //   ...mailOptions,
+    //   from: process.env.MAIL_CLIENT_USER,
+    // });
     return mailResult.data;
   } catch (error) {
     console.log(error);

@@ -244,7 +244,9 @@ router.get(
         res.status(200).json({ id: id, downloadLink });
 
         if (email) {
-          await sendTicketMail(id, email, modifiedVoucher[0]?.voucherType);
+          setImmediate(async () => {
+            await sendTicketMail(id, email, modifiedVoucher[0]?.voucherType);
+          });
         }
 
         // await sendWhatsappMessage({
@@ -667,7 +669,6 @@ router.get(
   asyncHandler(async (req, res) => {
     const id = req.params.id;
     const type = req.query.type;
-
 
     await knex("payments").where({ id: id }).update({
       status: "failed",

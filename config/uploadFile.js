@@ -1,126 +1,266 @@
-const { ref, uploadBytes, getDownloadURL } = require("firebase/storage");
-const fs = require("fs");
-const path = require("path");
+// utils/uploadFiles.js
 
+const fs = require("fs");
+const fsPromises = require("fs/promises");
+const path = require("path");
+const mime = require("mime-types");
 const { storage } = require("../firebase");
 
-async function uploadVoucherFile(fileName) {
+//
+// -----------------------------------------------------------------------------
+// HELPERS
+// -----------------------------------------------------------------------------
 
-
-  const filePath = path.join(process.cwd(), "/vouchers/", fileName);
-  const file = fs.readFileSync(filePath);
-
-  // if (process.env.NODE_ENV !== 'production') return filePath
-
-  const storageRef = ref(storage, `vouchers/${fileName}`);
-
+/**
+ * Validate file existence
+ */
+async function validateFile(filePath) {
   try {
-    // Upload the file to Cloud Storage
-    await uploadBytes(storageRef, file);
-    // Get the download URL of the uploaded file
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
+    await fsPromises.access(filePath, fs.constants.F_OK);
   } catch (error) {
-    console.error("Error uploading file to Cloud Storage", error);
+    throw new Error(`File does not exist: ${filePath}`);
   }
 }
+
+/**
+ * Upload file to Firebase Storage
+ */
+async function uploadToFirebase({
+  localFilePath,
+  destination,
+  makePublic = false,
+  metadata = {},
+}) {
+  try {
+    await validateFile(localFilePath);
+
+    const contentType =
+      mime.lookup(localFilePath) || "application/octet-stream";
+
+    const uploadResponse = await storage.upload(localFilePath, {
+      destination,
+
+      resumable: false,
+
+      metadata: {
+        contentType,
+        cacheControl: "public, max-age=31536000",
+
+        metadata: {
+          uploadedAt: new Date().toISOString(),
+          ...metadata,
+        },
+      },
+    });
+
+    const uploadedFile = uploadResponse[0];
+
+    //
+    // OPTIONAL: MAKE FILE PUBLIC
+    //
+    if (makePublic) {
+      await uploadedFile.makePublic();
+
+      return `https://storage.googleapis.com/${storage.name}/${destination}`;
+      // return {
+      //   success: true,
+      //   url: `https://storage.googleapis.com/${storage.name}/${destination}`,
+      //   path: destination,
+      // };
+    }
+
+    //
+    // SIGNED URL
+    //
+    const [signedUrl] = await uploadedFile.getSignedUrl({
+      action: "read",
+      expires: "03-01-2500",
+    });
+    return signedUrl;
+
+    // return {
+    //   success: true,
+    //   url: signedUrl,
+    //   path: destination,
+    // };
+  } catch (error) {
+    console.error("Firebase Upload Error:", {
+      message: error.message,
+      stack: error.stack,
+      destination,
+    });
+
+    throw new Error("File upload failed");
+  } finally {
+    //
+    // ALWAYS CLEAN TEMP FILE
+    //
+    try {
+      if (fs.existsSync(localFilePath)) {
+        await fsPromises.unlink(localFilePath);
+
+        // console.log("Temporary file deleted:", localFilePath);
+      }
+    } catch (cleanupError) {
+      console.error("Cleanup Error:", cleanupError.message);
+    }
+  }
+}
+
+/**
+ * Generic uploader
+ */
+async function uploadFile({
+  fileName,
+  localDirectory,
+  storageDirectory,
+  makePublic = false,
+  metadata = {},
+}) {
+  if (!fileName) {
+    throw new Error("fileName is required");
+  }
+
+  const sanitizedFileName = path.basename(fileName);
+
+  const localFilePath = path.join(
+    process.cwd(),
+    localDirectory,
+    sanitizedFileName,
+  );
+
+  const destination = path.posix.join(storageDirectory, sanitizedFileName);
+
+  return uploadToFirebase({
+    localFilePath,
+    destination,
+    makePublic,
+    metadata,
+  });
+}
+
+//
+// -----------------------------------------------------------------------------
+// VOUCHERS
+// -----------------------------------------------------------------------------
+
+async function uploadVoucherFile(fileName) {
+  return uploadFile({
+    fileName,
+    localDirectory: "vouchers",
+    storageDirectory: "gpcpins/vouchers",
+    makePublic: true,
+    metadata: {
+      type: "voucher",
+    },
+  });
+}
+
+//
+// -----------------------------------------------------------------------------
+// RECEIPTS
+// -----------------------------------------------------------------------------
 
 async function uploadReceiptFile(fileName) {
-
-
-
-  const filePath = path.join(process.cwd(), "/receipts/", fileName);
-  const file = fs.readFileSync(filePath);
-
-  // if (process.env.NODE_ENV !== 'production') return filePath
-
-  const storageRef = ref(storage, `receipts/${fileName}`);
-
-  try {
-    // Upload the file to Cloud Storage
-    await uploadBytes(storageRef, file);
-    // Get the download URL of the uploaded file
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
-  } catch (error) {
-    console.error("Error uploading file to Cloud Storage", error);
-  }
+  return uploadFile({
+    fileName,
+    localDirectory: "receipts",
+    storageDirectory: "gpcpins/receipts",
+    makePublic: true,
+    metadata: {
+      type: "receipt",
+    },
+  });
 }
+
+//
+// -----------------------------------------------------------------------------
+// PHOTOS
+// -----------------------------------------------------------------------------
 
 async function uploadPhoto(file) {
-
-  const filePath = path.join(process.cwd(), "/images/", file?.filename);
-
-  // if (process.env.NODE_ENV !== 'production') return filePath
-
-
-  const storageRef = ref(storage, `photos/${file.filename}`);
-
-  try {
-    // Upload the file to Cloud Storage
-    await uploadBytes(storageRef, fs.readFileSync(filePath));
-
-    // Get the download URL of the uploaded file
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
-  } catch (error) {
-    console.error("Error uploading file to Cloud Storage", error);
+  if (!file?.filename) {
+    throw new Error("Invalid photo file");
   }
+
+  return uploadFile({
+    fileName: file.filename,
+    localDirectory: "images",
+    storageDirectory: "gpcpins/photos",
+    metadata: {
+      type: "photo",
+    },
+  });
 }
 
-
-
-
+//
+// -----------------------------------------------------------------------------
+// ATTACHMENTS
+// -----------------------------------------------------------------------------
 
 async function uploadAttachment(file) {
-  const filePath = path.join(process.cwd(), "/images/attachments/", file?.filename);
-
-
-  // if (process.env.NODE_ENV !== 'production') return filePath
-
-
-  const storageRef = ref(storage, `attachments/${file.filename}`);
-
-  try {
-    // Upload the file to Cloud Storage
-    await uploadBytes(storageRef, fs.readFileSync(filePath));
-
-    // Get the download URL of the uploaded file
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
-  } catch (error) {
-    console.error("Error uploading file to Cloud Storage", error);
+  if (!file?.filename) {
+    throw new Error("Invalid attachment file");
   }
+
+  return uploadFile({
+    fileName: file.filename,
+    localDirectory: "images/attachments",
+    storageDirectory: "gpcpins/attachments",
+    makePublic: true,
+    metadata: {
+      type: "attachment",
+    },
+  });
 }
 
-
-
-
-
+//
+// -----------------------------------------------------------------------------
+// CUSTOM FILES
+// -----------------------------------------------------------------------------
 
 async function uploadFiles(filename, location) {
-  const filePath = path.join(process.cwd(), `/${location}/`, filename);
+  if (!filename || !location) {
+    throw new Error("filename and location are required");
+  }
 
-  // if (process.env.NODE_ENV !== 'production') return filePath
+  return uploadFile({
+    fileName: filename,
+    localDirectory: location,
+    storageDirectory: location,
+  });
+}
 
-  const storageRef = ref(storage, `${location}/${filename}`);
+//
+// -----------------------------------------------------------------------------
+// DELETE FILE
+// -----------------------------------------------------------------------------
 
+async function deleteFile(storagePath) {
   try {
-    // Upload the file to Cloud Storage
-    await uploadBytes(storageRef, fs.readFileSync(filePath));
+    await storage.file(storagePath).delete();
 
-    // Get the download URL of the uploaded file
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
+    return {
+      success: true,
+      message: "File deleted successfully",
+    };
   } catch (error) {
-    console.error("Error uploading file to Cloud Storage", error);
+    console.error("Delete File Error:", error);
+
+    throw new Error("Failed to delete file");
   }
 }
 
+//
+// -----------------------------------------------------------------------------
+// EXPORTS
+// -----------------------------------------------------------------------------
+
 module.exports = {
-  uploadReceiptFile,
   uploadVoucherFile,
+  uploadReceiptFile,
   uploadPhoto,
   uploadAttachment,
   uploadFiles,
+  deleteFile,
 };

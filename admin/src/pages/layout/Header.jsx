@@ -19,17 +19,16 @@ import {
   Menu as MenuIcon,
   NavigateNext,
 } from "@mui/icons-material";
-import Menu from "@mui/material/Menu";
 import Swal from "sweetalert2";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { IMAGES } from "../../constants";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import { getInitials } from "../../config/validation";
-import { AuthContext } from "../../context/providers/AuthProvider";
-import ActionMenu from "../../components/menu/ActionMenu";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getAllNotifications } from "../../api/notificationAPI";
-import NotificationDrawer from "../../components/dropdowns/NotificationDrawer";
+import { IMAGES } from "@/constants";
+import { CustomContext } from "@/context/providers/CustomProvider";
+import { getInitials } from "@/config/validation";
+import {  useAuth } from "@/context/providers/AuthProvider";
+import ActionMenu from "@/components/menu/ActionMenu";
+import { useQuery } from "@tanstack/react-query";
+import { getAllNotifications } from "@/api/notificationAPI";
+import NotificationDrawer from "@/components/dropdowns/NotificationDrawer";
 
 // Helper: generate breadcrumb items from current pathname
 const useBreadcrumbs = () => {
@@ -38,29 +37,29 @@ const useBreadcrumbs = () => {
     const paths = pathname.split("/").filter(Boolean);
     return paths.map((segment, index) => {
       const url = `/${paths.slice(0, index + 1).join("/")}`;
-      const label = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " ");
+      const label =
+        segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " ");
       return { label, url };
     });
   }, [pathname]);
 };
 
-const ITEM_HEIGHT = 48;
-
 function Header() {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout } = useAuth();
   const { pathname } = useLocation();
   const {
     customState: { openSidebar },
     customDispatch,
   } = useContext(CustomContext);
-  const queryClient = useQueryClient();
+
   const theme = useTheme();
   const navigate = useNavigate();
 
   const [photo, setPhoto] = useState(null);
   const [shadow, setShadow] = useState("none");
   const [anchorEl, setAnchorEl] = useState(null);
-  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
+  const [showNotificationDropdown, setShowNotificationDropdown] =
+    useState(false);
 
   const breadcrumbs = useBreadcrumbs();
 
@@ -70,13 +69,13 @@ function Header() {
     queryFn: () => getAllNotifications(),
     enabled: !!user?.id,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
+ 
   });
 
+  console.log("Notifications:", notifications.data);
   const unreadCount = useMemo(
     () => notifications.data?.filter((item) => item.active === 1).length || 0,
-    [notifications.data]
+    [notifications.data],
   );
 
   useEffect(() => {
@@ -95,7 +94,10 @@ function Header() {
     customDispatch({ type: "openSidebar", payload: !openSidebar });
   }, [customDispatch, openSidebar]);
 
-  const goHome = useCallback(() => navigate("/", { replace: true }), [navigate]);
+  const goHome = useCallback(
+    () => navigate("/", { replace: true }),
+    [navigate],
+  );
 
   const handleLogOut = useCallback(() => {
     Swal.fire({
@@ -106,11 +108,6 @@ function Header() {
       if (isConfirmed) logout();
     });
   }, [logout]);
-
-  const handleProfileClick = (event) => setAnchorEl(event.currentTarget);
-  const handleCloseMenu = () => setAnchorEl(null);
-
-  const open = Boolean(anchorEl);
 
   return (
     <>
@@ -161,7 +158,11 @@ function Header() {
                 {breadcrumbs.map((crumb, idx) => {
                   const isLast = idx === breadcrumbs.length - 1;
                   return isLast ? (
-                    <Typography key={crumb.url} color="text.primary" fontWeight={500}>
+                    <Typography
+                      key={crumb.url}
+                      color="text.primary"
+                      fontWeight={500}
+                    >
                       {crumb.label}
                     </Typography>
                   ) : (
@@ -221,9 +222,13 @@ function Header() {
                   state={{ path: pathname }}
                   style={({ isActive }) => ({
                     textDecoration: "none",
-                    color: isActive ? theme.palette.primary.main : theme.palette.text.primary,
+                    color: isActive
+                      ? theme.palette.primary.main
+                      : theme.palette.text.primary,
                     fontWeight: isActive ? 600 : 400,
-                    borderBottom: isActive ? `2px solid ${theme.palette.primary.main}` : "none",
+                    borderBottom: isActive
+                      ? `2px solid ${theme.palette.primary.main}`
+                      : "none",
                     paddingBottom: 4,
                   })}
                 >

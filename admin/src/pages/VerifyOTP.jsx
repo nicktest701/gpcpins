@@ -7,7 +7,7 @@ import { LoadingButton } from "@mui/lab";
 import { useContext, useEffect, useState } from "react";
 import { verifyCode } from "../config/validation";
 import { useMutation } from "@tanstack/react-query";
-import { AuthContext } from "../context/providers/AuthProvider";
+import { AuthContext, useAuth } from "../context/providers/AuthProvider";
 import { CustomContext } from "../context/providers/CustomProvider";
 import { globalAlertType } from "../components/alert/alertType";
 import { loginAdmin, verifyAdminOTP } from "../api/adminAPI";
@@ -17,7 +17,7 @@ function VerifyOTP() {
   const { customDispatch } = useContext(CustomContext);
   const navigate = useNavigate();
   const [seconds, setSeconds] = useState(60);
-  const { login } = useContext(AuthContext);
+  const { login } = useAuth();
   const { state } = useLocation();
   const [err, setErr] = useState("");
   const [token, setToken] = useState("");
