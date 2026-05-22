@@ -77,7 +77,7 @@ router.post(
   limit,
   asyncHandler(async (req, res) => {
     const { id, token } = req.body;
-    console.log(req.body);
+   
 
     if (!id || !isValidUUID2(id) || !token) {
       return res.status(400).json("An unknown error has occurred!");
@@ -112,7 +112,15 @@ router.post(
     try {
       const user = await knex("users")
         .join("roles", "users.role_id", "roles.id")
-        .select("email", "phonenumber", "password", "role_id", "code", "active")
+        .select(
+          "users.id",
+          "email",
+          "phonenumber",
+          "password",
+          "role_id",
+          "code",
+          "active",
+        )
         .where("email", email)
         .first();
 
@@ -143,7 +151,7 @@ router.post(
         console.log(otp);
       }
 
-      await storeOTP(user?.id, otp);
+      await storeOTP(user?.id, Number(otp));
 
       const message = `
         <div style="width:100%;max-width:500px;margin-inline:auto;">

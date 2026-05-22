@@ -3,7 +3,7 @@ const redis = require("../config/redisClient");
 const OTP_PREFIX = "gpcpins";
 const ATTEMPT_PREFIX = "gpcpins_attempts";
 
-const OTP_TTL = 600; // 10 minutes
+const OTP_TTL = 900; // 10 minutes
 const MAX_ATTEMPTS = 5;
 
 // Generate OTP
@@ -36,6 +36,7 @@ async function verifyOTP(
   const key = `${OTP_PREFIX}:${userId}`;
   const attemptsKey = `${ATTEMPT_PREFIX}:${userId}`;
 
+
   const storedOTP = await redis.get(key);
 
   if (!storedOTP) {
@@ -48,9 +49,10 @@ async function verifyOTP(
     return { success: false, message: "Too many attempts" };
   }
 
-  if (storedOTP !== otp) {
+  if (storedOTP !== otp.toString()) {
     await redis.incr(attemptsKey);
     await redis.expire(attemptsKey, OTP_TTL);
+
 
     return { success: false, message: "Invalid OTP" };
   }

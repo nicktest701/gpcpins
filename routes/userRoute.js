@@ -207,7 +207,7 @@ router.post(
       ...rest
     } = req.body;
 
-    console.log(req.body);
+   
 
     try {
       const body = `<div>
@@ -439,13 +439,13 @@ router.post(
         return res.status(400).json("Account disabled! Try again later.");
       }
 
-      const token = await otpGen();
+      const otp = await otpGen();
 
       if (process.env.NODE_ENV !== "production") {
-        console.log(token);
+        console.log(otp);
       }
 
-      await storeOTP(user?.id, token);
+      await storeOTP(user?.id, Number(otp));
 
       // if (type === "email") {
       const message = `
@@ -453,7 +453,7 @@ router.post(
         <h2>Gab Powerful Consult</h2>
         <p>Please ignore this message if you did not request the OTP.</p>
         <p>Your verification code is</p>
-        <h1>${token}</h1>
+        <h1>${otp}</h1>
 <p>Don't share this code with anyone; Our employees will never ask for the code.</p>
          <p>If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.</p>
 
@@ -466,7 +466,7 @@ router.post(
 
       if (type === "phone") {
         await sendOTPSMS(
-          `Please ignore this message if you did not request the OTP.Your verification code is ${token}.Don't share this code with anyone; Our employees will never ask for the code.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`,
+          `Please ignore this message if you did not request the OTP.Your verification code is ${otp}.Don't share this code with anyone; Our employees will never ask for the code.If the code is incorrect or expired, you will not be able to proceed. Request a new code if necessary.`,
           user?.phonenumber,
         );
       }
@@ -805,6 +805,7 @@ router.post(
     }
 
     const result = await verifyOTP(id, Number(token));
+   
 
     if (!result.success) {
       return res.status(400).json("Invalid Code");
@@ -889,6 +890,8 @@ router.post(
       refreshToken,
       accessToken,
     });
+
+
   }),
 );
 

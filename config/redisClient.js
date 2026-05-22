@@ -1,12 +1,15 @@
 // redisClient.js
 const redis = require("redis");
 const { Redis } = require("@upstash/redis");
+
 let redisClient;
 
 if (process.env.NODE_ENV === "production") {
-  const redisClient = redis.createClient({
-    url: process.env.REDIS_HOST,
-    // password: process.env.REDIS_PASSWORD,
+  redisClient = redis.createClient({
+    url: process.env.REDIS_HOST_EXT,
+    socket: {
+      reconnectStrategy: (retries) => Math.min(retries * 50, 2000),
+    },
   });
 
   redisClient.on("error", (err) => {

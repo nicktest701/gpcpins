@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 
 function ShopCard({ title, img, low, content, path, dashboard }) {
   const cardStyles = {
+    height: "100%",
     justifyContent: "center",
     alignItems: "center",
     padding: 2,
@@ -38,10 +39,10 @@ function ShopCard({ title, img, low, content, path, dashboard }) {
         />
         <Typography
           title={title}
-          sx={{ textAlign: "center" }}
-          variant="h6"
-          className={dashboard ? "content-title" : ""}
-          color={dashboard ? "primary.main" : "secondary.main"}
+          sx={{ textAlign: "center", fontWeight: "bold" }}
+          variant="h4"
+          // className={dashboard ? "content-title" : ""}
+          color="secondary.main"
         >
           {title}
         </Typography>

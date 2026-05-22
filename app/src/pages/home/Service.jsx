@@ -7,6 +7,16 @@ import AnimatedWrapper from '../../components/animations/AnimatedWrapper';
 
 const homeCardArr = [
   {
+    id: 0,
+    title: 'WAEC & SHS PLACEMENT CHECKERS',
+    img: IMAGES.waec2,
+    low: IMAGES.ges_low,
+    content:
+      'Buy BECE,SSCE,NOV-DEC,GCE, School Placement,etc Checkers with ease and just a single click.',
+    path: '/evoucher/waec-checker',
+    delay: 50,
+  },
+  {
     id: 1,
     title: 'E-VOUCHERS & TICKETS',
     img: IMAGES.checker,
@@ -40,7 +50,7 @@ const homeCardArr = [
 
 function Service() {
   return (
-    <Container maxWidth='lg' sx={{ pt: 10 }} id='explore-more'>
+    <Container maxWidth='xl' sx={{ pt: 10 }} id='explore-more'>
       <MainTitle
         title='Our Services'
         titleColor='primary.main'

@@ -33,7 +33,7 @@ function WalletOption({ token, setToken, tokenErr, tokenHelperText, value }) {
   });
 
   // Get wallet status
-  const { data, isLoading: isLoadingWalletStatus } = useQuery({
+  const { data, isPending: isLoadingWalletStatus } = useQuery({
     queryKey: ["wallet-status"],
     queryFn: () => getWalletStatus(),
     enabled: !!user?.id,
@@ -64,7 +64,7 @@ function WalletOption({ token, setToken, tokenErr, tokenHelperText, value }) {
         />
       </AccordionSummary>
       <AccordionDetails>
-        {isLoadingWalletStatus || walletBalance.isLoading ? (
+        {isLoadingWalletStatus || walletBalance.isPending ? (
           <Stack direction="row" spacing={2} alignItems="center" p={1}>
             <Skeleton variant="circular" width={20} height={20} />
             <Skeleton variant="text" width="60%" />
@@ -84,7 +84,7 @@ function WalletOption({ token, setToken, tokenErr, tokenHelperText, value }) {
               </Typography>
             </Stack>
 
-            {data.active === false ? (
+            {data?.active === false ? (
               <Typography variant="caption" color="error" sx={{ px: 1 }}>
                 Wallet is temporarily disabled due to multiple failed attempts.
                 Try again after {data.timeOut}.
