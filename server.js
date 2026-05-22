@@ -68,6 +68,11 @@ const whitelist = [
   "https://admin.gpcpins.com",
   "https://agent.gpcpins.com",
   "https://verification.gpcpins.com",
+  "http://localhost:5000",
+  "http://localhost:5001",
+  "http://localhost:5002",
+  "http://localhost:5003",
+  "http://localhost:5004",
   process.env.CLIENT_URL,
   // Add other domains only if absolutely necessary
 ];
@@ -80,16 +85,6 @@ if (NODE_ENV === "development") {
     "http://localhost:5002",
     "http://localhost:5003",
     "http://localhost:5004",
-    "http://127.0.0.1:5000",
-    "http://127.0.0.1:5001",
-    "http://127.0.0.1:5002",
-    "http://127.0.0.1:5003",
-    "http://127.0.0.1:5004",
-    "http://192.168.0.155:5000",
-    "http://192.168.0.155:5001",
-    "http://192.168.0.155:5003",
-    "http://192.168.0.155:5004",
-    "http://172.20.10.4:5000"
   );
 }
 
@@ -120,7 +115,7 @@ const corsOptions = {
 
 // Cookie parser with secret
 app.use(
-  cookieParser(process.env.COOKIE_SECRET || "fallbackSecretChangeInProduction")
+  cookieParser(process.env.COOKIE_SECRET || "fallbackSecretChangeInProduction"),
 );
 
 // Middlewares
@@ -145,7 +140,7 @@ app.use(
       },
     },
     crossOriginResourcePolicy: { policy: "same-site" },
-  })
+  }),
 );
 
 // Prevent the server from being too busy
@@ -171,7 +166,7 @@ app.use(
         throw createError.BadRequest("Invalid JSON");
       }
     },
-  })
+  }),
 );
 
 app.use(
@@ -179,7 +174,7 @@ app.use(
     limit: "10mb", // Reduced from 50mb
     extended: true,
     parameterLimit: 50, // Reduced from 10000
-  })
+  }),
 );
 
 app.use(compression());
@@ -199,27 +194,27 @@ const staticOptions = {
 
 app.use(
   "/api/gabs/v1/views",
-  express.static(path.join(__dirname, "views"), staticOptions)
+  express.static(path.join(__dirname, "views"), staticOptions),
 );
 app.use(
   "/api/gabs/v1/receipts",
-  express.static(path.join(__dirname, "receipts"), staticOptions)
+  express.static(path.join(__dirname, "receipts"), staticOptions),
 );
 app.use(
   "/api/gabs/v1/reports",
-  express.static(path.join(__dirname, "reports"), staticOptions)
+  express.static(path.join(__dirname, "reports"), staticOptions),
 );
 app.use(
   "/api/gabs/v1/vouchers",
-  express.static(path.join(__dirname, "vouchers"), staticOptions)
+  express.static(path.join(__dirname, "vouchers"), staticOptions),
 );
 app.use(
   "/api/gabs/v1/images",
-  express.static(path.join(__dirname, "images"), staticOptions)
+  express.static(path.join(__dirname, "images"), staticOptions),
 );
 app.use(
   "/api/gabs/v1/downloads",
-  express.static(path.join(__dirname, "downloads"), staticOptions)
+  express.static(path.join(__dirname, "downloads"), staticOptions),
 );
 app.use("/", express.static(path.join(__dirname, "public"), staticOptions));
 
@@ -229,7 +224,7 @@ if (NODE_ENV === "production") {
     sendEMail(
       "nicktest701@gmail.com",
       `Server health check at ${new Date().toUTCString()}`,
-      "GPC Server Update"
+      "GPC Server Update",
     ).catch((err) => console.error("Cron job email error:", err.message));
   });
 }
@@ -331,7 +326,7 @@ const gracefulShutdown = async (signal) => {
     // Force close after 10 seconds
     setTimeout(() => {
       console.error(
-        "Could not close connections in time, forcefully shutting down"
+        "Could not close connections in time, forcefully shutting down",
       );
       process.exit(1);
     }, 10000);
