@@ -1,5 +1,5 @@
 import { useQueryClient, useMutation } from "@tanstack/react-query";
-import React, { useState, useLayoutEffect } from "react";
+import React, { useState, useLayoutEffect, useContext } from "react";
 import { logoutUser } from "@/api/userAPI";
 import { useNavigate } from "react-router-dom";
 
@@ -13,6 +13,15 @@ import {
 import GlobalSpinner from "@/components/GlobalSpinner";
 
 export const AuthContext = React.createContext();
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("An unknown error has occurred.");
+  }
+  return context;
+};
+
 function AuthProvider({ children }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -44,7 +53,6 @@ function AuthProvider({ children }) {
   function updateProfilePhoto(data) {
     setUser({ ...user, ...data });
   }
- 
 
   const { mutateAsync, isLoading } = useMutation({
     mutationFn: logoutUser,
@@ -75,8 +83,12 @@ function AuthProvider({ children }) {
             role: "",
           });
         },
-      }
+      },
     );
+  }
+
+  if (isLoading || loading) {
+    return <GlobalSpinner />;
   }
 
   return (
@@ -84,8 +96,6 @@ function AuthProvider({ children }) {
       <AuthContext.Provider value={{ user, updateProfilePhoto, login, logout }}>
         {children}
       </AuthContext.Provider>
-
-      {(isLoading || loading) && <GlobalSpinner />}
     </div>
   );
 }

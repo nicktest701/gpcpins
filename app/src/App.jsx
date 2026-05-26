@@ -14,6 +14,7 @@ import ClientProvider from "./context/providers/ClientProvider";
 import { HelmetProvider } from "react-helmet-async";
 import AuthProvider from "./context/providers/AuthProvider";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import { SocketProvider } from "./context/providers/SocketProvider";
 
 Chart.register(...registerables);
 Chart.register(ChartDataLabels);
@@ -35,23 +36,25 @@ function App() {
   const { reset } = useQueryErrorResetBoundary();
 
   return (
-        <ThemeProvider>
-    <HelmetProvider>
-      <QueryClientProvider client={queryClient}>
+    <ThemeProvider>
+      <HelmetProvider>
+        <QueryClientProvider client={queryClient}>
           <ErrorBoundary FallbackComponent={Error} onReset={reset}>
             <AuthProvider>
-              <GoogleOAuthProvider clientId={CLIENT_ID}>
-                <CustomProvider>
-                  <ClientProvider>
-                    <Shell />
-                  </ClientProvider>
-                </CustomProvider>
-              </GoogleOAuthProvider>
+              <SocketProvider>
+                <GoogleOAuthProvider clientId={CLIENT_ID}>
+                  <CustomProvider>
+                    <ClientProvider>
+                      <Shell />
+                    </ClientProvider>
+                  </CustomProvider>
+                </GoogleOAuthProvider>
+              </SocketProvider>
             </AuthProvider>
           </ErrorBoundary>
-      </QueryClientProvider>
-    </HelmetProvider>
-        </ThemeProvider>
+        </QueryClientProvider>
+      </HelmetProvider>
+    </ThemeProvider>
   );
 }
 

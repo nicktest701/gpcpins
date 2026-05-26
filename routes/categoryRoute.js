@@ -211,7 +211,6 @@ router.get(
       });
     }
 
-  
     return res.status(200).json(result);
   }),
 );
@@ -262,48 +261,129 @@ router.get(
   asyncHandler(async (req, res) => {
     const { origin, destination } = req.query;
 
-    const voucherType = `${origin} to ${destination}`;
+    // Normalize inputs
+    const normalizedOrigin = typeof origin === "string" ? origin.trim() : "";
 
-    let bus;
+    const normalizedDestination =
+      typeof destination === "string" ? destination.trim() : "";
 
-    if (!origin && !destination) {
-      bus = await knex("categories")
-        .select("*")
-        .where({ category: "bus", active: 1 });
-    } else {
-      bus = await knex("categories")
-        .where("voucherType", "LIKE", `%${voucherType}%`)
-        .orWhere("voucherType", "LIKE", `%${origin}`)
-        .orWhere("voucherType", "LIKE", `${destination}%`)
-        .andWhere({ active: 1, category: "bus" })
-        .select("*");
-    }
-
-    if (_.isEmpty(bus)) {
-      return res.status(200).json([]);
-    }
-
-    const modifiedCategories = bus.map(async (item) => {
-      const activeVouchers = await knex("vouchers")
-        .where({
-          category: item?._id,
-          active: 1,
-          status: "new",
-        })
-        .count({ count: "*" });
-
-      return {
-        ...item,
-        details: safeJSON(item?.details),
-        activeVouchers: activeVouchers[0]?.count,
-      };
+    // Base query
+    const query = knex("categories").where({
+      "categories.type": "bus",
+      "categories.active": 1,
     });
 
-    const buses = await Promise.all(modifiedCategories);
+    // Search filters
+    if (normalizedOrigin || normalizedDestination) {
+      query.andWhere((builder) => {
+        // Full route search
+        if (normalizedOrigin && normalizedDestination) {
+          const route = `${normalizedOrigin} to ${normalizedDestination}`;
 
-    res.status(200).json(buses);
+          builder.orWhere("categories.name", "like", `%${route}%`);
+        }
+
+        // Origin search
+        if (normalizedOrigin) {
+          builder.orWhere("categories.name", "like", `%${normalizedOrigin}%`);
+        }
+
+        // Destination search
+        if (normalizedDestination) {
+          builder.orWhere(
+            "categories.name",
+            "like",
+            `%${normalizedDestination}%`,
+          );
+        }
+      });
+    }
+
+    // Single optimized query
+    const buses = await query
+      .leftJoin("vouchers", function () {
+        this.on("vouchers.category_id", "=", "categories.id")
+          .andOn("vouchers.active", "=", knex.raw("?", [1]))
+          .andOn("vouchers.status", "=", knex.raw("?", ["new"]));
+      })
+      .groupBy("categories.id")
+      .select(
+        "categories.id",
+        "categories.name",
+        "categories.type",
+        "categories.price",
+        "categories.active",
+        "categories.details",
+        "categories.created_at",
+        "categories.updated_at",
+        knex.raw("COUNT(vouchers.id) as activeVouchers"),
+      )
+      .orderBy("categories.name", "asc");
+
+    // Response transformation
+    const formattedBuses = buses.map((item) => ({
+      id: item.id,
+      name: item.name,
+      type: item.type,
+      active: item.active,
+      price: item?.price || 0,
+      details: safeJSON(item.details),
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+      activeVouchers: Number(item.activeVouchers || 0),
+    }));
+
+    return res.status(200).json(formattedBuses);
   }),
 );
+
+// router.get(
+//   "/bus",
+//   asyncHandler(async (req, res) => {
+//     const { origin, destination } = req.query;
+
+//     const voucherType = `${origin} to ${destination}`;
+
+//     let bus;
+
+//     if (!origin && !destination) {
+//       bus = await knex("categories")
+//         .select("*")
+//         .where({ type: "bus", active: 1 });
+//     } else {
+//       bus = await knex("categories")
+//         .where("name", "LIKE", `%${voucherType}%`)
+//         .orWhere("name", "LIKE", `%${origin}`)
+//         .orWhere("name", "LIKE", `${destination}%`)
+//         .andWhere({ active: 1, type: "bus" })
+//         .select("*");
+//     }
+
+//     if (_.isEmpty(bus)) {
+//       return res.status(200).json([]);
+//     }
+
+//     const modifiedCategories = bus.map(async (item) => {
+//       const activeVouchers = await knex("vouchers")
+//         .where({
+//           category_id: item?.id,
+//           active: 1,
+//           status: "new",
+//         })
+//         .count({ count: "*" });
+
+//       return {
+//         ...item,
+//         details: safeJSON(item?.details),
+//         activeVouchers: activeVouchers[0]?.count,
+//       };
+//     });
+
+//     const buses = await Promise.all(modifiedCategories);
+
+//     res.status(200).json(buses);
+//   }),
+// );
 
 router.get(
   "/module/status",

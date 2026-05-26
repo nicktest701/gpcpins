@@ -15,7 +15,7 @@ function BusPreviewItem({ item }) {
   const navigate = useNavigate();
 
   const handleBuyTicket = () => {
-    navigate(`buy/${item?._id}`, { state: item });
+    navigate(`buy/${item?.id}`, { state: item });
   };
 
   const cardStyles = {
@@ -43,7 +43,7 @@ function BusPreviewItem({ item }) {
             color="secondary"
             sx={{ fontWeight: "bold", paddingBottom: 1 }}
           >
-            {item.voucherType}
+            {item.name}
           </Typography>
           <Divider />
 

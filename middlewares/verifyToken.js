@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const knex = require("../db/knex");
 const redisClient = require("../config/redisClient");
 const { signMainRefreshToken } = require("../config/token");
+const generateId = require("../config/generateId");
 
 const verifyToken = (req, res, next) => {
   req.user = null;
@@ -39,17 +40,16 @@ const verifyToken = (req, res, next) => {
 };
 
 const verifyRefreshToken = async (req, res, next) => {
-  const authHeader =
-    req.headers["authorization"] || req.headers["Authorization"];
+  // const authHeader =
+  //   req.headers["authorization"] || req.headers["Authorization"];
 
   const cookieToken = req.cookies.refreshToken;
-  console.log("Cookie token:", cookieToken);
 
-  if (!authHeader) {
+  if (!cookieToken) {
     return res.status(401).json("Unauthorized Access");
   }
 
-  const token = authHeader?.split(" ")[1];
+  const token = cookieToken?.split(" ")[1];
 
   if (!token) {
     return res.status(401).json("Unauthorized Access");
@@ -141,7 +141,46 @@ const verifyRefreshToken = async (req, res, next) => {
   });
 };
 
+const verifyOptionalToken = (req, res, next) => {
+  const authHeader =
+    req.headers["authorization"] || req.headers["Authorization"];
+
+  if (!authHeader) {
+    req.user = {
+      id: process.env.CUSTOMER_ID,
+      name: process.env.CUSTOMER_EMAIL,
+      email: process.env.CUSTOMER_NAME,
+    };
+    return next();
+  }
+
+  const token = authHeader?.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json("Unauthorized Access");
+  }
+
+  jwt.verify(token, process.env.TOKEN, async (err, user) => {
+    if (err) {
+      return res.status(403).json("Session has expired.");
+    }
+
+    const jti = user?.jti;
+
+    // Now you can check Redis for validity
+    const tokenInRedis = await redisClient.get(`user:${jti}`);
+    if (!tokenInRedis) {
+      return res.status(403).json("Session has expired");
+    }
+
+    req.user = user;
+
+    next();
+  });
+};
+
 module.exports = {
   verifyRefreshToken,
   verifyToken,
+  verifyOptionalToken,
 };

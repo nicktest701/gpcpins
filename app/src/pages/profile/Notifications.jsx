@@ -1,7 +1,6 @@
-import React, { useContext, useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import {
   Box,
-  Divider,
   Stack,
   Typography,
   Button,
@@ -20,13 +19,14 @@ import {
   NotificationsOffSharp,
   Search as SearchIcon,
   Clear as ClearIcon,
+  Refresh as RefreshIcon,
 } from "@mui/icons-material";
 import moment from "moment";
 import DOMPurify from "dompurify";
 import Swal from "sweetalert2";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AuthContext } from "../../context/providers/AuthProvider";
-import { CustomContext } from "../../context/providers/CustomProvider";
+import { useCustomContext } from "../../context/providers/CustomProvider";
 import { globalAlertType } from "../../components/alert/alertType";
 import AnimatedContainer from "../../components/animations/AnimatedContainer";
 import GlobalSpinner from "../../components/GlobalSpinner";
@@ -50,7 +50,7 @@ const CATEGORY_OPTIONS = [
 
 const Notifications = () => {
   const { user } = useContext(AuthContext);
-  const { customDispatch } = useContext(CustomContext);
+  const { notifications: notifs, customDispatch } = useCustomContext();
   const queryClient = useQueryClient();
 
   // Filter state
@@ -64,9 +64,10 @@ const Notifications = () => {
     error: notificationsError,
     refetch: refetchNotifications,
   } = useQuery({
-    queryKey: ["notifications"],
+    queryKey: ["notifications", user?.id],
     queryFn: () => getAllBroadcastMessages(),
     enabled: !!user?.id,
+    initialData: notifs,
     retry: 1,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -113,10 +114,14 @@ const Notifications = () => {
     mutationFn: () => changeNotificationStatus(),
     onSuccess: () => {
       queryClient.invalidateQueries(["notifications"]);
-      customDispatch(globalAlertType("success", "All notifications marked as read"));
+      customDispatch(
+        globalAlertType("success", "All notifications marked as read"),
+      );
     },
     onError: (error) => {
-      customDispatch(globalAlertType("error", error?.message || "Failed to mark as read"));
+      customDispatch(
+        globalAlertType("error", error?.message || "Failed to mark as read"),
+      );
     },
   });
 
@@ -128,7 +133,12 @@ const Notifications = () => {
       customDispatch(globalAlertType("success", "All notifications deleted"));
     },
     onError: (error) => {
-      customDispatch(globalAlertType("error", error?.message || "Failed to delete notifications"));
+      customDispatch(
+        globalAlertType(
+          "error",
+          error?.message || "Failed to delete notifications",
+        ),
+      );
     },
   });
 
@@ -172,7 +182,14 @@ const Notifications = () => {
   if (notificationsLoading) {
     return (
       <AnimatedContainer>
-        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 400 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: 400,
+          }}
+        >
           <CircularProgress />
         </Box>
       </AnimatedContainer>
@@ -206,10 +223,17 @@ const Notifications = () => {
             Notifications
           </Typography>
           <Stack direction="row" spacing={1}>
+            <Tooltip title="Refresh notifications">
+              <span>
+                <IconButton color="secondary" onClick={refetchNotifications}>
+                  <RefreshIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
             <Tooltip title="Mark all as read">
               <span>
                 <IconButton
-                  color="primary"
+                  color="secondary"
                   disabled={unreadCount === 0}
                   onClick={handleMarkAsRead}
                 >
@@ -278,24 +302,29 @@ const Notifications = () => {
         {unreadCount > 0 && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2" color="text.secondary">
-              You have {unreadCount} unread notification{unreadCount !== 1 ? "s" : ""}.
+              You have {unreadCount} unread notification
+              {unreadCount !== 1 ? "s" : ""}.
             </Typography>
           </Box>
         )}
 
         {/* Results count */}
-        {filteredNotifications.length === 0 && (searchQuery || categoryFilter !== "all") && (
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              No notifications match your filters. Try adjusting your search or category.
-            </Typography>
-          </Box>
-        )}
+        {filteredNotifications.length === 0 &&
+          (searchQuery || categoryFilter !== "all") && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                No notifications match your filters. Try adjusting your search
+                or category.
+              </Typography>
+            </Box>
+          )}
 
         {/* Notifications list */}
         {filteredNotifications.length === 0 ? (
           <Stack alignItems="center" justifyContent="center" sx={{ py: 8 }}>
-            <NotificationsOffSharp sx={{ fontSize: 64, color: "text.disabled", mb: 2 }} />
+            <NotificationsOffSharp
+              sx={{ fontSize: 64, color: "text.disabled", mb: 2 }}
+            />
             <Typography variant="h6" color="text.secondary">
               No notifications yet
             </Typography>
@@ -311,7 +340,8 @@ const Notifications = () => {
                 elevation={0}
                 sx={{
                   p: 2,
-                  bgcolor: notif?.active === 1 ? "action.hover" : "background.paper",
+                  bgcolor:
+                    notif?.active === 1 ? "action.hover" : "background.paper",
                   transition: "background-color 0.2s",
                   "&:hover": {
                     bgcolor: "action.selected",
@@ -321,7 +351,10 @@ const Notifications = () => {
               >
                 <Stack spacing={1}>
                   {/* Title */}
-                  <Typography variant="subtitle1" fontWeight={notif?.active === 1 ? "bold" : "normal"}>
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight={notif?.active === 1 ? "bold" : "normal"}
+                  >
                     {notif?.title}
                   </Typography>
 
@@ -351,14 +384,22 @@ const Notifications = () => {
                       rel="noopener noreferrer"
                       size="small"
                       variant="text"
-                      sx={{ alignSelf: "flex-start", p: 0, textTransform: "none" }}
+                      sx={{
+                        alignSelf: "flex-start",
+                        p: 0,
+                        textTransform: "none",
+                      }}
                     >
                       Download
                     </Button>
                   )}
 
                   {/* Timestamp */}
-                  <Typography variant="caption" color="text.disabled" sx={{ textAlign: "right" }}>
+                  <Typography
+                    variant="caption"
+                    color="text.disabled"
+                    sx={{ textAlign: "right" }}
+                  >
                     {moment(notif?.createdAt).fromNow()}
                   </Typography>
                 </Stack>
@@ -369,7 +410,9 @@ const Notifications = () => {
       </Paper>
 
       {/* Loading overlays for mutations */}
-      {(markAllMutation.isLoading || deleteAllMutation.isLoading) && <GlobalSpinner />}
+      {(markAllMutation.isLoading || deleteAllMutation.isLoading) && (
+        <GlobalSpinner />
+      )}
     </AnimatedContainer>
   );
 };

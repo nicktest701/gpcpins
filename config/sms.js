@@ -5,6 +5,7 @@ const BASE_URL = process.env.SMS_BASE_URL;
 
 // SEND OTP SMS
 const sendOTPSMS = async (message, telephoneNumber) => {
+  if (process.env.NODE_ENV === "development") return true;
   try {
     const SMSType = await redisClient.get("sms");
     const sms = SMSType || "arkesel"; // default to hubtel if no type is set in redis
@@ -37,6 +38,10 @@ const sendOTPSMS = async (message, telephoneNumber) => {
 
     const res = await axios(config);
 
+    if (process.env.NODE_ENV === "development") {
+      console.log("SMS Response:", res.data);
+    }
+
     return res.data;
   } catch (error) {
     console.log(error.message);
@@ -44,7 +49,8 @@ const sendOTPSMS = async (message, telephoneNumber) => {
   }
 };
 const sendSMS = async (message, telephoneNumber) => {
-  if (process.env.NODE_ENV !== "production" || !telephoneNumber) return true;
+  if (process.env.NODE_ENV === "development") return true;
+  if (!telephoneNumber) return true;
   try {
     // SEND SMS
 
@@ -88,7 +94,8 @@ const sendSMS = async (message, telephoneNumber) => {
 };
 
 const sendBatchSMS = async (message, telephoneNumbers) => {
-  if (process.env.NODE_ENV !== "production" || !telephoneNumbers) return true;
+  if (process.env.NODE_ENV === "development") return true;
+  if (!telephoneNumbers) return true;
 
   const SMSType = await redisClient.get("sms");
   const sms = SMSType || "arkesel";

@@ -167,7 +167,7 @@ function BusPreview() {
             }}
           >
             {bus.data?.map((item) => (
-              <BusPreviewItem key={item._id} item={item} />
+              <BusPreviewItem key={item.id} item={item} />
             ))}
           </Box>
         </>

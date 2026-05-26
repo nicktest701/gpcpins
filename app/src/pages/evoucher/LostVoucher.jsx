@@ -41,8 +41,10 @@ const LostVoucher = () => {
     },
   });
 
+  console.log(transaction.data);
+
   const isVoucher = ["waec", "university", "security"].includes(
-    transaction?.data?.info?.type
+    transaction?.data?.categoryType?.toLowerCase(),
   );
 
   const { mutateAsync, data, isLoading } = useMutation({
@@ -52,8 +54,8 @@ const LostVoucher = () => {
   const retrieveVouchers = () => {
     mutateAsync(
       {
-        id: transaction?.data?._id,
-        type: transaction?.data?.info?.type,
+        id: transaction?.data?.id,
+        type: transaction?.data?.categoryType,
       },
       {
         onSuccess: (data) => {
@@ -61,22 +63,22 @@ const LostVoucher = () => {
             customDispatch(
               globalAlertType(
                 "info",
-                `${isVoucher ? "Vouchers" : "Ticket"} generated!`
-              )
+                `${isVoucher ? "Vouchers" : "Ticket"} generated!`,
+              ),
             );
           }
         },
         onError: () => {
           setErrCount(errCount + 1);
           customDispatch(
-            globalAlertType("error", "An unknown error has occurred!")
+            globalAlertType("error", "An unknown error has occurred!"),
           );
         },
-      }
+      },
     );
   };
 
-  const handleDownloadVouchers = () => downloadVouchers(transaction?.data?._id);
+  const handleDownloadVouchers = () => downloadVouchers(transaction?.data?.id);
 
   if (!state?.id || !state?.mobileNo) {
     return <Navigate to={state?.general ? "/" : "/evoucher"} />;
@@ -153,8 +155,8 @@ const LostVoucher = () => {
 
                   <Stack spacing={1}>
                     <CheckOutItem
-                      title="Transaction No."
-                      value={transaction?.data?._id}
+                      title="Transaction ID"
+                      value={transaction?.data?.id}
                     />
                     {transaction?.data?.mode === "Mobile Money" && (
                       <CheckOutItem
@@ -163,14 +165,12 @@ const LostVoucher = () => {
                       />
                     )}
                     <CheckOutItem
-                      title="Type"
-                      value={transaction?.data?.domain}
+                      title="Category"
+                      value={transaction?.data?.categoryName}
                     />
                     <CheckOutItem
-                      title="Date"
-                      value={moment(
-                        new Date(transaction?.data?.createdAt)
-                      ).format("LLL")}
+                      title="Type"
+                      value={transaction?.data?.service}
                     />
                     <CheckOutItem
                       title="Amount Paid"
@@ -181,16 +181,29 @@ const LostVoucher = () => {
                       title="Payment Method"
                       value={transaction?.data?.mode}
                     />
-
-                    <CheckOutItem
-                      title="Mobile No."
-                      value={transaction?.data?.phonenumber}
-                    />
+                    {transaction?.data?.phonenumber && (
+                      <CheckOutItem
+                        title="Mobile No."
+                        value={transaction?.data?.phonenumber}
+                      />
+                    )}
+                    {transaction?.data?.email && (
+                      <CheckOutItem
+                        title="Email Address"
+                        value={transaction?.data?.email}
+                      />
+                    )}
                     <CheckOutItem
                       title="Status"
                       value={transaction?.data?.status}
                     />
 
+                    <CheckOutItem
+                      title="Date"
+                      value={moment(
+                        new Date(transaction?.data?.createdAt),
+                      ).format("LLL")}
+                    />
                     <Divider flexItem />
                     {transaction?.data?.downloadLink && (
                       <Button
@@ -217,9 +230,10 @@ const LostVoucher = () => {
 
                   <Stack spacing={1}>
                     <CheckOutItem
-                      title="Transaction No."
-                      value={transaction?.data?._id}
+                      title="Transaction ID"
+                      value={transaction?.data?.id}
                     />
+
                     {transaction?.data?.mode === "Mobile Money" && (
                       <CheckOutItem
                         title="External Transaction ID "
@@ -227,14 +241,18 @@ const LostVoucher = () => {
                       />
                     )}
                     <CheckOutItem
+                      title="Category"
+                      value={transaction?.data?.categoryName}
+                    />
+                    <CheckOutItem
                       title="Date"
                       value={moment(
-                        new Date(transaction?.data?.createdAt)
+                        new Date(transaction?.data?.createdAt),
                       ).format("LLL")}
                     />
                     <CheckOutItem
                       title="Amount Paid"
-                      value={currencyFormatter(transaction?.data?.info?.amount)}
+                      value={currencyFormatter(transaction?.data?.amount)}
                     />
                     <CheckOutItem
                       title="Payment Method"
@@ -244,18 +262,22 @@ const LostVoucher = () => {
                       title="Agent"
                       value={transaction?.data?.info?.agentName || "Agent"}
                     />
-                    <CheckOutItem
-                      title="Mobile No."
-                      value={transaction?.data?.info?.agentPhoneNumber}
-                    />
-                    <CheckOutItem
-                      title="Email Address"
-                      value={transaction?.data?.info?.agentEmail}
-                    />
-                    <CheckOutItem
+                    {transaction?.data?.phonenumber && (
+                      <CheckOutItem
+                        title="Mobile No."
+                        value={transaction?.data?.phonenumber}
+                      />
+                    )}
+                    {transaction?.data?.email && (
+                      <CheckOutItem
+                        title="Email Address"
+                        value={transaction?.data?.email}
+                      />
+                    )}
+                    {/* <CheckOutItem
                       title="Order No."
-                      value={transaction?.data?.info?.orderNo}
-                    />
+                      value={transaction?.data?.orderNo}
+                    /> */}
                     <Divider flexItem />
                   </Stack>
                   <Stack

@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import _ from "lodash";
 import { LoadingButton } from "@mui/lab";
 import Avatar from "@mui/material/Avatar";
@@ -11,40 +11,88 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import moment from "moment";
-import { currencyFormatter } from "../../constants";
-import { Navigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { getCategory } from "../../api/categoryAPI";
-import Back from "../../components/Back";
+import { currencyFormatter } from "@/constants";
+import {
+  Navigate,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getCategory } from "@/api/categoryAPI";
+import Back from "@/components/Back";
+import { globalAlertType } from "@/components/alert/alertType";
 import { Formik } from "formik";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import PayLoading from "../../components/PayLoading";
-import AnimatedContainer from "../../components/animations/AnimatedContainer";
+import { CustomContext } from "@/context/providers/CustomProvider";
+import PayLoading from "@/components/PayLoading";
+import { disableWallet, getNonUser } from "@/api/userAPI";
+import AnimatedContainer from "@/components/animations/AnimatedContainer";
 import DOMPurify from "dompurify";
-import { ticketValidationSchema } from "../../config/validationSchema";
-import { AuthContext } from "../../context/providers/AuthProvider";
-import PaymentOption from "../../components/PaymentOption";
+import { ticketValidationSchema } from "@/config/validationSchema";
+import { useAuth } from "@/context/providers/AuthProvider";
+import PaymentOption from "@/components/PaymentOption";
+import { makeMomoTransaction } from "@/api/paymentAPI";
 
 function MatchTicketCheckout() {
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
   const {
     customState: { stadiumTicketTotal },
     customDispatch,
   } = useContext(CustomContext);
   const { id } = useParams();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  const [token, setToken] = useState("");
+  const [err, setErr] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
+  const [mobilePartner, setMobilePartner] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [confirmPhonenumber, setConfirmPhonenumber] = useState("");
-  const [mobilePartner, setMobilePartner] = useState("");
+  const [failureCount, setFailCount] = useState(3);
 
   const stadium = useQuery({
     queryKey: ["match"],
     queryFn: () => getCategory(id),
     enabled: !!id,
   });
+
+  // Get wallet status
+  const { data: dataDisableWallet } = useQuery({
+    queryKey: ["disable-wallet"],
+    queryFn: () => disableWallet(),
+    enabled: failureCount === 0,
+    initialData: { active: true, timeOut: null },
+  });
+
+  useEffect(() => {
+    setErr("");
+
+    if (dataDisableWallet?.active === false) {
+      const message = `Wallet disabled due to multiple failed attempts.Try again after ${dataDisableWallet?.timeOut}`;
+      setErr(message);
+
+      queryClient.invalidateQueries({ queryKey: ["wallet-status"] });
+    }
+  }, [dataDisableWallet, queryClient]);
+
+  //Make Payment
+  const paymentMutate = useMutation({
+    mutationFn: makeMomoTransaction,
+    retry: false,
+  });
+
+  const { mutateAsync, isLoading } = useMutation({
+    mutationFn: getNonUser,
+    retry: false,
+  });
+
   const initialValues = {
     email,
+    token,
     phoneNumber,
     confirmPhonenumber,
     mobilePartner,
@@ -52,29 +100,123 @@ function MatchTicketCheckout() {
   };
 
   const onSubmit = (values) => {
-    const stadiumCheckOut = {
-      category: "stadium",
-      categoryId: stadium?.data?._id,
-      ticketName: stadium?.data?.voucherType,
+    const payloadData = {
+      categoryId: stadium?.data?.id,
+      service: "ticket",
+      category: stadium?.data?.type,
+      voucherName: stadium?.data?.name,
       paymentDetails: {
         tickets: _.filter(stadiumTicketTotal, ({ quantity }) => quantity !== 0),
-        quantity: Number(_.sumBy(stadiumTicketTotal, "quantity")),
-        totalAmount: Number(_.sumBy(stadiumTicketTotal, "total")),
+        quantity: _.sumBy(stadiumTicketTotal, "quantity"),
+        totalAmount: _.sumBy(stadiumTicketTotal, "total"),
       },
-      totalAmount: Number(_.sumBy(stadiumTicketTotal, "total")),
+      totalAmount: _.sumBy(stadiumTicketTotal, "total"),
       user: {
         name: user?.name,
-        email: DOMPurify.sanitize(email),
-        phoneNumber: DOMPurify.sanitize(phoneNumber)||user?.phonenumber,
+        email: DOMPurify.sanitize(values?.email),
+        phoneNumber:
+          DOMPurify.sanitize(values?.phoneNumber) || user?.phonenumber,
         provider: values.mobilePartner,
       },
       isWallet: paymentMethod === "wallet",
     };
 
-    customDispatch({
-      type: "getTicketPaymentDetails",
-      payload: { open: true, data: stadiumCheckOut },
-    });
+    if (user?.id && paymentMethod === "wallet") {
+      const walletBalance = queryClient.getQueryData(
+        ["wallet-balance", user?.id],
+        { exact: true },
+      );
+
+      if (
+        Number(walletBalance) === 0 ||
+        Number(walletBalance) < Number(payloadData.totalAmount)
+      ) {
+        customDispatch(
+          globalAlertType(
+            "error",
+            "Insufficient Wallet Balance. Please request a top up.",
+          ),
+        );
+        return;
+      }
+      payloadData.token = token;
+    }
+
+    if (!user?.id) {
+      mutateAsync(
+        {},
+        {
+          onSettled: () => {
+            customDispatch({ type: "sumCinemaTotal", payload: [] });
+            customDispatch({ type: "sumStadiumTotal", payload: [] });
+          },
+          onSuccess: () => {
+            paymentMutate.mutateAsync(payloadData, {
+              onSuccess: (data) => {
+                if (data) {
+                  navigate(`/confirm`, {
+                    replace: true,
+                    state: {
+                      id: data?.transactionId,
+                      categoryType: "ticket",
+                      path: pathname,
+                      isWallet: payloadData?.isWallet,
+                    },
+                  });
+                  customDispatch({
+                    type: "getTicketPaymentDetails",
+                    payload: { open: false, data: {} },
+                  });
+                }
+              },
+              onError: (error) => {
+                customDispatch(globalAlertType("error", error));
+              },
+            });
+          },
+        },
+      );
+    } else {
+      paymentMutate.mutateAsync(payloadData, {
+        onSettled: () => {
+          customDispatch({ type: "sumCinemaTotal", payload: [] });
+          customDispatch({ type: "sumStadiumTotal", payload: [] });
+        },
+        onSuccess: (data) => {
+          if (data) {
+      
+
+            navigate(`/confirm`, {
+              replace: true,
+              state: {
+                id: data?.transactionId,
+                categoryType: "ticket",
+                path: pathname,
+                isWallet: payloadData?.isWallet,
+              },
+            });
+          }
+        },
+        onError: async (error) => {
+          if (error === "Invalid PIN!") {
+            setFailCount((prevState) => prevState - 1);
+            if (failureCount === 0) {
+              const message = `Wallet disabled due to multiple failed attempts.Try again after ${dataDisableWallet?.timeOut}`;
+              setErr(message);
+              queryClient.setQueryData(["wallet-status"], (oldData) => ({
+                ...oldData,
+                active: false,
+                timeOut: dataDisableWallet?.timeOut,
+              }));
+            } else {
+              setErr(`${error} ${failureCount - 1} attempt(s) left.`);
+            }
+          } else {
+            customDispatch(globalAlertType("error", error));
+          }
+        },
+      });
+    }
   };
 
   if (_.isEmpty(stadiumTicketTotal) || !id) {
@@ -163,13 +305,13 @@ function MatchTicketCheckout() {
                   >
                     <Typography variant="body2">
                       {moment(new Date(stadium?.data?.details?.date)).format(
-                        "dddd,Do MMMM,YYYY"
+                        "dddd,Do MMMM,YYYY",
                       )}
                     </Typography>
 
                     <Typography variant="body2">
                       {moment(new Date(stadium?.data?.details?.time)).format(
-                        "hh:mm a"
+                        "hh:mm a",
                       )}
                     </Typography>
                   </Stack>
@@ -224,7 +366,7 @@ function MatchTicketCheckout() {
                         sx={{ color: "primary.main", fontWeight: "bold" }}
                       >
                         {currencyFormatter(
-                          _.sumBy(stadiumTicketTotal, "total")
+                          _.sumBy(stadiumTicketTotal, "total"),
                         )}
                       </ListItemSecondaryAction>
                     </ListItem>
@@ -234,10 +376,11 @@ function MatchTicketCheckout() {
                     onSubmit={onSubmit}
                     enableReinitialize={true}
                     validationSchema={ticketValidationSchema(
-                      paymentMethod === "momo"
+                      paymentMethod === "momo",
                     )}
                   >
                     {({ handleSubmit, errors, touched }) => {
+                      console.log(errors);
                       return (
                         <>
                           <Typography variant="caption">
@@ -247,48 +390,56 @@ function MatchTicketCheckout() {
                             size="small"
                             type="email"
                             variant="outlined"
-                           label="Email Address(optional)"
+                            label="Email Address(optional)"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             error={Boolean(touched.email && errors.email)}
                             helperText={touched.email && errors.email}
                           />
-
                           <PaymentOption
                             showWallet={user?.id}
                             showMomo
                             setPaymentMethod={setPaymentMethod}
                             error={Boolean(
-                              touched.paymentMethod && errors.paymentMethod
+                              touched.paymentMethod && errors.paymentMethod,
                             )}
-                            helperText={errors.paymentMethod}
+                            value={paymentMethod}
+                            helperText={errors.paymentMethod || err}
                             mobileMoneyDetails={{
                               mobilePartner,
                               setMobilePartner,
                               mobilePartnerErr: Boolean(
-                                touched.mobilePartner && errors.mobilePartner
+                                touched.mobilePartner && errors.mobilePartner,
                               ),
                               mobilePartnerHelperText: errors.mobilePartner,
                               phonenumber: phoneNumber,
                               setPhonenumber: setPhoneNumber,
                               phonenumberErr: Boolean(
-                                touched.phoneNumber && errors.phoneNumber
+                                touched.phoneNumber && errors.phoneNumber,
                               ),
                               phonenumberHelperText: errors.phoneNumber,
-                              //
                               confirmPhonenumber,
                               setConfirmPhonenumber,
                               confirmPhonenumberErr: Boolean(
-                                touched.phoneNumber && errors.confirmPhonenumber
+                                touched.phoneNumber &&
+                                errors.confirmPhonenumber,
                               ),
                               confirmPhonenumberHelperText:
                                 errors.confirmPhonenumber,
+                            }}
+                            walletDetails={{
+                              token,
+                              setToken,
+                              tokenErr:
+                                Boolean(touched.token && errors.token) || err,
+                              tokenHelperText: errors.token || err,
                             }}
                           />
 
                           <LoadingButton
                             variant="contained"
                             onClick={handleSubmit}
+                            disabled={!paymentMethod || isLoading}
                           >
                             Make Payment
                           </LoadingButton>

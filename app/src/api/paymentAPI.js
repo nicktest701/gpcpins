@@ -1,10 +1,14 @@
 import api from "./customAxios";
+import { v4 as uuid } from "uuid";
 
 export const makeMomoTransaction = async (paymentInfo) => {
   try {
     const res = await api({
       method: "POST",
       url: `/payment`,
+      headers: {
+        "Idempotency-Key": uuid(),
+      },
       data: paymentInfo,
     });
 
@@ -18,6 +22,9 @@ export const makeAirtimeTransaction = async (data) => {
   try {
     const res = await api({
       method: "POST",
+      headers: {
+        "Idempotency-Key": uuid(),
+      },
       url: `/payment/${data?.type === "Bundle" ? "bundle" : "airtime"}`,
       data,
     });
@@ -173,6 +180,9 @@ export const makeElectricityPayment = async (paymentInfo) => {
     const res = await api({
       method: "POST",
       url: `/payment/electricity`,
+      headers: {
+        "Idempotency-Key": uuid(),
+      },
       data: paymentInfo,
     });
 

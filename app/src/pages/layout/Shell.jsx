@@ -1,6 +1,6 @@
-import { lazy, Suspense, useContext, useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
-import { CustomContext } from "../../context/providers/CustomProvider";
+import { useCustomContext } from "../../context/providers/CustomProvider";
 
 import Layout from "./Layout";
 import PayLoading from "../../components/PayLoading";
@@ -65,12 +65,11 @@ import Error from "../Error";
 import VoucherPayment from "../payment/voucherPayment";
 import PaymentStatus from "../PaymentStatus";
 
-function Shell() {
-  const { customDispatch } = useContext(CustomContext);
 
-  const {
-    customState: { alertData },
-  } = useContext(CustomContext);
+
+function Shell() {
+  const { customDispatch, customState: { alertData }, } = useCustomContext();
+
 
   useEffect(() => {
     const handleOnline = () => {

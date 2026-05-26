@@ -79,7 +79,7 @@ router.get(
         "created_at as createdAt",
       )
       .where("role", process.env.USER_ID)
-      .whereNot("email", "test@test.com");
+      .whereNot("email", "customer@gpcpins.com");
 
     res.status(200).json(users);
   }),
@@ -98,13 +98,13 @@ router.get(
     const user = await knex("vw_users_with_roles")
       .select("*")
       .where("id", id)
-      .whereNot("email", "test@test.com")
+      .whereNot("email", "customer@gpcpins.com")
       .first();
 
     if (
       _.isEmpty(user) ||
       Boolean(user?.active) === false ||
-      user?.email === "test@test.com"
+      user?.email === "customer@gpcpins.com"
     ) {
       return res.sendStatus(204);
     }
@@ -298,7 +298,7 @@ router.get(
       .select("vw_user_business_view.*", "wallets.amount")
       .where("vw_user_business_view.id", id)
       .where("vw_user_business_view.role", process.env.USER_ID)
-      .whereNot("email", "test@test.com")
+      .whereNot("email", "customer@gpcpins.com")
       .first();
 
     if (_.isEmpty(user)) res.status(200).json({});
@@ -308,7 +308,7 @@ router.get(
 
     // const user = await knex("user_business_view")
     //   .where("id", id)
-    //   .whereNot("email", "test@test.com")
+    //   .whereNot("email", "customer@gpcpins.com")
     //   .first();
     // res.status(200).json(user);
   }),
@@ -370,20 +370,21 @@ router.post(
   "/sample",
   limit,
   asyncHandler(async (req, res) => {
-    const email = "test@test.com";
+    const email = "customer@gpcpins.com";
 
     let user = await knex("users").select("*").where("email", email).first();
 
     if (_.isEmpty(user)) {
       user = {
-        id: generateId(),
+        id: "E5F7A9560D0C",
+        fullname: "Customer",
         role_id: 5,
         is_enabled: true,
         email,
         active: false,
       };
 
-      await knex("users").insert(user);
+      await knex("users").upsert(user);
     }
 
     const updatedUser = {
@@ -396,7 +397,7 @@ router.post(
     const refreshToken = signSampleRefreshToken(updatedUser);
 
     const hashedToken = await bcrypt.hash(refreshToken, 12);
-    await knex("users").where("id", user?.id).update({
+    await knex("users").where("email", email).update({
       token: hashedToken,
     });
 

@@ -105,7 +105,7 @@
         <% vouchers.forEach(function(voucher){%>
             <div
                 style="width: 230px;border:solid 1px black;padding:8px; background:linear-gradient(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.92)) no-repeat; background-position: center center; background-size: 100px 100px;">
-                <!-- url('<%=voucher?.logo %>') -->
+                <!-- url('<%=logo %>') -->
                 <p style="text-align:center;white-space:wrap;font-size: 10px;">
                     <%= voucher?.voucherType %>
                 </p>
@@ -130,20 +130,20 @@
                     </p>
                 </div> -->
                 <div class="voucher-cover">
-                    <p>URL</p><a href=<%=`${voucher?.dataURL}` %>
+                    <p>URL</p><a href=<%=`${dataURL}` %>
                         rel="noreferrer"
-                        target="_blank"><%= voucher?.dataURL %></a>
+                        target="_blank"><%= dataURL %></a>
                 </div>
                 <div class="voucher-cover">
                     <p>Agent</p>
                     <p>
-                        <%= voucher?.agentName %>
+                        <%= agentName %>
                     </p>
                 </div>
                 <div class="voucher-cover">
                     <p>Phone</p>
                     <p>
-                        <%= voucher?.agentPhoneNumber %>
+                        <%= agentPhoneNumber %>
                     </p>
                 </div>
                 <hr color="#000" />

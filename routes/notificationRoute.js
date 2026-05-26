@@ -49,35 +49,40 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id: userId, createdAt: userCreatedAt } = req.user;
 
+    // console.log(req.user)
+
     // ---------- VALIDATION ----------
     if (!isValidUUID2(userId)) {
       return res.status(400).json({ message: "Invalid user identifier" });
     }
 
     // ---------- PAGINATION ----------
-    let { page = 1, limit = 50 } = req.query;
-    page = Math.max(1, Number(page) || 1);
-    limit = Math.min(Number(limit) || 50, 100); // enforce max 100 per page
-    const offset = (page - 1) * limit;
+    // let { page = 1, limit = 50 } = req.query;
+    // page = Math.max(1, Number(page) || 1);
+    // limit = Math.min(Number(limit) || 50, 100); // enforce max 100 per page
+    // const offset = (page - 1) * limit;
 
     // ---------- DATE FILTER ----------
     // Use the user's creation date as the lower bound for notifications
     const startDate = moment(userCreatedAt).toDate();
 
     // ---------- COUNT TOTAL ITEMS ----------
-    const [broadcastCount, notificationCount] = await Promise.all([
-      knex("broadcast_messages")
-        .where("recipient", "Customers")
-        .where("created_at", ">=", startDate)
-        .count("id as count")
-        .first(),
+    // const [broadcastCount, notificationCount] = await Promise.all([
+    //   knex("broadcast_messages")
+    //     .where("recipient", "Customers")
+    //     .where("created_at", ">=", startDate)
+    //     // .count("id as count")
+    //     .first(),
 
-      knex("notifications")
-        .where("user_id", userId)
-        .where("created_at", ">=", startDate)
-        .count("id as count")
-        .first(),
-    ]);
+    //   knex("notifications")
+    //     .where("user_id", userId)
+    //     .where("created_at", ">=", startDate)
+    //     // .count("id as count")
+    //     .first(),
+    // ]);
+
+    // console.log("Broadcast Count:", broadcastCount);
+    // console.log("Notification Count:", notificationCount);
 
     // const total =
     //   (broadcastCount?.count || 0) + (notificationCount?.count || 0);
@@ -87,6 +92,7 @@ router.get(
     const broadcastSubquery = knex("broadcast_messages")
       .select(
         "id",
+        knex.raw("? as user_id", userId), // assign current user ID to broadcasts
         "type",
         "title",
         "body",
@@ -96,7 +102,6 @@ router.get(
         "active",
         "created_at",
         "updated_at",
-        knex.raw("? as user_id", userId), // assign current user ID to broadcasts
       )
       .where("recipient", "Customers")
       .where("created_at", ">=", startDate);
@@ -121,10 +126,12 @@ router.get(
     const unionQuery = knex
       .unionAll([broadcastSubquery, notificationsSubquery])
       .orderBy("created_at", "desc")
-      .offset(offset)
-      .limit(limit);
+      // .offset(offset)
+      // .limit(limit);
 
     const results = await unionQuery;
+
+    // console.log(results)
 
     // ---------- NORMALIZATION ----------
     // Convert snake_case to camelCase and safely parse JSON info

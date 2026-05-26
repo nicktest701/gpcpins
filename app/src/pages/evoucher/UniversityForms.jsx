@@ -179,6 +179,7 @@ function UniversityForms() {
                         placeholder="Total Amount"
                         label="Total Amount"
                         required
+                        fullWidth
                         InputProps={{
                           startAdornment: (
                             <InputAdornment position="start">
@@ -210,6 +211,7 @@ function UniversityForms() {
                         placeholder="Enter your Name"
                         label="Full Name"
                         required
+                        fullWidth
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         error={Boolean(touched.fullName && errors.fullName)}
@@ -219,6 +221,7 @@ function UniversityForms() {
                       <TextField
                         size="small"
                         type="email"
+                         fullWidth
                         label="Email Address(optional)"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}

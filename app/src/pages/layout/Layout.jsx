@@ -4,7 +4,7 @@ import Main from "./Main";
 // import BottomNav from './BottomNav';
 // import VoucherPaymentDetails from "../../components/modals/VoucherPaymentDetails";
 import TicketPaymentDetails from "../../components/modals/TicketPaymentDetails";
-import { IconButton,  } from "@mui/material";
+import { Box, IconButton } from "@mui/material";
 import { ArrowUpwardSharp } from "@mui/icons-material";
 import BottomNav from "./BottomNav";
 
@@ -21,10 +21,18 @@ function Layout() {
   // };
   return (
     <>
-      <Header />
-      
-      <Main />
-      <Footer />
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "100vh",
+        }}
+      >
+        <Header />
+
+        <Main />
+        <Footer />
+      </Box>
 
       <BottomNav />
 

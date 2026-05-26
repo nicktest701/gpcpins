@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState, useEffect } from "react";
 import {
   Stack,
   TextField,
@@ -11,7 +11,8 @@ import {
 } from "@mui/material";
 import { ArrowDropDownRounded } from "@mui/icons-material";
 import MobilePartner from "../MobilePartner";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import { useAuth } from "../../context/providers/AuthProvider";
+import { getCode } from "../../constants";
 
 function MobileMoneyOption({
   mobilePartner,
@@ -26,18 +27,30 @@ function MobileMoneyOption({
   setConfirmPhonenumber,
   confirmPhonenumberErr,
   confirmPhonenumberHelperText,
-  value
+  value,
 }) {
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const [expand, setExpand] = useState(value === "momo");
+
+  useEffect(() => {
+    if (value === "momo" || !user?.id) {
+      setExpand(true);
+    } else {
+      setExpand(false);
+    }
+  }, [value, user]);
 
   const handleChecked = (e) => {
     if (e.target.checked) {
       setPhonenumber(user?.phonenumber);
       setConfirmPhonenumber(user?.phonenumber);
+      const partner = getCode(user.phonenumber);
+      // console.log(partner);
+      setMobilePartner(partner.providerName);
     } else {
       setPhonenumber("");
       setConfirmPhonenumber("");
+      setMobilePartner("");
     }
   };
 
@@ -48,7 +61,7 @@ function MobileMoneyOption({
       onChange={() => setExpand(!expand)}
     >
       <AccordionSummary
-        sx={{ backgroundColor: "whitesmoke", px: 1 }}
+        sx={{ backgroundColor: "whitesmoke", px: 1, borderRadius: 1 }}
         expandIcon={<ArrowDropDownRounded />}
       >
         <FormControlLabel
@@ -66,7 +79,7 @@ function MobileMoneyOption({
         />
       </AccordionSummary>
       <AccordionDetails>
-        <Stack spacing={2}>
+        <Stack spacing={2} pt={2}>
           <MobilePartner
             size="small"
             value={mobilePartner || ""}
@@ -84,7 +97,7 @@ function MobileMoneyOption({
             size="small"
             value={phonenumber}
             onChange={(e) => setPhonenumber(e.target.value)}
-            error={phonenumberErr}
+            error={!!phonenumberErr}
             helperText={phonenumberHelperText}
           />
           <TextField
@@ -97,7 +110,7 @@ function MobileMoneyOption({
             size="small"
             value={confirmPhonenumber}
             onChange={(e) => setConfirmPhonenumber(e.target.value)}
-            error={confirmPhonenumberErr}
+            error={!!confirmPhonenumberErr}
             helperText={confirmPhonenumberHelperText}
           />
           {user?.phonenumber && (

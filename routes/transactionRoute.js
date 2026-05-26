@@ -2178,23 +2178,36 @@ router.get(
             .first(),
         ]);
 
-      const transaction = [
-        ...voucherTransaction,
-        ...airtimeTransaction,
-        ...prepaidTransaction,
-      ];
+      const transaction = _.compact([
+        voucherTransaction,
+        prepaidTransaction,
+        airtimeTransaction,
+      ])[0];
 
       if (_.isEmpty(transaction)) {
         return res.status(400).json("No results match your search!");
       }
-      const { info, ...rest } = transaction[0];
-      const details = JSON.parse(info);
+      const { info, ...rest } = transaction;
+      const details = safeJSON(info);
+
+      const category = await knex("categories")
+        .select("name", "type")
+        .where("id", details?.categoryId)
+        .first();
 
       res.status(200).json({
-        ...rest,
+        id: rest.id,
+        externalTransactionId: rest.externalTransactionId,
+        phonenumber: rest.phonenumber,
+        mode: rest.mode,
+        service: rest.service,
+        domain: details?.service,
+        status: rest.status,
+        categoryName: category?.name,
+        categoryType: category?.type,
         amount: rest?.amount,
         downloadLink: details?.downloadLink,
-        domain: details?.service,
+        createdAt: rest.createdAt,
       });
     } catch (error) {
       return res
@@ -2231,11 +2244,27 @@ router.get(
     }
     const { reference, partner, user, info, ...rest } = transaction;
 
-    res.status(200).json({
-      ...rest,
-      info: safeJSON(info),
-      vouchers: "",
-    });
+    const category = await knex("categories")
+        .select("name", "type")
+        .where("id", details?.categoryId)
+        .first();
+
+      res.status(200).json({
+        id: rest.id,
+        externalTransactionId: rest.externalTransactionId,
+        phonenumber: rest.phonenumber,
+        email: rest.email,
+        mode: rest.mode,
+        service: rest.service,
+        domain: details?.service,
+        status: rest.status,
+        categoryName: category?.name,
+        categoryType: category?.type,
+        amount: rest?.amount,
+        downloadLink: details?.downloadLink,
+        createdAt: rest.createdAt,
+        info: safeJSON(info),
+      });
   }),
 );
 
@@ -3363,7 +3392,7 @@ router.get(
         "total_amount as totalAmount",
         "commission",
         "created_at as createdAt",
-        'status'
+        "status",
       )
       .where("user_id", id)
       .orderBy("created_at", "desc");

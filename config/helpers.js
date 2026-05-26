@@ -1,7 +1,7 @@
 // ---------------- HELPERS ----------------
 const safeJSON = (val, fallback = {}) => {
   try {
-    return val ? JSON.parse(val) : fallback;
+    return typeof val === "string" ? JSON.parse(val) : fallback;
   } catch {
     return fallback;
   }

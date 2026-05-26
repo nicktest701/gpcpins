@@ -1,4 +1,6 @@
-import { useContext, useState } from "react";
+import { useContext } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
 import {
   Dialog,
   DialogContent,
@@ -8,47 +10,80 @@ import {
   Typography,
 } from "@mui/material";
 import { LoadingButton } from "@mui/lab";
-import { useSearchParams } from "react-router-dom";
-import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { globalAlertType } from "../../components/alert/alertType";
 import { CustomContext } from "../../context/providers/CustomProvider";
-import { sendWalletTopUpRequest } from "../../api/walletAPI";
+import { sendWalletTopUp } from "../../api/walletAPI";
+import MobilePartner from "../../components/MobilePartner";
+import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
+import { topUpSchema } from "../../config/validationSchema";
+
+// Form values interface
+
+// Yup validation schema
 
 function TopUpRequest() {
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { customDispatch } = useContext(CustomContext);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [amount, setAmount] = useState(1);
-  const [amountErr, setAmountErr] = useState("");
+  const open = Boolean(searchParams.get("add-money"));
 
-  const { mutateAsync, isLoading } = useMutation({
-    mutationFn: sendWalletTopUpRequest,
+  // React Hook Form setup
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting },
+  } = useForm({
+    resolver: yupResolver(topUpSchema),
+    defaultValues: {
+      mobilePartner: "",
+      phoneNumber: "",
+      amount: 1,
+    },
   });
 
-  const handleSubmit = () => {
-    if (amount === "") {
-      setAmountErr("Required*");
-      return;
-    }
-    if (amount < 1) {
-      setAmountErr("Mininum Amount you can top up is GHS 1*");
-      return;
-    }
-
-    mutateAsync(
-      {
-        amount: Number(amount),
-      },
-      {
-        onSuccess: () => {
-          customDispatch(globalAlertType("info", "Request Sent!"));
-          handleClose();
-        },
-        onError: () => {
-          customDispatch(globalAlertType("error", "An error has occurred!"));
-        },
+  // Mutation for submitting top-up request
+  const { mutateAsync, isPending } = useMutation({
+    mutationFn: sendWalletTopUp,
+    onError: (error) => {
+      customDispatch(
+        globalAlertType("error", error?.message || "An error occurred."),
+      );
+    },
+    onSuccess: (data) => {
+      console.log("Top-up request response:", data);
+      if (data) {
+        navigate(`/confirm`, {
+          replace: true,
+          state: {
+            id: data?.paymentId,
+            categoryType: "wallet",
+            path: pathname,
+            isWallet: true,
+          },
+        });
+        // handleClose();
       }
-    );
+    },
+  });
+
+  const onSubmit = async (data) => {
+    const payload = {
+      amount: data.amount,
+      mobilePartner: data.mobilePartner,
+      phoneNumber: data.phoneNumber,
+    };
+    
+    try {
+      await mutateAsync(payload);
+    } catch (error) {
+      customDispatch(
+        globalAlertType("error", "Failed to send request. Please try again."),
+      );
+    }
   };
 
   const handleClose = () => {
@@ -56,65 +91,108 @@ function TopUpRequest() {
       params.delete("add-money");
       return params;
     });
+    reset(); // Reset form when dialog closes
   };
 
   return (
-    <Dialog
-      open={Boolean(searchParams.get("add-money"))}
-      onClose={handleClose}
-      maxWidth="xs"
-      fullWidth
-    >
+    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
       <CustomDialogTitle
-        title="Top up request"
-        subtitle="Send a top up request"
+        title="Wallet Top-Up"
+        subtitle="Fill in the details to top-up wallet via Mobile Money."
         onClose={handleClose}
       />
 
       <DialogContent sx={{ p: 2 }}>
-        <Stack spacing={2}>
-          <Typography
-            variant="caption"
-            fontStyle="italic"
-            color="secondary"
-            paragraph
-          >
-            Enter the amount you want to top up.
-          </Typography>
-          <TextField
-            //  variant="filled"
-            type="number"
-            inputMode="numeric"
-            placeholder="Amount"
-            label="Top Up Amount"
-            fullWidth
-            required
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">GH¢</InputAdornment>
-              ),
-              endAdornment: <InputAdornment position="end">p</InputAdornment>,
-            }}
-            value={amount}
-            focused
-            autoFocus
-            onChange={(e) => setAmount(e.target.value)}
-            error={Boolean(amountErr)}
-            helperText={amountErr}
-          />
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <Stack spacing={2}>
+            {/* Mobile Partner (custom component with Controller) */}
+            <Controller
+              name="mobilePartner"
+              control={control}
+              render={({ field, fieldState }) => (
+                <MobilePartner
+                  size="small"
+                  value={field.value}
+                  setValue={field.onChange}
+                  error={!!fieldState.error}
+                  helperText={fieldState.error?.message}
+                />
+              )}
+            />
 
-          <LoadingButton
-            type="submit"
-            variant="contained"
-            loading={isLoading}
-            onClick={handleSubmit}
-            fullWidth
-            color="secondary"
-            size='large'
-          >
-            Send Request
-          </LoadingButton>
-        </Stack>
+            {/* Phone Number */}
+            <Controller
+              name="phoneNumber"
+              control={control}
+              render={({ field, fieldState }) => (
+                <TextField
+                  {...field}
+                  type="tel"
+                  inputMode="tel"
+                  variant="outlined"
+                  label="Mobile Money Number"
+                  fullWidth
+                  required
+                  size="small"
+                  error={!!fieldState.error}
+                  helperText={fieldState.error?.message}
+                />
+              )}
+            />
+
+            <Typography
+              variant="caption"
+              fontStyle="italic"
+              color="secondary"
+              paragraph
+            >
+              Enter the amount you want to top up.
+            </Typography>
+
+            {/* Amount */}
+            <Controller
+              name="amount"
+              control={control}
+              render={({ field, fieldState }) => (
+                <TextField
+                  {...field}
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="Amount"
+                  label="Top Up Amount"
+                  size="small"
+                  fullWidth
+                  required
+                  autoFocus
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">GH¢</InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">p</InputAdornment>
+                    ),
+                  }}
+                  error={!!fieldState.error}
+                  helperText={fieldState.error?.message}
+                  onChange={(e) => field.onChange(e.target.valueAsNumber || "")}
+                  value={field.value || ""}
+                />
+              )}
+            />
+
+            <LoadingButton
+              type="submit"
+              variant="contained"
+              loading={isPending || isSubmitting}
+              disabled={isPending || isSubmitting}
+              fullWidth
+              color="secondary"
+              size="large"
+            >
+              Top Up Now
+            </LoadingButton>
+          </Stack>
+        </form>
       </DialogContent>
     </Dialog>
   );

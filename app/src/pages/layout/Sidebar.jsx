@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 import Swal from "sweetalert2";
 import { Link, useLocation } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   DashboardRounded,
   PaymentRounded,
@@ -32,8 +32,11 @@ import {
   SimCardOutlined,
   SdCardRounded,
 } from "@mui/icons-material";
-import { AuthContext } from "../../context/providers/AuthProvider";
-import { CustomContext } from "../../context/providers/CustomProvider";
+import { useAuth } from "../../context/providers/AuthProvider";
+import {
+  CustomContext,
+  useCustomContext,
+} from "../../context/providers/CustomProvider";
 import { IMAGES } from "../../constants";
 import { getAllBroadcastMessages } from "../../api/broadcastMessageAPI";
 import NavLinkItem from "@/components/NavLinkItem";
@@ -47,8 +50,9 @@ const pulse = keyframes`
 `;
 
 function Sidebar() {
-  const queryClient = useQueryClient();
-  const { user, logout } = useContext(AuthContext);
+
+  const { user, logout } = useAuth();
+  const { notifications: notifs } = useCustomContext();
   const {
     customState: { openSidebar },
     customDispatch,
@@ -58,15 +62,12 @@ function Sidebar() {
 
   // Fetch notifications (only for logged-in users)
   const { data: notifications } = useQuery({
-    queryKey: ["notifications"],
+    queryKey: ["notifications", user?.id],
     queryFn: () => getAllBroadcastMessages(),
     enabled: !!user?.id,
-    initialData: queryClient.getQueryData(["notifications"]),
+    initialData: notifs,
     retry: 1,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnMount: false,
-    refetchOnReconnect: false,
-    refetchOnWindowFocus: false,
   });
 
   const unreadCount = useMemo(

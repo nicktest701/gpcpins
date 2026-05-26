@@ -3,11 +3,11 @@ import { SearchRounded, SportsFootballRounded } from '@mui/icons-material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import StadiumTicketItem from './StadiumTicketItem';
-import { getCategoryByType } from '../../api/categoryAPI';
+import { getCategoryByType } from '@/api/categoryAPI';
 import { useEffect, useState } from 'react';
 import StadiumSearchList from './StadiumSearchList';
-import { IMAGES } from '../../constants';
-import AnimatedWrapper from '../../components/animations/AnimatedWrapper';
+import { IMAGES } from '@/constants';
+import AnimatedWrapper from '@/components/animations/AnimatedWrapper';
 
 function StadiaTickets() {
   const [loaded, setLoaded] = useState(false);
@@ -49,6 +49,8 @@ function StadiaTickets() {
       setPage((prev) => prev + 1);
     }
   };
+
+  console.log(footballTickets.data);
 
   return (
     <div style={{ minHeight: '100vh', width: '100vw', paddingBottom: 5 }}>
@@ -123,7 +125,7 @@ function StadiaTickets() {
           <Container>
             {footballTickets?.data?.map((ticket) => {
               return (
-                <AnimatedWrapper key={ticket?._id}>
+                <AnimatedWrapper key={ticket?.id}>
                   <StadiumTicketItem {...ticket} />
                 </AnimatedWrapper>
               );

@@ -1408,6 +1408,7 @@ export const MOBILE_PROVIDER = [
   },
 ];
 
+
 export const SERVICE_PROVIDER = [
   {
     id: "612db3be-2210-41fc-91d1-06573271df49",
@@ -1481,7 +1482,7 @@ export const WALLET_TOPUP_TRANSACTIONS = [
       return (
         <Button
           startIcon={
-            ["deposit", "refund"].includes(data?.type) ? (
+            ["deposit", "refund", "credit"].includes(data?.type) ? (
               <ArrowUpward color="success" />
             ) : (
               <ArrowDownward color="error" />
@@ -1508,15 +1509,22 @@ export const WALLET_TOPUP_TRANSACTIONS = [
     title: "Details",
     export: false,
     render: (data) => {
+      const isDeposit = ["deposit", "refund", "credit"].includes(data?.type);
       return (
         <Box>
           <ListItemText
-            primary={data?.wallet}
-            secondary={`${data?.type === "deposit" ? "+" : "-"} ${
-              data?.amount
-            }`}
+            primary={
+              isDeposit
+                ? currencyFormatter(
+                    Number(data?.walletAmount) + Number(data?.amount),
+                  )
+                : currencyFormatter(
+                    Number(data?.walletAmount) - Number(data?.amount),
+                  )
+            }
+            secondary={`${isDeposit ? "+" : "-"} ${data?.amount}`}
             secondaryTypographyProps={{
-              color: data?.type === "deposit" ? "success.main" : "error.main",
+              color: isDeposit ? "success.main" : "error.main",
               fontWeight: "700",
             }}
           />

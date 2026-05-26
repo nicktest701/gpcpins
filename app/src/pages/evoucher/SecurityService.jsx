@@ -1,4 +1,4 @@
-import { useMemo, useState, useContext } from "react";
+import { useMemo, useState } from "react";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import InputAdornment from "@mui/material/InputAdornment";
@@ -10,26 +10,22 @@ import Container from "@mui/material/Container";
 import { Formik } from "formik";
 import { Helmet } from "react-helmet-async";
 import { currencyFormatter } from "@/constants";
-import { CustomContext } from "@/context/providers/CustomProvider";
 import { universityValidationSchema } from "@/config/validationSchema";
 import CustomWrapper from "@/components/custom/CustomWrapper";
 import { useGetCategoryByType } from "@/hooks/useGetCategoryByType";
 import { LoadingButton } from "@mui/lab";
 import { useNavigate } from "react-router-dom";
+import { useCustomContext } from "../../context/providers/CustomProvider";
 
 function SecurityService() {
   const navigate = useNavigate();
 
-  const { customDispatch } = useContext(CustomContext);
-
+  const { customDispatch } = useCustomContext();
   const [categoryType, setCategoryType] = useState({
     id: "",
     name: "",
     price: 0,
   });
-
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
   const [quantity, setQuantity] = useState(0);
 
   ///Get All waec categories
@@ -46,8 +42,6 @@ function SecurityService() {
     categoryType,
     quantity,
     totalAmount: grandTotal,
-    fullName,
-    email,
   };
 
   const onSubmit = (values) => {
@@ -58,8 +52,6 @@ function SecurityService() {
       price: values?.categoryType?.price,
       quantity: Number(values?.quantity),
       totalAmount: values.totalAmount,
-      email: values?.email,
-      fullName: values?.fullName,
     };
 
     customDispatch({
@@ -110,12 +102,14 @@ function SecurityService() {
                   <Grid item xs={12} sm={12}>
                     <Stack spacing={3}>
                       <Typography
+                        width="100%"
                         paragraph
-                        color="#fff"
-                        bgcolor="secondary.main"
-                        p={1}
+                        color="text.secondary"
+                        bgcolor="background.neutral"
+                        p={1.5}
+                        borderRadius={1}
                       >
-                        Forms Details
+                        Select Form Type
                       </Typography>
 
                       <Autocomplete
@@ -147,7 +141,7 @@ function SecurityService() {
                             >
                               <TextField
                                 {...params}
-                                label="Select Security Form"
+                                label="Security Form"
                                 size="small"
                                 error={Boolean(
                                   touched?.categoryType?.name &&
@@ -179,6 +173,7 @@ function SecurityService() {
                         size="small"
                         placeholder="Total Amount"
                         label="Total Amount"
+                        fullWidth
                         required
                         InputProps={{
                           startAdornment: (
@@ -195,7 +190,7 @@ function SecurityService() {
                       />
                     </Stack>
                   </Grid>
-                  <Grid item xs={12} sm={12}>
+                  {/* <Grid item xs={12} sm={12}>
                     <Stack spacing={3}>
                       <Typography
                         paragraph
@@ -210,6 +205,8 @@ function SecurityService() {
                         size="small"
                         placeholder="Enter your Name"
                         label="Full Name"
+                        inputMode="text"
+                        fullWidth
                         required
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
@@ -220,14 +217,16 @@ function SecurityService() {
                       <TextField
                         size="small"
                         type="email"
+                        inputMode="email"
                         label="Email Address(optional)"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         error={Boolean(touched.email && errors.email)}
                         helperText={touched.email && errors.email}
+                        fullWidth
                       />
                     </Stack>
-                  </Grid>
+                  </Grid> */}
                 </Grid>
 
                 <div style={{ display: "flex" }}>

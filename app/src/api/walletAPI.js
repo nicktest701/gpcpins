@@ -1,4 +1,5 @@
 import api from "./customAxios";
+import { v4 as uuid } from "uuid";
 
 export const getWalletBalance = async (id) => {
   try {
@@ -50,6 +51,23 @@ export const getWalletStatus = async () => {
     const res = await api({
       method: "GET",
       url: `/wallet/status`,
+    });
+
+    return res.data;
+  } catch (error) {
+    throw error.response.data;
+  }
+};
+
+export const sendWalletTopUp = async (data) => {
+  try {
+    const res = await api({
+      method: "POST",
+      headers: {
+        "Idempotency-Key": uuid(),
+      },
+      url: `/payment/wallet-topup`,
+      data,
     });
 
     return res.data;

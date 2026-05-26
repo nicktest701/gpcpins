@@ -3,7 +3,6 @@ import { CustomContext } from '../../context/providers/CustomProvider';
 import {
   Avatar,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -24,7 +23,7 @@ import {
   updateNotification,
 } from '../../api/notificationAPI';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Badge, Delete, NotificationsRounded, Star } from '@mui/icons-material';
+import { Delete, NotificationsRounded, Star } from '@mui/icons-material';
 import { globalAlertType } from '../../components/alert/alertType';
 
 function ViewECGTransactionNotifications() {

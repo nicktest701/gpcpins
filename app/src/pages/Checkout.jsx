@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { FileDownloadRounded } from "@mui/icons-material";
 import CheckOutItem from "../components/items/CheckOutItem";
-import { CustomContext } from "../context/providers/CustomProvider";
+import { CustomContext, useCustomContext } from "../context/providers/CustomProvider";
 import moment from "moment";
 import { IMAGES, currencyFormatter } from "../constants";
 import { downloadVouchers, makePayment } from "../api/paymentAPI";
@@ -22,10 +22,9 @@ function Checkout() {
   // const [errCount, setErrCount] = useState(0);
   const {
     customState: { transaction },
-    // customDispatch,
-  } = useContext(CustomContext);
+  } = useCustomContext();
 
-  // console.log("transaction", transaction);
+
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {

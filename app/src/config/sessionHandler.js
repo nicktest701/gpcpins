@@ -27,7 +27,7 @@ export const getUser = () => {
   // return JSON.parse(user);
   const loggedInUser = parseJwt(user);
 
-  return !loggedInUser?.active || loggedInUser?.email === 'test@test.com' ? null : loggedInUser;
+  return !loggedInUser?.active || loggedInUser?.email === 'customer@gpcpins.com' ? null : loggedInUser;
 };
 
 

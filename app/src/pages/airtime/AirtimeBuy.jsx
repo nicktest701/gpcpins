@@ -7,7 +7,6 @@ import {
   Stack,
   Avatar,
   InputAdornment,
-  Box,
   Alert,
 } from "@mui/material";
 import LoadingButton from "@mui/lab/LoadingButton";
@@ -37,7 +36,7 @@ function AirtimeBuy() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, _] = useSearchParams();
   const [selectedBundle, setSelectedBundle] = useState({
     plan_id: searchParams.get("plan_id"),
     plan_name: searchParams.get("plan_name"),
@@ -129,7 +128,7 @@ function AirtimeBuy() {
       navigate("/confirm", {
         replace: true,
         state: {
-          _id: data?.id,
+          id: data?.id,
           categoryType: type === "Bundle" ? "bundle" : "airtime",
           path: pathname,
           isWallet: paymentMethod === "wallet",
@@ -159,7 +158,6 @@ function AirtimeBuy() {
               } more attempt(s).`,
             ),
           );
-          
         }
       } else {
         customDispatch(globalAlertType("error", error));
@@ -223,18 +221,15 @@ function AirtimeBuy() {
           payload.token = token;
         }
 
-  
-
         // If user not logged in, run guest check first
         if (!user?.id) {
           guestMutation.mutate({});
         } else {
           paymentMutation.mutate(payload);
-        }      }
+        }
+      }
     });
   };
-
-
 
   // Redirect if required params missing
   if (!recipient || !["Airtime", "Bundle"].includes(type)) {

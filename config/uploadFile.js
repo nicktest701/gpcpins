@@ -28,7 +28,7 @@ async function validateFile(filePath) {
 async function uploadToFirebase({
   localFilePath,
   destination,
-  makePublic = false,
+  makePublic = true,
   metadata = {},
 }) {
   try {
@@ -116,7 +116,7 @@ async function uploadFile({
   fileName,
   localDirectory,
   storageDirectory,
-  makePublic = false,
+  makePublic = true,
   metadata = {},
 }) {
   if (!fileName) {

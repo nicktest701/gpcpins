@@ -16,9 +16,15 @@ export default function Input(theme) {
         inputProps: {
           form: {
             autoComplete: false,
+          //    '&::placeholder': {
+          //   opacity: 1,
+          //   fontSize:'50px',
+          //   color: theme.palette.text.disabled,
+          // },
           },
+           
         },
-        labelProps: {
+        inputlabelprops: {
           sx: {
             color: 'red',
           },
@@ -41,6 +47,7 @@ export default function Input(theme) {
         input: {
           '&::placeholder': {
             opacity: 1,
+            // fontSize:'50px',
             color: theme.palette.text.disabled,
           },
         },

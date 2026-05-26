@@ -121,14 +121,16 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = req.query;
 
-    
     if (!isValidUUID2(id)) {
       return res.status(400).json("Invalid ID!");
     }
-    const category = await knex("categories").where("id", id).select("details").first();
+    const category = await knex("categories")
+      .where("id", id)
+      .select("details")
+      .first();
     const details = safeJSON(category?.details);
     const pricingTypes = details?.pricing;
-    
+
     const vouchers = await knex("vw_category_voucher_view")
       .where("categoryId", id)
       .select(
@@ -139,34 +141,29 @@ router.get(
         "categoryDetails",
       );
 
-      
-      
-      //Vew Vouchers
-      const newVouchers = vouchers?.filter(
-        (voucher) => voucher?.status === "new",
-      )?.length;
-      
+    //Vew Vouchers
+    const newVouchers = vouchers?.filter(
+      (voucher) => voucher?.status === "new",
+    )?.length;
 
-    
     // Recently Scanned Vouchers
-    const scannedVouchers = await knex("vw_scanned_ticket_voucher_verifier_view")
-      .select("createdAt", "voucherType","verifierName")
+    const scannedVouchers = await knex(
+      "vw_scanned_ticket_voucher_verifier_view",
+    )
+      .select("createdAt", "voucherType", "verifierName")
       .where({ categoryId: id })
       .limit(5)
       .orderBy("createdAt", "desc");
 
     // console.log(scannedVouchers)
 
-
     //Assigned Verifiers
     const assignedVerifiers = await knex("vw_ticket_category_user_view")
-      .select("verifierId", "verifierName", 'scope')
+      .select("verifierId", "verifierName", "scope")
       .where({ categoryId: id })
       .orderBy("createdAt", "desc");
 
-      console.log(assignedVerifiers)
-
-    
+    console.log(assignedVerifiers);
 
     const modifiedVerifiers = assignedVerifiers.map((verifier) => {
       return {
@@ -195,8 +192,6 @@ router.get(
         used,
       };
     });
-
-    
 
     const ticketPricingTypes = {
       labels: _.map(ticketTypes, "type"),
@@ -317,13 +312,13 @@ router.get(
     }
 
     const vouchers = await knex("vouchers").select("details", "active").where({
-      category: id,
+      category_id: id,
       active: true,
     });
 
     const modifiedVouchers = vouchers.map(({ details, active }) => {
       return {
-        seatNo: JSON.parse(details)?.seatNo,
+        seatNo: safeJSON(details)?.seatNo,
         active,
       };
     });

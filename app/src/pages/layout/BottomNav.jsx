@@ -1,124 +1,102 @@
-import { useContext, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useMemo } from "react";
+import { useLocation, useNavigate, useMatch } from "react-router-dom";
 import {
+  Home,
   PaymentRounded,
   MoneyRounded,
-  Home,
-  Person,
   CardMembership,
+  Person,
   PersonOutlined,
 } from "@mui/icons-material";
-import { BottomNavigation, BottomNavigationAction, Paper } from "@mui/material";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import { BottomNavigation, BottomNavigationAction, Paper, useTheme } from "@mui/material";
+import { useAuth } from "../../context/providers/AuthProvider";
+
+// Navigation items configuration
+const navItems = [
+  { label: "Home", icon: Home, path: "/", matchPattern: "/" },
+  { label: "Vouchers", icon: PaymentRounded, path: "/evoucher", matchPattern: "/evoucher" },
+  { label: "Prepaid", icon: MoneyRounded, path: "/electricity", matchPattern: "/electricity" },
+  { label: "Airtime/Bundle", icon: CardMembership, path: "/airtime", matchPattern: "/airtime" },
+];
 
 function BottomNav() {
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
-  // const [bot, setBot] = useState(0);
-  const [value, setValue] = useState(0);
+  const location = useLocation();
+  const theme = useTheme();
 
-  const handleNavigate = (path) => navigate(path, { replace: true });
+  // Determine which item is active (0-indexed)
+  const activeIndex = useMemo(() => {
+    const index = navItems.findIndex((item) => location.pathname === item.path);
+    return index !== -1 ? index : 0;
+  }, [location.pathname]);
 
-  // window.onscroll = function () {
-  //   const rootHeight = document.getElementById("root")?.scrollHeight;
-  //   const footer = document.querySelector(".main-footer")?.scrollHeight;
-  //   const scrollHeight =
-  //     document?.documentElement?.clientHeight + window?.scrollY;
-  //   if (scrollHeight >= rootHeight - 5) {
-  //     setBot(footer);
-  //   } else {
-  //     setBot(0);
-  //   }
-  // };
-
-  const getIconColor = (route) => {
-    return route.test(pathname) ? "var(--primary)" : "var(--secondary)";
+  // Handle navigation
+  const handleNavigate = (path) => {
+    navigate(path, { replace: true });
   };
+
+  // Conditional user item (Profile or Sign up)
+  const userItem = user?.id
+    ? { label: "Profile", icon: PersonOutlined, path: "/profile", matchPattern: "/profile" }
+    : { label: "Sign up", icon: Person, path: "/user/register", matchPattern: "/user/register" };
+
+  // Combine all items
+  const allItems = [...navItems, userItem];
+
+  // Active color from theme
+  const activeColor = theme.palette.primary.main;
+  const inactiveColor = theme.palette.text.secondary;
 
   return (
     <Paper
       sx={{
-        // display: 'none',
         display: { xs: "block", md: "none" },
-        // px:7,
         position: "fixed",
         bottom: 0,
-        left: 2,
-        right: 2,
-        zIndex: 100,
+        left: 0,
+        right: 0,
+        zIndex: 1100,
+        borderRadius: 0,
+        borderTopLeftRadius: theme.shape.borderRadius,
+        borderTopRightRadius: theme.shape.borderRadius,
       }}
       elevation={3}
     >
       <BottomNavigation
         showLabels
-        value={value}
-        onChange={(event, newValue) => {
-          setValue(newValue);
-        }}
+        value={activeIndex}
+        onChange={(_, newValue) => handleNavigate(allItems[newValue].path)}
         sx={{
-          borderTopRightRadius: 8,
-          borderTopLeftRadius: 8,
+          height: 65,
+          "& .MuiBottomNavigationAction-root": {
+            minWidth: "auto",
+            px: 1,
+          },
+          "& .Mui-selected": {
+            color: activeColor,
+          },
         }}
       >
-        <BottomNavigationAction
-          label="Home"
-          icon={<Home />}
-          onClick={() => handleNavigate("/")}
-          sx={{
-            whiteSpace: "nowrap",
-            color: getIconColor(/^\/$/),
-          }}
-        />
-        <BottomNavigationAction
-          sx={{
-            whiteSpace: "nowrap",
-            color: getIconColor(/^\/evoucher$/),
-          }}
-          label="Vouchers"
-          icon={<PaymentRounded />}
-          onClick={() => handleNavigate("/evoucher")}
-        />
-        <BottomNavigationAction
-          label="Prepaid"
-          sx={{
-            whiteSpace: "nowrap",
-            color: getIconColor(/^\/electricity$/),
-            fontSize: 10,
-          }}
-          icon={<MoneyRounded />}
-          onClick={() => handleNavigate("/electricity")}
-        />
-        <BottomNavigationAction
-          label="Airtime/Bundle"
-          sx={{
-            whiteSpace: "nowrap",
-            color: getIconColor(/^\/airtime$/),
-          }}
-          icon={<CardMembership />}
-          onClick={() => handleNavigate("/airtime")}
-        />
-        {user?.id ? (
-          <BottomNavigationAction
-            label="Profile"
-            icon={<PersonOutlined />}
-            sx={{
-              whiteSpace: "nowrap",
-              color: getIconColor(/^\/profile$/),
-            }}
-            onClick={() => handleNavigate("profile")}
-          />
-        ) : (
-          <BottomNavigationAction
-            label="Sign up"
-            icon={<Person />}
-            sx={{
-              whiteSpace: "nowrap",
-              color: getIconColor(/^\/user\/register$/),
-            }}
-            onClick={() => handleNavigate("user/register")}
-          />
-        )}
+        {allItems.map((item, index) => {
+          const isActive = index === activeIndex;
+          const IconComponent = item.icon;
+          return (
+            <BottomNavigationAction
+              key={item.path}
+              label={item.label}
+              icon={<IconComponent />}
+              onClick={() => handleNavigate(item.path)}
+              sx={{
+                color: isActive ? activeColor : inactiveColor,
+                "&.Mui-selected": {
+                  color: activeColor,
+                },
+              }}
+              aria-current={isActive ? "page" : undefined}
+            />
+          );
+        })}
       </BottomNavigation>
     </Paper>
   );

@@ -24,9 +24,16 @@ import CustomTotal from "@/components/custom/CustomTotal";
 import { currencyFormatter } from "@/constants";
 import CustomRangePicker from "@/components/pickers/CustomRangePicker";
 
+// Add import at top
+import { useMediaQuery, useTheme } from "@mui/material";
+import TransactionList from "./TransactionList";
+
 const Transaction = () => {
   const { user } = useContext(AuthContext);
   const queryClient = useQueryClient();
+  // Inside Transaction component, after useState declarations:
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md")); // adjust breakpoint as needed
   const { customDispatch } = useContext(CustomContext);
   const [type, setType] = useState("All");
   const [status, setStatus] = useState("all");
@@ -50,32 +57,28 @@ const Transaction = () => {
     ],
     queryFn: () => getTransactionByEmail(date[0]),
     enabled: !!user?.id,
-    initialData:[]
+    initialData: [],
   });
-
-
 
   const sortedTransactions = useMemo(() => {
     let filteredTransaction = transactions?.data;
     if (type !== "All") {
       if (type === "Airtime") {
         filteredTransaction = transactions?.data?.filter(
-          (item) => item.domain === type && item.kind === airtimeType
+          (item) => item.domain === type && item.kind === airtimeType,
         );
       } else {
         filteredTransaction = transactions?.data?.filter(
-          (item) => item.domain === type
+          (item) => item.domain === type,
         );
       }
     }
 
     if (status !== "all") {
-      filteredTransaction =filteredTransaction?.filter(
-        (item) => item.status === status
+      filteredTransaction = filteredTransaction?.filter(
+        (item) => item.status === status,
       );
     }
-
-  
 
     return filteredTransaction;
   }, [transactions?.data, type, airtimeType, status]);
@@ -120,8 +123,8 @@ const Transaction = () => {
             customDispatch(
               globalAlertType(
                 "error",
-                "Failed to remove transaction! An error has occurred!"
-              )
+                "Failed to remove transaction! An error has occurred!",
+              ),
             );
           },
         });
@@ -161,7 +164,6 @@ const Transaction = () => {
     },
   ];
 
-
   return (
     <Container sx={{ py: 2 }}>
       <CustomTitle
@@ -170,90 +172,108 @@ const Transaction = () => {
         subtitle="Manage all your transactions made."
       />
 
-      <CustomizedMaterialTable
-        isLoading={transactions.isLoading || isLoading}
-        title="Transactions"
-        search={true}
-        columns={modifiedColumns}
-        data={sortedTransactions}
-        showExportButton
-        emptyMessage="No Transaction available"
-        icon={<NoteAlt sx={{ width: 40, height: 40 }} color="primary" />}
-        onRefresh={transactions.refetch}
-        options={{
-          selection: true,
-        }}
-        onDeleteAll={removeTransaction}
-        autocompleteComponent={
-          <Box
-            sx={{
-              width: "100%",
-              display: "flex",
-              flexDirection: { xs: "column", md: "row" },
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 2,
-              flexWrap: "wrap",
-            }}
-          >
-            <TextField
-              select
-              label="Select Type"
-              size="small"
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              sx={{ width: 250, my: 2 }}
+      {isMobile ? (
+        <TransactionList
+          data={sortedTransactions}
+          isLoading={transactions.isLoading || isLoading}
+          onRefresh={transactions.refetch}
+          total={currencyFormatter(
+            _.sumBy(sortedTransactions, (item) => Number(item?.amount)),
+          )}
+          type={type}
+          setType={setType}
+          airtimeType={airtimeType}
+          setAirtimeType={setAirtimeType}
+          status={status}
+          setStatus={setStatus}
+          onDownload={handleDownload}
+        />
+      ) : (
+        <CustomizedMaterialTable
+          isLoading={transactions.isLoading || isLoading}
+          title="Transactions"
+          search={true}
+          columns={modifiedColumns}
+          data={sortedTransactions}
+          showExportButton
+          emptyMessage="No Transaction available"
+          icon={<NoteAlt sx={{ width: 40, height: 40 }} color="primary" />}
+          onRefresh={transactions.refetch}
+          options={{
+            selection: true,
+          }}
+          onDeleteAll={removeTransaction}
+          autocompleteComponent={
+            <Box
+              sx={{
+                width: "100%",
+                display: "flex",
+                flexDirection: { xs: "column", md: "row" },
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 2,
+                flexWrap: "wrap",
+              }}
             >
-              <MenuItem value="All">All</MenuItem>
-              <MenuItem value="Voucher">Vouchers</MenuItem>
-              <MenuItem value="Ticket">Tickets</MenuItem>
-              <MenuItem value="Prepaid">Prepaid </MenuItem>
-              <MenuItem value="Airtime">Airtime Transfer </MenuItem>
-              <MenuItem value="Bundle">Data Bundle </MenuItem>
-            </TextField>
-            {type === "Airtime" && (
               <TextField
                 select
-                label="Airtime Type"
+                label="Select Type"
                 size="small"
-                value={airtimeType}
-                onChange={(e) => setAirtimeType(e.target.value)}
-                sx={{ width: 200, my: 2 }}
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                sx={{ width: 250, my: 2 }}
               >
-                <MenuItem value="single">Single</MenuItem>
-                <MenuItem value="bulk">Bulk</MenuItem>
+                <MenuItem value="All">All</MenuItem>
+                <MenuItem value="Voucher">Vouchers</MenuItem>
+                <MenuItem value="Ticket">Tickets</MenuItem>
+                <MenuItem value="Prepaid">Prepaid </MenuItem>
+                <MenuItem value="Airtime">Airtime Transfer </MenuItem>
+                <MenuItem value="Bundle">Data Bundle </MenuItem>
               </TextField>
-            )}
-
-            <CustomRangePicker
-              date={date}
-              setDate={setDate}
-              setOpen={setOpenPicker}
-              refetch={transactions.refetch}
-            />
-            <TextField
-              select
-              label="Status"
-              size="small"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              sx={{ width: 250, my: 2 }}
-            >
-              <MenuItem value="all">All</MenuItem>
-              <MenuItem value="completed">Completed</MenuItem>
-              <MenuItem value="pending">Pending</MenuItem>
-              <MenuItem value="refunded">Refunded</MenuItem>
-            </TextField>
-
-            <CustomTotal
-              title="Total Amount"
-              total={currencyFormatter(
-                _.sumBy(sortedTransactions, (item) => Number(item?.amount))
+              {type === "Airtime" && (
+                <TextField
+                  select
+                  label="Airtime Type"
+                  size="small"
+                  value={airtimeType}
+                  onChange={(e) => setAirtimeType(e.target.value)}
+                  sx={{ width: 200, my: 2 }}
+                >
+                  <MenuItem value="single">Single</MenuItem>
+                  <MenuItem value="bulk">Bulk</MenuItem>
+                </TextField>
               )}
-            />
-          </Box>
-        }
-      />
+
+              <CustomRangePicker
+                date={date}
+                setDate={setDate}
+                setOpen={setOpenPicker}
+                refetch={transactions.refetch}
+              />
+              <TextField
+                select
+                label="Status"
+                size="small"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                sx={{ width: 250, my: 2 }}
+              >
+                <MenuItem value="all">All</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="refunded">Refunded</MenuItem>
+              </TextField>
+
+              <CustomTotal
+                title="Total Amount"
+                total={currencyFormatter(
+                  _.sumBy(sortedTransactions, (item) => Number(item?.amount)),
+                )}
+              />
+            </Box>
+          }
+        />
+      )}
       <CustomDateRangePicker
         open={openPicker}
         setOpen={setOpenPicker}

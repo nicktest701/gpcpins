@@ -11,7 +11,7 @@ import {
   getInternationalMobileFormat,
   isValidPartner,
 } from "../constants/PhoneCode";
-import { isValidEmail } from "./validation";
+import { isValidEmail, isValidName } from "./validation";
 
 const momoSchema = {
   mobilePartner: string().required("Required*"),
@@ -55,36 +55,56 @@ const walletSchema = {
     .matches(/^\d+$/, "Please enter a valid pin!"),
 };
 
+export const topUpSchema = object().shape({
+  mobilePartner: string().required("Required*"),
+  phoneNumber: string()
+    .trim()
+    .required("Required*")
+    .matches(/^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/, "Invalid Phone number !")
+    .label("mobilePartner")
+    .test("isValidNetwork", "", (value, { parent }) => {
+      const partner = parent?.mobilePartner || "Mobile";
+      if (!isValidPartner(partner, getInternationalMobileFormat(value))) {
+        throw new ValidationError(
+          `Invalid ${
+            partner === "mtn-gh"
+              ? "MTN"
+              : partner === "vodafone-gh"
+                ? "Telecel"
+                : partner === "tigo-gh"
+                  ? "AirtelTigo"
+                  : partner
+          } number !`,
+          value, // Value to associate the error with
+          "phoneNumber", // Field to associate the error with
+        );
+      }
+
+      return true;
+    }),
+  amount: number()
+    .typeError("Amount must be a number")
+    .required("Amount is required")
+    .min(1, "Minimum top-up amount is GHS 1")
+    .max(10000, "Maximum top-up amount is GHS 10,000"),
+});
+
 export const paymentOptionSchema = (method, userId) => {
   return object().shape({
-    paymentMethod: string().required("Payment Method Required*"),
-    ...(method === "momo"
-      ? momoSchema
-      : userId && method === "wallet"
-        ? walletSchema
-        : null),
-  });
-};
+    fullName: string().test("isValidName", "", (value) => {
+      if (value?.trim() === "" || value === undefined) {
+        return true;
+      }
 
-export const salesValidationSchema = () => {
-  return object().shape({
-    category: string().required("Required*"),
-    voucherType: object().shape({
-      id: string().required("Required*"),
-    }),
-    quantity: number()
-      .required("Required*")
-      .max(1000, "Max Quantity is 1000")
-      .min(1, "Quantity should be 1 or more!"),
-  });
-};
-export const waecValidationSchema = () => {
-  return object().shape({
-    categoryType: object().shape({
-      name: string().required("Required*"),
-    }),
-    pricingType: object().shape({
-      type: string().required("Required*"),
+      if (!isValidName(value)) {
+        throw new ValidationError(
+          "Invalid Name format",
+          value, // Value to associate the error with
+          "fullName", // Field to associate the error with
+        );
+      }
+
+      return true;
     }),
     email: string().test("isValidEmail", "", (value) => {
       if (value?.trim() === "" || value === undefined) {
@@ -100,6 +120,134 @@ export const waecValidationSchema = () => {
       }
 
       return true;
+    }),
+    paymentMethod: string().required("Payment Method Required*"),
+    ...(method === "momo"
+      ? momoSchema
+      : userId && method === "wallet"
+        ? walletSchema
+        : null),
+  });
+};
+
+export const ticketsValidationSchema = object().shape({
+  fullName: string().test("isValidName", "", (value) => {
+    if (value?.trim() === "" || value === undefined) {
+      return true;
+    }
+
+    if (!isValidName(value)) {
+      throw new ValidationError(
+        "Invalid Name format",
+        value, // Value to associate the error with
+        "fullName", // Field to associate the error with
+      );
+    }
+
+    return true;
+  }),
+  email: string().test("isValidEmail", "", (value) => {
+    if (value?.trim() === "" || value === undefined) {
+      return true;
+    }
+
+    if (!isValidEmail(value)) {
+      throw new ValidationError(
+        "Invalid email format",
+        value, // Value to associate the error with
+        "email", // Field to associate the error with
+      );
+    }
+
+    return true;
+  }),
+  paymentMethod: string()
+    .oneOf(["momo", "wallet"], "Please select a payment method")
+    .required("Payment method is required"),
+  mobilePartner: string().when("paymentMethod", {
+    is: "momo",
+    then: (schema) => schema.required("Network provider is required"),
+    otherwise: (schema) => schema.notRequired(),
+  }),
+  phonenumber: string()
+    .trim()
+    .when("paymentMethod", {
+      is: "momo",
+      then: (schema) =>
+        schema
+          .trim()
+          .required("Required*")
+          .matches(
+            /^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/,
+            "Invalid Phone number !",
+          )
+          .label("mobilePartner")
+          .test("isValidNetwork", "", (value, { parent }) => {
+            const partner = parent?.mobilePartner || "Mobile";
+            if (!isValidPartner(partner, getInternationalMobileFormat(value))) {
+              throw new ValidationError(
+                `Invalid ${
+                  partner === "mtn-gh"
+                    ? "MTN"
+                    : partner === "vodafone-gh"
+                      ? "Telecel"
+                      : partner === "tigo-gh"
+                        ? "AirtelTigo"
+                        : partner
+                } number !`,
+                value, // Value to associate the error with
+                "phonenumber", // Field to associate the error with
+              );
+            }
+
+            return true;
+          }),
+      otherwise: (schema) => schema.notRequired(),
+    }),
+  confirmPhonenumber: string()
+    .trim()
+    .when("paymentMethod", {
+      is: "momo",
+      then: (schema) =>
+        schema
+          .trim()
+          .required("Required*")
+          .oneOf([ref("phonenumber"), null], "Phone Numbers do not match"),
+      otherwise: (schema) => schema.notRequired(),
+    }),
+  token: string().when("paymentMethod", {
+    is: "wallet",
+    then: (schema) =>
+      schema
+        .strict(true)
+        .trim()
+        .required("Pin is required*")
+        .length(4, "Please enter a valid pin!")
+        .matches(/^\d+$/, "Please enter a valid pin!"),
+    otherwise: (schema) => schema.notRequired(),
+  }),
+});
+
+export const salesValidationSchema = () => {
+  return object().shape({
+    category: string().required("Required*"),
+    voucherType: object().shape({
+      id: string().required("Required*"),
+    }),
+    quantity: number()
+      .required("Required*")
+      .max(1000, "Max Quantity is 1000")
+      .min(1, "Quantity should be 1 or more!"),
+  });
+};
+
+export const waecValidationSchema = () => {
+  return object().shape({
+    categoryType: object().shape({
+      name: string().required("Required*"),
+    }),
+    pricingType: object().shape({
+      type: string().required("Required*"),
     }),
   });
 };
@@ -125,16 +273,8 @@ export const ticketValidationSchema = (momo) => {
   });
 };
 
-export const universityValidationSchema = () => {
+export const busTicketValidationSchema = () => {
   return object().shape({
-    categoryType: object().shape({
-      name: string().required("Required*"),
-    }),
-    quantity: number()
-      .required("Required*")
-      .max(1000, "Max Quantity is 1000")
-      .min(1, "Quantity should be 1 or more!"),
-    fullName: string().trim().required("Required*"),
     email: string().test("isValidEmail", "", (value) => {
       if (value?.trim() === "" || value === undefined) {
         return true;
@@ -149,6 +289,162 @@ export const universityValidationSchema = () => {
       }
 
       return true;
+    }),
+    paymentMethod: string()
+      .oneOf(["momo", "wallet"], "Please select a payment method")
+      .required("Payment method is required"),
+    mobilePartner: string().when("paymentMethod", {
+      is: "momo",
+      then: (schema) => schema.required("Network provider is required"),
+      otherwise: (schema) => schema.notRequired(),
+    }),
+    phoneNumber: string().when("paymentMethod", {
+      is: "momo",
+      then: (schema) =>
+        schema
+          .trim()
+          .required("Required*")
+          .matches(
+            /^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/,
+            "Invalid Phone number !",
+          )
+          .label("mobilePartner")
+          .test("isValidNetwork", "", (value, { parent }) => {
+            const partner = parent?.mobilePartner || "Mobile";
+            if (!isValidPartner(partner, getInternationalMobileFormat(value))) {
+              throw new ValidationError(
+                `Invalid ${
+                  partner === "mtn-gh"
+                    ? "MTN"
+                    : partner === "vodafone-gh"
+                      ? "Telecel"
+                      : partner === "tigo-gh"
+                        ? "AirtelTigo"
+                        : partner
+                } number !`,
+                value, // Value to associate the error with
+                "phoneNumber", // Field to associate the error with
+              );
+            }
+
+            return true;
+          }),
+      otherwise: (schema) => schema.notRequired(),
+    }),
+    confirmPhoneNumber: string().when("paymentMethod", {
+      is: "momo",
+      then: (schema) =>
+        schema
+          .trim()
+          .required("Required*")
+          .oneOf([ref("phoneNumber"), null], "Phone Numbers do not match"),
+      otherwise: (schema) => schema.notRequired(),
+    }),
+    token: string().when("paymentMethod", {
+      is: "wallet",
+      then: (schema) =>
+        schema
+          .strict(true)
+          .trim()
+          .required("Pin is required*")
+          .length(4, "Please enter a valid pin!")
+          .matches(/^\d+$/, "Please enter a valid pin!"),
+      otherwise: (schema) => schema.notRequired(),
+    }),
+  });
+};
+
+export const universityValidationSchema = () => {
+  return object().shape({
+    categoryType: object().shape({
+      name: string().required("Required*"),
+    }),
+    quantity: number()
+      .required("Required*")
+      .max(1000, "Max Quantity is 1000")
+      .min(1, "Quantity should be 1 or more!"),
+  });
+};
+export const prepaidValidationSchema = () => {
+  return object().shape({
+    email: string().test("isValidEmail", "", (value) => {
+      if (value?.trim() === "" || value === undefined) {
+        return true;
+      }
+
+      if (!isValidEmail(value)) {
+        throw new ValidationError(
+          "Invalid email format",
+          value, // Value to associate the error with
+          "email", // Field to associate the error with
+        );
+      }
+
+      return true;
+    }),
+    amount: number()
+      .required("Required")
+      .min(50, "Minimum amount you can buy is GHS 50."),
+    paymentMethod: string()
+      .oneOf(["momo", "wallet"], "Please select a payment method")
+      .required("Payment method is required"),
+    mobilePartner: string().when("paymentMethod", {
+      is: "momo",
+      then: (schema) => schema.required("Network provider is required"),
+      otherwise: (schema) => schema.notRequired(),
+    }),
+    phonenumber: string().when("paymentMethod", {
+      is: "momo",
+      then: (schema) =>
+        schema
+          .trim()
+          .required("Required*")
+          .matches(
+            /^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/,
+            "Invalid Phone number !",
+          )
+          .label("mobilePartner")
+          .test("isValidNetwork", "", (value, { parent }) => {
+            const partner = parent?.mobilePartner || "Mobile";
+            if (!isValidPartner(partner, getInternationalMobileFormat(value))) {
+              throw new ValidationError(
+                `Invalid ${
+                  partner === "mtn-gh"
+                    ? "MTN"
+                    : partner === "vodafone-gh"
+                      ? "Telecel"
+                      : partner === "tigo-gh"
+                        ? "AirtelTigo"
+                        : partner
+                } number !`,
+                value, // Value to associate the error with
+                "phonenumber", // Field to associate the error with
+              );
+            }
+
+            return true;
+          }),
+      otherwise: (schema) => schema.notRequired(),
+    }),
+    confirmPhonenumber: string().when("paymentMethod", {
+      is: "momo",
+      then: (schema) =>
+        schema
+          .trim()
+          .required("Required*")
+          .oneOf([ref("phonenumber"), null], "Phone Numbers do not match"),
+      otherwise: (schema) => schema.notRequired(),
+    }),
+    token: string().when("paymentMethod", {
+      is: "wallet",
+      then: (schema) =>
+        schema
+          .strict(true)
+          .trim()
+          .required("Pin is required*")
+          .length(4, "Please enter a valid pin!")
+          .matches(/^\d+$/, "Please enter a valid pin!"),
+      otherwise: (schema) => schema.notRequired(),
     }),
   });
 };

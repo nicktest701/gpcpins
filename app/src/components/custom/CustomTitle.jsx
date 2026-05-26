@@ -1,16 +1,76 @@
-import { Box, Stack, Typography } from "@mui/material";
+import { Box, Stack, Typography, useTheme, useMediaQuery } from "@mui/material";
 
-function CustomTitle({ title, subtitle }) {
+/**
+ * CustomTitle Component
+ * 
+ * @param {string} title - Main title text
+ * @param {string} subtitle - Optional subtitle text
+ * @param {React.ReactNode} icon - Optional icon displayed before title
+ * @param {'left'|'center'|'right'} align - Text alignment (default: 'left')
+ * @param {boolean} withDivider - Whether to show a small colored divider under title
+ * @param {string} titleVariant - MUI typography variant for title (responsive fallback)
+ * @param {string} subtitleVariant - MUI typography variant for subtitle
+ */
+function CustomTitle({ 
+  title, 
+  subtitle, 
+  icon, 
+  align = "left", 
+  withDivider = false,
+  titleVariant,
+  subtitleVariant = "body2"
+}) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  
+  // Responsive title variant
+  const titleVariantValue = titleVariant || (isMobile ? "h4" : "h2");
+
   return (
-    <Box py={2}>
-      <Stack>
-        <Typography variant="h3" color="primary">
+    <Box sx={{ my: 3, textAlign: align }}>
+      <Stack
+        direction="row"
+        alignItems="center"
+        spacing={1}
+        justifyContent={align === "center" ? "center" : "flex-start"}
+      >
+        {icon && (
+          <Box sx={{ display: "flex", alignItems: "center", color: "primary.main" }}>
+            {icon}
+          </Box>
+        )}
+        <Typography
+          variant={titleVariantValue}
+          fontWeight="bold"
+          color="text.primary"
+          sx={{ letterSpacing: "-0.02em" }}
+        >
           {title}
         </Typography>
-        <Typography variant="body2" color="secondary">
+      </Stack>
+      
+      {subtitle && (
+        <Typography
+          variant={subtitleVariant}
+          color="text.secondary"
+          sx={{ mt: 0.5, maxWidth: "80%", mx: align === "center" ? "auto" : 0 }}
+        >
           {subtitle}
         </Typography>
-      </Stack>
+      )}
+      
+      {withDivider && (
+        <Box
+          sx={{
+            height: 3,
+            width: 50,
+            bgcolor: "primary.main",
+            mt: 1.5,
+            borderRadius: 1.5,
+            mx: align === "center" ? "auto" : 0,
+          }}
+        />
+      )}
     </Box>
   );
 }

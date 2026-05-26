@@ -66,3 +66,15 @@ export function getInitials(fullName) {
 export function isBetween50And99(number) {
   return number >= 50 && number <= 99;
 }
+
+export function isValidName(name) {
+  if (!name || name.trim() === '') {
+    return false;
+  }
+  const namePattern = /^[a-zA-Z\s'-]+$/;
+  return namePattern.test(name) && name.trim().length >= 2;
+}
+
+
+
+

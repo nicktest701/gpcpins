@@ -1,4 +1,4 @@
-import { useState, useContext, useLayoutEffect } from "react";
+import { useState, useLayoutEffect } from "react";
 import {
   AppBar,
   IconButton,
@@ -38,12 +38,11 @@ import MenuItem from "@mui/material/MenuItem";
 import Swal from "sweetalert2";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { IMAGES, currencyFormatter } from "@/constants";
-import { CustomContext } from "@/context/providers/CustomProvider";
 import EvoucherDropdown from "@/components/dropdowns/EvoucherDropdown";
 import { getInitials } from "@/config/validation";
 import PrepaidDropdown from "@/components/dropdowns/PrepaidDropdown";
 import NotificationDropdown from "@/components/dropdowns/NotificationDropdown";
-import { AuthContext } from "@/context/providers/AuthProvider";
+
 import { useGoogleOneTapLogin } from "@react-oauth/google";
 import api from "@/api/customAxios";
 import { globalAlertType } from "@/components/alert/alertType";
@@ -52,9 +51,11 @@ import { useQuery, useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { saveToken } from "@/config/sessionHandler";
 import { getWalletBalance } from "@/api/walletAPI";
 import GlobalSpinner from "@/components/GlobalSpinner";
+import { useCustomContext } from "../../context/providers/CustomProvider";
+import { useAuth } from "../../context/providers/AuthProvider";
 
 function Header() {
-  const { user, login, logout } = useContext(AuthContext);
+  const { user, login, logout } = useAuth();
   const queryClient = useQueryClient();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showAlert, setShowAlert] = useState(true);
@@ -63,7 +64,8 @@ function Header() {
   const {
     customState: { openSidebar, globalAlert },
     customDispatch,
-  } = useContext(CustomContext);
+    notifications: notifs,
+  } = useCustomContext();
 
   const theme = useTheme();
 
@@ -84,10 +86,10 @@ function Header() {
   });
 
   const notifications = useQuery({
-    queryKey: ["notifications"],
+    queryKey: ["notifications", user?.id],
     queryFn: () => getAllBroadcastMessages(),
     enabled: !!user?.id,
-    initialData: queryClient?.getQueryData(["notifications"]),
+    initialData: notifs,
     retry: 1,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -718,7 +720,7 @@ function Header() {
           sx={{
             position: "fixed",
             top: 70,
-            left: 20,
+            right: 20,
             display: "flex",
             gap: 1,
           }}

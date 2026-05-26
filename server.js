@@ -11,6 +11,11 @@ const cron = require("node-cron");
 const rateLimit = require("express-rate-limit");
 const hpp = require("hpp");
 const toobusy = require("toobusy-js");
+const http = require("http");
+const jwt = require("jsonwebtoken");
+const { Server } = require("socket.io");
+const { createClient } = require("redis");
+const { createAdapter } = require("@socket.io/redis-adapter");
 
 // Route imports
 const logRoute = require("./routes/logRoute");
@@ -32,6 +37,8 @@ const notificationRoute = require("./routes/notificationRoute");
 const { verifyToken } = require("./middlewares/verifyToken");
 const sendEMail = require("./config/sendEmail");
 const knex = require("./db/knex");
+const socketAuth = require("./middlewares/socketAuth");
+const { initSocketServer } = require("./config/socket");
 
 // Default server port
 const PORT = process.env.PORT || 5000;
@@ -40,6 +47,163 @@ console.log(`Starting server in ${NODE_ENV} mode...`);
 
 // Initialize express
 const app = express();
+
+//Create Server
+const server = http.createServer(app);
+
+/*
+|--------------------------------------------------------------------------
+| SOCKET.IO SERVER
+|--------------------------------------------------------------------------
+*/
+
+const io = initSocketServer(server)
+
+/*
+|--------------------------------------------------------------------------
+| REDIS CLIENTS
+|--------------------------------------------------------------------------
+|
+| pubClient  -> publish socket events
+| subClient  -> subscribe socket events
+|
+*/
+
+const pubClient = createClient({
+  url: process.env.REDIS_HOST_EXT,
+  socket: {
+    reconnectStrategy: (retries) => Math.min(retries * 50, 2000),
+  },
+});
+
+const subClient = pubClient.duplicate();
+
+
+/*
+|--------------------------------------------------------------------------
+| SOCKET INIT FUNCTION (FIX FOR COMMONJS)
+|--------------------------------------------------------------------------
+*/
+
+async function initSocket() {
+
+
+  try {
+    await pubClient.connect();
+    await subClient.connect();
+
+    console.log("Redis connected");
+
+    pubClient.on("error", (err) => {
+      console.error("Redis Pub Error:", err);
+    });
+
+    subClient.on("error", (err) => {
+      console.error("Redis Sub Error:", err);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | SOCKET REDIS ADAPTER
+    |--------------------------------------------------------------------------
+    */
+
+    io.adapter(
+      createAdapter(pubClient, subClient)
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | SOCKET AUTH
+    |--------------------------------------------------------------------------
+    */
+
+    io.use(socketAuth);
+
+    /*
+    |--------------------------------------------------------------------------
+    | SOCKET CONNECTION
+    |--------------------------------------------------------------------------
+    */
+
+    io.on("connection", async (socket) => {
+      console.log(
+        "Socket Connected:",
+        socket.id
+      );
+
+      if (socket.user?.id) {
+        const userRoom = `user:${socket.user.id}`;
+
+        await socket.join(userRoom);
+
+        console.log(
+          `User joined room: ${userRoom}`
+        );
+
+        await pubClient.set(
+          `socket:${socket.user.id}`,
+          socket.id,
+          {
+            EX: 60 * 60 * 24,
+          }
+        );
+      }
+
+      socket.on(
+        "join-payment-room",
+        async (txRef) => {
+          if (
+            !txRef ||
+            typeof txRef !== "string"
+          )
+            return;
+
+          const paymentRoom = `payment:${txRef}`;
+
+          await socket.join(paymentRoom);
+
+          socket.emit(
+            "payment-room-joined",
+            {
+              room: paymentRoom,
+            }
+          );
+        }
+      );
+
+      socket.on(
+        "leave-payment-room",
+        async (txRef) => {
+          const paymentRoom = `payment:${txRef}`;
+
+          await socket.leave(paymentRoom);
+        }
+      );
+
+      socket.on("disconnect", async () => {
+        if (socket.user?.id) {
+          await pubClient.del(
+            `socket:${socket.user.id}`
+          );
+        }
+      });
+    });
+  } catch (err) {
+    console.error(
+      "Socket init failed:",
+      err
+    );
+  }
+}
+
+/*
+|--------------------------------------------------------------------------
+| START SOCKET SYSTEM
+|--------------------------------------------------------------------------
+*/
+
+initSocket();
 
 // Security middleware setup
 app.set("trust proxy", 1);
@@ -98,6 +262,7 @@ const corsOptions = {
     "Authorization",
     "X-PINGOTHER",
     "Referer",
+    "Idempotency-Key",
   ],
   credentials: true,
   origin: function (origin, callback) {
@@ -340,9 +505,13 @@ process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
 // Start server
-const server = app.listen(PORT, () => {
+const serverApp = server.listen(PORT, () => {
   console.log(`Server running in ${NODE_ENV} mode on port ${PORT}`);
 });
 
 // Set timeout
-server.setTimeout(120000); // 2 minutes
+serverApp.setTimeout(120000); // 2 minutes
+
+module.exports = {
+  io,
+};

@@ -8,14 +8,14 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
-function StadiumTicketItem({ _id, details }) {
+function StadiumTicketItem({ id, details }) {
   const navigate = useNavigate();
 
   const handleNavigateToMatch = () => {
-    navigate(`match/${_id}?home=${details?.home}&away=${details?.away}`, {
+    navigate(`match/${id}?home=${details?.home}&away=${details?.away}`, {
       state: {
         details: {
-          _id,
+          id,
           ...details,
         },
       },

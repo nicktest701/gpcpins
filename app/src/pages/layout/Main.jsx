@@ -12,8 +12,7 @@ function Main() {
         propertyId={import.meta.env.VITE_TAWK_PROPERTY_ID}
         widgetId={import.meta.env.VITE_TAWK_WIDGET_ID}
       />
-      <Box sx={{ position: "relative" }}>
-       
+      <Box sx={{ position: "relative", flex: 1, flexGrow: 1 }}>
         <HomeSpeedDial />
         <Sidebar />
         <Outlet />

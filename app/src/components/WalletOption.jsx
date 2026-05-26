@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Typography,
   Stack,
@@ -16,38 +16,50 @@ import { ArrowDropDownRounded } from "@mui/icons-material";
 import { currencyFormatter } from "../constants";
 import { useQuery } from "@tanstack/react-query";
 
-import { AuthContext } from "../context/providers/AuthProvider";
+import { useAuth } from "../context/providers/AuthProvider";
 import { getWalletBalance, getWalletStatus } from "../api/walletAPI";
+import { useCustomContext } from "../context/providers/CustomProvider";
 
 function WalletOption({ token, setToken, tokenErr, tokenHelperText, value }) {
   const theme = useTheme();
-
-  const { user } = useContext(AuthContext);
+  const { walletBalance: wallet } = useCustomContext();
+  const { user } = useAuth();
   const [expand, setExpand] = useState(value === "wallet");
 
   const walletBalance = useQuery({
     queryKey: ["wallet-balance"],
     queryFn: () => getWalletBalance(user?.id),
     enabled: !!user?.id,
-    initialData: 0,
+    initialData: wallet,
   });
 
   // Get wallet status
-  const { data, isPending: isLoadingWalletStatus } = useQuery({
-    queryKey: ["wallet-status"],
+  const { data, isLoading: isLoadingWalletStatus } = useQuery({
+    queryKey: ["wallet-status", user?.id],
     queryFn: () => getWalletStatus(),
     enabled: !!user?.id,
   });
 
+  useEffect(() => {
+    if (value === "wallet") {
+      setExpand(true);
+    } else {
+      setExpand(false);
+    }
+  }, [value]);
+
   return (
     <Accordion
-      sx={{ width: "100%" }}
+      sx={{ width: "100%", mb: 1 }}
       expanded={expand}
       onChange={() => setExpand(!expand)}
     >
       <AccordionSummary
-        sx={{ backgroundColor: "whitesmoke", px: 1 }}
+        sx={{ backgroundColor: "whitesmoke", px: 1, borderRadius: 1 }}
         expandIcon={<ArrowDropDownRounded />}
+        style={{
+          paddingBottom: "2px",
+        }}
       >
         <FormControlLabel
           label="Wallet"
@@ -57,6 +69,11 @@ function WalletOption({ token, setToken, tokenErr, tokenHelperText, value }) {
               value="wallet"
               onClick={() => setExpand(!expand)}
               sx={{ width: "100%", pointerEvents: "all" }}
+              inputProps={{
+                style: {
+                  paddingTop: "50px",
+                },
+              }}
             />
           }
           onClick={() => setExpand(!expand)}
@@ -64,7 +81,7 @@ function WalletOption({ token, setToken, tokenErr, tokenHelperText, value }) {
         />
       </AccordionSummary>
       <AccordionDetails>
-        {isLoadingWalletStatus || walletBalance.isPending ? (
+        {isLoadingWalletStatus || walletBalance.isLoading ? (
           <Stack direction="row" spacing={2} alignItems="center" p={1}>
             <Skeleton variant="circular" width={20} height={20} />
             <Skeleton variant="text" width="60%" />
@@ -95,21 +112,21 @@ function WalletOption({ token, setToken, tokenErr, tokenHelperText, value }) {
                   Make payment with the available balance in your wallet.
                 </Typography>
 
-                <Stack spacing={1} sx={{ mb: 3 }}>
-                  <Typography variant="subtitle1" fontWeight={600}>
+                <Stack mt={1}>
+                  <Typography variant="body2" mb={1} fontWeight={600}>
                     Wallet Pin
                   </Typography>
                   <TextField
-                    size="medium"
+                    size="small"
                     type="password"
                     inputMode="numeric"
                     placeholder="Enter 4-digit pin"
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
-                    error={tokenErr}
+                    error={!!tokenErr}
                     helperText={tokenHelperText}
                     sx={{
-                      maxWidth: 200,
+                      maxWidth: 120,
                       "& .MuiOutlinedInput-root": {
                         transition: theme.transitions.create([
                           "border-color",

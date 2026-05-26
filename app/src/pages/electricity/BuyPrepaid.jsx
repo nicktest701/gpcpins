@@ -60,7 +60,7 @@ function BuyPrepaid() {
     paymentMethod,
   };
 
-// console.log(user)
+  // console.log(user)
 
   const meterDetails = useQuery({
     queryKey: ["meter-details"],
@@ -233,10 +233,12 @@ function BuyPrepaid() {
                 mutate(meterInfo, {
                   onSuccess: (data) => {
                     if (data) {
+                      console.log(data);
+
                       navigate(`/confirm`, {
                         replace: true,
                         state: {
-                          _id: data?.id,
+                          id: data?.id,
                           categoryType: "prepaid",
                           path: pathname,
                           isWallet: meterInfo.isWallet,
@@ -258,7 +260,7 @@ function BuyPrepaid() {
                 navigate(`/confirm`, {
                   replace: true,
                   state: {
-                    _id: data?.id,
+                    id: data?.id,
                     categoryType: "prepaid",
                     path: pathname,
                     isWallet: meterInfo.isWallet,

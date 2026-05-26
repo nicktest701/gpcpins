@@ -113,7 +113,7 @@ function BulkAirtimeBuy() {
       navigate("/confirm", {
         replace: true,
         state: {
-          _id: data?.id,
+          id: data?.id,
           categoryType: "airtime",
           path: pathname,
           isWallet: paymentMethod === "wallet",

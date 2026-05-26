@@ -1,6 +1,5 @@
 const puppeteer = require("puppeteer");
 
-
 const generateVoucher = async (htmltext, transaction_id) => {
   //page
   const browser = await getBrowser();
@@ -36,7 +35,7 @@ const generatePrepaidReceipt = async (htmltext, transaction_id) => {
     printBackground: true,
     displayHeaderFooter: true,
     footerTemplate:
-      '<small style="font-size:9px;font-style:italic;">Powered by Frebbytech consults(0543772591)</small>',
+      '<small style="font-size:9px;font-style:italic;">Powered by Frebbytech Solutions(0543772591)</small>',
     // timeout: 0,
   });
 
@@ -64,7 +63,7 @@ const generateArrayVoucher = async (htmltextArray, transaction_id) => {
       printBackground: true,
       displayHeaderFooter: true,
       footerTemplate:
-        '<small style="font-size:10px;font-style:italic;">Powered by Frebbytech consults</small>',
+        '<small style="font-size:10px;font-style:italic;">Powered by Frebbytech Solutions</small>',
       timeout: 0,
       width: "210mm",
       height: "297mm",
@@ -101,7 +100,7 @@ const generateAgentTransactionRport = async (htmltext, transaction_id) => {
     printBackground: true,
     displayHeaderFooter: true,
     footerTemplate:
-      '<small style="font-size:12px;font-style:italic;">Powered by Frebbytech consults(0543772591)</small>',
+      '<small style="font-size:12px;font-style:italic;">Powered by Frebbytech Solutions(0543772591)</small>',
     // timeout: 0,
   });
 
@@ -129,7 +128,7 @@ const generateTransactionReport = async (htmltext, transaction_id, type) => {
     printBackground: true,
     displayHeaderFooter: true,
     footerTemplate:
-      '<small style="font-size:12px;font-style:italic;">Powered by Frebbytech consults(0543772591)</small>',
+      '<small style="font-size:12px;font-style:italic;">Powered by Frebbytech Solutions(0543772591)</small>',
     // timeout: 0,
   });
 
@@ -139,18 +138,23 @@ const generateTransactionReport = async (htmltext, transaction_id, type) => {
 };
 
 const getBrowser = async () => {
-  const browser = await puppeteer.launch({
+  const options = {
     headless: "new",
     timeout: 0,
-    args: [
+    protocolTimeout: 0,
+  };
+
+  if (process.env.NODE_ENV === "production") {
+    options.args = [
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
       "--disable-gpu",
       "--no-zygote",
       "--single-process",
-    ],
-  });
+    ];
+  }
+  const browser = await puppeteer.launch(options);
   return browser;
 };
 

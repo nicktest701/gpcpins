@@ -118,7 +118,7 @@
 			<div class="template">
 				<small>Receipt</small>
 				<div class="title-container">
-					<img  src=<%=voucher?.logo %>  alt="logo.png" style='width:30px;height:30px;' >
+					<img  src=<%=logo %>  alt="logo.png" style='width:30px;height:30px;' >
 
 					<h1>Gab Powerful Consult</h1>
 				</div>
@@ -149,7 +149,7 @@
 						<div style=" display: flex; ">
 							<small style="font-weight: bold;white-space:nowrap; margin-right: 8px;">Name :</small>
 							<small>
-								<%= voucher?.agentName %>
+								<%= agentName %>
 							</small>
 						</div>
 						<div style="display: flex;justify-content: space-between;align-items: center;width: 100%;">
@@ -157,13 +157,13 @@
 								<small style="font-weight: bold;white-space:nowrap; margin-right: 8px;">Phone
 									No.:</small>
 								<small>
-									<%= voucher?.agentPhoneNumber %>
+									<%= agentPhoneNumber %>
 								</small>
 							</div>
 							<div style="display: flex; ">
 								<small style="font-weight: bold;white-space:nowrap; margin-right: 8px;">Email :</small>
 								<small>
-									<%= voucher?.agentEmail %>
+									<%= agentEmail %>
 								</small>
 							</div>
 						</div>
@@ -199,8 +199,8 @@
 					<small style="font-weight: bold; text-transform: uppercase;"><i>Important Information</i></small>
 
 					<small style="border-bottom: #333 1px solid;">Go to
-						<a href=<%=info?.dataURL %>>
-							<%= voucher?.dataURL ?? "the website of University of Education" %>
+						<a href=<%= dataURL %>>
+							<%= dataURL ?? "the website of University of Education" %>
 						</a> to read
 						Application instructions.Enter your <b>Serial Number</b>
 						and

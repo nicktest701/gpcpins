@@ -32,7 +32,6 @@ function WAECChecker() {
     year: "",
   });
 
-  const [email, setEmail] = useState("");
   ///Get All waec categories
   const { categories, loading, fetching } = useGetCategoryByType("waec");
 
@@ -40,7 +39,6 @@ function WAECChecker() {
     type: "waec",
     categoryType,
     pricingType,
-    email,
   };
   // console.log(categories)
 
@@ -52,7 +50,6 @@ function WAECChecker() {
       price: values?.categoryType?.details?.price,
       quantity: Number(values?.pricingType.type),
       totalAmount: values?.pricingType.price,
-      email: values?.email,
     };
 
     customDispatch({
@@ -105,11 +102,12 @@ function WAECChecker() {
                 <Typography
                   width="100%"
                   paragraph
-                  color="#fff"
-                  bgcolor="secondary.main"
-                  p={1}
+                  color="text.secondary"
+                  bgcolor="background.neutral"
+                  p={1.5}
+                  borderRadius={1}
                 >
-                  Choose Checker Type
+                  Choose Voucher Type
                 </Typography>
                 <Autocomplete
                   loading={loading || fetching}
@@ -138,13 +136,13 @@ function WAECChecker() {
                   }
                   getOptionLabel={(option) =>
                     `${option?.name}${option?.year ? ` (${option.year})` : ""}` ||
-                    "Select Checker Type"
+                    "Select Voucher Type"
                   }
                   renderInput={(params) => {
                     return (
                       <TextField
                         {...params}
-                        label="Select Checker"
+                        label="Voucher"
                         size="small"
                         error={Boolean(
                           touched?.categoryType?.name &&
@@ -199,7 +197,7 @@ function WAECChecker() {
                   }}
                 />
 
-                <TextField
+                {/* <TextField
                   size="small"
                   type="email"
                   inputMode="email"
@@ -210,7 +208,7 @@ function WAECChecker() {
                   onChange={(e) => setEmail(e.target.value)}
                   error={Boolean(touched.email && errors.email)}
                   helperText={touched.email && errors.email}
-                />
+                /> */}
 
                 <Button
                   variant="contained"

@@ -139,6 +139,7 @@ router.get(
         "id",
         "user_id",
         "wallet_id as wallet",
+        "wallet_amount as walletAmount",
         "type",
         "amount",
         "comment",
@@ -216,7 +217,7 @@ router.get(
           "DATE_FORMAT(updatedAt,'%D %M %Y . %r' ) as updatedAt",
         ),
       ).where("roles.code", process.env.USER_ID)
-      .whereNot("vw_user_wallet_view.email", 'test@test.com')
+      .whereNot("vw_user_wallet_view.email", 'customer@gpcpins.com')
       .orderBy("vw_user_wallet_view.createdAt", "desc");
 
 
@@ -245,7 +246,7 @@ router.get(
           "DATE_FORMAT(updatedAt,'%D %M %Y . %r' ) as updatedAt",
         ),
       ).where("roles.code", process.env.AGENT_ID)
-      .whereNot("vw_user_wallet_view.email", 'test@test.com')
+      .whereNot("vw_user_wallet_view.email", 'customer@gpcpins.com')
       .orderBy("vw_user_wallet_view.createdAt", "desc");
 
 

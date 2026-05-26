@@ -24,10 +24,17 @@ import CustomRangePicker from "../../components/pickers/CustomRangePicker";
 import CustomTotal from "../../components/custom/CustomTotal";
 import ChangePin from "./ChangePin";
 import { getWalletBalance, getWalletTransaction } from "../../api/walletAPI";
+// Add this import at the top
+import { useMediaQuery, useTheme } from "@mui/material";
+import WalletTransactionList from "./WalletTransactionList";
+
 function Wallet() {
   const { user } = useContext(AuthContext);
   const [searchParams, setSearchParams] = useSearchParams();
   const [openPicker, setOpenPicker] = useState(false);
+  // Inside Wallet component, before return:
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md")); // or "sm"
   const [date, setDate] = useState([
     {
       startDate: new Date("2024-01-01"),
@@ -92,50 +99,59 @@ function Wallet() {
             secondaryTypographyProps={{ color: "secondary" }}
           />
           <ButtonGroup variant="contained">
-            <Button onClick={openAddMoney}>Request Top-up</Button>
+            <Button onClick={openAddMoney}>Top-up </Button>
             <Button onClick={openChangePin} color="secondary">
               Change Pin
             </Button>
           </ButtonGroup>
         </Box>
         <Divider />
-        <CustomizedMaterialTable
-          title="Wallet Deposits & Purchases"
-          isLoading={transactions.isLoading}
-          columns={WALLET_TOPUP_TRANSACTIONS}
-          data={transactions?.data}
-          
 
-          onRefresh={transactions.refetch}
-          showExportButton={true}
-          search
-          autocompleteComponent={
-            <Box
-              sx={{
-                width: "100%",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 2,
-                flexWrap: "wrap",
-              }}
-            >
-              <CustomRangePicker
-                date={date}
-                setDate={setDate}
-                setOpen={setOpenPicker}
-                refetch={transactions.refetch}
-              />
-
-              <CustomTotal
-                title="Total "
-                total={currencyFormatter(
-                  _.sumBy(transactions?.data, (item) => Number(item?.amount))
-                )}
-              />
-            </Box>
-          }
-        />
+        {isMobile ? (
+          <WalletTransactionList
+            data={transactions.data}
+            isLoading={transactions.isLoading}
+            onRefresh={transactions.refetch}
+            total={currencyFormatter(
+              _.sumBy(transactions?.data, (item) => Number(item?.amount)),
+            )}
+          />
+        ) : (
+          <CustomizedMaterialTable
+            title="Wallet Deposits & Purchases"
+            isLoading={transactions.isLoading}
+            columns={WALLET_TOPUP_TRANSACTIONS}
+            data={transactions?.data}
+            onRefresh={transactions.refetch}
+            showExportButton={true}
+            search
+            autocompleteComponent={
+              <Box
+                sx={{
+                  width: "100%",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 2,
+                  flexWrap: "wrap",
+                }}
+              >
+                <CustomRangePicker
+                  date={date}
+                  setDate={setDate}
+                  setOpen={setOpenPicker}
+                  refetch={transactions.refetch}
+                />
+                <CustomTotal
+                  title="Total "
+                  total={currencyFormatter(
+                    _.sumBy(transactions?.data, (item) => Number(item?.amount)),
+                  )}
+                />
+              </Box>
+            }
+          />
+        )}
       </Container>
       <TopUpRequest />
       <CustomDateRangePicker

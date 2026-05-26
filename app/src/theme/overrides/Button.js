@@ -36,7 +36,7 @@ export default function Button(theme) {
           },
         },
         containedPrimary: {
-          backgroundColor: theme.palette.primary.main,
+          backgroundColor: theme.palette.secondary.main,
           borderRadius: 1,
 
           color: '#fff',
