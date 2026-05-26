@@ -12,8 +12,6 @@ const rateLimit = require("express-rate-limit");
 const hpp = require("hpp");
 const toobusy = require("toobusy-js");
 const http = require("http");
-const jwt = require("jsonwebtoken");
-const { Server } = require("socket.io");
 const { createClient } = require("redis");
 const { createAdapter } = require("@socket.io/redis-adapter");
 
@@ -57,7 +55,7 @@ const server = http.createServer(app);
 |--------------------------------------------------------------------------
 */
 
-const io = initSocketServer(server)
+const io = initSocketServer(server);
 
 /*
 |--------------------------------------------------------------------------
@@ -78,7 +76,6 @@ const pubClient = createClient({
 
 const subClient = pubClient.duplicate();
 
-
 /*
 |--------------------------------------------------------------------------
 | SOCKET INIT FUNCTION (FIX FOR COMMONJS)
@@ -86,8 +83,6 @@ const subClient = pubClient.duplicate();
 */
 
 async function initSocket() {
-
-
   try {
     await pubClient.connect();
     await subClient.connect();
@@ -108,9 +103,7 @@ async function initSocket() {
     |--------------------------------------------------------------------------
     */
 
-    io.adapter(
-      createAdapter(pubClient, subClient)
-    );
+    io.adapter(createAdapter(pubClient, subClient));
 
     /*
     |--------------------------------------------------------------------------
@@ -127,73 +120,46 @@ async function initSocket() {
     */
 
     io.on("connection", async (socket) => {
-      console.log(
-        "Socket Connected:",
-        socket.id
-      );
+      console.log("Socket Connected:", socket.id);
 
       if (socket.user?.id) {
         const userRoom = `user:${socket.user.id}`;
 
         await socket.join(userRoom);
 
-        console.log(
-          `User joined room: ${userRoom}`
-        );
+        console.log(`User joined room: ${userRoom}`);
 
-        await pubClient.set(
-          `socket:${socket.user.id}`,
-          socket.id,
-          {
-            EX: 60 * 60 * 24,
-          }
-        );
+        await pubClient.set(`socket:${socket.user.id}`, socket.id, {
+          EX: 60 * 60 * 24,
+        });
       }
 
-      socket.on(
-        "join-payment-room",
-        async (txRef) => {
-          if (
-            !txRef ||
-            typeof txRef !== "string"
-          )
-            return;
+      socket.on("join-payment-room", async (txRef) => {
+        if (!txRef || typeof txRef !== "string") return;
 
-          const paymentRoom = `payment:${txRef}`;
+        const paymentRoom = `payment:${txRef}`;
 
-          await socket.join(paymentRoom);
+        await socket.join(paymentRoom);
 
-          socket.emit(
-            "payment-room-joined",
-            {
-              room: paymentRoom,
-            }
-          );
-        }
-      );
+        socket.emit("payment-room-joined", {
+          room: paymentRoom,
+        });
+      });
 
-      socket.on(
-        "leave-payment-room",
-        async (txRef) => {
-          const paymentRoom = `payment:${txRef}`;
+      socket.on("leave-payment-room", async (txRef) => {
+        const paymentRoom = `payment:${txRef}`;
 
-          await socket.leave(paymentRoom);
-        }
-      );
+        await socket.leave(paymentRoom);
+      });
 
       socket.on("disconnect", async () => {
         if (socket.user?.id) {
-          await pubClient.del(
-            `socket:${socket.user.id}`
-          );
+          await pubClient.del(`socket:${socket.user.id}`);
         }
       });
     });
   } catch (err) {
-    console.error(
-      "Socket init failed:",
-      err
-    );
+    console.error("Socket init failed:", err);
   }
 }
 
@@ -223,34 +189,22 @@ app.use(limiter);
 
 // Additional security middleware
 app.use(hpp()); // Protect against HTTP Parameter Pollution attacks
-// app.use(mongoSanitize()); // Prevent MongoDB operator injection
 
 // CORS configuration
-const whitelist = [
-  "https://gpcpins.com",
-  "https://www.gpcpins.com",
-  "https://admin.gpcpins.com",
-  "https://agent.gpcpins.com",
-  "https://verification.gpcpins.com",
-  "http://localhost:5000",
-  "http://localhost:5001",
-  "http://localhost:5002",
-  "http://localhost:5003",
-  "http://localhost:5004",
-  process.env.CLIENT_URL,
-  // Add other domains only if absolutely necessary
-];
+const allowedList = process.env.WHITELIST?.split(",");
 
-// In development, allow localhost and local IPs
-if (NODE_ENV === "development") {
-  whitelist.push(
-    "http://localhost:5000",
-    "http://localhost:5001",
-    "http://localhost:5002",
-    "http://localhost:5003",
-    "http://localhost:5004",
-  );
-}
+const whitelist = [...allowedList, process.env.CLIENT_URL];
+
+// // In development, allow localhost and local IPs
+// if (NODE_ENV === "development") {
+//   whitelist.push(
+//     "http://localhost:5000",
+//     "http://localhost:5001",
+//     "http://localhost:5002",
+//     "http://localhost:5003",
+//     "http://localhost:5004",
+//   );
+// }
 
 const corsOptions = {
   methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
