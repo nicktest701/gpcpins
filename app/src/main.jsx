@@ -10,6 +10,7 @@ root.render(
   <React.StrictMode>
     <BrowserRouter basename='/'>
       <App />
+        {/* <ScrollRestoration /> */}
     </BrowserRouter>
   </React.StrictMode>
 );

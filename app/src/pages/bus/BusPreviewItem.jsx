@@ -19,13 +19,13 @@ function BusPreviewItem({ item }) {
   };
 
   const cardStyles = {
-    // minWidth: 250,
+    width: 300,
     cursor: "pointer",
     backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
     border: "dashed 1px #ccc",
-    padding: 1,
+    padding: 2,
     transition: "all 250ms ease-in-out",
   };
   const primaryStyle = { fontWeight: "bold", fontSize: 11 };
@@ -38,7 +38,7 @@ function BusPreviewItem({ item }) {
         sx={cardStyles}
         onClick={handleBuyTicket}
       >
-        <Stack spacing={1}>
+        <Stack spacing={1} width='100%' >
           <Typography
             color="secondary"
             sx={{ fontWeight: "bold", paddingBottom: 1 }}

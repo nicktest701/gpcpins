@@ -1,17 +1,14 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useForm, Controller, useWatch } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
 
 import moment from "moment";
 import DOMPurify from "dompurify";
-import Select from "react-select";
+import CustomSelect from "@/components/dropdowns/CustomSelect";
 
 import {
   Alert,
   Box,
-  Avatar,
   Chip,
   Divider,
   Paper,
@@ -28,11 +25,7 @@ import {
   ListItemSecondaryAction,
   Skeleton,
   Stack,
-  TextField,
-  Tooltip,
   Typography,
-  useMediaQuery,
-  useTheme,
 } from "@mui/material";
 import {
   Close as CloseIcon,
@@ -40,31 +33,27 @@ import {
   EventSeat as SeatIcon,
   ConfirmationNumber as TicketIcon,
   Payments as PaymentIcon,
-  BusinessCenter as BusIcon,
+  BusAlert as BusIcon,
   Schedule as TimeIcon,
   CalendarToday as DateIcon,
+  Chair,
 } from "@mui/icons-material";
 
-import { ChairRounded } from "@mui/icons-material";
+// import { ChairRounded } from "@mui/icons-material";
 
 import { LoadingButton } from "@mui/lab";
-
 import { currencyFormatter } from "../../constants";
-
+import AnimatedContainer from "@/components/animations/AnimatedContainer";
 import { getCategory } from "../../api/categoryAPI";
 import { getAvailbleBusSeats } from "../../api/voucherAPI";
 import { makeMomoTransaction } from "../../api/paymentAPI";
-import { getNonUser } from "@/api/userAPI";
-
 import { AuthContext } from "../../context/providers/AuthProvider";
 import { CustomContext } from "../../context/providers/CustomProvider";
-
 import Back from "../../components/Back";
 import PaymentOption from "../../components/PaymentOption";
-
 import { globalAlertType } from "@/components/alert/alertType";
-
-import { busTicketValidationSchema } from "@/config/validationSchema";
+import { useSocket } from "../../context/providers/SocketProvider";
+import VoucherPlaceHolderItem from "../../components/items/VoucherPlaceHolderItem";
 
 const MAX_WALLET_ATTEMPTS = 3;
 
@@ -73,23 +62,36 @@ function BusTicketCheckout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const queryClient = useQueryClient();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-
   const { user } = useContext(AuthContext);
-
   const { customDispatch } = useContext(CustomContext);
-
   const [selectedSeats, setSelectedSeats] = useState([]);
-
   const [walletAttemptsLeft, setWalletAttemptsLeft] =
     useState(MAX_WALLET_ATTEMPTS);
-
   const [walletError, setWalletError] = useState("");
-
   const [previewOpen, setPreviewOpen] = useState(false);
-
   const [checkoutPayload, setCheckoutPayload] = useState(null);
+  const { joinPaymentRoom, leavePaymentRoom } = useSocket();
+
+  useEffect(() => {
+    if (user?.id) {
+      joinPaymentRoom(user?.id);
+      return;
+    }
+
+    if (checkoutPayload?.phonenumber) {
+      joinPaymentRoom(checkoutPayload?.phonenumber);
+    }
+
+    return () => {
+      leavePaymentRoom(user?.id);
+      leavePaymentRoom(checkoutPayload?.phonenumber);
+    };
+  }, [
+    user?.id,
+    checkoutPayload?.phonenumber,
+    joinPaymentRoom,
+    leavePaymentRoom,
+  ]);
 
   /*
    |--------------------------------------------------------------------------
@@ -111,35 +113,10 @@ function BusTicketCheckout() {
     queryKey: ["available-seats", id],
     queryFn: () => getAvailbleBusSeats(id),
     enabled: !!id,
-    staleTime: 30000,
     refetchOnWindowFocus: true,
   });
 
-  /*
-   |--------------------------------------------------------------------------
-   | Form
-   |--------------------------------------------------------------------------
-   */
-
-  const {
-    control,
-    handleSubmit,
-    setValue,
-    getValues,
-    formState: { errors, isSubmitting },
-  } = useForm({
-    resolver: yupResolver(busTicketValidationSchema()),
-    defaultValues: {
-      email: user?.email || "",
-      paymentMethod: "",
-      mobilePartner: "",
-      phoneNumber: user?.phonenumber || "",
-      confirmPhoneNumber: "",
-      token: "",
-    },
-  });
-
-
+  // console.log(bus)
 
   /*
    |--------------------------------------------------------------------------
@@ -158,7 +135,12 @@ function BusTicketCheckout() {
       .filter((seat) => seat.active)
       .map((seat) => ({
         value: seat.seatNo,
-        label: `Seat ${seat.seatNo}`,
+        label: (
+          <Stack direction="row" alignItems="center" gap={1}>
+            <Chair />
+            Seat {seat.seatNo}
+          </Stack>
+        ),
       }));
   }, [seatsData]);
 
@@ -170,101 +152,41 @@ function BusTicketCheckout() {
 
   const paymentMutation = useMutation({
     mutationFn: makeMomoTransaction,
-  });
-
-  const guestMutation = useMutation({
-    mutationFn: getNonUser,
-  });
-
-  /*
-   |--------------------------------------------------------------------------
-   | Seat Selection
-   |--------------------------------------------------------------------------
-   */
-
-  const handleSeatToggle = useCallback((seatNo) => {
-    setSelectedSeats((prev) => {
-      if (prev.includes(seatNo)) {
-        return prev.filter((seat) => seat !== seatNo);
-      }
-
-      return [...prev, seatNo];
-    });
-  }, []);
-
-  /*
-   |--------------------------------------------------------------------------
-   | Build Payload
-   |--------------------------------------------------------------------------
-   */
-
-  const buildPayload = useCallback(
-    (values) => {
-      return {
-        category: "bus",
-        categoryId: bus?.id,
-        service: "ticket",
-        voucherName: bus?.name,
-        paymentDetails: {
-          tickets: selectedSeats,
-          quantity,
-          totalAmount,
-        },
-
-        totalAmount,
-        user: {
-          name: user?.name,
-          email: DOMPurify.sanitize(values.email),
-         phoneNumber:
-            values.paymentMethod === "momo"
-              ? DOMPurify.sanitize(values.phoneNumber)
-              : user?.phonenumber,
-
-          provider:
-            values.paymentMethod === "momo" ? values.mobilePartner : undefined,
-        },
-
-        token: values.token,
-
-        isWallet: values.paymentMethod === "wallet",
-      };
+    retry: false,
+    onSettled: () => {
+      setPreviewOpen(false);
     },
-    [bus, quantity, selectedSeats, totalAmount, user],
-  );
+    onSuccess: (data) => {
+      customDispatch({
+        type: "sumCinemaTotal",
+        payload: [],
+      });
 
-  /*
-   |--------------------------------------------------------------------------
-   | Payment Submit
-   |--------------------------------------------------------------------------
-   */
-
-  const processPayment = async () => {
-    try {
-      const payload = checkoutPayload;
-
-      if (!payload) return;
-
-      const response = await paymentMutation.mutateAsync(payload);
+      queryClient.invalidateQueries({
+        queryKey: ["wallet-balance"],
+      });
 
       navigate("/confirm", {
         replace: true,
+
         state: {
-          id: response?.transactionId,
+          id: data.transactionId,
+          transactionReference: data?.reference,
           categoryType: "ticket",
           path: pathname,
-          isWallet: payload?.isWallet,
+          isWallet: checkoutPayload?.paymentMethod === "wallet",
+          mobilePartner: checkoutPayload?.mobilePartner,
         },
       });
-
-      setPreviewOpen(false);
-    } catch (error) {
+    },
+    onError: (error) => {
       if (typeof error === "string" && error.includes("Invalid PIN")) {
         setWalletAttemptsLeft((prev) => {
           const next = prev - 1;
 
           if (next <= 0) {
             setWalletError(
-              "Wallet temporarily disabled due to multiple failed PIN attempts.",
+              "Wallet disabled due to multiple failed PIN attempts.",
             );
 
             return 0;
@@ -279,25 +201,63 @@ function BusTicketCheckout() {
       }
 
       customDispatch(globalAlertType("error", error || "Payment failed"));
-    }
-  };
+    },
+  });
 
   /*
    |--------------------------------------------------------------------------
-   | Form Submit
+   | Seat Selection
    |--------------------------------------------------------------------------
    */
 
-  const onSubmit = async (values) => {
-    setWalletError("");
+  // const handleSeatToggle = useCallback((seatNo) => {
+  //   setSelectedSeats((prev) => {
+  //     if (prev.includes(seatNo)) {
+  //       return prev.filter((seat) => seat !== seatNo);
+  //     }
+  //     return [...prev, seatNo];
+  //   });
+  // }, []);
 
-    if (!selectedSeats.length) {
-      customDispatch(
-        globalAlertType("error", "Please select at least one seat"),
-      );
+  const buildPayload = useCallback(() => {
+    const payload = {
+      category: "bus",
+      categoryId: bus?.id,
+      service: "ticket",
+      voucherName: bus?.name,
+      paymentDetails: {
+        tickets: selectedSeats,
+        quantity,
+        totalAmount,
+      },
 
-      return;
+      totalAmount,
+      user: {
+        name: user?.name,
+        email: DOMPurify.sanitize(checkoutPayload?.email),
+        phonenumber:
+          checkoutPayload?.paymentMethod === "momo"
+            ? DOMPurify.sanitize(checkoutPayload?.phonenumber)
+            : user?.phonenumber,
+
+        provider:
+          checkoutPayload?.paymentMethod === "momo"
+            ? checkoutPayload?.mobilePartner
+            : undefined,
+      },
+
+      isWallet: checkoutPayload?.paymentMethod === "wallet",
+    };
+
+    if (checkoutPayload?.paymentMethod === "wallet") {
+      payload.token = checkoutPayload?.token;
     }
+
+    return payload;
+  }, [bus, quantity, selectedSeats, totalAmount, user, checkoutPayload]);
+
+  const processPayment = async (values) => {
+    setWalletError("");
 
     const payload = buildPayload(values);
 
@@ -320,20 +280,19 @@ function BusTicketCheckout() {
       }
     }
 
-    if (!user?.id) {
-      await guestMutation.mutateAsync({});
-    }
-
-    setCheckoutPayload(payload);
-
-    setPreviewOpen(true);
+    // if (!user?.id) {
+    //   guestMutation.mutateAsync(
+    //     {},
+    //     {
+    //       onSuccess: () => {
+    //         paymentMutation.mutateAsync(payload);
+    //       },
+    //     },
+    //   );
+    // } else {
+    paymentMutation.mutateAsync(payload);
+    // }
   };
-
-  /*
-   |--------------------------------------------------------------------------
-   | Loading
-   |--------------------------------------------------------------------------
-   */
 
   if (busLoading || seatsLoading) {
     return (
@@ -343,215 +302,245 @@ function BusTicketCheckout() {
     );
   }
 
-  /*
-   |--------------------------------------------------------------------------
-   | UI
-   |--------------------------------------------------------------------------
-   */
-
   return (
     <Container
-      maxWidth="lg"
+      maxWidth="md"
       sx={{
-        py: 3,
+        pb: 4,
+        pt: 2,
       }}
     >
-      <Back />
+      <Paper
+        elevation={2}
+        sx={{
+          borderTopRightRadius: 3,
+          // overflow: "hidden",
+        }}
+      >
+        <Stack
+          width="100%"
+          direction="row"
+          alignItems="center"
+          sx={{
+            bgcolor: "primary.lighter",
+            borderTopRightRadius: 3,
+            borderTopLeftRadius: 3,
+            overflow: "hidden",
+          }}
+        >
+          <Back color="#fff" />
 
-      <Stack spacing={3}>
-        <Typography variant="h5" fontWeight={700}>
-          Bus Ticket Checkout
-        </Typography>
+          <Typography
+            width="100%"
+            textAlign="right"
+            variant="h6"
+            sx={{
+              color: "white",
 
-        {/* Bus Details */}
+              p: 2,
+            }}
+          >
+            Bus Ticket Checkout
+          </Typography>
+        </Stack>
 
         <Stack
-          direction={{
-            xs: "column",
-            md: "row",
+          sx={{
+            p: 2,
+
+            display: "grid",
+
+            gridTemplateColumns: {
+              xs: "1fr",
+              md: "1fr 1fr",
+            },
+
+            gap: 3,
           }}
-          spacing={3}
         >
-          <Box flex={1}>
-            <img
-              src={bus?.details?.logo}
-              alt={bus?.voucherType}
-              style={{
-                width: "100%",
-                maxHeight: 220,
-                objectFit: "contain",
-              }}
-            />
-          </Box>
+          {/* Bus Details */}
+          <AnimatedContainer delay={0.2}>
+            <Stack mb={3}>
+              <Box flex={1}>
+                <img
+                  src={bus?.details?.logo}
+                  alt={bus?.voucherType}
+                  style={{
+                    width: "100%",
+                    maxHeight: 150,
+                    objectFit: "contain",
+                  }}
+                />
+              </Box>
+              <Stack direction="row" alignItems="center">
+                <Stack flex={1} spacing={1}>
+                  <Typography variant="h6">{bus?.name}</Typography>
+                  <Typography>
+                    {moment(bus?.details?.date).format("dddd, Do MMM YYYY")}
+                  </Typography>
+                  <Typography>
+                    {moment(bus?.details?.time, "HH:mm").format("hh:mm A")}
+                  </Typography>
+                </Stack>
+                <Box
+                  sx={{
+                    bgcolor: "black",
+                    color: "white",
+                    p: 2,
+                    border: "4px solid transparent",
+                    borderImage:
+                      "repeating-linear-gradient(90deg, #fff 0, #fff 8px, transparent 6px, transparent 12px) 1",
+                  }}
+                >
+                  <Typography variant="body2" fontWeight={700}>
+                    {currencyFormatter(bus?.price)}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Stack>
 
-          <Stack flex={1} spacing={1}>
-            <Typography variant="h6">{bus?.voucherType}</Typography>
+            {/* Seats */}
+            <Stack spacing={2} pt={2}>
+              <Typography variant="h6">Select Seats</Typography>
 
-            <Typography>
-              {moment(bus?.details?.date).format("dddd, Do MMM YYYY")}
-            </Typography>
+              {/* Mobile Select */}
+              <CustomSelect
+                isMulti
+                options={availableSeatOptions}
+                value={availableSeatOptions.filter((item) =>
+                  selectedSeats.includes(item.value),
+                )}
+                onChange={(value) => {
+                  setSelectedSeats(value.map((item) => item.value));
+                }}
+                placeholder="Select seats..."
+                classNamePrefix="select" // important to use the prefix for class names
+              />
+              {/* 
+              {isMobile ? (
+                <Select
+                  isMulti
+                  options={availableSeatOptions}
+                  value={availableSeatOptions.filter((item) =>
+                    selectedSeats.includes(item.value),
+                  )}
+                  onChange={(value) => {
+                    setSelectedSeats(value.map((item) => item.value));
+                  }}
+                  placeholder="Select seats..."
+                  className=""
+                />
+              ) : (
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 2,
+                  }}
+                >
+                  {seatsData.map(({ seatNo, active }) => (
+                    <Tooltip
+                      key={seatNo}
+                      title={active ? `Seat ${seatNo}` : "Booked"}
+                    >
+                      <IconButton
+                        disabled={!active}
+                        onClick={() => handleSeatToggle(seatNo)}
+                        sx={{
+                          width: 55,
+                          height: 55,
+                          borderRadius: 2,
 
-            <Typography>
-              {moment(bus?.details?.time, "HH:mm").format("hh:mm A")}
-            </Typography>
+                          bgcolor: selectedSeats.includes(seatNo)
+                            ? "success.main"
+                            : active
+                              ? "grey.200"
+                              : "grey.400",
 
-            <Chip color="primary" label={currencyFormatter(bus?.price)} />
-          </Stack>
-        </Stack>
+                          color: "#fff",
+                        }}
+                      >
+                        <ChairRounded />
+                      </IconButton>
+                    </Tooltip>
+                  ))}
+                </Box>
+              )} */}
+            </Stack>
+          </AnimatedContainer>
 
-        {/* Seats */}
-
-        <Stack spacing={2}>
-          <Typography variant="h6">Select Seats</Typography>
-
-          {/* Mobile Select */}
-
-          {isMobile ? (
-            <Select
-              isMulti
-              options={availableSeatOptions}
-              value={availableSeatOptions.filter((item) =>
-                selectedSeats.includes(item.value),
-              )}
-              onChange={(value) => {
-                setSelectedSeats(value.map((item) => item.value));
-              }}
-              placeholder="Select seats..."
-              className=""
-            />
-          ) : (
+          {/* Summary */}
+          <AnimatedContainer delay={0.2}>
             <Box
               sx={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 2,
+                p: 3,
+                borderRadius: 3,
+                bgcolor: "background.paper",
+                boxShadow: 1,
               }}
             >
-              {seatsData.map(({ seatNo, active }) => (
-                <Tooltip
-                  key={seatNo}
-                  title={active ? `Seat ${seatNo}` : "Booked"}
-                >
-                  <IconButton
-                    disabled={!active}
-                    onClick={() => handleSeatToggle(seatNo)}
-                    sx={{
-                      width: 55,
-                      height: 55,
-                      borderRadius: 2,
+              <List>
+                <ListItem>
+                  <ListItemText primary="Seats" />
 
-                      bgcolor: selectedSeats.includes(seatNo)
-                        ? "success.main"
-                        : active
-                          ? "grey.200"
-                          : "grey.400",
+                  <ListItemSecondaryAction>{quantity}</ListItemSecondaryAction>
+                </ListItem>
 
-                      color: "#fff",
-                    }}
-                  >
-                    <ChairRounded />
-                  </IconButton>
-                </Tooltip>
-              ))}
+                <ListItem>
+                  <ListItemText primary="Total" />
+
+                  <ListItemSecondaryAction>
+                    <strong>{currencyFormatter(totalAmount)}</strong>
+                  </ListItemSecondaryAction>
+                </ListItem>
+              </List>
+
+              {walletError && <Alert severity="error">{walletError}</Alert>}
+
+              {/* Payment */}
+
+              <PaymentOption
+                showMomo
+                showWallet={!!user?.id}
+                initialValues={{
+                  fullName: user?.name || "",
+                  email: user?.email || "",
+                }}
+                onSubmit={async (values) => {
+                  if (!selectedSeats.length) {
+                    customDispatch(
+                      globalAlertType(
+                        "error",
+                        "Please select at least one seat",
+                      ),
+                    );
+
+                    return;
+                  }
+
+                  if (values.paymentMethod === "wallet") {
+                    const walletBalance = queryClient.getQueryData([
+                      "wallet-balance",
+                      user?.id,
+                    ]);
+
+                    if (Number(walletBalance || 0) < Number(totalAmount)) {
+                      customDispatch(
+                        globalAlertType("error", "Insufficient wallet balance"),
+                      );
+
+                      return;
+                    }
+                  }
+
+                  setCheckoutPayload(values);
+                  setPreviewOpen(true);
+                }}
+              />
             </Box>
-          )}
+          </AnimatedContainer>
         </Stack>
-
-        {/* Summary */}
-
-        <Box
-          sx={{
-            p: 3,
-            borderRadius: 3,
-            bgcolor: "background.paper",
-            boxShadow: 1,
-          }}
-        >
-          <List>
-            <ListItem>
-              <ListItemText primary="Seats" />
-
-              <ListItemSecondaryAction>{quantity}</ListItemSecondaryAction>
-            </ListItem>
-
-            <ListItem>
-              <ListItemText primary="Total" />
-
-              <ListItemSecondaryAction>
-                <strong>{currencyFormatter(totalAmount)}</strong>
-              </ListItemSecondaryAction>
-            </ListItem>
-          </List>
-
-          {walletError && <Alert severity="error">{walletError}</Alert>}
-
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <Stack spacing={2}>
-              <Controller
-                name="email"
-                control={control}
-                render={({ field }) => (
-                  <TextField {...field} label="Email" size="small" fullWidth />
-                )}
-              />
-
-              <Controller
-                name="paymentMethod"
-                control={control}
-                render={({ field }) => (
-                  <PaymentOption
-                    showWallet={!!user?.id}
-                    showMomo
-                    paymentMethod={field.value}
-                    setPaymentMethod={field.onChange}
-                    error={!!errors.paymentMethod}
-                    helperText={errors.paymentMethod?.message}
-                    mobileMoneyDetails={{
-                      mobilePartner: getValues("mobilePartner"),
-                      setMobilePartner: (val) =>
-                        setValue("mobilePartner", val, {
-                          shouldValidate: true,
-                        }),
-                      mobilePartnerErr: !!errors.mobilePartner,
-                      mobilePartnerHelperText: errors.mobilePartner?.message,
-                      phonenumber: getValues("phoneNumber"),
-                      setPhonenumber: (val) =>
-                        setValue("phoneNumber", val, { shouldValidate: true }),
-                      phonenumberErr: !!errors.phoneNumber,
-                      phonenumberHelperText: errors.phoneNumber?.message,
-                      confirmPhonenumber: getValues("confirmPhoneNumber"),
-                      setConfirmPhonenumber: (val) =>
-                        setValue("confirmPhoneNumber", val, {
-                          shouldValidate: true,
-                        }),
-                      confirmPhonenumberErr: !!errors.confirmPhoneNumber,
-                      confirmPhonenumberHelperText:
-                        errors.confirmPhoneNumber?.message,
-                    }}
-                    walletDetails={{
-                      token: getValues("token"),
-                      setToken: (val) =>
-                        setValue("token", val, { shouldValidate: true }),
-
-                      tokenErr: !!errors.token,
-                      tokenHelperText: errors.token?.message,
-                    }}
-                  />
-                )}
-              />
-              <LoadingButton
-                loading={isSubmitting}
-                type="submit"
-                variant="contained"
-                size="large"
-                disabled={!quantity}
-              >
-                Continue
-              </LoadingButton>
-            </Stack>
-          </form>
-        </Box>
-      </Stack>
+      </Paper>
 
       {/* Checkout Preview Modal */}
       <Dialog
@@ -568,7 +557,7 @@ function BusTicketCheckout() {
       >
         <DialogTitle
           sx={{
-            bgcolor: "primary.main",
+            bgcolor: "primary.lighter",
             color: "primary.contrastText",
             display: "flex",
             alignItems: "center",
@@ -592,33 +581,44 @@ function BusTicketCheckout() {
         </DialogTitle>
 
         <DialogContent dividers sx={{ p: 3, bgcolor: "background.default" }}>
-          <Stack spacing={3}>
+          <Stack spacing={2}>
             {/* Bus Summary Card */}
             <Paper
               elevation={0}
               sx={{
                 p: 2,
-                bgcolor: "background.paper",
                 borderRadius: 2,
-                border: "1px solid",
-                borderColor: "divider",
               }}
             >
               <Stack spacing={2}>
-                <Stack direction="row" spacing={2} alignItems="center">
-                  {bus?.details?.logo && (
-                    <Avatar
-                      src={bus.details.logo}
-                      variant="rounded"
-                      sx={{ width: 48, height: 48 }}
-                    />
-                  )}
-                  <Box>
-                    <Typography variant="subtitle1" fontWeight={700}>
-                      {bus?.voucherType}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Bus ticket
+                <Stack
+                  flex={1}
+                  direction="row"
+                  justifyContent="space-between"
+                  useFlexGap
+                >
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={700}>
+                        {bus?.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Bus ticket
+                      </Typography>
+                    </Box>
+                  </Stack>
+                  <Box
+                    sx={{
+                      bgcolor: "black",
+                      color: "white",
+                      p: 2,
+                      border: "4px solid transparent",
+                      borderImage:
+                        "repeating-linear-gradient(90deg, #fff 0, #fff 8px, transparent 6px, transparent 12px) 1",
+                    }}
+                  >
+                    <Typography variant="body2" fontWeight={700}>
+                      {currencyFormatter(bus?.price)}
                     </Typography>
                   </Box>
                 </Stack>
@@ -629,7 +629,7 @@ function BusTicketCheckout() {
                   <Stack direction="row" spacing={1} alignItems="center">
                     <BusIcon fontSize="small" color="action" />
                     <Typography variant="body2">
-                      {bus?.operator || "Bus operator"}
+                      {bus?.details?.vehicleNo || "Bus operator"}
                     </Typography>
                   </Stack>
                   <Stack direction="row" spacing={1} alignItems="center">
@@ -663,7 +663,7 @@ function BusTicketCheckout() {
                 Ticket Summary
               </Typography>
 
-              <Stack spacing={1.5}>
+              <Stack spacing={1}>
                 <Stack
                   direction="row"
                   justifyContent="space-between"
@@ -694,6 +694,14 @@ function BusTicketCheckout() {
                     {quantity} {quantity === 1 ? "ticket" : "tickets"}
                   </Typography>
                 </Stack>
+                <VoucherPlaceHolderItem
+                  title="Payment Method"
+                  value={
+                    checkoutPayload?.paymentMethod === "wallet"
+                      ? "Wallet"
+                      : "Mobile Money"
+                  }
+                />
 
                 <Divider />
 
@@ -736,18 +744,15 @@ function BusTicketCheckout() {
             onClick={() => setPreviewOpen(false)}
             variant="outlined"
             color="inherit"
-            sx={{ borderRadius: 2 }}
           >
             Cancel
           </Button>
           <LoadingButton
-            loading={paymentMutation.isPending}
+            loading={paymentMutation.isLoading}
             variant="contained"
             onClick={processPayment}
             sx={{
-              borderRadius: 2,
               px: 3,
-              bgcolor: "primary.main",
               "&:hover": { bgcolor: "primary.dark" },
             }}
           >

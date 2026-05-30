@@ -1,237 +1,405 @@
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
 import {
+  Alert,
+  Avatar,
+  Box,
+  Button,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Fade,
+  IconButton,
+  InputAdornment,
   Paper,
+  Stack,
   TextField,
   Typography,
-  Stack,
-  Avatar,
-  InputAdornment,
-  Alert,
+  useTheme,
 } from "@mui/material";
+
 import LoadingButton from "@mui/lab/LoadingButton";
-import { useForm, Controller } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import { useSearchParams, Navigate, useNavigate } from "react-router-dom";
-import Swal from "sweetalert2";
-import { useLocation } from "react-router-dom";
-import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
+
+import CloseIcon from "@mui/icons-material/Close";
+import ReceiptIcon from "@mui/icons-material/Receipt";
+import PhoneAndroidIcon from "@mui/icons-material/PhoneAndroid";
+
 import {
-  airtimeValidationSchema,
-  bundleValidationSchema,
-} from "../../config/validationSchema";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import { AuthContext } from "../../context/providers/AuthProvider";
-import { globalAlertType } from "../../components/alert/alertType";
-import { getCode } from "../../constants";
+  Navigate,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
+
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { useForm } from "react-hook-form";
+
+import { yupResolver } from "@hookform/resolvers/yup";
+
+import DOMPurify from "dompurify";
+
+import { number, object } from "yup";
+
+import Swal from "sweetalert2";
+
 import Back from "../../components/Back";
+
 import PaymentOption from "../../components/PaymentOption";
+
 import BundleList from "./BundleList";
-import { disableWallet, getNonUser } from "../../api/userAPI";
+
+import { useAuth } from "../../context/providers/AuthProvider";
+
+import { useCustomContext } from "../../context/providers/CustomProvider";
+
+import { globalAlertType } from "../../components/alert/alertType";
+
 import { makeAirtimeTransaction } from "../../api/paymentAPI";
 
-function AirtimeBuy() {
-  const queryClient = useQueryClient();
-  const { customDispatch } = useContext(CustomContext);
-  const { pathname } = useLocation();
-  const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
-  const [searchParams, _] = useSearchParams();
-  const [selectedBundle, setSelectedBundle] = useState({
-    plan_id: searchParams.get("plan_id"),
-    plan_name: searchParams.get("plan_name"),
-    volume: searchParams.get("plan_volume"),
-    price: searchParams.get("plan_price"),
-  });
-  const [failureCount, setFailCount] = useState(3);
+import { getNonUser } from "../../api/userAPI";
 
-  const recipient = searchParams.get("recipient");
+import { currencyFormatter, getCode } from "../../constants";
+
+/**
+ * VALIDATION
+ */
+
+const airtimeSchema = object({
+  amount: number()
+    .typeError("Amount is required")
+    .required("Amount is required")
+    .min(1, "Minimum amount is GHS 1")
+    .max(100, "Maximum amount is GHS 100"),
+});
+
+function AirtimeBuy() {
+  const theme = useTheme();
+
+  const navigate = useNavigate();
+
+  const queryClient = useQueryClient();
+
+  const { pathname } = useLocation();
+
+  const { user } = useAuth();
+
+  const { customDispatch } = useCustomContext();
+
+  const [searchParams] = useSearchParams();
+
+  /**
+   * QUERY PARAMS
+   */
+
   const type = searchParams.get("type");
 
-  // Get wallet status (disabled state)
-  const { data: disableWalletData } = useQuery({
-    queryKey: ["disable-wallet"],
-    queryFn: () => disableWallet(),
-    enabled: failureCount === 0,
-    initialData: { active: true, timeOut: null },
+  const recipient = searchParams.get("recipient");
+
+  /**
+   * LOCAL STATE
+   */
+
+  const [failureCount, setFailureCount] = useState(3);
+
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+
+  const [paymentData, setPaymentData] = useState(null);
+
+  const [selectedBundle, setSelectedBundle] = useState({
+    plan_id: searchParams.get("plan_id"),
+
+    plan_name: searchParams.get("plan_name"),
+
+    volume: searchParams.get("plan_volume"),
+
+    price: searchParams.get("plan_price"),
   });
 
-  // Service provider info from recipient number
-  const serviceProviderInfo = useMemo(() => getCode(recipient), [recipient]);
+  /**
+   * PROVIDER INFO
+   */
 
-  // Validation schema based on type
-  const validationSchema = useMemo(
-    () =>
-      type === "Bundle"
-        ? bundleValidationSchema(selectedBundle)
-        : airtimeValidationSchema(),
-    [type, selectedBundle],
-  );
+  const serviceProviderInfo = useMemo(() => {
+    return getCode(recipient);
+  }, [recipient]);
 
-  // React Hook Form setup
+  /**
+   * BUNDLE VALIDATION
+   */
+
+  const isBundleSelected = type !== "Bundle" || !!selectedBundle?.plan_id;
+
+  /**
+   * FORM
+   */
+
   const {
-    control,
-    handleSubmit,
+    register,
     watch,
     setValue,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm({
-    resolver: yupResolver(validationSchema),
+    resolver: yupResolver(airtimeSchema),
+
     defaultValues: {
-      amount: type === "Bundle" ? selectedBundle.price : 1,
-      paymentMethod: "wallet",
-      phonenumber: user?.phonenumber || "",
-      mobilePartner: "",
-      token: "",
+      amount: type === "Bundle" ? Number(selectedBundle?.price) || "" : "",
     },
+
+    mode: "onChange",
   });
 
-  const paymentMethod = watch("paymentMethod");
-  const token = watch("token");
   const amount = watch("amount");
-  const mobilePartner = watch("mobilePartner");
-  const phonenumber = watch("phonenumber");
 
-  // Check if bundle is selected (only for bundle type)
-  const isBundleSelected =
-    type !== "Bundle" || (selectedBundle && selectedBundle.plan_id);
+  /**
+   * SYNC BUNDLE PRICE
+   */
 
-  // Update amount when selectedBundle changes (for bundles)
   useEffect(() => {
-    if (type === "Bundle") {
-      setValue("amount", selectedBundle.price);
+    if (type === "Bundle" && selectedBundle?.price) {
+      setValue("amount", Number(selectedBundle.price));
     }
   }, [selectedBundle, type, setValue]);
 
-  // Wallet balance check (derived)
+  /**
+   * WALLET BALANCE
+   */
+
   const walletBalance = user?.id
-    ? queryClient.getQueryData(["wallet-balance", user?.id], { exact: true })
+    ? queryClient.getQueryData(["wallet-balance", user?.id]) || 0
     : 0;
-  const totalAmount = type === "Bundle" ? selectedBundle.price : Number(amount);
-  const isInsufficientBalance =
-    paymentMethod === "wallet" &&
-    user?.id &&
-    (Number(walletBalance) === 0 || Number(walletBalance) < totalAmount);
 
-  // Wallet disabled error message
-  const walletDisabledError = useMemo(() => {
-    if (disableWalletData?.active === false) {
-      return `Wallet disabled due to multiple failed attempts. Try again after ${disableWalletData?.timeOut}`;
-    }
-    return "";
-  }, [disableWalletData]);
+  /**
+   * TOTAL AMOUNT
+   */
 
-  // Payment mutation
+  const totalAmount =
+    type === "Bundle"
+      ? Number(selectedBundle?.price) || 0
+      : Number(amount || 0);
+
+  /**
+   * PAYMENT MUTATION
+   */
+
   const paymentMutation = useMutation({
     mutationFn: makeAirtimeTransaction,
+
+    retry: false,
+
     onSuccess: (data) => {
       navigate("/confirm", {
         replace: true,
         state: {
           id: data?.id,
           categoryType: type === "Bundle" ? "bundle" : "airtime",
+          isWallet: paymentData.paymentMethod === "wallet",
           path: pathname,
-          isWallet: paymentMethod === "wallet",
         },
       });
     },
-    onError: async (error) => {
+
+    onError: (error) => {
       if (error === "Invalid PIN!") {
-        const newCount = failureCount - 1;
-        setFailCount(newCount);
-        if (newCount === 0) {
-          // Wallet is now disabled
-          setValue("token", "");
+        const attemptsLeft = failureCount - 1;
+
+        setFailureCount(attemptsLeft);
+
+        if (attemptsLeft <= 0) {
           customDispatch(
             globalAlertType(
               "error",
-              `Wallet disabled. Please use mobile money or contact support.`,
+              "Wallet disabled due to multiple failed attempts.",
             ),
           );
-        } else {
-          setValue("token", "");
-          customDispatch(
-            globalAlertType(
-              "error",
-              `${error} ${newCount} attempt(s) left. Wallet will be disabled after ${
-                newCount - 1
-              } more attempt(s).`,
-            ),
-          );
+
+          return;
         }
-      } else {
-        customDispatch(globalAlertType("error", error));
+
+        customDispatch(
+          globalAlertType(
+            "error",
+            `Invalid PIN. ${attemptsLeft} attempt(s) left.`,
+          ),
+        );
+
+        return;
       }
+
+      customDispatch(globalAlertType("error", error || "Transaction failed."));
     },
   });
 
-  // Guest user check mutation
+  /**
+   * GUEST USER MUTATION
+   */
+
   const guestMutation = useMutation({
     mutationFn: getNonUser,
-    onSuccess: () => {
-      // After guest check, proceed with payment
-      // handlePaymentSubmit();
-    },
+    retry: false,
     onError: () => {
-      customDispatch(
-        globalAlertType("error", "Failed to verify user. Please try again."),
-      );
+      customDispatch(globalAlertType("error", "Unable to verify guest user."));
     },
   });
 
-  // Form submission handler
-  const onSubmit = (values) => {
-    // Validate wallet balance
-    if (paymentMethod === "wallet" && isInsufficientBalance) {
-      customDispatch(
-        globalAlertType(
-          "error",
-          "Insufficient wallet balance. Please fund your wallet or use mobile money.",
-        ),
-      );
+  /**
+   * OPEN CHECKOUT PREVIEW
+   */
+
+  const handleReviewCheckout = async (values) => {
+    /**
+     * VALIDATE BUNDLE
+     */
+
+    if (type === "Bundle" && !isBundleSelected) {
+      customDispatch(globalAlertType("error", "Please select a bundle."));
+
       return;
     }
 
-    Swal.fire({
-      title: "Processing",
-      text: `Proceed with payment?`,
-      showCancelButton: true,
-    }).then(({ isConfirmed }) => {
-      if (isConfirmed) {
-        const payload = {
-          type: type,
-          service: type?.toLowerCase(),
-          amount: totalAmount,
-          recipient: recipient,
-          phonenumber: user?.phonenumber || values.phonenumber,
-          provider: serviceProviderInfo.providerName,
-          email: user?.email,
-          isWallet: paymentMethod === "wallet",
-        };
+    /**
+     * VALIDATE AIRTIME
+     */
 
-        if (type === "Bundle") {
-          payload.plan = {
-            id: selectedBundle.plan_id,
-            name: selectedBundle.plan_name,
-            volume: selectedBundle.volume,
-          };
-        }
+    if (type === "Airtime") {
+      const isValid = await airtimeSchema
+        .validate({
+          amount,
+        })
+        .then(() => true)
+        .catch(() => false);
 
-        if (paymentMethod === "wallet") {
-          payload.token = token;
-        }
-
-        // If user not logged in, run guest check first
-        if (!user?.id) {
-          guestMutation.mutate({});
-        } else {
-          paymentMutation.mutate(payload);
-        }
+      if (!isValid) {
+        return;
       }
+    }
+
+    /**
+     * VALIDATE WALLET
+     */
+
+    const insufficientBalance =
+      values.paymentMethod === "wallet" &&
+      user?.id &&
+      Number(walletBalance) < Number(totalAmount);
+
+    if (insufficientBalance) {
+      customDispatch(globalAlertType("error", "Insufficient wallet balance."));
+
+      return;
+    }
+
+    setPaymentData({
+      ...values,
+
+      amount: totalAmount,
+      recipient,
+      provider: serviceProviderInfo?.providerName,
+
+      type,
     });
+
+    setCheckoutOpen(true);
   };
 
-  // Redirect if required params missing
+  /**
+   * SUBMIT PAYMENT
+   */
+
+  const executePayment = async () => {
+    if (!paymentData) {
+      return;
+    }
+
+    const payload = {
+      type,
+      service: type?.toLowerCase(),
+      amount: paymentData.amount,
+      recipient: paymentData.recipient,
+      phonenumber: DOMPurify.sanitize(
+        paymentData.phonenumber || user?.phonenumber,
+      ),
+      provider: paymentData.provider,
+      email: DOMPurify.sanitize(paymentData.email || user?.email || ""),
+      isWallet: paymentData.paymentMethod === "wallet",
+    };
+
+    /**
+     * BUNDLE INFO
+     */
+
+    if (type === "Bundle") {
+      payload.plan = {
+        id: selectedBundle.plan_id,
+        name: selectedBundle.plan_name,
+        volume: selectedBundle.volume,
+      };
+    }
+
+    /**
+     * WALLET TOKEN
+     */
+
+    if (paymentData.paymentMethod === "wallet") {
+      payload.token = paymentData.token;
+    }
+
+    /**
+     * CONFIRMATION
+     */
+
+    // console.log(payload);
+    // return;
+
+    const result = await Swal.fire({
+      title: "Confirm Transaction",
+
+      text: "Proceed with payment?",
+
+      icon: "question",
+
+      showCancelButton: true,
+
+      confirmButtonText: "Confirm",
+    });
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    try {
+      /**
+       * VERIFY GUEST
+       */
+
+      if (!user?.id) {
+        await guestMutation.mutateAsync(
+          {},
+          {
+            onSuccess: async () => {
+              await paymentMutation.mutateAsync(payload);
+            },
+          },
+        );
+      }
+
+      /**
+       * MAKE PAYMENT
+       */
+
+      await paymentMutation.mutateAsync(payload);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  /**
+   * INVALID ROUTE
+   */
+
   if (!recipient || !["Airtime", "Bundle"].includes(type)) {
     return (
       <Navigate to="/airtime?link=6b1bb991cea626082307742d77772268dbf4d9c5194b8bc5d09c81a5fc0a5ce5" />
@@ -239,156 +407,336 @@ function AirtimeBuy() {
   }
 
   return (
-    <Container maxWidth="sm" sx={{ py: 4 }}>
-      <Back />
-      <Typography variant="h4" gutterBottom>
-        Complete Top-Up
-      </Typography>
+    <>
+      <Container maxWidth="sm" sx={{ py: 4 }}>
+        <Back />
 
-      {/* Info notice for airtime */}
-      {type === "Airtime" && (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          Minimum airtime: <strong>GHS 1</strong> | Maximum:{" "}
-          <strong>GHS 100</strong>
-        </Alert>
-      )}
+        <Fade in timeout={400}>
+          <Paper
+            elevation={1}
+            sx={{
+              p: {
+                xs: 3,
+                sm: 4,
+              },
 
-      {type === "Bundle" && !isBundleSelected && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          Please select a bundle from the list to continue.
-        </Alert>
-      )}
+              borderRadius: 4,
 
-      <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-        {/* Recipient summary */}
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-          sx={{
-            bgcolor: "primary.main",
-            color: "white",
-            p: 2,
-            borderRadius: 1,
-            mb: 3,
-          }}
-        >
-          <Avatar
-            variant="square"
-            src={serviceProviderInfo?.image}
-            sx={{ width: 60, height: 40, objectFit: "contain" }}
-          />
-          <Stack alignItems="flex-end">
-            {type === "Bundle" && selectedBundle.plan_name && (
-              <Typography variant="caption" sx={{ color: "#000" }}>
-                {selectedBundle.plan_name} ({selectedBundle.volume})
-              </Typography>
-            )}
-            <Typography variant="body2">{recipient}</Typography>
-            <Typography variant="caption">Recipient Number</Typography>
-          </Stack>
-        </Stack>
+              overflow: "hidden",
+            }}
+          >
+            <Stack spacing={3}>
+              {/* HEADER */}
 
-        <form onSubmit={handleSubmit(onSubmit)} noValidate>
-          <Stack spacing={3}>
-            {/* Amount field */}
-            {type === "Bundle" ? (
-              <TextField
-                fullWidth
-                variant="filled"
-                label="Bundle Price"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">GH¢</InputAdornment>
-                  ),
-                  readOnly: true,
-                  style: { fontWeight: "bold", fontSize: "1.8rem" },
+              <Stack spacing={1}>
+                <Typography variant="h4" fontWeight={700}>
+                  Complete Top-Up
+                </Typography>
+
+                <Typography variant="body2" color="text.secondary">
+                  Review recipient details and complete payment securely.
+                </Typography>
+              </Stack>
+
+              {/* AIRTIME NOTICE */}
+
+              {type === "Airtime" && (
+                <Alert severity="info">
+                  Minimum airtime:
+                  <strong> GHS 1</strong> | Maximum:
+                  <strong> GHS 100</strong>
+                </Alert>
+              )}
+
+              {/* BUNDLE WARNING */}
+
+              {type === "Bundle" && !isBundleSelected && (
+                <Alert severity="warning">
+                  Please select a bundle to continue.
+                </Alert>
+              )}
+
+              {/* RECIPIENT */}
+
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+
+                  borderRadius: 3,
+
+                  bgcolor: "primary.main",
+
+                  color: "primary.contrastText",
                 }}
-                value={selectedBundle.price}
-              />
-            ) : (
-              <Controller
-                name="amount"
-                control={control}
-                render={({ field }) => (
+              >
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                >
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <Avatar
+                      variant="rounded"
+                      src={serviceProviderInfo?.image}
+                      sx={{
+                        width: 60,
+                        height: 45,
+                        bgcolor: "white",
+                      }}
+                    />
+
+                    <Stack>
+                      <Typography fontWeight={700}>
+                        {serviceProviderInfo?.provider}
+                      </Typography>
+
+                      <Typography variant="body2">{recipient}</Typography>
+                    </Stack>
+                  </Stack>
+
+                  <PhoneAndroidIcon />
+                </Stack>
+
+                {type === "Bundle" && selectedBundle?.plan_name && (
+                  <Box mt={2}>
+                    <Typography variant="caption">
+                      {selectedBundle.plan_name} ({selectedBundle.volume})
+                    </Typography>
+                  </Box>
+                )}
+              </Paper>
+
+              {/* AMOUNT */}
+
+              <Stack spacing={2}>
+                {type === "Bundle" ? (
                   <TextField
-                    {...field}
+                    fullWidth
+                    label="Bundle Price"
+                    value={currencyFormatter(totalAmount)}
+                    InputProps={{
+                      readOnly: true,
+
+                      startAdornment: (
+                        <InputAdornment position="start">GH¢</InputAdornment>
+                      ),
+                    }}
+                  />
+                ) : (
+                  <TextField
                     fullWidth
                     type="number"
                     label="Top-Up Amount"
+                    placeholder="0.00"
                     error={!!errors.amount}
                     helperText={errors.amount?.message}
+                    {...register("amount")}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">GH¢</InputAdornment>
                       ),
-                      style: { fontWeight: "bold", fontSize: "1.8rem" },
                     }}
                   />
                 )}
+              </Stack>
+
+              {/* PAYMENT */}
+
+              <PaymentOption
+                showMomo={false}
+                showWallet={!!user?.id}
+                initialValues={{
+                  fullName: user?.name || "",
+                  email: user?.email || "",
+                  paymentMethod: "wallet",
+                }}
+                onSubmit={handleReviewCheckout}
               />
-            )}
+            </Stack>
+          </Paper>
+        </Fade>
 
-            {/* Payment options */}
-            <PaymentOption
-              showWallet={user?.id}
-              setPaymentMethod={(value) => setValue("paymentMethod", value)}
-              value={paymentMethod}
-              error={!!errors.paymentMethod}
-              helperText={errors.paymentMethod?.message || walletDisabledError}
-              mobileMoneyDetails={{
-                mobilePartner,
-                setMobilePartner: (val) => setValue("mobilePartner", val),
-                mobilePartnerErr: !!errors.mobilePartner,
-                mobilePartnerHelperText: errors.mobilePartner?.message,
-                phonenumber,
-                setPhonenumber: (val) => setValue("phonenumber", val),
-                phonenumberErr: !!errors.phonenumber,
-                phonenumberHelperText: errors.phonenumber?.message,
-              }}
-              walletDetails={{
-                token,
-                setToken: (val) => setValue("token", val),
-                tokenErr: !!errors.token,
-                tokenHelperText: errors.token?.message,
-              }}
+        {/* BUNDLES */}
+
+        {type === "Bundle" && (
+          <Box mt={3}>
+            <BundleList
+              selectedBundle={selectedBundle}
+              setSelectedBundle={setSelectedBundle}
             />
+          </Box>
+        )}
+      </Container>
 
-            <LoadingButton
-              type="submit"
-              variant="contained"
-              size="large"
-              loading={
-                isSubmitting ||
-                paymentMutation.isLoading ||
-                guestMutation.isLoading
-              }
-              disabled={
-                paymentMethod === "" ||
-                (paymentMethod === "wallet" && isInsufficientBalance)
-              }
-              fullWidth
-            >
-              Confirm Details
-            </LoadingButton>
+      {/* CHECKOUT PREVIEW */}
+
+      <Dialog
+        open={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 4,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+
+            bgcolor: "primary.main",
+
+            color: "primary.contrastText",
+          }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <ReceiptIcon />
+
+            <Typography variant="h6" fontWeight={700}>
+              Checkout Preview
+            </Typography>
           </Stack>
-        </form>
-      </Paper>
 
-      {/* Bundle selection (only visible for Bundle type) */}
-      {type === "Bundle" && (
-        <BundleList
-          selectedBundle={selectedBundle}
-          setSelectedBundle={setSelectedBundle}
-        />
-      )}
-    </Container>
+          <IconButton
+            size="small"
+            onClick={() => setCheckoutOpen(false)}
+            sx={{
+              color: "primary.contrastText",
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent dividers sx={{ p: 3 }}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
+
+              borderRadius: 3,
+
+              border: "1px solid",
+
+              borderColor: "divider",
+            }}
+          >
+            <Stack spacing={1.5}>
+              <Stack direction="row" justifyContent="space-between">
+                <Typography color="text.secondary">Service</Typography>
+
+                <Typography fontWeight={600}>{type}</Typography>
+              </Stack>
+
+              <Stack direction="row" justifyContent="space-between">
+                <Typography color="text.secondary">Recipient</Typography>
+
+                <Typography fontWeight={600}>{recipient}</Typography>
+              </Stack>
+
+              <Stack direction="row" justifyContent="space-between">
+                <Typography color="text.secondary">Network</Typography>
+
+                <Typography fontWeight={600}>
+                  {serviceProviderInfo?.providerName}
+                </Typography>
+              </Stack>
+
+              {type === "Bundle" && (
+                <>
+                  <Divider />
+
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography color="text.secondary">Bundle</Typography>
+
+                    <Typography fontWeight={600}>
+                      {selectedBundle.plan_name}
+                    </Typography>
+                  </Stack>
+
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography color="text.secondary">Volume</Typography>
+
+                    <Typography fontWeight={600}>
+                      {selectedBundle.volume}
+                    </Typography>
+                  </Stack>
+                </>
+              )}
+
+              <Divider />
+
+              <Stack direction="row" justifyContent="space-between">
+                <Typography color="text.secondary">Payment Method</Typography>
+
+                <Typography fontWeight={600}>
+                  {paymentData?.paymentMethod === "wallet"
+                    ? "Wallet"
+                    : "Mobile Money"}
+                </Typography>
+              </Stack>
+
+              {paymentData?.paymentMethod !== "wallet" && (
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography color="text.secondary">Payment Number</Typography>
+
+                  <Typography fontWeight={600}>
+                    {paymentData?.phonenumber}
+                  </Typography>
+                </Stack>
+              )}
+
+              <Divider />
+
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="h6" fontWeight={700}>
+                  Total Amount
+                </Typography>
+
+                <Typography variant="h6" fontWeight={700} color="primary">
+                  {currencyFormatter(totalAmount)}
+                </Typography>
+              </Stack>
+
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                textAlign="center"
+              >
+                By confirming, you agree to proceed with this transaction.
+              </Typography>
+            </Stack>
+          </Paper>
+        </DialogContent>
+
+        <DialogActions
+          sx={{
+            px: 3,
+            py: 2,
+          }}
+        >
+          <Button onClick={() => setCheckoutOpen(false)}>Cancel</Button>
+
+          <LoadingButton
+            variant="contained"
+            onClick={executePayment}
+            loading={paymentMutation.isLoading || guestMutation.isLoading}
+          >
+            Confirm Payment
+          </LoadingButton>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }
 
 export default AirtimeBuy;
 
-// import { useContext, useEffect, useMemo, useState } from "react";
+// import { useEffect, useMemo, useState } from "react";
 // import {
 //   Container,
 //   Paper,
@@ -397,137 +745,66 @@ export default AirtimeBuy;
 //   Stack,
 //   Avatar,
 //   InputAdornment,
-//   Box,
 //   Alert,
 // } from "@mui/material";
-// import LoadingButton from "@mui/lab/LoadingButton";
-// import { Formik } from "formik";
 // import { useSearchParams, Navigate, useNavigate } from "react-router-dom";
 // import Swal from "sweetalert2";
 // import { useLocation } from "react-router-dom";
-// import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
-// import {
-//   airtimeValidationSchema,
-//   bundleValidationSchema,
-// } from "../../config/validationSchema";
-// import { CustomContext } from "../../context/providers/CustomProvider";
-// import { AuthContext } from "../../context/providers/AuthProvider";
+// import { useQueryClient, useMutation } from "@tanstack/react-query";
+// // import {
+// //   airtimeValidationSchema,
+// //   bundleValidationSchema,
+// // } from "../../config/validationSchema";
+// import { useCustomContext } from "../../context/providers/CustomProvider";
+// import { useAuth } from "../../context/providers/AuthProvider";
 // import { globalAlertType } from "../../components/alert/alertType";
 // import { getCode } from "../../constants";
 // import Back from "../../components/Back";
 // import PaymentOption from "../../components/PaymentOption";
 // import BundleList from "./BundleList";
-
-// import { disableWallet, getNonUser } from "../../api/userAPI";
+// import { getNonUser } from "../../api/userAPI";
 // import { makeAirtimeTransaction } from "../../api/paymentAPI";
 
 // function AirtimeBuy() {
 //   const queryClient = useQueryClient();
-//   const { customDispatch } = useContext(CustomContext);
+//   const { customDispatch } = useCustomContext();
 //   const { pathname } = useLocation();
-//   const { user } = useContext(AuthContext);
 //   const navigate = useNavigate();
-//   const [searchParams, setSearchParams] = useSearchParams();
+//   const { user } = useAuth();
+//   const [searchParams, _] = useSearchParams();
+//   const type = searchParams.get("type");
 //   const [selectedBundle, setSelectedBundle] = useState({
-//     price: 0,
-//     plan_id: "",
-//     plan_name: "",
-//     volume: "",
+//     plan_id: searchParams.get("plan_id"),
+//     plan_name: searchParams.get("plan_name"),
+//     volume: searchParams.get("plan_volume"),
+//     price: searchParams.get("plan_price"),
 //   });
-
-//   const [mobilePartner, setMobilePartner] = useState("");
-//   const [token, setToken] = useState("");
-//   const [err, setErr] = useState("");
-//   const [phonenumber, setPhonenumber] = useState(user?.phonenumber);
-//   const [paymentMethod, setPaymentMethod] = useState("wallet");
+//   const [amount, setAmount] = useState(
+//     type === "Bundle" ? searchParams.get("plan_price") : 1,
+//   );
 //   const [failureCount, setFailCount] = useState(3);
-//   // const [openNotAvailable, setOpenNotAvailable] = useState
 
 //   const recipient = searchParams.get("recipient");
-//   const type = searchParams.get("type");
-
-//   // Get wallet status
-//   const { data: dataDisableWallet } = useQuery({
-//     queryKey: ["disable-wallet"],
-//     queryFn: () => disableWallet(),
-//     enabled: failureCount === 0,
-//     initialData: { active: true, timeOut: null },
-//   });
-
-//   useEffect(() => {
-//     setErr("");
-
-//     if (dataDisableWallet?.active === false) {
-//       const message = `Wallet disabled due to multiple failed attempts.Try again after ${dataDisableWallet?.timeOut}`;
-//       setErr(message);
-
-//       queryClient.invalidateQueries({ queryKey: ["wallet-status"] });
-//     }
-//   }, [dataDisableWallet, queryClient]);
 
 //   // Service provider info from recipient number
 //   const serviceProviderInfo = useMemo(() => getCode(recipient), [recipient]);
-//   // const network = useMemo(() => getCode(phonenumber), [phonenumber]);
 
-//   // Initial form values
-//   const initialValues = {
-//     amount: selectedBundle.price,
-//     paymentMethod,
-//     phonenumber: phonenumber,
-//     mobilePartner: mobilePartner,
-//     token,
-//   };
+//   // Check if bundle is selected (only for bundle type)
+//   const isBundleSelected =
+//     type !== "Bundle" || (selectedBundle && selectedBundle.plan_id);
 
-//   const handleSubmit = (values, { setSubmitting }) => {
-//     const { amount, paymentMethod } = values;
-
-//     const payload = {
-//       type: type,
-//       service: type?.toLowerCase(),
-//       amount: amount,
-//       recipient: recipient,
-//       phonenumber: user?.phonenumber,
-//       provider: serviceProviderInfo.providerName,
-//       email: user?.email,
-//       isWallet: paymentMethod === "wallet",
-//     };
-
+//   // Update amount when selectedBundle changes (for bundles)
+//   useEffect(() => {
 //     if (type === "Bundle") {
-//       payload.plan = {
-//         id: selectedBundle.plan_id,
-//         name: selectedBundle.plan_name,
-//         volume: selectedBundle.volume,
-//       };
+//       setAmount("amount", selectedBundle.price);
 //     }
+//   }, [selectedBundle, type]);
 
-//     // Validate wallet balance if payment method is wallet
-//     const totalAmount =
-//       type === "Bundle" ? selectedBundle.price : Number(amount);
-//     if (user?.id && paymentMethod === "wallet") {
-//       const walletBalance = queryClient.getQueryData(
-//         ["wallet-balance", user?.id],
-//         { exact: true },
-//       );
-
-//       if (
-//         Number(walletBalance) === 0 ||
-//         Number(walletBalance) < Number(totalAmount)
-//       ) {
-//         customDispatch(
-//           globalAlertType(
-//             "error",
-//             "Insufficient Wallet Balance. Please request a top up.",
-//           ),
-//         );
-//         return;
-//       }
-//       payload.token = token;
-//     }
-
-//     console.log(payload);
-//     handlePayment(payload);
-//     setSubmitting(false);
-//   };
+//   // Wallet balance check (derived)
+//   const walletBalance = user?.id
+//     ? queryClient.getQueryData(["wallet-balance", user?.id], { exact: true })
+//     : 0;
+//   const totalAmount = type === "Bundle" ? selectedBundle.price : Number(amount);
 
 //   // Payment mutation
 //   const paymentMutation = useMutation({
@@ -536,41 +813,48 @@ export default AirtimeBuy;
 //       navigate("/confirm", {
 //         replace: true,
 //         state: {
-//           _id: data?.id,
-//           categoryType:
-//             searchParams.get("type") === "Bundle" ? "bundle" : "airtime",
+//           id: data?.id,
+//           categoryType: type === "Bundle" ? "bundle" : "airtime",
 //           path: pathname,
-//           isWallet: paymentMethod === "wallet",
+//           // isWallet: paymentMethod === "wallet",
 //         },
 //       });
 //     },
 //     onError: async (error) => {
 //       if (error === "Invalid PIN!") {
-//         setFailCount((prevState) => prevState - 1);
-//         if (failureCount === 0) {
-//           const message = `Wallet disabled due to multiple failed attempts.Try again after ${dataDisableWallet?.timeOut}`;
-//           setErr(message);
-//           queryClient.setQueryData(["wallet-status"], (oldData) => ({
-//             ...oldData,
-//             active: false,
-//             timeOut: dataDisableWallet?.timeOut,
-//           }));
+//         const newCount = failureCount - 1;
+//         setFailCount(newCount);
+//         if (newCount === 0) {
+//           // Wallet is now disabled
+
+//           customDispatch(
+//             globalAlertType(
+//               "error",
+//               `Wallet disabled. Please use mobile money or contact support.`,
+//             ),
+//           );
 //         } else {
-//           setErr(`${error} ${failureCount - 1} attempt(s) left.`);
+//           customDispatch(
+//             globalAlertType(
+//               "error",
+//               `${error} ${newCount} attempt(s) left. Wallet will be disabled after ${
+//                 newCount - 1
+//               } more attempt(s).`,
+//             ),
+//           );
 //         }
 //       } else {
-//         // setErr(`${error} ${failureCount - 1} attempt(s) left.`);
 //         customDispatch(globalAlertType("error", error));
 //       }
 //     },
 //   });
 
-//   // Guest user check mutation (for non‑logged‑in users)
+//   // Guest user check mutation
 //   const guestMutation = useMutation({
 //     mutationFn: getNonUser,
 //     onSuccess: () => {
 //       // After guest check, proceed with payment
-//       handlePayment();
+//       // handlePaymentSubmit();
 //     },
 //     onError: () => {
 //       customDispatch(
@@ -579,13 +863,52 @@ export default AirtimeBuy;
 //     },
 //   });
 
-//   const handlePayment = (payload) => {
+//   // Form submission handler
+//   const onSubmit = async (values) => {
+//     const isInsufficientBalance =
+//       values.paymentMethod === "wallet" &&
+//       user?.id &&
+//       (Number(walletBalance) === 0 || Number(walletBalance) < totalAmount);
+//     // Validate wallet balance
+//     if (values.paymentMethod === "wallet" && isInsufficientBalance) {
+//       customDispatch(
+//         globalAlertType(
+//           "error",
+//           "Insufficient wallet balance. Please fund your wallet or use mobile money.",
+//         ),
+//       );
+//       return;
+//     }
+
 //     Swal.fire({
 //       title: "Processing",
 //       text: `Proceed with payment?`,
 //       showCancelButton: true,
 //     }).then(({ isConfirmed }) => {
 //       if (isConfirmed) {
+//         const payload = {
+//           type: type,
+//           service: type?.toLowerCase(),
+//           amount: totalAmount,
+//           recipient: recipient,
+//           phonenumber: values.phonenumber || user?.phonenumber,
+//           provider: serviceProviderInfo.providerName,
+//           email: values.email || user?.email,
+//           isWallet: values?.paymentMethod === "wallet",
+//         };
+
+//         if (type === "Bundle") {
+//           payload.plan = {
+//             id: selectedBundle.plan_id,
+//             name: selectedBundle.plan_name,
+//             volume: selectedBundle.volume,
+//           };
+//         }
+
+//         if (values.paymentMethod === "wallet") {
+//           payload.token = values.token;
+//         }
+
 //         // If user not logged in, run guest check first
 //         if (!user?.id) {
 //           guestMutation.mutate({});
@@ -594,28 +917,6 @@ export default AirtimeBuy;
 //         }
 //       }
 //     });
-//   };
-
-//   const handleClose = () => {
-//     Swal.fire({
-//       title: "Cancel transaction?",
-//       text: "Are you sure you want to cancel?",
-//       icon: "warning",
-//       showCancelButton: true,
-//       confirmButtonText: "Yes, cancel",
-//     }).then((result) => {
-//       if (result.isConfirmed) {
-//         handleGoBack();
-//       }
-//     });
-//   };
-
-//   const handleGoBack = () => {
-//     customDispatch({
-//       type: "getVoucherPaymentDetails",
-//       payload: { data: {} },
-//     });
-//     navigate(`/evoucher?_pid=1`, { replace: true });
 //   };
 
 //   // Redirect if required params missing
@@ -637,6 +938,12 @@ export default AirtimeBuy;
 //         <Alert severity="info" sx={{ mb: 3 }}>
 //           Minimum airtime: <strong>GHS 1</strong> | Maximum:{" "}
 //           <strong>GHS 100</strong>
+//         </Alert>
+//       )}
+
+//       {type === "Bundle" && !isBundleSelected && (
+//         <Alert severity="warning" sx={{ mb: 2 }}>
+//           Please select a bundle from the list to continue.
 //         </Alert>
 //       )}
 
@@ -670,104 +977,66 @@ export default AirtimeBuy;
 //           </Stack>
 //         </Stack>
 
-//         <Formik
-//           initialValues={initialValues}
-//           validationSchema={
-//             type === "Bundle" ? bundleValidationSchema : airtimeValidationSchema
-//           }
-//           onSubmit={handleSubmit}
-//           enableReinitialize
-//         >
-//           {({
-//             values,
-//             errors,
-//             touched,
-//             handleChange,
-//             handleBlur,
-//             handleSubmit,
-//             isSubmitting,
-//           }) => (
-//             <Box component="form" onSubmit={handleSubmit} noValidate>
-//               <Stack spacing={3}>
-//                 {/* Amount field */}
-//                 {type === "Bundle" ? (
-//                   <TextField
-//                     fullWidth
-//                     variant="filled"
-//                     label="Bundle Price"
-//                     InputProps={{
-//                       startAdornment: (
-//                         <InputAdornment position="start">GH¢</InputAdornment>
-//                       ),
-//                       readOnly: true,
-//                       style: { fontWeight: "bold", fontSize: "1.8rem" },
-//                     }}
-//                     value={selectedBundle.price}
-//                   />
-//                 ) : (
-//                   <TextField
-//                     fullWidth
-//                     type="number"
-//                     label="Top-Up Amount"
-//                     name="amount"
-//                     value={values.amount}
-//                     onChange={handleChange}
-//                     onBlur={handleBlur}
-//                     error={touched.amount && Boolean(errors.amount)}
-//                     helperText={touched.amount && errors.amount}
-//                     InputProps={{
-//                       startAdornment: (
-//                         <InputAdornment position="start">GH¢</InputAdornment>
-//                       ),
-//                       style: { fontWeight: "bold", fontSize: "1.8rem" },
-//                     }}
-//                   />
-//                 )}
-
-//                 {/* Payment options */}
-//                 <PaymentOption
-//                   showWallet={user?.id}
-//                   setPaymentMethod={setPaymentMethod}
-//                   error={Boolean(touched.paymentMethod && errors.paymentMethod)}
-//                   value={paymentMethod}
-//                   helperText={errors.paymentMethod || err}
-//                   mobileMoneyDetails={{
-//                     mobilePartner,
-//                     setMobilePartner,
-//                     mobilePartnerErr: Boolean(
-//                       touched.mobilePartner && errors.mobilePartner,
-//                     ),
-//                     mobilePartnerHelperText: errors.mobilePartner,
-//                     phonenumber,
-//                     setPhonenumber,
-//                     phonenumberErr: Boolean(
-//                       touched.phonenumber && errors.phonenumber,
-//                     ),
-//                     phonenumberHelperText: errors.phonenumber,
-//                   }}
-//                   walletDetails={{
-//                     token,
-//                     setToken,
-//                     tokenErr:
-//                       Boolean(touched.token && errors.token) || Boolean(err),
-//                     tokenHelperText: errors.token || err,
-//                   }}
-//                 />
-
-//                 <LoadingButton
-//                   type="submit"
-//                   variant="contained"
-//                   size="large"
-//                   loading={isSubmitting}
-//                   disabled={values.paymentMethod === ""}
-//                   fullWidth
-//                 >
-//                   Confirm Details
-//                 </LoadingButton>
-//               </Stack>
-//             </Box>
+//         <Stack spacing={3}>
+//           {/* Amount field */}
+//           {type === "Bundle" ? (
+//             <TextField
+//               fullWidth
+//               variant="filled"
+//               label="Bundle Price"
+//               InputProps={{
+//                 startAdornment: (
+//                   <InputAdornment position="start">GH¢</InputAdornment>
+//                 ),
+//                 readOnly: true,
+//                 style: { fontWeight: "bold", fontSize: "1.8rem" },
+//               }}
+//               value={selectedBundle.price}
+//             />
+//           ) : (
+//             <TextField
+//               fullWidth
+//               type="number"
+//               label="Top-Up Amount"
+//               InputProps={{
+//                 startAdornment: (
+//                   <InputAdornment position="start">GH¢</InputAdornment>
+//                 ),
+//                 style: { fontWeight: "bold", fontSize: "1.8rem" },
+//               }}
+//             />
 //           )}
-//         </Formik>
+
+//           {/* Payment */}
+
+//           <PaymentOption
+//             showMomo
+//             showWallet={!!user?.id}
+//             initialValues={{
+//               fullName: user?.name || "",
+//               email: user?.email || "",
+//             }}
+//             onSubmit={onSubmit}
+//           />
+
+//           {/* <LoadingButton
+//               type="submit"
+//               variant="contained"
+//               size="large"
+//               loading={
+//                 isSubmitting ||
+//                 paymentMutation.isLoading ||
+//                 guestMutation.isLoading
+//               }
+//               disabled={
+//                 paymentMethod === "" ||
+//                 (paymentMethod === "wallet" && isInsufficientBalance)
+//               }
+//               fullWidth
+//             >
+//               Confirm Details
+//             </LoadingButton> */}
+//         </Stack>
 //       </Paper>
 
 //       {/* Bundle selection (only visible for Bundle type) */}

@@ -3,7 +3,15 @@ import TextField from "@mui/material/TextField";
 import Avatar from "@mui/material/Avatar";
 import MenuItem from "@mui/material/MenuItem";
 
-function MobilePartner({ size, label, value, setValue, helperText, error }) {
+function MobilePartner({
+  size,
+  label,
+  value,
+  setValue,
+  helperText,
+  error,
+  props,
+}) {
   return (
     <TextField
       label={label || "Mobile Money Partner"}
@@ -16,6 +24,7 @@ function MobilePartner({ size, label, value, setValue, helperText, error }) {
       fullWidth
       error={error}
       helperText={helperText}
+      {...props}
     >
       {MOBILE_PROVIDER.map((provider) => (
         <MenuItem

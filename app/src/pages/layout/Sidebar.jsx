@@ -50,7 +50,6 @@ const pulse = keyframes`
 `;
 
 function Sidebar() {
-
   const { user, logout } = useAuth();
   const { notifications: notifs } = useCustomContext();
   const {
@@ -143,9 +142,9 @@ function Sidebar() {
           src={IMAGES.coat_of_arms}
           alt="logo"
           sx={{
-            width: 48,
-            height: 48,
-            boxShadow: theme.shadows[2],
+            width: 36,
+            height: 36,
+            // boxShadow: theme.shadows[2],
           }}
         />
         <IconButton
@@ -199,24 +198,59 @@ function Sidebar() {
 
             <List disablePadding>
               <NavLinkItem to="/" title="Home" icon={<DashboardRounded />} />
-              <NavLinkItem
+              {/* <NavLinkItem
                 to="evoucher"
                 title="Voucher & Tickets"
                 icon={<PaymentRounded />}
-              />
+              /> */}
+              <NavLinkItemCollapse
+                icon={<MoneyRounded />}
+                title="Voucher & Tickets"
+              >
+                <NavLinkItem
+                  to="/evoucher/waec-checker"
+                  title="Waec & SHS Placement Checker"
+                  // icon={<MoneyRounded />}
+                />
+                <NavLinkItem
+                  to="/evoucher/university-form"
+                  title="University & Polytechnic Forms"
+                  // icon={<SimCardOutlined />}
+                />
+                <NavLinkItem
+                  to="/evoucher/security-service"
+                  title=" Security Service Forms"
+                  // icon={<SimCardOutlined />}
+                />
+                <NavLinkItem
+                  to="/evoucher/cinema-ticket"
+                  title="Cinema & Event Tickets"
+                  // icon={<SimCardOutlined />}
+                />
+                <NavLinkItem
+                  to="/evoucher/bus-ticket"
+                  title=" Bus Tickets"
+                  // icon={<SimCardOutlined />}
+                />
+                <NavLinkItem
+                  to="/evoucher/stadia-ticket"
+                  title="Stadium Tickets"
+                  // icon={<SimCardOutlined />}
+                />
+              </NavLinkItemCollapse>
               <NavLinkItemCollapse
                 icon={<MoneyRounded />}
                 title="Prepaid Units"
               >
                 <NavLinkItem
                   to="electricity"
-                  title="Buy"
-                  icon={<MoneyRounded />}
+                  title="Buy Prepaid"
+                  // icon={<MoneyRounded />}
                 />
                 <NavLinkItem
                   to="electricity/meters"
                   title="Meters"
-                  icon={<SimCardOutlined />}
+                  // icon={<SimCardOutlined />}
                 />
               </NavLinkItemCollapse>
               <NavLinkItem
@@ -265,6 +299,7 @@ function Sidebar() {
                           unreadCount > 0 ? `${pulse} 1.5s infinite` : "none",
                         transition: theme.transitions.create("transform"),
                       },
+                      fontSize: 10,
                     }}
                   >
                     <NotificationsOutlined />

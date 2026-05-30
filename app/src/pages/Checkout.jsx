@@ -1,14 +1,14 @@
-import { useContext, useEffect } from "react";
+import { useEffect } from "react";
 import Avatar from "@mui/material/Avatar";
 import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { FileDownloadRounded } from "@mui/icons-material";
 import CheckOutItem from "../components/items/CheckOutItem";
-import { CustomContext, useCustomContext } from "../context/providers/CustomProvider";
+import { useCustomContext } from "../context/providers/CustomProvider";
 import moment from "moment";
 import { IMAGES, currencyFormatter } from "../constants";
 import { downloadVouchers, makePayment } from "../api/paymentAPI";
@@ -19,12 +19,14 @@ import { LoadingButton } from "@mui/lab";
 function Checkout() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const { state } = useLocation();
+  const path = state?.payload;
+
   // const [errCount, setErrCount] = useState(0);
   const {
     customState: { transaction },
   } = useCustomContext();
-
-
+ 
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
@@ -41,20 +43,20 @@ function Checkout() {
   }, []);
 
   const isVoucher = ["waec", "university", "security"].includes(
-    transaction?.info?.categoryType
+    transaction?.categoryType,
   );
 
   const generatedVouchers = useQuery({
-    queryKey: ["generatedVouchers", transaction?.id, transaction?.info?.categoryType],
+    queryKey: ["generatedVouchers", transaction?.id, transaction?.categoryType],
     queryFn: () =>
       makePayment({
         id: transaction?.id,
-        type: transaction?.info?.categoryType,
+        type: transaction?.categoryType,
       }),
 
     enabled:
       !!transaction?.id &&
-      !!transaction?.info?.categoryType &&
+      !!transaction?.categoryType &&
       searchParams.get("completed") === null,
 
     onSuccess: () => {
@@ -69,7 +71,7 @@ function Checkout() {
   const handleDownloadVouchers = () => downloadVouchers(transaction?.id);
 
   if (!transaction?.id) {
-    return <Navigate to="/evoucher" />;
+    return <Navigate to={path || "/evoucher"} replace />;
   }
 
   return (
@@ -104,8 +106,8 @@ function Checkout() {
               {generatedVouchers.isLoading
                 ? "  You will be notify shortly after your request is completed."
                 : generatedVouchers.isSuccess
-                ? "        Your request has been processed successfully!"
-                : ""}
+                  ? "        Your request has been processed successfully!"
+                  : ""}
             </Typography>
 
             <Stack
@@ -127,11 +129,11 @@ function Checkout() {
                 />
                 <CheckOutItem
                   title="Amount Paid"
-                  value={currencyFormatter(transaction?.info?.amount)}
+                  value={currencyFormatter(transaction?.amount)}
                 />
                 <CheckOutItem
                   title="Customer"
-                  value={transaction?.info?.agentName || "Agent"}
+                  value={transaction?.userName || "Customer"}
                 />
                 <CheckOutItem
                   title="Mobile No."
@@ -143,9 +145,15 @@ function Checkout() {
                     value={transaction?.email}
                   />
                 )}
+                {transaction?.paymentMode === "Mobile Money" && (
+                  <CheckOutItem
+                    title="External Transaction ID"
+                    value={transaction?.externalTransactionId}
+                  />
+                )}
                 <CheckOutItem
-                  title="Order No."
-                  value={transaction?.info?.orderNo}
+                  title="Payment Reference."
+                  value={transaction?.paymentReference}
                 />
                 <Divider flexItem />
                 {generatedVouchers?.isLoading && (
@@ -187,7 +195,9 @@ function Checkout() {
                 paddingY={1}
               >
                 <>
-                  <Link to="/evoucher">Continue Shopping</Link>
+                  <Link to={path || "/evoucher"} replace>
+                    Continue Shopping
+                  </Link>
                 </>
               </Stack>
             </Stack>

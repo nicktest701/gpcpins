@@ -1,28 +1,52 @@
-import { useState } from "react";
-import {
-  Button,
-  Popover,
-  Typography,
-  Divider,
-  Box,
-  // useMediaQuery,
-} from "@mui/material";
+import { useState, useMemo } from "react";
+import { Button, Popover, Typography, Divider, Box } from "@mui/material";
 import { HelpOutline as HelpIcon } from "@mui/icons-material";
 
-export default function MomoGuide() {
+const guideSteps = {
+  "mtn-gh": {
+    title: "MTN MoMo",
+    steps: [
+      "Dial *170# and select Option 10 (My Wallet).",
+      "Select Option 3 (My Approvals).",
+      "Enter your PIN to view pending approvals.",
+      "Select the pending transaction.",
+      "Choose Option 1 (YES) to approve or Option 2 (NO) to reject.",
+    ],
+  },
+  "vodafone-gh": {
+    title: "Vodafone Cash",
+    steps: [
+      "Dial *110# and select Option 6 (My Account).",
+      "Select Option 5 (Approvals).",
+      "Enter your PIN to view pending approvals.",
+      "Select the pending transaction.",
+      "Choose Option 1 (YES) to approve or Option 2 (NO) to reject.",
+    ],
+  },
+  "tigo-gh": {
+    title: "AirtelTigo Money",
+    steps: [
+      "Dial *110# and select Option 6 (My Account).",
+      "Select Option 5 (Approvals).",
+      "Enter your PIN to view pending approvals.",
+      "Select the pending transaction.",
+      "Choose Option 1 (YES) to approve or Option 2 (NO) to reject.",
+    ],
+  },
+};
+
+export default function MomoGuide({ mobilePartner = "mtn-gh" }) {
   const [anchorEl, setAnchorEl] = useState(null);
-  // const isDesktop = useMediaQuery((theme) => theme.breakpoints.up("md"));
-
-  const handleClick = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
   const open = Boolean(anchorEl);
   const id = open ? "momo-guide-popover" : undefined;
+
+  const handleClick = (event) => setAnchorEl(event.currentTarget);
+  const handleClose = () => setAnchorEl(null);
+
+  // Get guide content based on mobilePartner
+  const guide = useMemo(() => {
+    return guideSteps[mobilePartner] || guideSteps["mtn-gh"];
+  }, [mobilePartner]);
 
   return (
     <>
@@ -36,7 +60,7 @@ export default function MomoGuide() {
         }}
       >
         <HelpIcon fontSize="small" sx={{ mr: 0.5 }} />
-        Note receiving prompt?
+        Not receiving prompt?
         <Typography
           component="span"
           variant="body2"
@@ -45,9 +69,10 @@ export default function MomoGuide() {
             textDecoration: "underline",
             color: "info.main",
             fontWeight: 500,
+            fontSize: 12,
           }}
         >
-          View Help
+          View Guide
         </Typography>
       </Button>
 
@@ -77,106 +102,37 @@ export default function MomoGuide() {
             },
           },
         }}
-        // For mobile: position near the button, but MUI Popover handles it well.
-        // If you need center alignment on mobile, you can conditionally set anchorOrigin.
-        // Here we keep it anchored to the button (better UX).
       >
         <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
           How to Approve Transactions
         </Typography>
         <Divider sx={{ mb: 2 }} />
 
-        {/* MTN MOMO Section */}
         <Box sx={{ mb: 2 }}>
           <Typography
             variant="subtitle2"
             color="error.main"
             fontWeight="bold"
             textTransform="uppercase"
+            gutterBottom
           >
-            MTN MOMO
+            {guide.title}
           </Typography>
           <Box
             component="ol"
-            sx={{ pl: 2, mt: 1, "& li": { fontSize: "0.75rem", mb: 0.5 } }}
+            sx={{
+              pl: 2,
+              mt: 1,
+              "& li": {
+                fontSize: "0.75rem",
+                mb: 0.5,
+                lineHeight: 1.4,
+              },
+            }}
           >
-            <li>
-              Dial <strong>*170#</strong> and select <strong>Option 10</strong>,
-              My Wallet.
-            </li>
-            <li>
-              Select <strong>Option 3</strong> for My Approvals.
-            </li>
-            <li>Enter your PIN to get your Pending Approval List.</li>
-            <li>Select the pending transaction to approve.</li>
-            <li>
-              Select <strong>Option 1 YES</strong> to approve the transaction or{" "}
-              <strong>Option 2 NO</strong> to reject the transaction.
-            </li>
-          </Box>
-        </Box>
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* Vodafone Cash Section */}
-        <Box sx={{ mb: 2 }}>
-          <Typography
-            variant="subtitle2"
-            color="error.main"
-            fontWeight="bold"
-            textTransform="uppercase"
-          >
-            Vodafone Cash
-          </Typography>
-          <Box
-            component="ol"
-            sx={{ pl: 2, mt: 1, "& li": { fontSize: "0.75rem", mb: 0.5 } }}
-          >
-            <li>
-              Dial <strong>*110#</strong> and select <strong>Option 6</strong>{" "}
-              My Account.
-            </li>
-            <li>
-              Select <strong>Option 5</strong> Approvals.
-            </li>
-            <li>Enter your PIN to get your Pending Approval List.</li>
-            <li>Select the pending transaction to approve.</li>
-            <li>
-              Select <strong>Option 1 YES</strong> to approve the transaction or{" "}
-              <strong>Option 2 NO</strong> to reject the transaction.
-            </li>
-          </Box>
-        </Box>
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* Airtel Money Section */}
-        <Box>
-          <Typography
-            variant="subtitle2"
-            color="error.main"
-            fontWeight="bold"
-            textTransform="uppercase"
-          >
-            Airtel Money
-          </Typography>
-          <Box
-            component="ol"
-            sx={{ pl: 2, mt: 1, "& li": { fontSize: "0.75rem", mb: 0.5 } }}
-          >
-            <li>
-              Dial <strong>*110#</strong> and select <strong>Option 6</strong>{" "}
-              My Account.
-            </li>
-            <li>
-              Select <strong>Option 5</strong> Approvals.
-            </li>
-            <li>Enter your PIN to get your Pending Approval List.</li>
-            <li>Select the pending transaction to approve.</li>
-            <li>
-              Select <strong>Option 1 YES</strong> to approve the transaction or{" "}
-              <strong>Option 2 NO</strong> to reject the transaction.
-            </li>
+            {guide.steps.map((step, idx) => (
+              <li key={idx}>{step}</li>
+            ))}
           </Box>
         </Box>
       </Popover>

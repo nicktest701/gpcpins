@@ -8,7 +8,7 @@ export function getCode(code) {
     }
     if (
       ["+23324", "+23354", "+23355", "+23359", "+23325", "+23353"]?.includes(
-        code?.slice(0, 6)
+        code?.slice(0, 6),
       )
     ) {
       providerName = "mtn-gh";
@@ -16,7 +16,7 @@ export function getCode(code) {
 
     if (
       ["+23327", "+23357", "+23326", "+23356", "+23323"]?.includes(
-        code?.slice(0, 6)
+        code?.slice(0, 6),
       )
     ) {
       providerName = "tigo-gh";
@@ -102,7 +102,7 @@ export function isValidPartner(provider, mobileNumber) {
     case "tigo-gh":
     case "AirtelTigo":
       return ["+23327", "+23357", "+23326", "+23356", "+23323"]?.includes(
-        phonenumber
+        phonenumber,
       );
 
     default:
@@ -119,3 +119,21 @@ export function isValidPhoneNumber(mobileNumber) {
 
   return true;
 }
+
+export const getMobilePartner = (phone) => {
+  const number = phone.replace(/\D/g, "");
+
+  if (/^(233|0)?(24|25|53|54|55|59)/.test(number)) {
+    return "mtn-gh";
+  }
+
+  if (/^(233|0)?(20|50)/.test(number)) {
+    return "vodafone-gh";
+  }
+
+  if (/^(233|0)?(26|27|56|57)/.test(number)) {
+    return "tigo-gh";
+  }
+
+  return null;
+};

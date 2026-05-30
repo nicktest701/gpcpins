@@ -9,16 +9,30 @@ import {
 } from "yup";
 import {
   getInternationalMobileFormat,
+  getMobilePartner,
   isValidPartner,
 } from "../constants/PhoneCode";
 import { isValidEmail, isValidName } from "./validation";
 
+const PROVIDER_LABELS = {
+  "mtn-gh": "MTN",
+  "vodafone-gh": "Telecel",
+  "tigo-gh": "AirtelTigo",
+  MTN: "MTN",
+  Vodafone: "Telecel",
+  AirtelTigo: "AirtelTigo",
+};
+
+const phoneRegex =
+  /^(?:\+233|233|0)(?:20|23|24|25|26|27|28|50|53|54|55|56|57|59)\d{7}$/;
+
+const phoneNumberREgex = /^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/;
 const momoSchema = {
   mobilePartner: string().required("Required*"),
   phoneNumber: string()
     .trim()
     .required("Required*")
-    .matches(/^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/, "Invalid Phone number !")
+    .matches(phoneNumberREgex, "Invalid Phone number !")
     .label("mobilePartner")
     .test("isValidNetwork", "", (value, { parent }) => {
       const partner = parent?.mobilePartner || "Mobile";
@@ -60,7 +74,7 @@ export const topUpSchema = object().shape({
   phoneNumber: string()
     .trim()
     .required("Required*")
-    .matches(/^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/, "Invalid Phone number !")
+    .matches(phoneNumberREgex, "Invalid Phone number !")
     .label("mobilePartner")
     .test("isValidNetwork", "", (value, { parent }) => {
       const partner = parent?.mobilePartner || "Mobile";
@@ -137,66 +151,104 @@ export const ticketsValidationSchema = object().shape({
     }
 
     if (!isValidName(value)) {
-      throw new ValidationError(
-        "Invalid Name format",
-        value, // Value to associate the error with
-        "fullName", // Field to associate the error with
-      );
+      throw new ValidationError("Invalid Name format", value, "fullName");
     }
 
     return true;
   }),
+
   email: string().test("isValidEmail", "", (value) => {
     if (value?.trim() === "" || value === undefined) {
       return true;
     }
 
     if (!isValidEmail(value)) {
-      throw new ValidationError(
-        "Invalid email format",
-        value, // Value to associate the error with
-        "email", // Field to associate the error with
-      );
+      throw new ValidationError("Invalid email format", value, "email");
     }
 
     return true;
   }),
+
   paymentMethod: string()
     .oneOf(["momo", "wallet"], "Please select a payment method")
     .required("Payment method is required"),
-  mobilePartner: string().when("paymentMethod", {
-    is: "momo",
-    then: (schema) => schema.required("Network provider is required"),
-    otherwise: (schema) => schema.notRequired(),
-  }),
+
+  mobilePartner: string().when(
+    ["paymentMethod", "phonenumber"],
+    ([paymentMethod, phonenumber], schema) => {
+      if (paymentMethod !== "momo") {
+        return schema.notRequired();
+      }
+
+      return schema
+        .required("Network provider is required")
+        .test("autoDetectPartner", "", function (value) {
+          if (!phonenumber) {
+            return true;
+          }
+
+          const formattedPhone = getInternationalMobileFormat(phonenumber);
+
+          const detectedPartner = getMobilePartner(formattedPhone);
+
+          // Automatically update the value internally
+          this.parent.mobilePartner = detectedPartner;
+
+          if (!detectedPartner) {
+            throw new ValidationError(
+              "Unsupported mobile network",
+              value,
+              "mobilePartner",
+            );
+          }
+
+          return true;
+        });
+    },
+  ),
+
   phonenumber: string()
     .trim()
     .when("paymentMethod", {
       is: "momo",
       then: (schema) =>
         schema
-          .trim()
           .required("Required*")
-          .matches(
-            /^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/,
-            "Invalid Phone number !",
-          )
-          .label("mobilePartner")
+          .matches(phoneNumberREgex, "Invalid Phone number!")
           .test("isValidNetwork", "", (value, { parent }) => {
-            const partner = parent?.mobilePartner || "Mobile";
-            if (!isValidPartner(partner, getInternationalMobileFormat(value))) {
+            if (!value) {
+              return true;
+            }
+
+            const formattedPhone = getInternationalMobileFormat(value);
+
+            // Always resolve from phone number
+            const detectedPartner = getMobilePartner(formattedPhone);
+
+            if (!detectedPartner) {
+              throw new ValidationError(
+                "Unsupported mobile network",
+                value,
+                "phonenumber",
+              );
+            }
+
+            // Sync partner automatically
+            parent.mobilePartner = detectedPartner;
+
+            if (!isValidPartner(detectedPartner, formattedPhone)) {
               throw new ValidationError(
                 `Invalid ${
-                  partner === "mtn-gh"
+                  detectedPartner === "mtn-gh"
                     ? "MTN"
-                    : partner === "vodafone-gh"
+                    : detectedPartner === "vodafone-gh"
                       ? "Telecel"
-                      : partner === "tigo-gh"
+                      : detectedPartner === "tigo-gh"
                         ? "AirtelTigo"
-                        : partner
-                } number !`,
-                value, // Value to associate the error with
-                "phonenumber", // Field to associate the error with
+                        : detectedPartner
+                } number!`,
+                value,
+                "phonenumber",
               );
             }
 
@@ -204,17 +256,18 @@ export const ticketsValidationSchema = object().shape({
           }),
       otherwise: (schema) => schema.notRequired(),
     }),
+
   confirmPhonenumber: string()
     .trim()
     .when("paymentMethod", {
       is: "momo",
       then: (schema) =>
         schema
-          .trim()
           .required("Required*")
           .oneOf([ref("phonenumber"), null], "Phone Numbers do not match"),
       otherwise: (schema) => schema.notRequired(),
     }),
+
   token: string().when("paymentMethod", {
     is: "wallet",
     then: (schema) =>
@@ -304,10 +357,7 @@ export const busTicketValidationSchema = () => {
         schema
           .trim()
           .required("Required*")
-          .matches(
-            /^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/,
-            "Invalid Phone number !",
-          )
+          .matches(phoneNumberREgex, "Invalid Phone number !")
           .label("mobilePartner")
           .test("isValidNetwork", "", (value, { parent }) => {
             const partner = parent?.mobilePartner || "Mobile";
@@ -503,20 +553,111 @@ export const prepaidMeterValidationSchema = () => {
     name: string().trim().required("Required*"),
   });
 };
-export const airtimeORbundleValidationSchema = () => {
-  return object().shape({
-    type: string().required("Required*"),
-    provider: string().required("Required*"),
-    phoneNumber: string()
-      .trim()
-      .required("Required*")
-      .matches(/^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/, "Invalid Phone number"),
-    confirmPhonenumber: string()
-      .trim()
-      .required("Required*")
-      .oneOf([ref("phoneNumber"), null], "Phone Numbers do not match"),
-  });
-};
+
+export const airtimeORbundleValidationSchema = object({
+  type: string().trim().required("Top-up type is required"),
+
+  provider: string().trim().required("Network provider is required"),
+
+  phoneNumber: string()
+    .trim()
+    .required("Recipient number is required")
+    .matches(phoneRegex, "Enter a valid Ghana phone number")
+    .test(
+      "valid-network-provider",
+      "Phone number does not match selected provider",
+      function (value) {
+        const { provider } = this.parent;
+
+        if (!value || !provider) {
+          return true;
+        }
+
+        const formattedPhone = getInternationalMobileFormat(value);
+
+        // Auto detect provider from number
+        const detectedProvider = getMobilePartner(formattedPhone);
+
+        if (!detectedProvider) {
+          return this.createError({
+            message: "Unsupported mobile network",
+          });
+        }
+
+        const normalizedProvider =
+          provider === "Vodafone"
+            ? "vodafone-gh"
+            : provider === "MTN"
+              ? "mtn-gh"
+              : provider === "AirtelTigo"
+                ? "tigo-gh"
+                : provider;
+
+        // Inline validation against selected provider
+        if (normalizedProvider !== detectedProvider) {
+          return this.createError({
+            message: `This number is not a valid ${
+              PROVIDER_LABELS[provider] || provider
+            } number`,
+          });
+        }
+
+        // Additional strict validation
+        if (!isValidPartner(normalizedProvider, formattedPhone)) {
+          return this.createError({
+            message: `Invalid ${PROVIDER_LABELS[provider] || provider} number`,
+          });
+        }
+
+        return true;
+      },
+    ),
+
+  confirmPhonenumber: string()
+    .trim()
+    .required("Please confirm recipient number")
+    .oneOf([ref("phoneNumber"), null], "Phone numbers do not match")
+    .test(
+      "confirm-network-provider",
+      "Phone number does not match selected provider",
+      function (value) {
+        const { provider } = this.parent;
+
+        if (!value || !provider) {
+          return true;
+        }
+
+        const formattedPhone = getInternationalMobileFormat(value);
+
+        const detectedProvider = getMobilePartner(formattedPhone);
+
+        if (!detectedProvider) {
+          return this.createError({
+            message: "Unsupported mobile network",
+          });
+        }
+
+        const normalizedProvider =
+          provider === "Vodafone"
+            ? "vodafone-gh"
+            : provider === "MTN"
+              ? "mtn-gh"
+              : provider === "AirtelTigo"
+                ? "tigo-gh"
+                : provider;
+
+        if (normalizedProvider !== detectedProvider) {
+          return this.createError({
+            message: `This number is not a valid ${
+              PROVIDER_LABELS[provider] || provider
+            } number`,
+          });
+        }
+
+        return true;
+      },
+    ),
+});
 
 export const airtimeValidationSchema = () => {
   return object().shape({
@@ -524,28 +665,12 @@ export const airtimeValidationSchema = () => {
       .required("Required")
       .min(1, "Minimum airtime you can buy is GHS 1.")
       .max(100, "Maximum airtime you can buy is GHS 100."),
-    paymentMethod: string().required("Payment Method Required*"),
-    // wallet: boolean().oneOf([true], "Payment option required*"),
-    // mobilePartner: string().required("Required*"),
-    // phonenumber: string()
-    //   .trim()
-    //   .required("Required*")
-    //   .matches(/^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/, "Invalid Phone number"),
-    ...walletSchema,
   });
 };
 export const bundleValidationSchema = (selectedBundle) => {
   return object()
     .shape({
       amount: number().required("Required"),
-      paymentMethod: string().required("Payment Method Required*"),
-      // wallet: boolean().oneOf([true], "Payment option required*"),
-      // mobilePartner: string().required("Required*"),
-      // phonenumber: string()
-      //   .trim()
-      //   .required("Required*")
-      //   .matches(/^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/, "Invalid Phone number"),
-      ...walletSchema,
     })
     .test(
       "bundle-selected",
@@ -863,3 +988,135 @@ export const addBusValidationSchema = () => {
     date: date().required("Required*").min(new Date(), "Date must be present!"),
   });
 };
+
+export const paymentValidationSchema = object({
+  // fullName: string().test("isValidName", "", (value) => {
+  //   if (!value?.trim()) {
+  //     return true;
+  //   }
+
+  //   if (!isValidName(value)) {
+  //     throw new ValidationError("Invalid name format", value, "fullName");
+  //   }
+
+  //   return true;
+  // }),
+
+  // email: string().test("isValidEmail", "", (value) => {
+  //   if (!value?.trim()) {
+  //     return true;
+  //   }
+
+  //   if (!isValidEmail(value)) {
+  //     throw new ValidationError("Invalid email format", value, "email");
+  //   }
+
+  //   return true;
+  // }),
+
+  paymentMethod: string()
+    .oneOf(["momo", "wallet"], "Please select a payment method")
+    .required("Payment method is required"),
+
+  mobilePartner: string().when(
+    ["paymentMethod", "phonenumber"],
+    ([paymentMethod, phonenumber], schema) => {
+      if (paymentMethod !== "momo") {
+        return schema.optional();
+      }
+
+      return schema
+        .required("Network provider is required")
+        .test("autoDetectPartner", "", function () {
+          if (!phonenumber) {
+            return true;
+          }
+
+          const formattedPhone = getInternationalMobileFormat(phonenumber);
+
+          const detectedPartner = getMobilePartner(formattedPhone);
+
+          if (!detectedPartner) {
+            throw new ValidationError(
+              "Unsupported mobile network",
+              phonenumber,
+              "mobilePartner",
+            );
+          }
+
+          this.parent.mobilePartner = detectedPartner;
+
+          return true;
+        });
+    },
+  ),
+
+  phonenumber: string()
+    .trim()
+    .when("paymentMethod", {
+      is: "momo",
+
+      then: (schema) =>
+        schema
+          .required("Phone number is required")
+          .matches(phoneNumberREgex, "Invalid phone number")
+          .test("isValidNetwork", "", (value, { parent }) => {
+            if (!value) {
+              return true;
+            }
+
+            const formattedPhone = getInternationalMobileFormat(value);
+
+            const detectedPartner = getMobilePartner(formattedPhone);
+
+            if (!detectedPartner) {
+              throw new ValidationError(
+                "Unsupported mobile network",
+                value,
+                "phonenumber",
+              );
+            }
+
+            parent.mobilePartner = detectedPartner;
+
+            if (!isValidPartner(detectedPartner, formattedPhone)) {
+              throw new ValidationError(
+                "Invalid network number",
+                value,
+                "phonenumber",
+              );
+            }
+
+            return true;
+          }),
+
+      otherwise: (schema) => schema.optional(),
+    }),
+
+  confirmPhonenumber: string()
+    .trim()
+    .when("paymentMethod", {
+      is: "momo",
+
+      then: (schema) =>
+        schema
+          .required("Confirm phone number is required")
+          .oneOf([ref("phonenumber")], "Phone numbers do not match"),
+
+      otherwise: (schema) => schema.optional(),
+    }),
+
+  token: string().when("paymentMethod", {
+    is: "wallet",
+
+    then: (schema) =>
+      schema
+        .strict(true)
+        .trim()
+        .required("Wallet pin is required")
+        .length(4, "Pin must be 4 digits")
+        .matches(/^\d+$/, "Invalid wallet pin"),
+
+    otherwise: (schema) => schema.optional(),
+  }),
+});

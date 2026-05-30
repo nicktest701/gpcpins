@@ -27,20 +27,20 @@ function BusPreview() {
 
   const [origin, setOrigin] = useState(searchParams.get("origin"));
   const [destination, setDestination] = useState(
-    searchParams.get("destination")
+    searchParams.get("destination"),
   );
   const [date, setDate] = useState(moment(new Date(searchParams.get("date"))));
 
   const bus = useQuery({
     queryKey: ["bus", origin, destination],
     queryFn: () => getBusByOrigin({ origin, destination }),
-    enabled: !!origin && !!destination,
+    // enabled: !!origin && !!destination,
   });
 
   const handleSearch = () => {
     setSearchParams((params) => {
-      params.set("origin", origin);
-      params.set("destination", destination);
+      params.set("origin", origin || "");
+      params.set("destination", destination || "");
       params.set("date", date.format("ll"));
       return params;
     });

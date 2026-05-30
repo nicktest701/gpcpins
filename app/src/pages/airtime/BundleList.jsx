@@ -66,7 +66,7 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
       (bundle) =>
         bundle.plan_name?.toLowerCase().includes(term) ||
         bundle.volume?.toLowerCase().includes(term) ||
-        bundle.category?.toLowerCase().includes(term)
+        bundle.category?.toLowerCase().includes(term),
     );
   }, [bundles, searchTerm]);
 
@@ -107,7 +107,7 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
           return params;
         });
         navigate(
-          "/airtime?link=6b1bb991cea626082307742d77772268dbf4d9c5194b8bc5d09c81a5fc0a5ce5"
+          "/airtime?link=6b1bb991cea626082307742d77772268dbf4d9c5194b8bc5d09c81a5fc0a5ce5",
         );
       }
     });
@@ -214,7 +214,9 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
                       sx={{
                         cursor: "pointer",
                         transition: "all 0.2s",
-                        bgcolor: isSelected ? "primary.main" : "background.paper",
+                        bgcolor: isSelected
+                          ? "primary.main"
+                          : "background.paper",
                         color: isSelected ? "white" : "text.primary",
                         borderColor: isSelected ? "primary.main" : "divider",
                         "&:hover": {
@@ -233,7 +235,10 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
                         >
                           {bundle.plan_name}
                         </Typography>
-                        <Typography variant="body2" color={isSelected ? "white" : "text.secondary"}>
+                        <Typography
+                          variant="body2"
+                          color={isSelected ? "white" : "text.secondary"}
+                        >
                           {bundle.volume}
                         </Typography>
                         <Typography variant="h6" fontWeight="bold" mt={1}>
@@ -259,8 +264,9 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
         <Button onClick={handleClose}>Cancel</Button>
         <LoadingButton
           variant="contained"
-          disabled={!selectedBundle}
+          disabled={!selectedBundle || isError}
           onClick={handleProceed}
+          loading={isLoading}
         >
           Proceed
         </LoadingButton>

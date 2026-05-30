@@ -1,47 +1,3 @@
-// import { useTheme, Stack, Typography } from '@mui/material';
-// import { NavLink } from 'react-router-dom';
-
-// function NavLinkItem({ to, title, icon }) {
-//   const {
-//     palette,
-//     typography: { button },
-//   } = useTheme();
-
-//   const linkStyle = ({ isActive }) => {
-//     return {
-//       fontFamily: button.fontFamily,
-//       fontSize: button.fontSize,
-//       position: 'relative',
-//       textDecoration: 'none',
-//       borderBottom: isActive ? `solid 2px ${palette.primary.main} ` : null,
-//       color: isActive ? palette.primary.main : '#333',
-//       fontWeight: isActive ? 'bolder' : 'normal',
-//     };
-//   };
-
-//   return (
-//     <NavLink to={`${to}?_pid=1`} style={linkStyle} end>
-//       <Stack
-//         direction='row'
-//         columnGap={3}
-//         sx={{
-//           padding: 1,
-//           cursor: 'pointer',
-//           '&:hover': {
-//             backgroundColor: palette.grey[300],
-//           },
-//         }}
-//       >
-//         {icon}
-//         <Typography variant='button'>{title}</Typography>
-//       </Stack>
-//     </NavLink>
-//   );
-// }
-
-// export default NavLinkItem;
-
-
 import { ListItemButton, ListItemIcon, ListItemText, useTheme, alpha } from "@mui/material";
 import { NavLink } from "react-router-dom";
 
@@ -55,9 +11,8 @@ function NavLinkItem({ to, title, icon, end = true }) {
       end={end}
       sx={{
         borderRadius: 2,
-        my: 0.5,
         px: 1.5,
-        py: 1,
+        py:0.5,
         transition: theme.transitions.create(['background-color', 'border-color', 'color'], {
           duration: theme.transitions.duration.short,
         }),
@@ -80,7 +35,7 @@ function NavLinkItem({ to, title, icon, end = true }) {
     >
       <ListItemIcon
         sx={{
-          minWidth: 40,
+          minWidth: 36,
           color: theme.palette.text.secondary,
           transition: theme.transitions.create('transform'),
           '&:hover': {
@@ -93,8 +48,9 @@ function NavLinkItem({ to, title, icon, end = true }) {
       <ListItemText
         primary={title}
         primaryTypographyProps={{
-          variant: 'body2',
-          fontWeight: 500,
+          // variant: 'body2',
+          fontSize:13,
+          // fontWeight: 500,
           sx: {
             transition: theme.transitions.create('color'),
           },

@@ -313,6 +313,7 @@ router.get(
 
     const vouchers = await knex("vouchers").select("details", "active").where({
       category_id: id,
+      status: "new",
       active: true,
     });
 

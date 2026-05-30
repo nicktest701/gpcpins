@@ -1,149 +1,184 @@
+// WalletOption.jsx
+
 import { useEffect, useState } from "react";
 import {
-  Typography,
-  Stack,
-  FormControlLabel,
-  Radio,
   Accordion,
   AccordionDetails,
   AccordionSummary,
+  FormControlLabel,
   FormLabel,
-  TextField,
-  useTheme,
+  Radio,
   Skeleton,
+  Stack,
+  TextField,
+  Typography,
+  useTheme,
 } from "@mui/material";
-import { ArrowDropDownRounded } from "@mui/icons-material";
-import { currencyFormatter } from "../constants";
+
 import { useQuery } from "@tanstack/react-query";
-
+import { useFormContext, useWatch } from "react-hook-form";
+import MobileWalletIcon from "@/assets/icons/MobileWallet";
+import { currencyFormatter } from "../constants";
 import { useAuth } from "../context/providers/AuthProvider";
-import { getWalletBalance, getWalletStatus } from "../api/walletAPI";
 import { useCustomContext } from "../context/providers/CustomProvider";
+import { getWalletBalance, getWalletStatus } from "../api/walletAPI";
 
-function WalletOption({ token, setToken, tokenErr, tokenHelperText, value }) {
+function WalletOption() {
   const theme = useTheme();
-  const { walletBalance: wallet } = useCustomContext();
+
   const { user } = useAuth();
-  const [expand, setExpand] = useState(value === "wallet");
+  const { walletBalance: wallet } = useCustomContext();
+
+  const {
+    control,
+    register,
+    setValue,
+    formState: { errors },
+  } = useFormContext();
+
+  const paymentMethod = useWatch({
+    control,
+    name: "paymentMethod",
+  });
+
+  const [expanded, setExpanded] = useState(paymentMethod === "wallet");
+
+  useEffect(() => {
+    setExpanded(paymentMethod === "wallet");
+  }, [paymentMethod]);
 
   const walletBalance = useQuery({
-    queryKey: ["wallet-balance"],
+    queryKey: ["wallet-balance", user?.id],
     queryFn: () => getWalletBalance(user?.id),
     enabled: !!user?.id,
+    staleTime: 1000 * 60,
     initialData: wallet,
   });
 
-  // Get wallet status
-  const { data, isLoading: isLoadingWalletStatus } = useQuery({
+  const walletStatus = useQuery({
     queryKey: ["wallet-status", user?.id],
     queryFn: () => getWalletStatus(),
     enabled: !!user?.id,
+    staleTime: 1000 * 30,
   });
 
-  useEffect(() => {
-    if (value === "wallet") {
-      setExpand(true);
-    } else {
-      setExpand(false);
-    }
-  }, [value]);
+  const handleSelect = () => {
+    setValue("paymentMethod", "wallet", {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
 
   return (
     <Accordion
-      sx={{ width: "100%", mb: 1 }}
-      expanded={expand}
-      onChange={() => setExpand(!expand)}
+      expanded={expanded}
+      onChange={() => setExpanded((prev) => !prev)}
+      disableGutters
+      elevation={0}
+      sx={{
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: 2,
+        overflow: "hidden",
+      }}
     >
       <AccordionSummary
-        sx={{ backgroundColor: "whitesmoke", px: 1, borderRadius: 1 }}
-        expandIcon={<ArrowDropDownRounded />}
-        style={{
-          paddingBottom: "2px",
+        sx={{
+          backgroundColor:
+            paymentMethod === "wallet"
+              ? "primary.lightest"
+              : "background.default",
         }}
+        onClick={handleSelect}
       >
         <FormControlLabel
-          label="Wallet"
+          sx={{ pointerEvents: "none", width: "100%", pl: 1 }}
           control={
-            <Radio
-              size="small"
-              value="wallet"
-              onClick={() => setExpand(!expand)}
-              sx={{ width: "100%", pointerEvents: "all" }}
-              inputProps={{
-                style: {
-                  paddingTop: "50px",
-                },
-              }}
-            />
+            <Stack
+              justifyContent="space-between"
+              alignItems="center"
+              direction="row"
+              width="100%"
+            >
+              <Stack alignItems="center" direction="row">
+                <MobileWalletIcon width={64} height={64} />
+                <div>
+                  <Typography variant="body2">Wallet</Typography>
+                  {!expanded && (
+                    <Typography fontWeight={700}>
+                      {currencyFormatter(walletBalance.data)}
+                    </Typography>
+                  )}
+                </div>
+              </Stack>
+              <Radio
+                size="small"
+                checked={paymentMethod === "wallet"}
+                onClick={handleSelect}
+                value="wallet"
+                sx={{ pointerEvents: "all" }}
+              />
+            </Stack>
           }
-          onClick={() => setExpand(!expand)}
-          sx={{ pointerEvents: "none" }}
         />
       </AccordionSummary>
+
       <AccordionDetails>
-        {isLoadingWalletStatus || walletBalance.isLoading ? (
-          <Stack direction="row" spacing={2} alignItems="center" p={1}>
-            <Skeleton variant="circular" width={20} height={20} />
-            <Skeleton variant="text" width="60%" />
+        {walletBalance.isLoading || walletStatus.isLoading ? (
+          <Stack spacing={1}>
+            <Skeleton height={30} />
+            <Skeleton height={30} />
           </Stack>
         ) : (
           <>
             <Stack
-              width="100%"
               direction="row"
-              alignItems="center"
               justifyContent="space-between"
-              p={1}
+              alignItems="center"
+              mb={2}
             >
-              <FormLabel label="Wallet">Balance</FormLabel>
-              <Typography fontWeight="bold">
+              <FormLabel>Balance</FormLabel>
+
+              <Typography fontWeight={700}>
                 {currencyFormatter(walletBalance.data)}
               </Typography>
             </Stack>
 
-            {data?.active === false ? (
-              <Typography variant="caption" color="error" sx={{ px: 1 }}>
-                Wallet is temporarily disabled due to multiple failed attempts.
-                Try again after {data.timeOut}.
+            {walletStatus.data?.active === false ? (
+              <Typography variant="caption" color="error">
+                Wallet temporarily disabled. Try again after{" "}
+                {walletStatus.data?.timeOut}.
               </Typography>
             ) : (
-              <>
-                <Typography variant="caption">
-                  Make payment with the available balance in your wallet.
+              <Stack spacing={1}>
+                <Typography variant="body2" fontWeight={600}>
+                  Wallet PIN
                 </Typography>
 
-                <Stack mt={1}>
-                  <Typography variant="body2" mb={1} fontWeight={600}>
-                    Wallet Pin
-                  </Typography>
-                  <TextField
-                    size="small"
-                    type="password"
-                    inputMode="numeric"
-                    placeholder="Enter 4-digit pin"
-                    value={token}
-                    onChange={(e) => setToken(e.target.value)}
-                    error={!!tokenErr}
-                    helperText={tokenHelperText}
-                    sx={{
-                      maxWidth: 120,
-                      "& .MuiOutlinedInput-root": {
-                        transition: theme.transitions.create([
-                          "border-color",
-                          "box-shadow",
-                        ]),
-                        "&:hover fieldset": {
-                          borderColor: theme.palette.primary.main,
-                        },
-                        "&.Mui-focused fieldset": {
-                          borderWidth: 2,
-                          borderColor: theme.palette.primary.main,
-                        },
-                      },
-                    }}
-                  />
-                </Stack>
-              </>
+                <TextField
+                  size="small"
+                  type="password"
+                  placeholder="Enter 4-digit pin"
+                  inputMode="numeric"
+                  autoComplete="current-password"
+                  {...register("token")}
+                  error={!!errors.token}
+                  disabled={
+                    // Number(walletBalance.data) === 0 ||
+                    walletStatus.data?.active === false
+                  }
+                  helperText={errors.token?.message}
+                  sx={{
+                    maxWidth: 150,
+                    "& .MuiOutlinedInput-root": {
+                      transition: theme.transitions.create([
+                        "border-color",
+                        "box-shadow",
+                      ]),
+                    },
+                  }}
+                />
+              </Stack>
             )}
           </>
         )}

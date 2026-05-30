@@ -1,22 +1,27 @@
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 import moment from "moment";
-import { DateRangeRounded, LocationCity } from "@mui/icons-material";
 import {
-  Button,
-  CircularProgress,
+
+  Event,
+  AccessTime,
+  Theaters,
+} from "@mui/icons-material";
+import {
   Container,
-  Divider,
-  List,
-  ListItemText,
-  ListSubheader,
-  Skeleton,
-  Stack,
+  Box,
   Typography,
+  Stack,
+  Divider,
+  Skeleton,
+  Alert,
+  Button,
+  Paper,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import _ from "lodash";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
 import Back from "../../components/Back";
 import MovieItem from "./MovieItem";
 import { CustomContext } from "../../context/providers/CustomProvider";
@@ -25,15 +30,22 @@ import { getCategory } from "../../api/categoryAPI";
 import { getAllRemainingTickets } from "../../api/voucherAPI";
 
 function Movie() {
-  const queryClient = useQueryClient();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { id } = useParams();
   const {
     customState: { cinemaTicketTotal },
   } = useContext(CustomContext);
-  const { id } = useParams();
 
-  const movie = useQuery({
-    queryKey: ["movie-category"],
+  // Fetch movie details
+  const {
+    data: movie,
+    isLoading: movieLoading,
+    isError: movieError,
+  } = useQuery({
+    queryKey: ["movie-category", id],
     queryFn: () => getCategory(id),
     initialData: queryClient
       .getQueryData(["all-category"])
@@ -41,173 +53,301 @@ function Movie() {
     enabled: !!id,
   });
 
-  const tickets = useQuery({
+  // Fetch remaining tickets (quantities)
+  const {
+    data: remainingTickets,
+    isLoading: ticketsLoading,
+    isError: ticketsError,
+  } = useQuery({
     queryKey: ["remaining-movie-ticket", id],
     queryFn: () => getAllRemainingTickets(id),
-    initialData: {},
     enabled: !!id,
   });
 
-  const totalItemsSelected = _.sumBy(cinemaTicketTotal, "quantity");
+  const totalItemsSelected = useMemo(
+    () => _.sumBy(cinemaTicketTotal, "quantity"),
+    [cinemaTicketTotal],
+  );
+  const totalPrice = useMemo(
+    () => _.sumBy(cinemaTicketTotal, "total"),
+    [cinemaTicketTotal],
+  );
 
-  const handleNavigate = () =>
-    navigate(`buy`, {
+  const handleCheckout = () => {
+    navigate("buy", {
       state: {
         movieInfo: {
-          id: movie?.data?._id,
-          voucherType: movie?.data?.voucherType,
-          movie: movie?.data?.details?.movie,
-          cinema: movie?.data?.details?.cinema,
-          time: movie?.data?.details?.time,
-          date: movie?.data?.details?.date,
+          id: movie?._id,
+          voucherType: movie?.voucherType,
+          movie: movie?.details?.movie,
+          cinema: movie?.details?.cinema,
+          time: movie?.details?.time,
+          date: movie?.details?.date,
         },
       },
     });
+  };
 
-  if (movie.isLoading) {
+  // Loading state
+  if (movieLoading) {
     return (
-      <div
-        style={{
-          width: "100%",
-          minHeight: "50vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <CircularProgress />
-      </div>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Stack spacing={3}>
+          <Skeleton
+            variant="rectangular"
+            height={300}
+            sx={{ borderRadius: 2 }}
+          />
+          <Skeleton
+            variant="text"
+            width="60%"
+            height={40}
+            sx={{ mx: "auto" }}
+          />
+          <Skeleton
+            variant="text"
+            width="80%"
+            height={80}
+            sx={{ mx: "auto" }}
+          />
+          <Skeleton
+            variant="rectangular"
+            height={200}
+            sx={{ borderRadius: 2 }}
+          />
+        </Stack>
+      </Container>
     );
   }
 
+  // Error state
+  if (movieError || !movie) {
+    return (
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Alert severity="error">
+          Could not load movie details. Please try again later.
+        </Alert>
+        <Button variant="contained" onClick={() => navigate(-1)} sx={{ mt: 2 }}>
+          Go Back
+        </Button>
+      </Container>
+    );
+  }
+
+  const { details } = movie;
+  const pricing = details?.pricing || [];
+
   return (
-    <div>
-      <>
-        <div
-          style={{
-            background: `linear-gradient(to top right,rgba(8, 61, 119, 0.7),rgba(0,0,0,0.5)),url(${movie?.data?.details?.cinema})`,
-            backgroundPosition: "center",
-            backgroundSize: "cover",
-            backgroundRepeat: "no-repeat",
-            height: "50vh",
-            padding: "16px",
+    <Box sx={{ bgcolor: "background.default", minHeight: "100vh" }}>
+      {/* Hero Section */}
+      <Box
+        sx={{
+          position: "relative",
+          height: { xs: "40vh", sm: "50vh", md: "60vh" },
+          backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.3) 100%), url(${details?.cinema})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center 30%",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          p: 2,
+        }}
+      >
+        <Back color="primary" bg="rgba(255,255,255,0.2)" />
+        {/* Optionally add a gradient overlay text here */}
+      </Box>
+
+      <Container maxWidth="lg" sx={{ position: "relative", mt: -6, pb: 12 }}>
+        <Paper
+          elevation={3}
+          sx={{
+            borderRadius: 4,
+            overflow: "hidden",
+            p: { xs: 2, sm: 4 },
           }}
         >
-          <Back color="primary" bg="primary.contrastText" />
-        </div>
+          <Stack spacing={3}>
+            {/* Title */}
+            <Typography
+              variant="h3"
+              component="h1"
+              fontWeight="bold"
+              textAlign="center"
+              sx={{ fontSize: { xs: "1.75rem", sm: "2.5rem" } }}
+            >
+              {details?.movie}
+            </Typography>
 
-        {movie.isError ? (
-          <Typography paragraph p={4}>
-            An unknown error has occurred ! Couldnt fetch ticket information.
-          </Typography>
-        ) : (
-          <Container sx={{ position: "relative", pt: 4, pb: 16 }}>
-            <Stack spacing={2} py={2}>
-              <Typography variant="h3" textAlign="center" paragraph>
-                {movie?.data?.details?.movie}
-              </Typography>
-              <ListItemText
-                primary="Description"
-                secondary={movie?.data?.details?.description}
-                primaryTypographyProps={{
-                  fontWeight: "bold",
-                  color: "primary",
-                }}
-                secondaryTypographyProps={{
-                  fontStyle: "italic",
-                }}
-              />
-
-              <Stack direction="row" spacing={4} alignItems="center">
-                <LocationCity />
-                <Typography variant="body2" fontWeight="bold">
-                  {movie?.data?.details?.theatre}-
-                  {movie?.data?.details?.location}
+            {/* Movie details row */}
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              justifyContent="center"
+              spacing={{ xs: 2, sm: 4 }}
+              divider={<Divider orientation="vertical" flexItem />}
+            >
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Theaters color="primary" />
+                <Typography variant="body2">
+                  {details?.theatre} – {details?.location}
                 </Typography>
               </Stack>
-
-              <Stack direction="row" spacing={4} alignItems="center">
-                <DateRangeRounded />
-                <Typography variant="body2" fontWeight="bold">
-                  {moment(new Date(movie?.data?.details?.date)).format(
-                    "dddd,Do MMMM YYYY"
-                  )}
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Event color="primary" />
+                <Typography variant="body2">
+                  {moment(details?.date).format("dddd, Do MMMM YYYY")}
                 </Typography>
-
-                <Divider flexItem orientation="vertical" />
+              </Stack>
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <AccessTime color="primary" />
                 <Typography
-                  color="primary"
-                  whiteSpace="nowrap"
                   variant="body2"
                   fontWeight="bold"
+                  color="primary.main"
                 >
-                  {moment(new Date(movie?.data?.details?.time)).format(
-                    "h:mm a"
-                  )}
+                  {moment(details?.time).format("h:mm a")}
                 </Typography>
               </Stack>
             </Stack>
-            <List
-              subheader={
-                <Stack>
-                  <ListSubheader
-                    color="primary"
-                    sx={{ bgcolor: "hsl(207, 80%, 94%)" }}
-                  >
-                    Ticket Pricing
-                  </ListSubheader>
-                </Stack>
-              }
-            >
-              {tickets.isLoading ? (
-                <Stack spacing={1} py={2}>
-                  <Skeleton height={50} width="100%" />
-                  <Skeleton height={50} width="100%" />
-                  <Skeleton height={50} width="100%" />
-                </Stack>
-              ) : tickets.isError ? (
-                <Typography>Error fetching ticket details</Typography>
-              ) : tickets.data === undefined ? (
-                <Typography>No Ticket Available</Typography>
-              ) : (
-                movie?.data?.details?.pricing.map((seat) => (
-                  <MovieItem
-                    key={seat.id}
-                    type={seat?.type}
-                    price={seat?.price}
-                    remainingQuantity={tickets?.data[seat?.type] ?? 0}
-                  />
-                ))
-              )}
 
-              {totalItemsSelected > 0 && (
+            <Divider />
+
+            {/* Description */}
+            <Box>
+              <Typography
+                variant="subtitle1"
+                fontWeight="bold"
+                color="primary"
+                gutterBottom
+              >
+                Synopsis
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ lineHeight: 1.6 }}
+              >
+                {details?.description || "No description available."}
+              </Typography>
+            </Box>
+
+            <Divider />
+
+            {totalItemsSelected > 0 && (
+              <Paper
+                elevation={1}
+                sx={{
+                  p: 2,
+                }}
+              >
                 <Stack
                   direction="row"
-                  justifyContent="space-between"
+                  justifyContent="flex-end"
                   alignItems="center"
-                  p={2}
-                  position="fixed"
-                  bottom={50}
-                  left={0}
-                  right={0}
-                  // bgcolor="#fff"
-                  bgcolor="hsl(207, 80%, 94%)"
-                  zIndex={99999999999}
+                  flexWrap="wrap"
+                  gap={1}
                 >
-                  <Typography variant="h5">Total</Typography>
-                  <Typography variant="h5">
-                    {currencyFormatter(_.sumBy(cinemaTicketTotal, "total"))}
-                  </Typography>
-                  <Button variant="contained" onClick={handleNavigate}>
-                    Pay
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    size={isMobile ? "small" : "medium"}
+                    onClick={handleCheckout}
+                    sx={{ minWidth: 120 }}
+                  >
+                    Checkout
                   </Button>
                 </Stack>
-              )}
-            </List>
-          </Container>
-        )}
-      </>
-    </div>
+              </Paper>
+            )}
+
+            {/* Ticket Pricing Section */}
+            <Typography variant="h5" fontWeight="bold" gutterBottom>
+              Select Tickets
+            </Typography>
+
+            {ticketsLoading ? (
+              <Stack spacing={2}>
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton
+                    key={i}
+                    variant="rectangular"
+                    height={80}
+                    sx={{ borderRadius: 2 }}
+                  />
+                ))}
+              </Stack>
+            ) : ticketsError ? (
+              <Alert severity="error">
+                Failed to load ticket availability.
+              </Alert>
+            ) : pricing.length === 0 ? (
+              <Alert severity="info">
+                No ticket types available for this movie.
+              </Alert>
+            ) : (
+              <Stack spacing={2}>
+                {pricing.map((seat) => (
+                  <MovieItem
+                    key={seat.id}
+                    type={seat.type}
+                    price={seat.price}
+                    remainingQuantity={remainingTickets?.[seat.type] ?? 0}
+                  />
+                ))}
+              </Stack>
+            )}
+          </Stack>
+        </Paper>
+      </Container>
+
+      {/* Floating Cart Bar (mobile & desktop) */}
+      {totalItemsSelected > 0 && (
+        <Paper
+          elevation={6}
+          sx={{
+            position: "fixed",
+            bottom: isMobile ? 60 : 0,
+            left: 0,
+            right: 0,
+            p: 2,
+            bgcolor: "primary.dark",
+            color: "white",
+            zIndex: 1100,
+            borderRadius: 0,
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+          }}
+        >
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+            flexWrap="wrap"
+            gap={1}
+          >
+            <Typography variant="body2" sx={{ color: "white" }}>
+              {totalItemsSelected} ticket{totalItemsSelected !== 1 ? "s" : ""}{" "}
+              selected
+            </Typography>
+            <Typography
+              variant="h3"
+              fontWeight="bold"
+              sx={{ color: "common.white" }}
+            >
+              {currencyFormatter(totalPrice)}
+            </Typography>
+            <Button
+              variant="contained"
+              color="secondary"
+              size={isMobile ? "small" : "medium"}
+              onClick={handleCheckout}
+              sx={{ minWidth: 120 }}
+            >
+              Checkout
+            </Button>
+          </Stack>
+        </Paper>
+      )}
+    </Box>
   );
 }
 

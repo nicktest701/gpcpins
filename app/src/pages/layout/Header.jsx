@@ -43,21 +43,16 @@ import { getInitials } from "@/config/validation";
 import PrepaidDropdown from "@/components/dropdowns/PrepaidDropdown";
 import NotificationDropdown from "@/components/dropdowns/NotificationDropdown";
 
-import { useGoogleOneTapLogin } from "@react-oauth/google";
-import api from "@/api/customAxios";
-import { globalAlertType } from "@/components/alert/alertType";
 import { getAllBroadcastMessages } from "@/api/broadcastMessageAPI";
 import { useQuery, useIsFetching, useQueryClient } from "@tanstack/react-query";
-import { saveToken } from "@/config/sessionHandler";
 import { getWalletBalance } from "@/api/walletAPI";
 import GlobalSpinner from "@/components/GlobalSpinner";
 import { useCustomContext } from "../../context/providers/CustomProvider";
 import { useAuth } from "../../context/providers/AuthProvider";
 
 function Header() {
-  const { user, login, logout } = useAuth();
+  const { user, logout } = useAuth();
   const queryClient = useQueryClient();
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showAlert, setShowAlert] = useState(true);
   const isFetching = useIsFetching();
   const { pathname } = useLocation();
@@ -97,38 +92,6 @@ function Header() {
   const unReadNotifications = notifications?.data?.filter(
     (item) => item?.active === 1,
   );
-
-  useGoogleOneTapLogin({
-    disabled: Boolean(user?.id),
-    onSuccess: async ({ credential }) => {
-      setIsGoogleLoading(true);
-      try {
-        const res = await api({
-          method: "POST",
-          url: "/users/login-google-tap",
-          data: { credential },
-          withCredentials: true,
-        });
-
-        saveToken(res.data?.accessToken, res.data?.refreshToken);
-        login(res.data?.accessToken);
-
-        if (res.data?.register) {
-          navigate("/user/started", { state: { google: true } });
-        } else {
-          login(res.data?.accessToken);
-          navigate(pathname);
-        }
-      } catch (error) {
-        customDispatch(globalAlertType("error", "Authentication Failed!"));
-      } finally {
-        setIsGoogleLoading(false);
-      }
-    },
-    onError: () => {
-      customDispatch(globalAlertType("error", "Authentication Failed!"));
-    },
-  });
 
   useLayoutEffect(() => {
     setPhoto(user?.profile);
@@ -323,7 +286,7 @@ function Header() {
                 fontSize="small"
                 sx={{ color: theme.palette.text.secondary }}
               />
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="secondary.main">
                 AK-004-5284
               </Typography>
             </Box>
@@ -335,7 +298,7 @@ function Header() {
               <Link
                 to="mailto:info@gpcpins.com"
                 style={{
-                  color: theme.palette.primary.main,
+                  color: theme.palette.secondary.main,
                   textDecoration: "none",
                 }}
               >
@@ -350,7 +313,7 @@ function Header() {
               <Link
                 to="tel:0322036582"
                 style={{
-                  color: theme.palette.primary.main,
+                  color: theme.palette.secondary.main,
                   textDecoration: "none",
                 }}
               >
@@ -713,8 +676,6 @@ function Header() {
         </Alert>
       )}
 
-      {/* Loading indicators */}
-      {isGoogleLoading && <GlobalSpinner />}
       {isFetching > 0 && (
         <Box
           sx={{

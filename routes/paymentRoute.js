@@ -51,12 +51,13 @@ const {
   walletTopUpSchema,
   prepaidSchema,
   ticketSchema,
+  bundleSchema,
 } = require("../utils/validationSchema");
 const { validatePayment } = require("../middlewares/validators");
 const { idempotencyMiddleware } = require("../middlewares/idempotency");
 const { paymentLimiter } = require("../middlewares/rateLimiter");
 const { paymentLockMiddleware } = require("../middlewares/paymentLock");
-const { emitPaymentSuccess } = require("../config/emitters");
+const { emitPaymentSuccess, emitCheckerUpdate } = require("../config/emitters");
 const redisClient = require("../config/redisClient");
 
 // ===============================
@@ -73,11 +74,11 @@ const SUCCESS_CODES = ["00", "09"]; // from external APIs
 const ALLOWED_TYPES = ["voucher", "ticket", "prepaid", "airtime", "bundle"];
 
 const PAYMENT_TABLE_MAP = {
-  voucher: "vw_payments_voucher_transactions",
-  airtime: "vw_payments_airtime_transactions",
-  bundle: "vw_payments_bundle_transactions",
-  prepaid: "vw_meter_payment_prepaid_transaction_view",
-  wallet: "vw_payments_wallet_transactions",
+  v: "vw_payments_voucher_transactions",
+  a: "vw_payments_airtime_transactions",
+  b: "vw_payments_bundle_transactions",
+  p: "vw_meter_payment_prepaid_transaction_view",
+  w: "vw_payments_wallet_transactions",
 };
 
 const BASE_PAYMENT_FIELDS = [
@@ -293,11 +294,12 @@ router.get(
 
         res.status(200).json({ id: id, downloadLink });
 
-        if (email) {
-          setImmediate(async () => {
+        setImmediate(async () => {
+          await emitCheckerUpdate({ userId: userID, data: downloadLink });
+          if (email) {
             await sendTicketMail(id, email, modifiedVoucher[0]?.voucherType);
-          });
-        }
+          }
+        });
 
         // await sendWhatsappMessage({
         //   user: getInternationalMobileFormat(userInfo?.agentPhoneNumber),
@@ -583,14 +585,16 @@ router.get(
           is_processed: true,
         });
 
-        await knex("notifications").insert({
-          id: generateId(),
-          user_id: userID,
-          type: "ticket",
-          title: "ticket",
-          body: "Tickets have been generated successfully!",
-          link: downloadLink,
-        });
+        if (userID) {
+          await knex("notifications").insert({
+            id: generateId(),
+            user_id: userID,
+            type: "ticket",
+            title: `${tickets[0]?.movie || tickets[0]?.route || tickets[0]?.match} Ticket`,
+            body: `Tickets have been generated successfully!`,
+            link: downloadLink,
+          });
+        }
 
         res.status(200).json({ id: id, downloadLink, phonenumber, email });
 
@@ -642,6 +646,7 @@ router.get(
       // ---------------- FETCH TRANSACTION + PAYMENT ----------------
 
       const transaction = await getTransaction(categoryType, id, trx);
+      // console.log(transaction)
 
       if (!transaction) {
         await trx.rollback();
@@ -660,7 +665,7 @@ router.get(
       }
 
       // ---------------- IDEMPOTENCY ----------------
-      if (transaction.isProcessed && confirm) {
+      if (transaction.isProcessed) {
         await trx.commit();
         return res.status(200).json({
           message: "Already processed",
@@ -673,28 +678,27 @@ router.get(
       let selectedVouchers = [];
 
       // ---------------- PROCESS SERVICES ----------------
-      if (confirm) {
-        switch (transaction.service) {
-          case "voucher":
-          case "ticket":
-            selectedVouchers = await processVoucher(trx, transaction);
-            break;
 
-          case "bundle":
-            await markProcessed(trx, transaction);
-            break;
+      switch (transaction.service) {
+        case "voucher":
+        case "ticket":
+          selectedVouchers = await processVoucher(trx, transaction);
+          break;
 
-          case "airtime":
-            await markProcessed(trx, transaction);
-            break;
+        case "bundle":
+          await processBundle(trx, transaction);
+          break;
 
-          case "prepaid":
-            await processPrepaid(trx, transaction, info);
-            break;
-          case "wallet":
-            await processWalletTopUp(trx, transaction);
-            break;
-        }
+        case "airtime":
+          await markProcessed(trx, transaction);
+          break;
+
+        case "prepaid":
+          await processPrepaid(trx, transaction, info);
+          break;
+        case "wallet":
+          await processWalletTopUp(trx, transaction);
+          break;
       }
 
       await trx.commit();
@@ -704,7 +708,7 @@ router.get(
         triggerAsyncProcessing(transaction, categoryType, selectedVouchers); // 🔥 non-blocking
       }
 
-      return res.status(200).json(formatResponse(transaction, info));
+      return res.status(200).json(formatResponse(transaction));
     } catch (error) {
       await trx.rollback();
       console.error(error);
@@ -731,7 +735,7 @@ router.get(
 
 router.get(
   "/download/:id",
-  verifyToken,
+  verifyOptionalToken,
   asyncHandler(async (req, res) => {
     const id = req.params.id;
     const filePath = path.join(process.cwd(), "/vouchers/", `${id}.pdf`);
@@ -854,7 +858,7 @@ router.post(
         // ---- MOBILE MONEY ----
         const paymentPayload = {
           name: user?.name || "GPC Customer",
-          phonenumber: user?.phoneNumber,
+          phonenumber: user?.phonenumber,
           email: user?.email,
           amount: Number(totalAmount).toFixed(2),
           provider: user?.provider,
@@ -884,6 +888,7 @@ router.post(
         provider: isWallet ? "wallet" : user?.provider,
         mode: isWallet ? "Wallet" : "Mobile Money",
         status: paymentStatus,
+        // status: "pending",
         externalTransactionId: null,
         partner: JSON.stringify(providerResponse),
       });
@@ -895,7 +900,7 @@ router.post(
         id: transactionId,
         payment_id: paymentId,
         email: user?.email || "",
-        phonenumber: user?.phoneNumber || "",
+        phonenumber: user?.phonenumber || "",
         vouchers: JSON.stringify(sVouchers),
         info: JSON.stringify({
           orderNo,
@@ -904,35 +909,91 @@ router.post(
           quantity,
           amount: totalAmount,
           paymentDetails,
+          user,
         }),
       });
 
       // ---------------- UPDATE VOUCHERS ----------------
-      await trx("vouchers").whereIn("id", sVouchers).update({
-        status: "sold",
-        active: 1,
-        updated_at: knex.fn.now(),
-      });
+      await trx("vouchers")
+        .whereIn("id", sVouchers)
+        .update({
+          status: "sold",
+          active: 1,
+          updated_at: knex.fn.now(),
+          reserved_at: knex.fn.now(),
+          reservation_expires_at: knex.raw(
+            "DATE_ADD(NOW(), INTERVAL 10 MINUTE)",
+          ),
+        });
+
+      // await trx("vouchers")
+      //   .whereIn("id", sVouchers)
+      //   .update({
+      //     status: "reserved",
+      //     reserved_at: knex.fn.now(),
+      //     reservation_expires_at: knex.raw(
+      //       "DATE_ADD(NOW(), INTERVAL 10 MINUTE)",
+      //     ),
+      //   });
 
       await trx.commit();
 
       const completedTransaction = {
         paymentId,
         transactionId,
+        transactionId,
+        reference,
         status: paymentStatus,
         categoryType: service,
       };
 
+      if (process.env.NODE_ENV === "development" && !isWallet) {
+        const payload = {
+          ResponseCode: "0000",
+          Message: "success",
+          Data: {
+            Amount: totalAmount,
+            Charges: 0.05,
+            AmountAfterCharges: 0.8,
+            Description:
+              " The Vodafone Cash payment has been approved and processed successfully",
+            ClientReference: reference,
+            TransactionId: "09f84e20a283942e807128e8c21d08d6",
+            ExternalTransactionId: generateId(),
+            AmountCharged: 0.85,
+            OrderId: "09f84e20a283942e807128e8c21d08d6",
+            PaymentDate: "2024-05-14T00:44:57.5142719Z",
+          },
+        };
+
+        await paymentCallback(res, payload, "v");
+      }
+      res.status(200).json(completedTransaction);
+
       if (isWallet) {
-        await emitPaymentSuccess({
-          userId: userId,
-          txRef: reference,
-          amount: totalAmount,
-          transaction: completedTransaction,
+        // console.log(completedTransaction);
+
+        setImmediate(async () => {
+          await emitPaymentSuccess({
+            userId: userId,
+            txRef: reference,
+            amount: totalAmount,
+            transaction: {
+              id: transactionId || paymentId,
+              paymentReference: reference,
+              categoryId: categoryId,
+              categoryType: category,
+              status: paymentStatus,
+              userName: user?.name || "",
+              email: user?.email,
+              phonenumber: user.phonenumber,
+              paymentMode: "Wallet",
+              amount: totalAmount,
+              createdAt: new Date().toISOString(),
+            },
+          });
         });
       }
-
-      return res.status(200).json(completedTransaction);
     } catch (error) {
       await trx.rollback();
       console.error(error);
@@ -1315,7 +1376,10 @@ router.post(
 
       if (isWallet) {
         // ---- WALLET VALIDATION ----
-        const wallet = await trx("wallets").where({ user_id: userId }).first();
+        const wallet = await trx("wallets")
+          .where({ user_id: userId })
+          .first()
+          .forUpdate();
 
         if (!wallet) {
           return res.status(401).json("Wallet not found");
@@ -1350,7 +1414,7 @@ router.post(
         });
 
         paymentStatus = "completed";
-        partnerResponse = { code: "WALLET_SUCCESS" };
+        partnerResponse = { code: "WALLET_SUCCESS", phonenumber, email };
       } else {
         const payment = {
           name: name || "GPC Customer",
@@ -1421,28 +1485,6 @@ router.post(
       console.log(error);
       return res.status(500).json("Transaction Failed!");
     }
-
-    //  transactionInfo = {
-    //   id: transaction_id,
-    //   user: id,
-    //   recipient,
-    //   email,
-    //   phonenumber,
-    //   reference: transaction_reference,
-    //   bundle_id: plan?.id,
-    //   bundle_name: plan?.name,
-    //   bundle_volume: plan?.volume,
-    //   amount,
-    //   provider,
-    //   mode: "Mobile Money",
-    //   info: JSON.stringify({
-    //     phonenumber,
-    //     amount,
-    //     plan,
-    //   }),
-    //   partner: JSON.stringify(sendMoneyReponse?.Data),
-    //   status,
-    // };
   }),
 );
 
@@ -1557,7 +1599,7 @@ router.post(
   paymentLimiter,
   idempotencyMiddleware,
   paymentLockMiddleware,
-  validatePayment(voucherSchema),
+  validatePayment(bundleSchema),
   asyncHandler(async (req, res) => {
     const { id: userId, name } = req.user;
 
@@ -1571,8 +1613,8 @@ router.post(
       amount,
       recipient,
       phonenumber,
-      provider,
       email,
+      provider,
       plan,
       isWallet,
       token,
@@ -1583,6 +1625,7 @@ router.post(
     try {
       const response = await accountBalance();
       const balance = Number(response?.balance);
+
       if (Number(response?.balance) < Number(amount)) {
         if (balance < 1000) {
           await notifyLowBalance(balance);
@@ -1636,7 +1679,7 @@ router.post(
         });
 
         paymentStatus = "completed";
-        partnerResponse = { code: "WALLET_SUCCESS" };
+        partnerResponse = { code: "WALLET_SUCCESS", phonenumber, email };
       } else {
         const payment = {
           name: name || "GPC Customer",
@@ -2487,17 +2530,18 @@ const selectVouchers = async ({
 }) => {
   if (["stadium", "cinema"].includes(category)) {
     const vouchers = await Promise.all(
-      paymentDetails.tickets.map((ticket) =>
-        trx("vouchers")
-          .where({
-            category_id: categoryId,
-            type: ticket.type,
-            status: "new",
-            active: 1,
-          })
-          .limit(ticket.quantity)
-          .select("id")
-          .forUpdate(),
+      paymentDetails.tickets.map(
+        (ticket) =>
+          trx("vouchers")
+            .where({
+              category_id: categoryId,
+              type: ticket.type,
+              status: "new",
+              active: 1,
+            })
+            .limit(ticket.quantity)
+            .select("id"),
+        // .forUpdate(),
       ),
     );
 
@@ -2512,8 +2556,8 @@ const selectVouchers = async ({
         status: "new",
         active: 1,
       })
-      .select("id")
-      .forUpdate();
+      .select("id");
+    // .forUpdate();
   }
 
   return trx("vouchers")
@@ -2523,8 +2567,8 @@ const selectVouchers = async ({
       active: 1,
     })
     .limit(quantity)
-    .select("id")
-    .forUpdate();
+    .select("id");
+  // .forUpdate();
 };
 
 const selectVouchersForConfirmation = async (trx, transaction) => {
@@ -2565,8 +2609,8 @@ const selectVouchersForConfirmation = async (trx, transaction) => {
             "v.type",
             "c.name as voucherType",
             "c.details",
-          )
-          .forUpdate(); // 🔒 LOCK ROWS
+          );
+        // .forUpdate(); // 🔒 LOCK ROWS
       }),
     );
 
@@ -2591,8 +2635,8 @@ const selectVouchersForConfirmation = async (trx, transaction) => {
         "v.type",
         "c.name as voucherType",
         "c.details",
-      )
-      .forUpdate();
+      );
+    // .forUpdate();
   }
 
   // ---------------- DEFAULT (WAEC, etc.) ----------------
@@ -2613,8 +2657,8 @@ const selectVouchersForConfirmation = async (trx, transaction) => {
         "v.type",
         "c.name as voucherType",
         "c.details",
-      )
-      .forUpdate();
+      );
+    // .forUpdate();
   }
 
   // ---------------- VALIDATION ----------------
@@ -2654,32 +2698,24 @@ async function processVoucher(trx, transaction) {
 }
 
 async function markProcessed(trx, transaction) {
-  if (transaction.service === "airtime" && transaction.type === "single") {
+  if (Boolean(transaction?.isProcessed)) return;
+
+  if (transaction.type === "single") {
     const airtimeInfo = {
       recipient: transaction?.recipient,
       amount: transaction?.amount,
-      network:
-        transaction?.network === "mtn-gh"
-          ? 4
-          : transaction?.network === "vodafone-gh"
-            ? 6
-            : transaction?.network === "tigo-gh"
-              ? 1
-              : 0,
+      network: transaction?.network ? NETWORK_MAP[transaction?.network] : 0,
       transaction_reference: transaction.paymentReference,
     };
     try {
       const response = await sendAirtime(airtimeInfo);
 
-      if (["00", "09"].includes(response["status-code"])) {
+      if (SUCCESS_CODES.includes(response["status-code"])) {
         await trx("payments")
           .where({ id: transaction.paymentId })
           .update({ is_processed: 1 });
 
-        if (
-          transaction.service === "airtime" &&
-          transaction.type === "single"
-        ) {
+        if (transaction.type === "single") {
           await trx("notifications").insert({
             id: generateId(),
             user_id: transaction.userId,
@@ -2703,11 +2739,7 @@ async function markProcessed(trx, transaction) {
     }
   }
 
-  if (
-    ["airtime"].includes(transaction.service) &&
-    transaction.type === "bulk" &&
-    Boolean(transaction.isProcessed) === false
-  ) {
+  if (transaction.type === "bulk") {
     await trx("notifications").insert({
       id: generateId(),
       user_id: transaction.userId,
@@ -2717,30 +2749,23 @@ async function markProcessed(trx, transaction) {
       link: "/notifications",
     });
   }
+}
 
-  if (
-    transaction?.status === "completed" &&
-    transaction.service === "bundle" &&
-    Boolean(transaction?.isProcessed) === false
-  ) {
+async function processBundle(trx, transaction) {
+  if (Boolean(transaction?.isProcessed)) return;
+
+  if (transaction?.status === "completed") {
     const bundleInfo = {
       recipient: transaction?.recipient,
       data_code: transaction?.bundleId,
-      network:
-        transaction?.network === "mtn-gh"
-          ? 4
-          : transaction?.network === "vodafone-gh"
-            ? 6
-            : transaction?.network === "tigo-gh"
-              ? 1
-              : 0,
+      network: transaction?.network ? NETWORK_MAP[transaction?.network] : 0,
       transaction_reference: transaction.paymentReference,
     };
 
     try {
       const response = await sendBundle(bundleInfo);
 
-      if (["00", "09"].includes(response["status-code"])) {
+      if (SUCCESS_CODES.includes(response["status-code"])) {
         await trx("payments")
           .where({ id: transaction.paymentId })
           .update({ is_processed: 1 });
@@ -2766,7 +2791,6 @@ async function markProcessed(trx, transaction) {
     }
   }
 }
-
 async function processPrepaid(trx, transaction, info) {
   await trx("notifications").insert({
     id: generateId(),
@@ -2844,23 +2868,21 @@ function triggerAsyncProcessing(transaction, categoryType, selectedVouchers) {
 }
 
 async function sendBundleLogic(transaction) {
-  if (transaction.status === "completed") {
-    const bundle = await knex("payments")
-      .select("is_processed")
-      .where("id", transaction.paymentId)
-      .first();
-    if (Boolean(bundle.is_processed) === true) {
-      const message = `You have successfully recharged ${transaction.recipient} with data bundle, "${transaction.bundleId}","${transaction.volume}", you were charged GHS ${transaction?.amount} .Transaction ID :${transaction?.id}`;
+  const bundle = await knex("payments")
+    .select("is_processed")
+    .where("id", transaction.paymentId)
+    .first();
+  if (Boolean(bundle.is_processed) === true) {
+    const message = `You have successfully recharged ${transaction.recipient} with data bundle, "${transaction.bundleId}","${transaction.volume}", you were charged GHS ${transaction?.amount} .Transaction ID :${transaction?.id}`;
 
-      const emailPrompt = await sendEMail(
-        transaction.email,
-        mailTextShell(`<p>${message}</p>`),
-        "DATA BUNDLE TRANSFER SUCCESSFUL",
-      );
+    const emailPrompt = await sendEMail(
+      transaction.email,
+      mailTextShell(`<p>${message}</p>`),
+      "DATA BUNDLE TRANSFER SUCCESSFUL",
+    );
 
-      const SMSPrompt = await sendSMS(message, transaction?.phonenumber);
-      await Promise.all([SMSPrompt, emailPrompt]);
-    }
+    const SMSPrompt = await sendSMS(message, transaction?.phonenumber);
+    await Promise.all([SMSPrompt, emailPrompt]);
   }
 }
 
@@ -3017,15 +3039,22 @@ async function sendElectricityMessage(transaction, type) {
   }
 }
 
-function formatResponse(transaction, info) {
+function formatResponse(transaction) {
+  const transactionInfo = safeJSON(transaction?.info);
+
   return {
     id: transaction.id || transaction.paymentId,
+    paymentReference: transaction?.paymentReference,
+    externalTransactionId: transaction?.externalTransactionId,
+    categoryId: transactionInfo?.categoryId,
+    categoryType: transactionInfo?.categoryType,
     status: transaction.status,
+    userName: transactionInfo?.user?.name || "",
     email: transaction?.email,
     phonenumber: transaction.phonenumber,
     paymentMode: transaction.mode,
+    amount: transaction?.amount,
     createdAt: transaction.createdAt,
-    info,
   };
 }
 
@@ -3140,40 +3169,64 @@ async function handlePostPaymentEvents(payment, status, payload) {
     const isSuccess = status === "completed";
 
     const message = isSuccess
-      ? `Your payment of GHS ${amount} for ${service} was successful. Thank you for your trust.`
-      : `Your payment of GHS ${amount} for ${service} failed. Please try again or contact support.`;
+      ? `Your payment of GHS ${amount} for ${service} service was successful. Thank you for your trust.Transaction ID:${payment?.id}`
+      : `Your payment of GHS ${amount} for ${service} service failed. Please try again or contact support.`;
 
     // ---------------- 1. NOTIFICATIONS ----------------
-    queueMicrotask(async () => {
-      try {
-        await knex("notifications").insert({
-          id: generateId(),
-          user_id: userId,
-          type: "payment",
-          title: isSuccess ? "Payment Successful" : "Payment Failed",
-          body: message,
-        });
-      } catch (err) {
-        console.error("Notification insert failed:", err);
-      }
-    });
+    if (userId) {
+      queueMicrotask(async () => {
+        try {
+          await knex("notifications").insert({
+            id: generateId(),
+            user_id: userId,
+            type: "payment",
+            title: isSuccess ? "Payment Successful" : "Payment Failed",
+            body: message,
+          });
+        } catch (err) {
+          console.error("Notification insert failed:", err);
+        }
+      });
+    }
 
     // ---------------- 2. REAL-TIME SOCKET EVENT ----------------
     queueMicrotask(async () => {
       try {
         if (isSuccess) {
-          await emitPaymentSuccess({
-            userId,
-            txRef: reference,
-            amount,
-            transaction: {
-              paymentId: payment.paymentId,
-              transactionId: payment.id,
-              status,
-              service,
-              externalTransactionId: externalId,
-            },
-          });
+          switch (service) {
+            case "voucher":
+            case "ticket":
+              const info = safeJSON(payment?.info);
+
+              await emitPaymentSuccess({
+                userId,
+                txRef: userId
+                  ? reference
+                  : payment.phonenumber || info?.user?.phonenumber,
+                amount,
+                transaction: {
+                  id: payment.id,
+                  paymentReference: reference,
+                  categoryId: info?.categoryId,
+                  categoryType: info?.categoryType,
+                  status: status,
+                  userName: info?.user?.name || "",
+                  email: payment?.email,
+                  phonenumber: payment?.phonenumber,
+                  paymentMode: payment?.mode,
+                  amount: amount,
+                  externalTransactionId: externalId,
+                  createdAt: payment.createdAt,
+                },
+              });
+              break;
+            default:
+              await emitPaymentSuccess({
+                userId,
+                txRef: reference,
+                amount,
+              });
+          }
         } else {
           await emitPaymentFailure({
             userId,
@@ -3216,3 +3269,75 @@ async function handlePostPaymentEvents(payment, status, payload) {
     console.error("handlePostPaymentEvents error:", error);
   }
 }
+
+const paymentCallback = async (res, payload, type) => {
+  const reference = payload?.Data?.ClientReference;
+  if (!reference || !type) return res.sendStatus(204);
+
+  const doneKey = `payment:processed:${reference}`;
+  const lockKey = `payment:lock:${reference}`;
+
+  // 1. Already processed?
+  if (await redisClient.get(doneKey)) {
+    return res.sendStatus(200);
+  }
+
+  // 2. Acquire lock
+  const lock = await redisClient.set(lockKey, "1", "NX", "EX", 60);
+
+  if (!lock) return res.sendStatus(200);
+
+  let trx;
+
+  try {
+    const statusMap = {
+      "0000": "completed",
+      "0001": "pending",
+    };
+
+    const newStatus = statusMap[payload.ResponseCode] || "failed";
+
+    const table = PAYMENT_TABLE_MAP[type];
+    if (!table) return res.sendStatus(204);
+
+    trx = await knex.transaction();
+
+    const payment = await trx(table)
+      .where({ paymentReference: reference })
+      .first();
+
+    if (!payment) {
+      await trx.rollback();
+      return res.sendStatus(204);
+    }
+
+    // idempotency DB guard
+    if (payment.status === "completed") {
+      await trx.commit();
+      return res.sendStatus(200);
+    }
+
+    await trx("payments")
+      .where({ id: payment.paymentId })
+      .andWhereNot({ status: "completed" })
+      .update({
+        status: newStatus,
+        externalTransactionId: payload?.Data?.ExternalTransactionId,
+        updated_at: knex.fn.now(),
+      });
+
+    await trx.commit();
+
+    // mark processed
+    await redisClient.set(doneKey, "1", "EX", 86400);
+    await redisClient.del(lockKey);
+
+    // async events
+    queueMicrotask(() => handlePostPaymentEvents(payment, newStatus, payload));
+  } catch (err) {
+    if (trx) await trx.rollback();
+    await redisClient.del(lockKey);
+    console.error(err);
+    res.sendStatus(500);
+  }
+};

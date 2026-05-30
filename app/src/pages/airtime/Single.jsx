@@ -1,4 +1,3 @@
-import { useContext, useState } from "react";
 import {
   Container,
   Paper,
@@ -7,197 +6,270 @@ import {
   Stack,
   Typography,
   Box,
+  Alert,
+  InputAdornment,
+  Fade,
 } from "@mui/material";
 import LoadingButton from "@mui/lab/LoadingButton";
+import { PhoneRounded, SendRounded } from "@mui/icons-material";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { Formik } from "formik";
-import { airtimeORbundleValidationSchema } from "../../config/validationSchema";
-import { AuthContext } from "../../context/providers/AuthProvider";
-import ServiceProvider from "../../components/ServiceProvider";
-import {
-  getInternationalMobileFormat,
-  isValidPartner,
-} from "../../constants/PhoneCode";
 
-const Single = () => {
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+
+import { useAuth } from "../../context/providers/AuthProvider";
+
+import ServiceProvider from "../../components/ServiceProvider";
+
+import { airtimeORbundleValidationSchema } from "../../config/validationSchema";
+
+function Single() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { pathname } = useLocation();
-  const { user } = useContext(AuthContext);
-  const [phoneNumberErr, setPhoneNumberErr] = useState("");
+  const { user } = useAuth();
 
-  const initialValues = {
-    type: "Airtime",
-    provider: "",
-    phoneNumber: "",
-    confirmPhonenumber: "",
-  };
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting, isValid },
+  } = useForm({
+    resolver: yupResolver(airtimeORbundleValidationSchema),
+    defaultValues: {
+      type: "Airtime",
+      provider: "",
+      phoneNumber: "",
+      confirmPhonenumber: "",
+    },
+    mode: "onChange",
+  });
 
-  const handleSubmit = async (values, { setSubmitting }) => {
-    const { provider, phoneNumber, type } = values;
+  const onSubmit = async (values) => {
+    // Schema already validated everything (provider + phone match + confirm match)
 
-    // Validate phone number
-    if (!isValidPartner(provider, getInternationalMobileFormat(phoneNumber))) {
-      setPhoneNumberErr(`Invalid ${provider} number`);
-      setSubmitting(false);
-      return;
-    }
-
-    setPhoneNumberErr("");
-
-    // Redirect to login if not authenticated
-    if (!user?.id) {
-      navigate(
-        `/user/login?redirect_url=${pathname}?link=${searchParams.get("link")}`,
-      );
-      setSubmitting(false);
-      return;
-    }
-
-    // Build navigation URL
-    const bundleFlag = type === "Bundle" ? "true" : "";
     const search = new URLSearchParams({
       link: searchParams.get("link"),
-      type,
-      recipient: phoneNumber,
-      show_list: bundleFlag,
-      provider,
+      type: values.type,
+      recipient: values.phoneNumber,
+      show_list: values.type === "Bundle" ? "true" : "",
+      provider: values.provider,
       network:
-        provider === "MTN"
+        values.provider === "MTN"
           ? 4
-          : provider === "Vodafone"
+          : values.provider === "Vodafone"
             ? 6
-            : provider === "AirtelTigo"
+            : values.provider === "AirtelTigo"
               ? 1
               : 0,
     }).toString();
 
-    console.log(search);
+    // auth redirect
+    if (!user?.id) {
+      navigate(
+        `/user/login?redirect_url=${pathname}?link=${searchParams.get("link")}`,
+      );
+      return;
+    }
 
     navigate(`/airtime/buy?${search}`, {
       state: {
         bundleInfo: {
-          type,
-          provider,
+          type: values.type,
+          provider: values.provider,
           network:
-            provider === "MTN"
+            values.provider === "MTN"
               ? 4
-              : provider === "Vodafone"
+              : values.provider === "Vodafone"
                 ? 6
-                : provider === "AirtelTigo"
+                : values.provider === "AirtelTigo"
                   ? 1
                   : 0,
         },
       },
     });
-    setSubmitting(false);
   };
 
   return (
-    <Container maxWidth="sm" sx={{ py: 4 }}>
-      <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
-        <Typography variant="h5" component="h2" gutterBottom>
-          Select Top-Up Type & Enter Recipient Number
-        </Typography>
-
-        <Formik
-          initialValues={initialValues}
-          validationSchema={airtimeORbundleValidationSchema}
-          onSubmit={handleSubmit}
-          enableReinitialize={false}
-        >
-          {({
-            values,
-            errors,
-            touched,
-            handleChange,
-            handleBlur,
-            handleSubmit,
-            isSubmitting,
-          }) => (
-            <Box component="form" onSubmit={handleSubmit} noValidate>
-              <Stack spacing={3}>
-                {/* Top-Up Type */}
-                <TextField
-                  select
-                  fullWidth
-                  label="Top-Up Type"
-                  name="type"
-                  value={values.type}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  error={touched.type && Boolean(errors.type)}
-                  helperText={touched.type && errors.type}
+    <Box
+      sx={{
+        minHeight: "100vh",
+        py: 4,
+        bgcolor: (theme) => theme.palette.grey[50],
+      }}
+    >
+      <Container maxWidth="sm">
+        <Fade in timeout={400}>
+          <Paper
+            elevation={0}
+            sx={{
+              borderRadius: 4,
+              overflow: "hidden",
+              border: "1px solid",
+              borderColor: "divider",
+            }}
+          >
+            {/* Header */}
+            <Box
+              sx={{
+                p: { xs: 3, sm: 4 },
+                bgcolor: "primary.main",
+                color: "primary.contrastText",
+              }}
+            >
+              <Stack spacing={1}>
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
                 >
-                  <MenuItem value="Airtime">Airtime</MenuItem>
-                  <MenuItem value="Bundle">Data Bundle</MenuItem>
-                </TextField>
+                  <Typography variant="h5" fontWeight={700}>
+                    Airtime & Bundle Purchase
+                  </Typography>
 
-                {/* Network Provider */}
-                <ServiceProvider
-                  label="Network Provider"
-                  size="medium"
-                  value={values.provider}
-                  setValue={(val) =>
-                    handleChange({ target: { name: "provider", value: val } })
-                  }
-                  error={touched.provider && Boolean(errors.provider)}
-                  helperText={touched.provider && errors.provider}
+                  {/* <Chip size="small" color="secondary" label={watchType} /> */}
+                </Stack>
+
+                <Typography
+                  variant="body2"
+                  sx={{
+                    opacity: 0.9,
+                  }}
+                >
+                  Enter recipient details to continue with your top-up
+                  transaction.
+                </Typography>
+              </Stack>
+            </Box>
+
+            {/* Content */}
+            <Box
+              component="form"
+              onSubmit={handleSubmit(onSubmit)}
+              noValidate
+              sx={{
+                p: { xs: 3, sm: 4 },
+              }}
+            >
+              <Stack spacing={3}>
+                <Alert severity="info" sx={{}}>
+                  Ensure the recipient number matches the selected network
+                  provider before continuing.
+                </Alert>
+
+                {/* Top Up Type */}
+                <Controller
+                  name="type"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      select
+                      fullWidth
+                      label="Top-Up Type"
+                      error={!!errors.type}
+                      helperText={errors.type?.message}
+                    >
+                      <MenuItem value="Airtime">Airtime</MenuItem>
+
+                      <MenuItem value="Bundle">Data Bundle</MenuItem>
+                    </TextField>
+                  )}
+                />
+
+                {/* Provider */}
+                <Controller
+                  name="provider"
+                  control={control}
+                  render={({ field }) => (
+                    <ServiceProvider
+                      label="Network Provider"
+                      size="medium"
+                      value={field.value}
+                      setValue={field.onChange}
+                      error={!!errors.provider}
+                      helperText={errors.provider?.message}
+                    />
+                  )}
                 />
 
                 {/* Recipient Number */}
-                <TextField
-                  fullWidth
-                  type="tel"
-                  label="Recipient Number"
+                <Controller
                   name="phoneNumber"
-                  value={values.phoneNumber}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  error={
-                    (touched.phoneNumber && Boolean(errors.phoneNumber)) ||
-                    Boolean(phoneNumberErr)
-                  }
-                  helperText={
-                    (touched.phoneNumber && errors.phoneNumber) ||
-                    phoneNumberErr
-                  }
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      type="tel"
+                      label="Recipient Number"
+                      placeholder="024XXXXXXX"
+                      error={!!errors.phoneNumber}
+                      helperText={errors.phoneNumber?.message}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <PhoneRounded fontSize="small" />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  )}
                 />
 
                 {/* Confirm Number */}
-                <TextField
-                  fullWidth
-                  type="tel"
-                  label="Confirm Recipient Number"
+                <Controller
                   name="confirmPhonenumber"
-                  value={values.confirmPhonenumber}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  error={
-                    touched.confirmPhonenumber &&
-                    Boolean(errors.confirmPhonenumber)
-                  }
-                  helperText={
-                    touched.confirmPhonenumber && errors.confirmPhonenumber
-                  }
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      type="tel"
+                      label="Confirm Recipient Number"
+                      placeholder="Re-enter phone number"
+                      error={!!errors.confirmPhonenumber}
+                      helperText={errors.confirmPhonenumber?.message}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <PhoneRounded fontSize="small" />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  )}
                 />
 
+                {/* Submit */}
                 <LoadingButton
                   type="submit"
                   variant="contained"
                   size="large"
                   loading={isSubmitting}
+                  disabled={!isValid}
+                  endIcon={<SendRounded />}
                   fullWidth
+                  sx={{
+                    py: 1.4,
+                    // borderRadius: 3,
+                    fontWeight: 700,
+                    textTransform: "none",
+                    boxShadow: "none",
+
+                    "&:hover": {
+                      boxShadow: 3,
+                    },
+                  }}
                 >
                   Continue
                 </LoadingButton>
               </Stack>
             </Box>
-          )}
-        </Formik>
-      </Paper>
-    </Container>
+          </Paper>
+        </Fade>
+      </Container>
+    </Box>
   );
-};
+}
 
 export default Single;

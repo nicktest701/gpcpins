@@ -597,7 +597,7 @@ router.post(
     });
 
     res.status(201).json({
-      refreshToken,
+      // refreshToken,
       accessToken,
       register,
     });
@@ -703,7 +703,7 @@ router.post(
     });
 
     res.status(201).json({
-      refreshToken,
+      // refreshToken,
       accessToken,
       register,
     });

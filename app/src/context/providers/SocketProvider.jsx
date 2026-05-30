@@ -11,6 +11,7 @@ import {
 
 import { io } from "socket.io-client";
 import { getToken } from "../../config/sessionHandler";
+import { useAuth } from "./AuthProvider";
 
 /*
 |--------------------------------------------------------------------------
@@ -27,10 +28,9 @@ const SocketContext = createContext(null);
 */
 
 export const SocketProvider = ({ children }) => {
+  const { user } = useAuth();
   const socketRef = useRef(null);
-
   const [connected, setConnected] = useState(false);
-
   const [socketId, setSocketId] = useState(null);
 
   /*
@@ -46,10 +46,11 @@ export const SocketProvider = ({ children }) => {
       token
     */
 
+    // if (!user?.id) return;
     if (socketRef.current) return;
 
     const socket = io(import.meta.env.VITE_API_URL, {
-      transports: ["websocket"],
+      transports: ["polling", "websocket"],
       withCredentials: true,
       autoConnect: true,
       reconnection: true,
@@ -74,8 +75,8 @@ export const SocketProvider = ({ children }) => {
       console.log("Socket Connected:", socket.id);
 
       setConnected(true);
-
       setSocketId(socket.id);
+      socket.emit("join-user-room", user.id);
     });
 
     /*
@@ -88,6 +89,7 @@ export const SocketProvider = ({ children }) => {
       console.log("Socket Disconnected:", reason);
 
       setConnected(false);
+      setSocketId(null);
     });
 
     /*
@@ -97,7 +99,14 @@ export const SocketProvider = ({ children }) => {
     */
 
     socket.on("connect_error", (error) => {
-      console.error("Socket Error:", error.message);
+      if (
+        error.message === "xhr poll error" ||
+        error.message === "websocket error"
+      ) {
+        console.warn("Socket transport fallback active... connecting.");
+      } else {
+        console.error("Critical Socket Error:", error.message);
+      }
     });
 
     /*
@@ -107,13 +116,28 @@ export const SocketProvider = ({ children }) => {
     */
 
     return () => {
-      socket.removeAllListeners();
-
-      socket.disconnect();
-
-      socketRef.current = null;
+      if (socketRef.current) {
+        socketRef.current.emit("leave-user-room", user.id);
+        socketRef.current.removeAllListeners();
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      setConnected(false);
+      setSocketId(null);
     };
-  }, []);
+  }, [user?.id]); // Only re-run if the specific user ID updates
+
+  /*
+  |--------------------------------------------------------------------------
+  | JOIN PAYMENT ROOM
+  |--------------------------------------------------------------------------
+  */
+
+  /*
+  |--------------------------------------------------------------------------
+  | LEAVE USER ROOM
+  |--------------------------------------------------------------------------
+  */
 
   /*
   |--------------------------------------------------------------------------
@@ -124,6 +148,7 @@ export const SocketProvider = ({ children }) => {
   const joinPaymentRoom = (txRef) => {
     if (!txRef) return;
 
+    socketRef.current?.emit("join-user-room", txRef);
     socketRef.current?.emit("join-payment-room", txRef);
   };
 

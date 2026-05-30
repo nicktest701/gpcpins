@@ -4,6 +4,8 @@ import React, {
   useMemo,
   useReducer,
   useCallback,
+  useEffect,
+  useState,
 } from "react";
 
 import { useQuery } from "@tanstack/react-query";
@@ -17,6 +19,13 @@ import { getAllBroadcastMessages } from "../../api/broadcastMessageAPI";
 import { getAllCategory } from "../../api/categoryAPI";
 
 import GlobalSpinner from "../../components/GlobalSpinner";
+import { useSocket } from "./SocketProvider";
+import { useGoogleOneTapLogin } from "@react-oauth/google";
+import api from "../../api/customAxios";
+import { saveAccessToken } from "../../config/sessionHandler";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Alert } from "@mui/material";
+import { ErrorRounded } from "@mui/icons-material";
 
 export const CustomContext = createContext(null);
 
@@ -149,12 +158,48 @@ const INITIAL_STATE = {
 };
 
 function CustomProvider({ children }) {
-  const { user } = useAuth();
-
+  const { user, login } = useAuth();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { onEvent, offEvent } = useSocket();
+  const [paymentStatus, setPaymentStatus] = useState(null);
+  const [oneTapInitialized, setOneTapInitialized] = useState(false);
+  const [err, setErr] = useState("");
   const [customState, customDispatch] = useReducer(
     CustomReducer,
     INITIAL_STATE,
   );
+
+  useGoogleOneTapLogin({
+    // Strictly disable if user exists OR if already initialized
+    disabled: Boolean(user?.id) || oneTapInitialized,
+    onSuccess: async ({ credential }) => {
+      try {
+        const res = await api({
+          method: "POST",
+          url: "/users/login-google-tap",
+          data: { credential },
+          withCredentials: true,
+        });
+
+        saveAccessToken(res.data?.accessToken);
+        login(res.data?.accessToken);
+
+        if (res.data?.register) {
+          navigate("/user/started", { state: { google: true } });
+        } else {
+          login(res.data?.accessToken);
+          navigate(pathname);
+        }
+        setOneTapInitialized(true); // Mark as initialized
+      } catch (error) {
+        setErr("Authentication Failed!");
+      }
+    },
+    onError: () => {
+      setErr("Authentication Failed!");
+    },
+  });
 
   /**
    * Categories Query
@@ -215,6 +260,30 @@ function CustomProvider({ children }) {
     walletBalanceQuery.isLoading ||
     notificationsQuery.isLoading;
 
+  // Socket success listener
+  useEffect(() => {
+    const handleSuccess = (payload) => {
+      setPaymentStatus(payload);
+    };
+    onEvent("payment-success", handleSuccess);
+    // onEvent("general", handleSuccess);
+    return () => {
+      offEvent("payment-success", handleSuccess);
+      // offEvent("general", handleSuccess);
+    };
+  }, [onEvent, offEvent]);
+
+  // Socket failed listener
+  useEffect(() => {
+    const handleFailed = (payload) => {
+      setPaymentStatus(payload);
+      // setStatus("failed");
+      // setMessage(payload.reason || "Payment failed.");
+    };
+    onEvent("payment-failed", handleFailed);
+    return () => offEvent("payment-failed", handleFailed);
+  }, [onEvent, offEvent]);
+
   /**
    * Dispatch Helpers
    */
@@ -246,7 +315,6 @@ function CustomProvider({ children }) {
    * Memoized Context Value
    */
 
-  
   const value = useMemo(
     () => ({
       customState,
@@ -259,6 +327,7 @@ function CustomProvider({ children }) {
       categoriesQuery,
       setGlobalAlert,
       setLoading,
+      paymentStatus,
     }),
     [
       customState,
@@ -267,6 +336,7 @@ function CustomProvider({ children }) {
       categoriesQuery,
       setGlobalAlert,
       setLoading,
+      paymentStatus,
     ],
   );
 
@@ -278,196 +348,19 @@ function CustomProvider({ children }) {
   }
 
   return (
-    <CustomContext.Provider value={value}>{children}</CustomContext.Provider>
+    <>
+      {err && (
+        <Alert
+          icon={<ErrorRounded color="error" />}
+          severity="error"
+          onClose={() => setErr("")}
+        >
+          {err}
+        </Alert>
+      )}
+      <CustomContext.Provider value={value}>{children}</CustomContext.Provider>
+    </>
   );
 }
 
 export default React.memo(CustomProvider);
-
-// import React, { useContext, useReducer, useState } from "react";
-// import { CustomReducer } from "../reducers/CustomReducer";
-// import { useQuery } from "@tanstack/react-query";
-// import { getWalletBalance } from "../../api/walletAPI";
-// import { AuthContext } from "./AuthProvider";
-// import { getAllBroadcastMessages } from "../../api/broadcastMessageAPI";
-// import { getAllCategory } from "../../api/categoryAPI";
-// import GlobalSpinner from "../../components/GlobalSpinner";
-
-// export const CustomContext = React.createContext();
-
-// export const useCustomContext = () => {
-//   const context = useContext(CustomContext);
-//   if (!context) {
-//     throw new Error("An unknown error has occurred.");
-//   }
-//   return context;
-// };
-
-// function CustomProvider({ children }) {
-//   const { user } = useContext(AuthContext);
-//   const [notifications, setNotifications] = useState([]);
-//   const [products, setProducts] = useState([]);
-
-//   useQuery({
-//     queryFn: getAllCategory,
-//     queryKey: ["all-category"],
-//     onSuccess: (data) => {
-//       updateProducts(data);
-//     },
-//   });
-
-//   const initialValues = {
-//     search: false,
-//     openUnavailable: true,
-//     globalAlert: {
-//       open: false,
-//       severity: "info",
-//       message: "",
-//     },
-//     allCategory: [],
-
-//     ecgNotifications: {
-//       open: false,
-//       messages: [],
-//     },
-
-//     loading: {
-//       open: false,
-//       message: "",
-//     },
-//     alertData: {
-//       open: false,
-//       severity: "",
-//       message: "",
-//     },
-//     openSidebar: false,
-
-//     voucherPaymentDetails: {
-//       open: false,
-//       data: {},
-//     },
-//     ticketPaymentDetails: {
-//       open: false,
-//       data: {},
-//     },
-//     loadedChecker: {
-//       meta: [],
-//       data: [],
-//     },
-//     newCheckers: [],
-
-//     ///vouchers
-//     transaction: {},
-
-//     ///prepaid
-//     buyElectricity: {
-//       open: false,
-//       data: {},
-//     },
-//     //meter
-//     meters: [],
-
-//     addMeter: {
-//       open: false,
-//       type: "",
-//       details: {},
-//     },
-//     verifyNewMeter: {
-//       open: false,
-//       details: {},
-//     },
-//     viewMeter: {
-//       open: false,
-//       details: {},
-//     },
-
-//     verifyMeter: {
-//       open: false,
-//       details: {},
-//     },
-//     ecgTransactionInfo: {
-//       open: false,
-//       details: {},
-//     },
-//     ecgTransactionInfoEdit: {
-//       open: false,
-//       details: {},
-//     },
-
-//     verifyPrepaid: {
-//       open: false,
-//       details: {},
-//     },
-//     ticketDetails: {},
-
-//     //total details,
-//     busTicketTotal: [],
-//     cinemaTicketTotal: [],
-//     stadiumTicketTotal: [],
-
-//     //match search
-//     matchSearchDetails: {
-//       open: false,
-//       value: "",
-//     },
-//     viewMessage: {
-//       open: false,
-//       data: {
-//         _id: "",
-//         type: "",
-//         recipient: "",
-//         body: "",
-//         createdAt: "",
-//       },
-//     },
-
-//     airtime_bundle_amount: sessionStorage.getItem("value-x") || 0,
-//   };
-
-//   const updateNotifications = (data) => setNotifications(data);
-//   const updateProducts = (data) => setProducts(data);
-
-//   const walletBalance = useQuery({
-//     queryKey: ["wallet-balance", user?.id],
-//     queryFn: () => getWalletBalance(user?.id),
-//     enabled: !!user?.id,
-//     initialData: 0,
-//   });
-
-//   const notificationsQuery = useQuery({
-//     queryKey: ["notifications"],
-//     queryFn: () => getAllBroadcastMessages(),
-//     enabled: !!user?.id,
-//     initialData: [],
-//     onSuccess: (data) => {
-//       updateNotifications(data);
-//     },
-//   });
-
-//   const [customState, customDispatch] = useReducer(
-//     CustomReducer,
-//     initialValues,
-//   );
-
-//   if (notificationsQuery.isLoading || walletBalance.isLoading) {
-//     return <GlobalSpinner />; // or a loading spinner
-//   }
-
-//   return (
-//     <CustomContext.Provider
-//       value={{
-//         customState,
-//         customDispatch,
-//         products: products,
-//         notifications,
-//         updateNotifications,
-//         updateProducts,
-//         walletBalance,
-//       }}
-//     >
-//       {children}
-//     </CustomContext.Provider>
-//   );
-// }
-
-// export default CustomProvider;

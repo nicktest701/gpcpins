@@ -14,13 +14,11 @@ import { universityValidationSchema } from "@/config/validationSchema";
 import CustomWrapper from "@/components/custom/CustomWrapper";
 import { useGetCategoryByType } from "@/hooks/useGetCategoryByType";
 import { LoadingButton } from "@mui/lab";
-import { useNavigate } from "react-router-dom";
-import { useCustomContext } from "../../context/providers/CustomProvider";
+import { useNavigate, useLocation } from "react-router-dom";
 
 function SecurityService() {
   const navigate = useNavigate();
-
-  const { customDispatch } = useCustomContext();
+  const { pathname } = useLocation();
   const [categoryType, setCategoryType] = useState({
     id: "",
     name: "",
@@ -54,12 +52,11 @@ function SecurityService() {
       totalAmount: values.totalAmount,
     };
 
-    customDispatch({
-      type: "getVoucherPaymentDetails",
-      payload: { data: paymentInfo },
-    });
-
     navigate(`/evoucher/voucher-payment`, {
+      state: {
+        data: paymentInfo,
+        path: pathname,
+      },
       replace: true,
     });
   };
@@ -96,18 +93,17 @@ function SecurityService() {
                   bgcolor: "#fff",
                   borderRadius: 2,
                 }}
-                maxWidth="md"
+                maxWidth="sm"
               >
-                <Grid container spacing={3} py={3}>
+                <Grid container spacing={3} py={2}>
                   <Grid item xs={12} sm={12}>
                     <Stack spacing={3}>
                       <Typography
                         width="100%"
                         paragraph
-                        color="text.secondary"
-                        bgcolor="background.neutral"
-                        p={1.5}
-                        borderRadius={1}
+                        color="#fff"
+                        bgcolor="primary.lighter"
+                        p={1}
                       >
                         Select Form Type
                       </Typography>
@@ -232,8 +228,8 @@ function SecurityService() {
                 <div style={{ display: "flex" }}>
                   <LoadingButton
                     variant="contained"
+                    fullWidth
                     onClick={handleSubmit}
-                    sx={{ marginInline: "auto", width: "100%", maxWidth: 300 }}
                   >
                     Proceed to Buy
                   </LoadingButton>

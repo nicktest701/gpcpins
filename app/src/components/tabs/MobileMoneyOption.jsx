@@ -1,123 +1,222 @@
-import { useState, useEffect } from "react";
+// tabs/MobileMoneyOption.jsx
+
+import { useEffect, useState } from "react";
 import {
-  Stack,
-  TextField,
-  FormControlLabel,
-  Radio,
   Accordion,
   AccordionDetails,
   AccordionSummary,
+  FormControlLabel,
+  InputAdornment,
+  Radio,
+  Stack,
   Switch,
+  TextField,
+  Typography,
 } from "@mui/material";
-import { ArrowDropDownRounded } from "@mui/icons-material";
+import { PhoneRounded } from "@mui/icons-material";
+import { useFormContext, useWatch } from "react-hook-form";
+
 import MobilePartner from "../MobilePartner";
 import { useAuth } from "../../context/providers/AuthProvider";
-import { getCode } from "../../constants";
+import { getMobilePartner } from "../../constants/PhoneCode";
 
-function MobileMoneyOption({
-  mobilePartner,
-  mobilePartnerErr,
-  mobilePartnerHelperText,
-  setMobilePartner,
-  phonenumber,
-  setPhonenumber,
-  phonenumberErr,
-  phonenumberHelperText,
-  confirmPhonenumber,
-  setConfirmPhonenumber,
-  confirmPhonenumberErr,
-  confirmPhonenumberHelperText,
-  value,
-}) {
+function MobileMoneyOption() {
   const { user } = useAuth();
-  const [expand, setExpand] = useState(value === "momo");
+
+  const {
+    control,
+    register,
+    setValue,
+    formState: { errors },
+  } = useFormContext();
+
+  const paymentMethod = useWatch({
+    control,
+    name: "paymentMethod",
+  });
+
+  const [showSavedNumber, setShowSavedNumber] = useState(false);
+  const [expanded, setExpanded] = useState(paymentMethod === "momo");
 
   useEffect(() => {
-    if (value === "momo" || !user?.id) {
-      setExpand(true);
-    } else {
-      setExpand(false);
-    }
-  }, [value, user]);
+    setExpanded(paymentMethod === "momo");
+  }, [paymentMethod]);
 
-  const handleChecked = (e) => {
-    if (e.target.checked) {
-      setPhonenumber(user?.phonenumber);
-      setConfirmPhonenumber(user?.phonenumber);
-      const partner = getCode(user.phonenumber);
-      // console.log(partner);
-      setMobilePartner(partner.providerName);
-    } else {
-      setPhonenumber("");
-      setConfirmPhonenumber("");
-      setMobilePartner("");
+  const handleSelect = () => {
+    setValue("paymentMethod", "momo", {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
+
+  const handleUseSavedNumber = (_, checked) => {
+    if (!checked) {
+      setValue("phonenumber", "");
+      setValue("confirmPhonenumber", "");
+      setValue("mobilePartner", "");
+      setShowSavedNumber(false);
+      return;
     }
+    setShowSavedNumber(true);
+
+    setValue("phonenumber", user?.phonenumber || "", {
+      shouldValidate: true,
+    });
+
+    setValue("confirmPhonenumber", user?.phonenumber || "", {
+      shouldValidate: true,
+    });
+
+    setValue("mobilePartner", getMobilePartner(user?.phonenumber || ""), {
+      shouldValidate: true,
+    });
   };
 
   return (
     <Accordion
-      sx={{ width: "100%" }}
-      expanded={expand}
-      onChange={() => setExpand(!expand)}
+      expanded={expanded}
+      onChange={() => setExpanded((prev) => !prev)}
+      disableGutters
+      elevation={0}
+      sx={{
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: 2,
+        mb: 1,
+        overflow: "hidden",
+      }}
     >
       <AccordionSummary
-        sx={{ backgroundColor: "whitesmoke", px: 1, borderRadius: 1 }}
-        expandIcon={<ArrowDropDownRounded />}
+        sx={{
+          backgroundColor:
+            paymentMethod === "momo"
+              ? "primary.lightest"
+              : "background.default",
+        }}
+        onClick={handleSelect}
       >
         <FormControlLabel
-          label="Mobile Money"
+          // label="Mobile Money"
+          sx={{ pointerEvents: "none", width: "100%", pl: 1 }}
           control={
-            <Radio
-              size="small"
-              value="momo"
-              onClick={() => setExpand(!expand)}
-              sx={{ pointerEvents: "all" }}
-            />
+            <Stack
+              justifyContent="space-between"
+              alignItems="center"
+              direction="row"
+              width="100%"
+            >
+              <Stack alignItems="center" direction="row">
+                {/* <MobileWalletIcon width={64} height={64} /> */}
+                <div>
+                  <Typography variant="body2">Mobile Money</Typography>
+                  {/* {!expanded && (
+                    <Typography fontWeight={700}>
+                      {currencyFormatter(walletBalance.data)}
+                    </Typography>
+                  )} */}
+                </div>
+              </Stack>
+              <Radio
+                size="small"
+                checked={paymentMethod === "momo"}
+                onClick={handleSelect}
+                value="momo"
+                sx={{ pointerEvents: "all" }}
+              />
+            </Stack>
           }
-          onClick={() => setExpand(!expand)}
-          sx={{ pointerEvents: "none" }}
         />
       </AccordionSummary>
+
       <AccordionDetails>
-        <Stack spacing={2} pt={2}>
+        <Stack spacing={2} pt={1}>
           <MobilePartner
             size="small"
-            value={mobilePartner || ""}
-            setValue={setMobilePartner}
-            error={mobilePartnerErr}
-            helperText={mobilePartnerHelperText}
+            value={useWatch({
+              control,
+              name: "mobilePartner",
+            })}
+            setValue={(value) =>
+              setValue("mobilePartner", value, {
+                shouldValidate: true,
+              })
+            }
+            error={!!errors.mobilePartner}
+            helperText={errors.mobilePartner?.message}
+            InputLabelProps={{
+              shrink: true,
+            }}
           />
-          <TextField
-            type="tel"
-            inputMode="tel"
-            variant="outlined"
-            label="Mobile Money Number"
-            fullWidth
-            required
-            size="small"
-            value={phonenumber}
-            onChange={(e) => setPhonenumber(e.target.value)}
-            error={!!phonenumberErr}
-            helperText={phonenumberHelperText}
-          />
-          <TextField
-            type="tel"
-            inputMode="tel"
-            variant="outlined"
-            label="Confirm Mobile Number"
-            fullWidth
-            required
-            size="small"
-            value={confirmPhonenumber}
-            onChange={(e) => setConfirmPhonenumber(e.target.value)}
-            error={!!confirmPhonenumberErr}
-            helperText={confirmPhonenumberHelperText}
-          />
-          {user?.phonenumber && (
+
+          {showSavedNumber ? (
+            <>
+              <TextField
+                size="small"
+                value={user?.phonenumber || ""}
+                InputLabelProps={{
+                  shrink: true,
+                }}
+                InputProps={{
+                  readOnly: true,
+                }}
+              />
+            </>
+          ) : (
+            <>
+              <TextField
+                size="small"
+                type="tel"
+                variant="outlined"
+                label="Mobile Money Number"
+                inputMode="tel"
+                autoComplete="tel"
+                {...register("phonenumber")}
+                error={!!errors.phonenumber}
+                helperText={errors.phonenumber?.message}
+                InputLabelProps={{
+                  shrink: true,
+                }}
+                fullWidth
+                  placeholder="024XXXXXXX"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PhoneRounded fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              <TextField
+                size="small"
+                type="tel"
+                label="Confirm Mobile Number"
+                 placeholder="Re-enter phone number"
+                inputMode="tel"
+                autoComplete="tel"
+                {...register("confirmPhonenumber")}
+                error={!!errors.confirmPhonenumber}
+                helperText={errors.confirmPhonenumber?.message}
+                InputLabelProps={{
+                  shrink: true,
+                }}
+                fullWidth
+                 InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <PhoneRounded fontSize="small" />
+                          </InputAdornment>
+                        ),
+                      }}
+              />
+            </>
+          )}
+
+          {!!user?.phonenumber && (
             <FormControlLabel
               control={<Switch size="small" />}
-              label="Use Phone Number"
-              onChange={handleChecked}
+              label="Use Saved Number"
+              onChange={handleUseSavedNumber}
             />
           )}
         </Stack>
@@ -127,3 +226,132 @@ function MobileMoneyOption({
 }
 
 export default MobileMoneyOption;
+
+// import { useState, useEffect } from "react";
+// import {
+//   Stack,
+//   TextField,
+//   FormControlLabel,
+//   Radio,
+//   Accordion,
+//   AccordionDetails,
+//   AccordionSummary,
+//   Switch,
+// } from "@mui/material";
+// import { ArrowDropDownRounded } from "@mui/icons-material";
+// import MobilePartner from "../MobilePartner";
+// import { useAuth } from "../../context/providers/AuthProvider";
+// import { getMobilePartner } from "../../constants/PhoneCode";
+
+// function MobileMoneyOption({
+//   mobilePartner,
+//   mobilePartnerErr,
+//   mobilePartnerHelperText,
+//   setMobilePartner,
+//   phonenumber,
+//   setPhonenumber,
+//   phonenumberErr,
+//   phonenumberHelperText,
+//   confirmPhonenumber,
+//   setConfirmPhonenumber,
+//   confirmPhonenumberErr,
+//   confirmPhonenumberHelperText,
+//   value,
+// }) {
+//   const { user } = useAuth();
+//   const [expand, setExpand] = useState(value === "momo");
+
+//   useEffect(() => {
+//     if (value === "momo" || !user?.id) {
+//       setExpand(true);
+//     } else {
+//       setExpand(false);
+//     }
+//   }, [value, user]);
+
+//   const handleChecked = (e) => {
+//     if (e.target.checked) {
+//       setPhonenumber(user?.phonenumber);
+//       setConfirmPhonenumber(user?.phonenumber);
+//       // const partner = getMobilePartner(user.phonenumber);
+//       // setMobilePartner(partner.providerName);
+//     } else {
+//       setPhonenumber("");
+//       setConfirmPhonenumber("");
+//       // setMobilePartner("");
+//     }
+//   };
+
+//   return (
+//     <Accordion
+//       sx={{ width: "100%" }}
+//       expanded={expand}
+//       onChange={() => setExpand(!expand)}
+//     >
+//       <AccordionSummary
+//         sx={{ backgroundColor: "whitesmoke", px: 1, borderRadius: 1 }}
+//         expandIcon={<ArrowDropDownRounded />}
+//       >
+//         <FormControlLabel
+//           label="Mobile Money"
+//           control={
+//             <Radio
+//               size="small"
+//               value="momo"
+//               onClick={() => setExpand(!expand)}
+//               sx={{ pointerEvents: "all" }}
+//             />
+//           }
+//           onClick={() => setExpand(!expand)}
+//           sx={{ pointerEvents: "none" }}
+//         />
+//       </AccordionSummary>
+//       <AccordionDetails>
+//         <Stack spacing={2} pt={2}>
+//           <MobilePartner
+//             size="small"
+//             value={mobilePartner || ""}
+//             setValue={setMobilePartner}
+//             error={mobilePartnerErr}
+//             helperText={mobilePartnerHelperText}
+//           />
+//           <TextField
+//             type="tel"
+//             inputMode="tel"
+//             variant="outlined"
+//             label="Mobile Money Number"
+//             fullWidth
+//             required
+//             size="small"
+//             value={phonenumber}
+//             onChange={(e) => setPhonenumber(e.target.value)}
+//             error={!!phonenumberErr}
+//             helperText={phonenumberHelperText}
+//           />
+//           <TextField
+//             type="tel"
+//             inputMode="tel"
+//             variant="outlined"
+//             label="Confirm Mobile Number"
+//             fullWidth
+//             required
+//             size="small"
+//             value={confirmPhonenumber}
+//             onChange={(e) => setConfirmPhonenumber(e.target.value)}
+//             error={!!confirmPhonenumberErr}
+//             helperText={confirmPhonenumberHelperText}
+//           />
+//           {user?.phonenumber && (
+//             <FormControlLabel
+//               control={<Switch size="small" />}
+//               label="Use Phone Number"
+//               onChange={handleChecked}
+//             />
+//           )}
+//         </Stack>
+//       </AccordionDetails>
+//     </Accordion>
+//   );
+// }
+
+// export default MobileMoneyOption;

@@ -21,7 +21,6 @@ const generateId = require("../config/generateId");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const { uploadAttachment } = require("../config/uploadFile");
 
-
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "./images/attachments/");
@@ -58,6 +57,7 @@ router.get(
       .where("user_id", id)
       .select("active", "created_at", "updated_at")
       .first();
+    console.log(wallet);
 
     if (_.isEmpty(wallet) || Boolean(wallet?.active) === false) {
       const now = moment();
@@ -84,7 +84,7 @@ router.get(
     }
 
     return res.status(200).json({
-      active: true,
+      active: Boolean(wallet?.active),
     });
   }),
 );
@@ -94,19 +94,19 @@ router.get(
   "/balance",
   verifyToken,
   asyncHandler(async (req, res) => {
-const { id: userId} = req.user;
+    const { id: userId } = req.user;
     const { id } = req.query;
 
     const wallet = await knex("wallets")
       .where("user_id", userId || id)
-      .select("amount",'user_id')
+      .select("amount", "user_id")
       .first();
 
     if (_.isEmpty(wallet)) {
       return res.status(200).json(0);
     }
 
-    res.status(200).json(wallet?.amount||0);
+    res.status(200).json(wallet?.amount || 0);
   }),
 );
 
@@ -202,7 +202,7 @@ router.get(
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const usersWallets = await knex("vw_user_wallet_view")
-    .join("roles", "vw_user_wallet_view.roleId", "roles.id")
+      .join("roles", "vw_user_wallet_view.roleId", "roles.id")
       .select(
         "vw_user_wallet_view.walletId as id",
         "vw_user_wallet_view.amount",
@@ -213,13 +213,11 @@ router.get(
         "roles.code as role",
         "vw_user_wallet_view.createdAt",
         "vw_user_wallet_view.updatedAt",
-        knex.raw(
-          "DATE_FORMAT(updatedAt,'%D %M %Y . %r' ) as updatedAt",
-        ),
-      ).where("roles.code", process.env.USER_ID)
-      .whereNot("vw_user_wallet_view.email", 'customer@gpcpins.com')
+        knex.raw("DATE_FORMAT(updatedAt,'%D %M %Y . %r' ) as updatedAt"),
+      )
+      .where("roles.code", process.env.USER_ID)
+      .whereNot("vw_user_wallet_view.email", "customer@gpcpins.com")
       .orderBy("vw_user_wallet_view.createdAt", "desc");
-
 
     return res.status(200).json(usersWallets);
   }),
@@ -231,7 +229,7 @@ router.get(
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const agentWallets = await knex("vw_user_wallet_view")
-    .join("roles", "vw_user_wallet_view.roleId", "roles.id")
+      .join("roles", "vw_user_wallet_view.roleId", "roles.id")
       .select(
         "vw_user_wallet_view.walletId as id",
         "vw_user_wallet_view.amount",
@@ -242,13 +240,11 @@ router.get(
         "roles.code as role",
         "vw_user_wallet_view.createdAt",
         "vw_user_wallet_view.updatedAt",
-        knex.raw(
-          "DATE_FORMAT(updatedAt,'%D %M %Y . %r' ) as updatedAt",
-        ),
-      ).where("roles.code", process.env.AGENT_ID)
-      .whereNot("vw_user_wallet_view.email", 'customer@gpcpins.com')
+        knex.raw("DATE_FORMAT(updatedAt,'%D %M %Y . %r' ) as updatedAt"),
+      )
+      .where("roles.code", process.env.AGENT_ID)
+      .whereNot("vw_user_wallet_view.email", "customer@gpcpins.com")
       .orderBy("vw_user_wallet_view.createdAt", "desc");
-
 
     return res.status(200).json(agentWallets);
   }),
@@ -283,8 +279,6 @@ router.post(
         .increment({
           amount: Number(amount),
         });
-;
-
       await transaction("wallet_transactions").insert({
         id: generateId(),
         user_id,
@@ -324,15 +318,6 @@ router.post(
     }
   }),
 );
-
-
-
-
-
-
-
-
-
 
 //Send wallet top up request
 router.post(

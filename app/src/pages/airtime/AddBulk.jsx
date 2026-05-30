@@ -11,11 +11,10 @@ import {
   ListItem,
   ListItemText,
   InputAdornment,
-  Alert,
   Box,
   Divider,
 } from "@mui/material";
-import { ArrowForward, Close } from "@mui/icons-material";
+import { ArrowForward, Close, PhoneRounded } from "@mui/icons-material";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -41,7 +40,7 @@ const entrySchema = yup.object({
       function (value) {
         const { provider } = this.parent;
         return isValidPartner(provider, getInternationalMobileFormat(value));
-      }
+      },
     ),
   confirmPhonenumber: yup
     .string()
@@ -93,9 +92,7 @@ const AddBulk = () => {
   });
 
   const provider = watch("provider");
-  const phoneNumber = watch("phoneNumber");
-  const confirmPhonenumber = watch("confirmPhonenumber");
-  const price = watch("price");
+
 
   // Add a new entry to the list
   const onAdd = (data) => {
@@ -124,27 +121,38 @@ const AddBulk = () => {
   // Proceed to checkout
   const handleProceed = () => {
     const total = pricingList.reduce((sum, item) => sum + item.price, 0);
-    sessionStorage.setItem("value-x", total);
 
     if (!user?.id) {
       navigate(
         `/user/login?redirect_url=${pathname}?link=${searchParams.get(
-          "link"
-        )}&info=${JSON.stringify(pricingList)}`
+          "link",
+        )}&info=${JSON.stringify(pricingList)}`,
+        {
+          state: {
+            recipientPayload: pricingList,
+            totalAmount: total,
+          },
+        },
       );
       return;
     }
 
     navigate(
       `bulk_airtime/buy?link=${searchParams.get(
-        "link"
-      )}&type=Bulk&info=${JSON.stringify(pricingList)}`
+        "link",
+      )}&type=Bulk&info=${JSON.stringify(pricingList)}`,
+      {
+        state: {
+          recipientPayload: pricingList,
+          totalAmount: total,
+        },
+      },
     );
   };
 
   const totalAmount = useMemo(
     () => pricingList.reduce((sum, item) => sum + item.price, 0),
-    [pricingList]
+    [pricingList],
   );
 
   return (
@@ -154,7 +162,8 @@ const AddBulk = () => {
           Add Bulk Airtime
         </Typography>
         <Typography variant="body2" color="text.secondary" paragraph>
-          Add one or more airtime top-ups. Each entry requires a network, recipient number, and amount.
+          Add one or more airtime top-ups. Each entry requires a network,
+          recipient number, and amount.
         </Typography>
 
         <form onSubmit={handleSubmit(onAdd)} noValidate>
@@ -178,8 +187,16 @@ const AddBulk = () => {
                   fullWidth
                   type="tel"
                   label="Recipient Number"
+                  placeholder="024XXXXXXX"
                   error={!!errors.phoneNumber}
                   helperText={errors.phoneNumber?.message}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PhoneRounded fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               )}
             />
@@ -194,8 +211,16 @@ const AddBulk = () => {
                   fullWidth
                   type="tel"
                   label="Confirm Recipient Number"
+                  placeholder="Re-enter phone number"
                   error={!!errors.confirmPhonenumber}
                   helperText={errors.confirmPhonenumber?.message}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PhoneRounded fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               )}
             />
@@ -210,6 +235,7 @@ const AddBulk = () => {
                   fullWidth
                   type="number"
                   label="Amount (GHS)"
+                  placeholder="0.00"
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">GH¢</InputAdornment>

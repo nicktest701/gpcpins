@@ -68,7 +68,6 @@ export const deleteUser = () => {
 export const getToken = () => {
   const token = cookie.get("USSID");
 
-
   if (token === undefined || token === null) {
     return "";
   } else {

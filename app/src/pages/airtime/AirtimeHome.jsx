@@ -173,7 +173,7 @@ const AirtimeHome = () => {
                 fontSize: 16,
               }}
             >
-              &#8226; {tab.label}
+              {tab.label}
             </Link>
           ))}
         </Stack>

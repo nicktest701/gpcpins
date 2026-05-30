@@ -1,54 +1,3 @@
-// import React from 'react';
-// import {
-//   ListItemButton,
-//   ListItemIcon,
-//   Collapse,
-//   List,
-//   ListItemText,
-//   useTheme,
-// } from '@mui/material';
-
-// import { ExpandLess, ExpandMore } from '@mui/icons-material';
-
-// function NavLinkItemCollapse({ title, children, icon }) {
-//   const {
-//     typography: { button },
-//   } = useTheme();
-
-//   const [open, setOpen] = React.useState(false);
-
-//   const handleCollapse = () => {
-//     setOpen(!open);
-//   };
-
-//   return (
-//     <>
-//       <ListItemButton onClick={handleCollapse} sx={{ marginLeft: '-8px' }}>
-//         <ListItemIcon>{icon}</ListItemIcon>
-//         <ListItemText
-//           secondary={title}
-//           secondaryTypographyProps={{
-//             color: '#333',
-//             fontFamily: button.fontFamily,
-//             fontSize: button.fontSize,
-//           }}
-//         />
-//         {open ? <ExpandLess /> : <ExpandMore />}
-//       </ListItemButton>
-//       <Collapse in={open} timeout='auto' unmountOnExit>
-//         <List disablePadding sx={{ paddingLeft: 6 }}>
-//           {children}
-//         </List>
-//       </Collapse>
-//     </>
-//   );
-// }
-
-// export default NavLinkItemCollapse;
-
-
-
-
 import { useState } from "react";
 import {
   Collapse,
@@ -73,9 +22,7 @@ function NavLinkItemCollapse({ icon, title, children }) {
         onClick={handleClick}
         sx={{
           borderRadius: 2,
-          my: 0.5,
           px: 1.5,
-          py: 1,
           transition: theme.transitions.create('background-color'),
           '&:hover': {
             bgcolor: alpha(theme.palette.grey[500], 0.08),
@@ -95,8 +42,8 @@ function NavLinkItemCollapse({ icon, title, children }) {
         <ListItemText
           primary={title}
           primaryTypographyProps={{
-            variant: 'body2',
-            fontWeight: 500,
+              fontSize:13,
+            // fontWeight: 500,
           }}
         />
         {open ? (
@@ -117,7 +64,7 @@ function NavLinkItemCollapse({ icon, title, children }) {
         )}
       </ListItemButton>
       <Collapse in={open} timeout="auto" unmountOnExit>
-        <List component="div" disablePadding sx={{ pl: 3 }}>
+        <List component="div" disablePadding sx={{ pl: 2 }}>
           {children}
         </List>
       </Collapse>

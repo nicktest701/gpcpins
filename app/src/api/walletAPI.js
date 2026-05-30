@@ -53,6 +53,7 @@ export const getWalletStatus = async () => {
       url: `/wallet/status`,
     });
 
+
     return res.data;
   } catch (error) {
     throw error.response.data;

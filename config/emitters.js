@@ -28,6 +28,14 @@ const emitPaymentSuccess = async ({ userId, txRef, amount, transaction }) => {
         amount,
         transaction,
       });
+
+      io.to(`payment:${userId}`).emit("payment-success", {
+        success: true,
+        txRef,
+        amount,
+        transaction,
+      });
+      console.log(`Payment success emitted from: user:payment:${userId} `);
     }
 
     /*
@@ -46,7 +54,7 @@ const emitPaymentSuccess = async ({ userId, txRef, amount, transaction }) => {
       transaction,
     });
 
-    console.log(`Payment success emitted: ${txRef}`);
+    console.log(`Payment success emitted:from payment:payment:${txRef}`);
   } catch (error) {
     console.error(error);
   }
@@ -96,8 +104,20 @@ const emitWalletUpdate = async ({ userId, balance }) => {
   }
 };
 
+const emitCheckerUpdate = async ({ userId, data }) => {
+  const io = getIO();
+  try {
+    io.to(`user:${userId}`).emit("general", {
+      data,
+    });
+  } catch (error) {
+    console.error(error);
+  }
+};
+
 module.exports = {
   emitPaymentSuccess,
   emitPaymentFailure,
   emitWalletUpdate,
+  emitCheckerUpdate,
 };

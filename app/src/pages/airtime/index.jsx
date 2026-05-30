@@ -2,7 +2,6 @@ import { Outlet } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Box, Typography } from "@mui/material";
 import { IMAGES } from "../../constants";
-import AirtimePaymentDetails from "../../components/modals/AirtimePaymentDetails";
 import ServiceNotAvaialble from "../ServiceNotAvaialble";
 import { getModuleStatus } from "../../api/categoryAPI";
 import { useQuery } from "@tanstack/react-query";
@@ -21,7 +20,6 @@ function Airtime() {
     queryFn: () => getModuleStatus("a"),
     initialData: { message: "", active: true },
   });
- 
 
   return (
     <>
@@ -49,7 +47,6 @@ function Airtime() {
       </Box>
       <Outlet />
 
-      <AirtimePaymentDetails />
       <ServiceNotAvaialble
         open={moduleStatus.data && Boolean(moduleStatus.data?.active) === false}
         message={moduleStatus.data?.message}

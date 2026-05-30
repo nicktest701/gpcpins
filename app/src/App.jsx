@@ -38,21 +38,21 @@ function App() {
   return (
     <ThemeProvider>
       <HelmetProvider>
-        <QueryClientProvider client={queryClient}>
-          <ErrorBoundary FallbackComponent={Error} onReset={reset}>
-            <AuthProvider>
-              <SocketProvider>
-                <GoogleOAuthProvider clientId={CLIENT_ID}>
+        <GoogleOAuthProvider clientId={CLIENT_ID}>
+          <QueryClientProvider client={queryClient}>
+            <ErrorBoundary FallbackComponent={Error} onReset={reset}>
+              <AuthProvider>
+                <SocketProvider>
                   <CustomProvider>
                     <ClientProvider>
                       <Shell />
                     </ClientProvider>
                   </CustomProvider>
-                </GoogleOAuthProvider>
-              </SocketProvider>
-            </AuthProvider>
-          </ErrorBoundary>
-        </QueryClientProvider>
+                </SocketProvider>
+              </AuthProvider>
+            </ErrorBoundary>
+          </QueryClientProvider>
+        </GoogleOAuthProvider>
       </HelmetProvider>
     </ThemeProvider>
   );

@@ -38,6 +38,9 @@ const knex = require("./db/knex");
 const socketAuth = require("./middlewares/socketAuth");
 const { initSocketServer } = require("./config/socket");
 
+// server.js or app.js
+require("./workers/reservationExpiry.worker");
+
 // Default server port
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || "development";
@@ -124,26 +127,48 @@ async function initSocket() {
 
       if (socket.user?.id) {
         const userRoom = `user:${socket.user.id}`;
+        const paymentRoom = `payment:${socket.user.id}`;
 
         await socket.join(userRoom);
+        await socket.join(paymentRoom);
 
         console.log(`User joined room: ${userRoom}`);
+        console.log(`User joined payment room: ${paymentRoom}`);
 
         await pubClient.set(`socket:${socket.user.id}`, socket.id, {
           EX: 60 * 60 * 24,
         });
       }
 
-      socket.on("join-payment-room", async (txRef) => {
-        if (!txRef || typeof txRef !== "string") return;
+      socket.on("join-user-room", async (userId) => {
+        if (!userId || typeof userId !== "string") return;
+        const userRoom = `user:${userId}`;
+        await socket.join(userRoom);
 
+        socket.emit("user-room-joined", {
+          room: userRoom,
+        });
+      });
+
+      socket.on("join-payment-room", async (txRef) => {
+        console.log(txRef);
+
+        if (!txRef || typeof txRef !== "string") return;
         const paymentRoom = `payment:${txRef}`;
 
         await socket.join(paymentRoom);
 
+        console.log(`User payment room: ${paymentRoom}`);
+
         socket.emit("payment-room-joined", {
           room: paymentRoom,
         });
+      });
+
+      socket.on("leave-user-room", async (userId) => {
+        const userRoom = `user:${userId}`;
+
+        await socket.leave(userRoom);
       });
 
       socket.on("leave-payment-room", async (txRef) => {
@@ -158,6 +183,14 @@ async function initSocket() {
         }
       });
     });
+
+    // Start server
+    const serverApp = server.listen(PORT, () => {
+      console.log(`Server running in ${NODE_ENV} mode on port ${PORT}`);
+    });
+
+    // Set timeout
+    serverApp.setTimeout(120000); // 2 minutes
   } catch (err) {
     console.error("Socket init failed:", err);
   }
@@ -458,13 +491,13 @@ const gracefulShutdown = async (signal) => {
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
-// Start server
-const serverApp = server.listen(PORT, () => {
-  console.log(`Server running in ${NODE_ENV} mode on port ${PORT}`);
-});
+// // Start server
+// const serverApp = server.listen(PORT, () => {
+//   console.log(`Server running in ${NODE_ENV} mode on port ${PORT}`);
+// });
 
-// Set timeout
-serverApp.setTimeout(120000); // 2 minutes
+// // Set timeout
+// // serverApp.setTimeout(120000); // 2 minutes
 
 module.exports = {
   io,

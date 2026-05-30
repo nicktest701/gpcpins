@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 
 import {
   Container,
@@ -22,10 +22,11 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 
 import { LoadingButton } from "@mui/lab";
-
-import { useForm, useWatch } from "react-hook-form";
-
-import { yupResolver } from "@hookform/resolvers/yup";
+import {
+  Receipt as ReceiptIcon,
+  ConfirmationNumber as TicketIcon,
+  Payments as PaymentIcon,
+} from "@mui/icons-material";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -45,11 +46,9 @@ import { getCategory } from "@/api/categoryAPI";
 
 import { makeMomoTransaction } from "@/api/paymentAPI";
 
-import { disableWallet, getNonUser } from "@/api/userAPI";
+import { getNonUser } from "@/api/userAPI";
 
 import { globalAlertType } from "@/components/alert/alertType";
-
-import { ticketsValidationSchema } from "../../config/validationSchema";
 
 import Back from "@/components/Back";
 
@@ -62,28 +61,42 @@ import { useAuth } from "@/context/providers/AuthProvider";
 import AnimatedContainer from "@/components/animations/AnimatedContainer";
 
 import VoucherPlaceHolderItem from "@/components/items/VoucherPlaceHolderItem";
+import { useSocket } from "../../context/providers/SocketProvider";
 
 const MAX_PIN_ATTEMPTS = 3;
 
 function CinemaTicketCheckout() {
   const { id } = useParams();
-
   const navigate = useNavigate();
-
   const { pathname } = useLocation();
-
   const queryClient = useQueryClient();
-
   const { user } = useAuth();
+  const { joinPaymentRoom, leavePaymentRoom } = useSocket();
 
   const { customState, customDispatch } = useCustomContext();
-
+  const [ticketPayload, setTicketPayload] = useState(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
 
   const [walletAttemptsLeft, setWalletAttemptsLeft] =
     useState(MAX_PIN_ATTEMPTS);
 
   const [walletError, setWalletError] = useState("");
+
+  useEffect(() => {
+    if (user?.id) {
+      joinPaymentRoom(user?.id);
+      return;
+    }
+
+    if (ticketPayload?.phonenumber) {
+      joinPaymentRoom(ticketPayload?.phonenumber);
+    }
+
+    return () => {
+      leavePaymentRoom(user?.id);
+      leavePaymentRoom(ticketPayload?.phonenumber);
+    };
+  }, [user?.id, ticketPayload?.phonenumber, joinPaymentRoom, leavePaymentRoom]);
 
   /*
    |--------------------------------------------------------------------------
@@ -102,61 +115,12 @@ function CinemaTicketCheckout() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const { data: walletStatus } = useQuery({
-    queryKey: ["disable-wallet"],
-    queryFn: disableWallet,
-    enabled: walletAttemptsLeft <= 0,
-    initialData: {
-      active: true,
-      timeOut: null,
-    },
-  });
-
-  const {
-    control,
-    handleSubmit,
-    setValue,
-    formState: { errors, isValid },
-  } = useForm({
-    resolver: yupResolver(ticketsValidationSchema),
-
-    mode: "onChange",
-
-    defaultValues: {
-      fullName: user?.name || "",
-      email: user?.email || "",
-      paymentMethod: "momo",
-      mobilePartner: "",
-      phonenumber: "",
-      confirmPhonenumber: "",
-      token: "",
-    },
-  });
-
-  /*
-   |--------------------------------------------------------------------------
-   | Form Watchers
-   |--------------------------------------------------------------------------
-   */
-
-  const paymentMethod = useWatch({
-    control,
-    name: "paymentMethod",
-  });
-
-  const formValues = useWatch({
-    control,
-  });
-
-  /*
-   |--------------------------------------------------------------------------
-   | Mutations
-   |--------------------------------------------------------------------------
-   */
-
   const paymentMutation = useMutation({
     mutationFn: makeMomoTransaction,
     retry: false,
+    onSettled: () => {
+      handleCloseSummary();
+    },
     onSuccess: (data) => {
       customDispatch({
         type: "sumCinemaTotal",
@@ -175,15 +139,13 @@ function CinemaTicketCheckout() {
 
       navigate("/confirm", {
         replace: true,
-
         state: {
           id: data.transactionId,
-
+          transactionReference: data?.reference,
           categoryType: "ticket",
-
           path: pathname,
-
-          isWallet: paymentMethod === "wallet",
+          isWallet: ticketPayload?.paymentMethod === "wallet",
+          mobilePartner: ticketPayload?.mobilePartner,
         },
       });
     },
@@ -251,63 +213,11 @@ function CinemaTicketCheckout() {
   }, [queryClient, user?.id]);
 
   const isInsufficientBalance =
-    paymentMethod === "wallet" && walletBalance < totalAmount;
-
-  /*
-   |--------------------------------------------------------------------------
-   | Effects
-   |--------------------------------------------------------------------------
-   */
-
-  useEffect(() => {
-    if (walletStatus?.active === false) {
-      setWalletError(
-        `Wallet temporarily disabled. Try again after ${walletStatus?.timeOut}`,
-      );
-
-      setValue("token", "", {
-        shouldValidate: false,
-      });
-    }
-  }, [walletStatus, setValue]);
-
-  /*
-   |--------------------------------------------------------------------------
-   | Validation
-   |--------------------------------------------------------------------------
-   */
-
-  const canSubmit = useMemo(() => {
-    if (!isValid) return false;
-
-    if (paymentMethod === "wallet") {
-      return (
-        !isInsufficientBalance &&
-        formValues.token?.length === 4 &&
-        walletAttemptsLeft > 0
-      );
-    }
-
-    return true;
-  }, [
-    formValues.token,
-    isInsufficientBalance,
-    isValid,
-    paymentMethod,
-    walletAttemptsLeft,
-  ]);
-
-  /*
-   |--------------------------------------------------------------------------
-   | Dialog
-   |--------------------------------------------------------------------------
-   */
+    ticketPayload?.paymentMethod === "wallet" && walletBalance < totalAmount;
 
   const handleOpenSummary = useCallback(() => {
-    if (!canSubmit) return;
-
     setSummaryOpen(true);
-  }, [canSubmit]);
+  }, []);
 
   const handleCloseSummary = useCallback(() => {
     setSummaryOpen(false);
@@ -319,72 +229,60 @@ function CinemaTicketCheckout() {
    |--------------------------------------------------------------------------
    */
 
-  const buildPayload = useCallback(
-    (values) => {
-      const payload = {
-        categoryId: movie?.id,
-        service: "ticket",
-        category: movie?.type,
-        voucherName: movie?.name,
-        paymentDetails: {
-          tickets: filteredTickets,
-          quantity: totalQuantity,
-          totalAmount,
-        },
-
+  const buildPayload = useCallback(() => {
+    const payload = {
+      categoryId: movie?.id,
+      service: "ticket",
+      category: movie?.type,
+      voucherName: movie?.name,
+      paymentDetails: {
+        tickets: filteredTickets,
+        quantity: totalQuantity,
         totalAmount,
+      },
 
-        user: {
-          name: values.fullName,
+      totalAmount,
 
-          email: values.email,
+      user: {
+        name: ticketPayload?.fullName || user?.name,
+        email: ticketPayload?.email || user?.email,
+        phonenumber: ticketPayload?.phonenumber || user?.phonenumber,
+        provider: ticketPayload?.mobilePartner,
+      },
 
-          phonenumber: values.phonenumber,
+      isWallet: ticketPayload?.paymentMethod === "wallet",
+    };
 
-          provider: values.mobilePartner,
-        },
+    if (ticketPayload?.paymentMethod === "wallet") {
+      payload.token = ticketPayload?.token;
+    }
 
-        isWallet: paymentMethod === "wallet",
-      };
-
-      if (paymentMethod === "wallet") {
-        payload.token = values.token;
-      }
-
-      return payload;
-    },
-    [filteredTickets, movie, paymentMethod, totalAmount, totalQuantity],
-  );
+    return payload;
+  }, [filteredTickets, movie, totalAmount, totalQuantity, ticketPayload, user]);
 
   /*
    |--------------------------------------------------------------------------
    | Submit
    |--------------------------------------------------------------------------
    */
-  console.log(errors);
-  console.log(formValues.phonenumber);
-  console.log(formValues.confirmPhonenumber);
-  console.log(formValues.paymentMethod);
 
-  const onSubmit = (values) => {
+  const processPayment = (values) => {
     setWalletError("");
 
     const payload = buildPayload(values);
 
-    console.log(payload);
-
-    if (!user?.id) {
-      guestMutation.mutateAsync(
-        {},
-        {
-          onSuccess: () => {
-            paymentMutation.mutateAsync(payload);
-          },
-        },
-      );
-    } else {
-      paymentMutation.mutateAsync(payload);
-    }
+    // if (!user?.id) {
+    //   guestMutation.mutateAsync(
+    //     {},
+    //     {
+    //       onSuccess: () => {
+    //         paymentMutation.mutateAsync(payload);
+    //       },
+    //     },
+    //   );
+    // } else {
+    paymentMutation.mutateAsync(payload);
+    // }
   };
 
   if (cinemaTicketTotal.length === 0 || totalQuantity === 0) {
@@ -558,94 +456,33 @@ function CinemaTicketCheckout() {
 
                 {/* Balance */}
 
-                {paymentMethod === "wallet" && isInsufficientBalance && (
-                  <Alert severity="warning">Insufficient wallet balance.</Alert>
-                )}
+                {ticketPayload?.paymentMethod === "wallet" &&
+                  isInsufficientBalance && (
+                    <Alert severity="warning">
+                      Insufficient wallet balance.
+                    </Alert>
+                  )}
 
                 {/* Payment */}
 
                 <PaymentOption
-                  showWallet={!!user?.id}
                   showMomo
-                  value={paymentMethod}
-                  setPaymentMethod={(value) =>
-                    setValue("paymentMethod", value, {
-                      shouldValidate: true,
-                    })
-                  }
-                  error={!!errors.paymentMethod}
-                  helperText={errors.paymentMethod?.message}
-                  mobileMoneyDetails={{
-                    mobilePartner: formValues.mobilePartner,
-                    setMobilePartner: (value) =>
-                      setValue("mobilePartner", value, {
-                        shouldValidate: true,
-                      }),
-
-                    mobilePartnerErr: !!errors.mobilePartner,
-                    mobilePartnerHelperText: errors.mobilePartner?.message,
-
-                    phonenumber: formValues.phonenumber,
-                    setPhonenumber: (value) =>
-                      setValue("phonenumber", value, {
-                        shouldValidate: true,
-                      }),
-                    phonenumberErr: !!errors.phonenumber,
-                    phonenumberHelperText: errors.phonenumber?.message,
-
-                    confirmPhonenumber: formValues.confirmPhonenumber,
-                    setConfirmPhonenumber: (value) =>
-                      setValue("confirmPhonenumber", value, {
-                        shouldValidate: true,
-                      }),
-                    confirmPhonenumberErr: !!errors.confirmPhonenumber,
-                    confirmPhonenumberHelperText:
-                      errors.confirmPhonenumber?.message,
+                  showWallet={!!user?.id}
+                  initialValues={{
+                    fullName: user?.name || "",
+                    email: user?.email || "",
                   }}
-                  walletDetails={{
-                    token: formValues.token,
-                    setToken: (value) =>
-                      setValue("token", value, {
-                        shouldValidate: true,
-                      }),
-                    tokenErr: !!errors.token,
-                    tokenHelperText: errors.token?.message,
-                  }}
-                  fullNameDetails={{
-                    fullName: formValues.fullName,
-
-                    setFullName: (value) =>
-                      setValue("fullName", value, {
-                        shouldValidate: true,
-                      }),
-
-                    fullNameErr: !!errors.fullName,
-
-                    fullNameHelperText: errors.fullName?.message,
-                  }}
-                  emailDetails={{
-                    email: formValues.email,
-
-                    setEmail: (value) =>
-                      setValue("email", value, {
-                        shouldValidate: true,
-                      }),
-
-                    emailErr: !!errors.email,
-
-                    emailHelperText: errors.email?.message,
+                  onSubmit={async (values) => {
+                    if (isInsufficientBalance) {
+                      customDispatch(
+                        globalAlertType("error", "Insufficient wallet balance"),
+                      );
+                      return;
+                    }
+                    setTicketPayload(values);
+                    handleOpenSummary();
                   }}
                 />
-
-                <LoadingButton
-                  variant="contained"
-                  fullWidth
-                  size="large"
-                  onClick={handleOpenSummary}
-                  disabled={!canSubmit}
-                >
-                  Review Order
-                </LoadingButton>
               </Stack>
             </AnimatedContainer>
           </Stack>
@@ -657,68 +494,161 @@ function CinemaTicketCheckout() {
       <Dialog
         open={summaryOpen}
         onClose={handleCloseSummary}
-        maxWidth="sm"
         fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            overflow: "hidden",
+          },
+        }}
       >
-        <DialogTitle>
-          Order Summary
+        <DialogTitle
+          sx={{
+            bgcolor: "primary.lighter",
+            color: "primary.contrastText",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            py: 2,
+          }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <ReceiptIcon />
+            <Typography variant="h6" component="span" fontWeight={600}>
+              Confirm Checkout
+            </Typography>
+          </Stack>
           <IconButton
+            size="small"
             onClick={handleCloseSummary}
-            sx={{
-              position: "absolute",
-
-              right: 8,
-
-              top: 8,
-            }}
+            sx={{ color: "primary.contrastText" }}
           >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
 
-        <DialogContent dividers>
+        <DialogContent dividers sx={{ p: 3, bgcolor: "background.default" }}>
           <Stack spacing={2}>
-            <Typography variant="subtitle1" fontWeight={700}>
+            <Typography variant="subtitle1" fontWeight={700} textAlign="center">
               {movie?.details?.movie}
             </Typography>
 
-            <Typography variant="body2" color="text.secondary">
-              {moment(movie?.details?.date).format("dddd, Do MMMM YYYY")} at{" "}
-              {moment(movie?.details?.time).format("h:mm a")}
+            <Divider />
+
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                bgcolor: "background.paper",
+                borderRadius: 2,
+                border: "1px solid",
+                borderColor: "divider",
+              }}
+            >
+              <Typography variant="subtitle2" fontWeight={600} mb={1}>
+                Tickets
+              </Typography>
+              {filteredTickets.map((item) => (
+                <VoucherPlaceHolderItem
+                  key={item.type}
+                  title={`${item.type} x ${item.quantity}`}
+                  value={currencyFormatter(item.total)}
+                />
+              ))}
+            </Paper>
+
+            {/* Ticket Summary */}
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                bgcolor: "background.paper",
+                borderRadius: 2,
+                border: "1px solid",
+                borderColor: "divider",
+              }}
+            >
+              <Typography variant="subtitle2" fontWeight={600} mb={2}>
+                Ticket Summary
+              </Typography>
+
+              <Stack spacing={1}>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <TicketIcon fontSize="small" color="action" />
+                    <Typography variant="body2">Quantity</Typography>
+                  </Stack>
+                  <Typography variant="body2" fontWeight={500}>
+                    {_.sumBy(filteredTickets, "quantity")}{" "}
+                    {filteredTickets.length === 1 ? "Ticket" : "Tickets"}
+                  </Typography>
+                </Stack>
+
+                <VoucherPlaceHolderItem
+                  title="Payment Method"
+                  value={
+                    ticketPayload?.paymentMethod === "wallet"
+                      ? "Wallet"
+                      : "Mobile Money"
+                  }
+                />
+
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <PaymentIcon fontSize="small" color="primary" />
+                    <Typography variant="body1" fontWeight={600}>
+                      Total Amount
+                    </Typography>
+                  </Stack>
+                  <Typography
+                    variant="h6"
+                    fontWeight={700}
+                    color="primary.main"
+                  >
+                    {currencyFormatter(totalAmount)}
+                  </Typography>
+                </Stack>
+              </Stack>
+            </Paper>
+
+            {/* Additional info / disclaimer */}
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              textAlign="center"
+            >
+              By confirming, you agree to our terms and conditions.
+            
             </Typography>
-
-            <Divider />
-
-            {filteredTickets.map((item) => (
-              <VoucherPlaceHolderItem
-                key={item.type}
-                title={`${item.type} x ${item.quantity}`}
-                value={currencyFormatter(item.total)}
-              />
-            ))}
-
-            <Divider />
-
-            <VoucherPlaceHolderItem
-              title="Total Amount"
-              value={currencyFormatter(totalAmount)}
-              bold
-            />
-
-            <VoucherPlaceHolderItem
-              title="Payment Method"
-              value={paymentMethod === "wallet" ? "Wallet" : "Mobile Money"}
-            />
           </Stack>
         </DialogContent>
 
-        <DialogActions>
-          <LoadingButton onClick={handleCloseSummary}>Cancel</LoadingButton>
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <LoadingButton
+            variant="outlined"
+            color="inherit"
+            onClick={handleCloseSummary}
+          >
+            Cancel
+          </LoadingButton>
 
           <LoadingButton
             variant="contained"
-            loading={paymentMutation.isPending || guestMutation.isPending}
-            onClick={handleSubmit(onSubmit)}
+            loading={paymentMutation.isLoading || guestMutation.isLoading}
+            onClick={processPayment}
+            sx={{
+              px: 3,
+              "&:hover": { bgcolor: "primary.dark" },
+            }}
           >
             Confirm Payment
           </LoadingButton>

@@ -9,26 +9,23 @@ import Autocomplete from "@mui/material/Autocomplete";
 import Container from "@mui/material/Container";
 import { Formik } from "formik";
 import { IMAGES, currencyFormatter } from "@/constants";
-import { CustomContext } from "@/context/providers/CustomProvider";
 import { universityValidationSchema } from "@/config/validationSchema";
 import CustomWrapper from "@/components/custom/CustomWrapper";
 import { Helmet } from "react-helmet-async";
 import { useGetCategoryByType } from "@/hooks/useGetCategoryByType";
 import { Tooltip } from "@mui/material";
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 function UniversityForms() {
   const navigate = useNavigate();
-  const { customDispatch } = useContext(CustomContext);
+  const { pathname } = useLocation();
   const [categoryType, setCategoryType] = useState({
     id: "",
     name: "",
     price: 0,
   });
 
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
   const [quantity, setQuantity] = useState(0);
 
   ///Get All waec categories
@@ -45,8 +42,6 @@ function UniversityForms() {
     categoryType,
     quantity,
     totalAmount: grandTotal,
-    fullName,
-    email,
   };
 
   const onSubmit = (values) => {
@@ -57,15 +52,13 @@ function UniversityForms() {
       price: values?.categoryType?.price,
       quantity: Number(values?.quantity),
       totalAmount: values.totalAmount,
-      email: values?.email,
     };
 
-    customDispatch({
-      type: "getVoucherPaymentDetails",
-      payload: { data: paymentInfo },
-    });
-
     navigate(`/evoucher/voucher-payment`, {
+      state: {
+        data: paymentInfo,
+        path: pathname,
+      },
       replace: true,
     });
   };
@@ -103,7 +96,7 @@ function UniversityForms() {
                   bgcolor: "#fff",
                   borderRadius: 2,
                 }}
-                maxWidth="md"
+                maxWidth="sm"
               >
                 <Grid container spacing={3} py={2}>
                   <Grid item xs={12} sm={12}>
@@ -111,8 +104,9 @@ function UniversityForms() {
                       <Typography
                         paragraph
                         color="#fff"
-                        bgcolor="secondary.main"
+                        bgcolor="primary.lighter"
                         p={1}
+                        // borderRadius={1}
                       >
                         Choose Form Type
                       </Typography>
@@ -195,7 +189,7 @@ function UniversityForms() {
                       />
                     </Stack>
                   </Grid>
-                  <Grid item xs={12} sm={12}>
+                  {/* <Grid item xs={12} sm={12}>
                     <Stack spacing={3}>
                       <Typography
                         paragraph
@@ -229,15 +223,15 @@ function UniversityForms() {
                         helperText={touched.email && errors.email}
                       />
                     </Stack>
-                  </Grid>
+                  </Grid> */}
                 </Grid>
 
                 <div style={{ display: "flex", alignItems: "center" }}>
                   <LoadingButton
                     variant="contained"
-                    // fullWidth
+                    fullWidth
                     onClick={handleSubmit}
-                    sx={{ marginInline: "auto", width: "100%", maxWidth: 300 }}
+                    sx={{ marginInline: "auto", width: "100%" }}
                   >
                     Proceed to buy
                   </LoadingButton>

@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState } from "react";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Autocomplete from "@mui/material/Autocomplete";
@@ -6,18 +6,16 @@ import { Formik } from "formik";
 //components
 
 import { currencyFormatter, IMAGES } from "@/constants";
-import { CustomContext } from "@/context/providers/CustomProvider";
 import { useGetCategoryByType } from "@/hooks/useGetCategoryByType";
 import { waecValidationSchema } from "@/config/validationSchema";
 import CustomWrapper from "@/components/custom/CustomWrapper";
 import { Helmet } from "react-helmet-async";
 import { Container, Typography } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 function WAECChecker() {
   const navigate = useNavigate();
-
-  const { customDispatch } = useContext(CustomContext);
+  const { pathname } = useLocation();
   const [pricingType, setPricingType] = useState({
     id: "",
     type: "",
@@ -52,12 +50,11 @@ function WAECChecker() {
       totalAmount: values?.pricingType.price,
     };
 
-    customDispatch({
-      type: "getVoucherPaymentDetails",
-      payload: { data: paymentInfo },
-    });
-
     navigate(`/evoucher/voucher-payment`, {
+      state: {
+        data: paymentInfo,
+        path: pathname,
+      },
       replace: true,
     });
   };
@@ -86,7 +83,7 @@ function WAECChecker() {
           {({ errors, touched, handleSubmit }) => {
             return (
               <Container
-                maxWidth="xs"
+                maxWidth="sm"
                 sx={{
                   py: 2,
                   display: "flex",
@@ -96,16 +93,15 @@ function WAECChecker() {
                   bgcolor: "#fff",
                   gap: 2,
                   borderRadius: 2,
-                  // boxShadow: '20px 20px 60px #d9d9d9,-20px -20px 60px #ffffff',
                 }}
               >
                 <Typography
                   width="100%"
                   paragraph
-                  color="text.secondary"
-                  bgcolor="background.neutral"
-                  p={1.5}
-                  borderRadius={1}
+                  color="#fff"
+                  bgcolor="primary.lighter"
+                  p={1}
+                  // borderRadius={1}
                 >
                   Choose Voucher Type
                 </Typography>
@@ -115,7 +111,6 @@ function WAECChecker() {
                   options={categories}
                   limitTags={3}
                   fullWidth
-                  size="small"
                   disableClearable
                   clearText=" "
                   value={categoryType}
@@ -142,8 +137,8 @@ function WAECChecker() {
                     return (
                       <TextField
                         {...params}
-                        label="Voucher"
                         size="small"
+                        label="Voucher"
                         error={Boolean(
                           touched?.categoryType?.name &&
                           errors?.categoryType?.name,
@@ -159,7 +154,6 @@ function WAECChecker() {
 
                 <Autocomplete
                   options={pricingList}
-                  size="small"
                   fullWidth
                   disableClearable
                   clearText=" "
@@ -182,8 +176,8 @@ function WAECChecker() {
                     return (
                       <TextField
                         {...params}
+                           size="small"
                         label="Quantity"
-                        size="small"
                         error={Boolean(
                           touched?.pricingType?.type &&
                           errors?.pricingType?.type,
@@ -198,7 +192,7 @@ function WAECChecker() {
                 />
 
                 {/* <TextField
-                  size="small"
+                
                   type="email"
                   inputMode="email"
                   variant="outlined"
@@ -210,12 +204,7 @@ function WAECChecker() {
                   helperText={touched.email && errors.email}
                 /> */}
 
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={handleSubmit}
-                  fullWidth
-                >
+                <Button variant="contained" size='large' onClick={handleSubmit} fullWidth>
                   Proceed to buy
                 </Button>
               </Container>
