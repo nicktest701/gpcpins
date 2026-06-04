@@ -248,7 +248,7 @@ function VoucherPayment() {
           >
             {/* Payment Form */}
             <Stack>
-              <Stack
+              {/* <Stack
                 direction="row"
                 alignItems="center"
                 justifyContent="space-between"
@@ -260,7 +260,7 @@ function VoucherPayment() {
                   <CloseIcon />
                 </IconButton>
               </Stack>
-              <Divider />
+              <Divider /> */}
 
               <PaymentOption
                 showMomo

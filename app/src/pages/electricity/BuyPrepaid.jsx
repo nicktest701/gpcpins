@@ -1,532 +1,524 @@
+import { useState, useMemo, useContext } from "react";
 import {
-  Box,
   Container,
   Divider,
   InputAdornment,
   Stack,
   TextField,
   Typography,
+  Paper,
+  Alert,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton,
+  Grid,
 } from "@mui/material";
-import Swal from "sweetalert2";
-import { useContext, useState } from "react";
-import CheckOutItem from "@/components/items/CheckOutItem";
-import { Formik } from "formik";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LoadingButton } from "@mui/lab";
+import CloseIcon from "@mui/icons-material/Close";
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
+import ReceiptIcon from "@mui/icons-material/Receipt";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Navigate,
-  useLocation,
   useNavigate,
+  useLocation,
   useParams,
+  Navigate,
 } from "react-router-dom";
-import { IMAGES, currencyFormatter } from "@/constants";
-import { getAllMeters } from "@/api/meterAPI";
-import { CustomContext } from "@/context/providers/CustomProvider";
-import { prepaidNonUserPaymentValidationSchema } from "@/config/validationSchema";
-import AnimatedContainer from "@/components/animations/AnimatedContainer";
-import PaymentOption from "@/components/PaymentOption";
-import { AuthContext } from "@/context/providers/AuthProvider";
-import { disableWallet, getNonUser } from "@/api/userAPI";
+import Swal from "sweetalert2";
+import { currencyFormatter } from "@/constants";
+import { prepaidPaymentValidationSchema } from "@/config/validationSchema";
 import { globalAlertType } from "@/components/alert/alertType";
 import { makeElectricityPayment } from "@/api/paymentAPI";
 import { isBetween50And99 } from "@/config/validation";
-import { useEffect } from "react";
+import { useAuth } from "@/context/providers/AuthProvider";
+import { useCustomContext } from "@/context/providers/CustomProvider";
+import PaymentOption from "@/components/PaymentOption";
+import AnimatedContainer from "@/components/animations/AnimatedContainer";
+import CheckOutItem from "@/components/items/CheckOutItem";
 
 function BuyPrepaid() {
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation();
   const navigate = useNavigate();
+  const { meterNo } = useParams();
   const queryClient = useQueryClient();
-  const { user } = useContext(AuthContext);
-  const { customDispatch } = useContext(CustomContext);
-  const { meterNo, meterName } = useParams();
-  const [email, setEmail] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [confirmPhonenumber, setConfirmPhonenumber] = useState("");
-
-  const [token, setToken] = useState("");
-  const [err, setErr] = useState("");
+  const { user } = useAuth();
+  const { customDispatch } = useCustomContext();
+  const [prepaidPayload, setPrepaidPayload] = useState(null);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [failureCount, setFailCount] = useState(3);
-  const [amount, setAmount] = useState(Number(0));
-  const [mobilePartner, setMobilePartner] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("momo");
 
-  const initialValues = {
-    meterNo,
-    email,
-    amount,
-    phoneNumber,
-    confirmPhonenumber,
-    mobilePartner,
-    paymentMethod,
+  // Meter details from previous page state
+  const meterDetails = state?.meterDetails || {
+    number: meterNo || "",
+    name: "",
+    address: "",
+    spn: "",
   };
 
-  // console.log(user)
-
-  const meterDetails = useQuery({
-    queryKey: ["meter-details"],
-    queryFn: () => getAllMeters(meterNo),
-    enabled: !!meterNo,
-  });
-
-  // Get wallet status
-  const { data: dataDisableWallet } = useQuery({
-    queryKey: ["disable-wallet"],
-    queryFn: () => disableWallet(),
-    enabled: failureCount === 0,
-    initialData: { active: true, timeOut: null },
-  });
-
-  useEffect(() => {
-    setErr("");
-
-    if (dataDisableWallet?.active === false) {
-      const message = `Wallet disabled due to multiple failed attempts.Try again after ${dataDisableWallet?.timeOut}`;
-      setErr(message);
-
-      queryClient.invalidateQueries({ queryKey: ["wallet-status"] });
-    }
-  }, [dataDisableWallet, queryClient]);
-
-  //Make Payment
-  const { mutate } = useMutation({
+  // Payment mutation
+  const paymentMutation = useMutation({
     mutationFn: makeElectricityPayment,
     retry: false,
   });
 
-  const { mutateAsync } = useMutation({
-    mutationFn: () => getNonUser(),
+  // Form setup
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setError,
+    clearErrors,
+    formState: { errors, isValid },
+  } = useForm({
+    resolver: yupResolver(prepaidPaymentValidationSchema),
+    defaultValues: {
+      amount: "",
+    },
   });
 
-  //Verify  Payment
-  const onSubmit = (values) => {
-    const newMeterInfo = {
-      number: meterNo,
-      name: meterName,
-      type: "prepaid",
-      district: sessionStorage.getItem("meter-location"),
-    };
 
-    if (isBetween50And99(Number(amount))) {
-      //Calculate charges
-      values.topup = Number(amount);
+  const amount = watch("amount");
+
+  // Calculate charges and total
+  const calculated = useMemo(() => {
+    const amt = Number(amount);
+    if (!amt || amt < 50) return { topup: 0, charges: 0, total: 0 };
+    if (isBetween50And99(amt)) {
       const charges = 2;
-      values.charges = charges;
-      values.amount = charges + Number(amount);
+      return { topup: amt, charges, total: amt + charges };
     } else {
-      //Calculate charges
-      values.topup = Number(amount);
-      const charges = 0.02 * Number(amount);
-      values.charges = charges;
-      values.amount = charges + Number(amount);
+      const charges = 0.02 * amt;
+      return { topup: amt, charges, total: amt + charges };
     }
+  }, [amount]);
 
-    const meterInfo = {
-      meter:
-        meterDetails?.data?.id !== undefined
-          ? meterDetails?.data?.id
-          : newMeterInfo,
+  // Wallet balance check
+  const walletBalance = user?.id
+    ? queryClient.getQueryData(["wallet-balance", user?.id])
+    : 0;
+  const isInsufficientBalance =
+    prepaidPayload?.paymentMethod === "wallet" &&
+    user?.id &&
+    (Number(walletBalance) === 0 || Number(walletBalance) < calculated.total);
+
+  // Form validation for review button
+
+  const handleOpenSummary = () => setSummaryOpen(true);
+  const handleCloseSummary = () => setSummaryOpen(false);
+
+  const onSubmit = async () => {
+    const payload = {
+      meter: meterDetails.number,
       info: {
-        amount: Number(values.amount),
-        email: values.email,
-        mobileNo: values.phoneNumber,
-        provider: values?.mobilePartner,
+        amount: calculated.total,
+        email: prepaidPayload?.email || user?.email,
+        phonenumber: prepaidPayload?.phonenumber || user?.phonenumber,
+        provider: prepaidPayload?.mobilePartner||'wallet',
       },
-      topup: Number(values.topup),
-      charges: Number(values.charges),
-      amount: Number(values.amount),
-      isWallet: paymentMethod === "wallet",
+      topup: calculated.topup,
+      charges: calculated.charges,
+      amount: calculated.total,
+      isWallet: prepaidPayload?.paymentMethod === "wallet",
     };
-
-    if (user?.id && paymentMethod === "wallet") {
-      const walletBalance = queryClient.getQueryData(
-        ["wallet-balance", user?.id],
-        { exact: true },
-      );
-
-      if (
-        Number(walletBalance) === 0 ||
-        Number(walletBalance) < Number(meterInfo.amount)
-      ) {
-        customDispatch(
-          globalAlertType(
-            "error",
-            "Insufficient Wallet Balance. Please request a top up.",
-          ),
-        );
-        return;
-      }
-      meterInfo.token = token;
+    if (prepaidPayload?.paymentMethod === "wallet") {
+      payload.token = prepaidPayload?.token;
     }
 
     Swal.fire({
-      title: "Processing",
-      text: `Proceed with payment?`,
-      html: `
-         <div style="display: flex; justify-content: center; align-items: center; height: 65svh; margin: 0; background: linear-gradient(135deg, #f0f4fa 0%, #e6ecf3 100%); font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif; padding: 0.5rem;">
-      <div style="max-width: 520px; width: 100%; background: #ffffff; overflow: hidden; transition: all 0.2s ease;">
-     
-    
-        <!-- Content area -->
-        <div style="padding: 1.8rem 1.8rem 2rem;">
-          
-          <!-- Meter details card -->
-          <div style="background: #f8fafd; border-radius: 20px; padding: 1rem 1.2rem; border: 1px solid #e9edf2; margin-bottom: 1rem;">
-            <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 0.6rem 0; border-bottom: 1px dashed #e2e8f0;">
-              <span style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 500; color: #4a617c;">
-               Meter Name
-              </span>
-              <span style="font-weight: 600; color: #1e2a3e; font-size: 0.9rem; background: white; padding: 0.2rem 0.7rem; border-radius: 30px;">${meterName}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 0.6rem 0; border-bottom: 1px dashed #e2e8f0;">
-              <span style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 500; color: #4a617c;">
-              Meter No.
-              </span>
-              <span style="font-weight: 600; color: #1e2a3e; font-size: 0.9rem; background: white; padding: 0.2rem 0.7rem; border-radius: 30px; font-family: monospace;">${meterNo}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 0.6rem 0;">
-              <span style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 500; color: #4a617c;">
-                 Payment Method
-              </span>
-              <span style="background: #eef2ff; padding: 0.2rem 0.9rem; border-radius: 40px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; color: #1f4e6e;">
-                ${meterInfo.isWallet ? "Wallet" : "Mobile Money"}
-              </span>
-            </div>
-          </div>
-    
-          <!-- Financial breakdown (top‑up, charges, total) -->
-          <div style="background: #ffffff; border-radius: 20px; border: 1px solid #edf2f7; margin-bottom: 1rem; overflow: hidden;">
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.9rem 1.2rem; border-bottom: 1px solid #f0f4f9;">
-              <span style="display: flex; align-items: center; gap: 10px; font-weight: 500; color: #4a5b7a; font-size: 0.9rem;">
-                Top Up
-              </span>
-              <span style="font-weight: 600; color: #1f2a44;">GH¢${meterInfo.amount.toFixed(2)}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.9rem 1.2rem; border-bottom: 1px solid #f0f4f9;">
-              <span style="display: flex; align-items: center; gap: 10px; font-weight: 500; color: #4a5b7a; font-size: 0.9rem;">
-             Charges
-              </span>
-              <span style="font-weight: 600; color: #1f2a44;">GH¢${meterInfo.charges.toFixed(2)}</span>
-            </div>
-          </div>
-    
-          <!-- Total row (highlighted) -->
-          <div style="background: #fef9e6; border-radius: 18px; padding: 1rem .5rem; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ffe6c2; margin-bottom: 1.8rem;">
-            <span style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1rem; color: #b45309;">
-            Amount
-            </span>
-            <span style="font-weight: 800; font-size: 1.5rem; color: #c2410c; letter-spacing: -0.3px;">GH¢${meterInfo.amount.toFixed(2)}</span>
-            </div>
-            </div>
-           
-            </div>
-    </div>
-          `,
-
+      title: "Confirm Payment",
+      text: "Proceed with payment?",
+      icon: "question",
       showCancelButton: true,
-    }).then(({ isConfirmed }) => {
-      if (isConfirmed) {
-        if (!user?.id) {
-          mutateAsync(
-            {},
-            {
-              onSuccess: () => {
-                mutate(meterInfo, {
-                  onSuccess: (data) => {
-                    if (data) {
-                      console.log(data);
-
-                      navigate(`/confirm`, {
-                        replace: true,
-                        state: {
-                          id: data?.id,
-                          categoryType: "prepaid",
-                          path: pathname,
-                          isWallet: meterInfo.isWallet,
-                        },
-                      });
-                    }
-                  },
-                  onError: (error) => {
-                    customDispatch(globalAlertType("error", error));
-                  },
-                });
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        paymentMutation.mutate(payload, {
+          onSettled: () => {
+            handleCloseSummary();
+          },
+          onSuccess: (data) => {
+            navigate("/confirm", {
+              replace: true,
+              state: {
+                id: data.id,
+                categoryType: "prepaid",
+                path: pathname,
+                isWallet: payload.isWallet,
               },
-            },
-          );
-        } else {
-          mutate(meterInfo, {
-            onSuccess: (data) => {
-              if (data) {
-                navigate(`/confirm`, {
-                  replace: true,
-                  state: {
-                    id: data?.id,
-                    categoryType: "prepaid",
-                    path: pathname,
-                    isWallet: meterInfo.isWallet,
-                  },
-                });
-              }
-            },
-            onError: async (error) => {
-              if (error === "Invalid PIN!") {
-                setFailCount((prevState) => prevState - 1);
-                if (failureCount === 0) {
-                  const message = `Wallet disabled due to multiple failed attempts.Try again after ${dataDisableWallet?.timeOut}`;
-                  setErr(message);
-                  queryClient.setQueryData(["wallet-status"], (oldData) => ({
-                    ...oldData,
-                    active: false,
-                    timeOut: dataDisableWallet?.timeOut,
-                  }));
-                } else {
-                  setErr(`${error} ${failureCount - 1} attempt(s) left.`);
-                }
-              } else {
-                // setErr(`${error} ${failureCount - 1} attempt(s) left.`);
-                customDispatch(globalAlertType("error", error));
-              }
-            },
-          });
-        }
+            });
+          },
+          onError: (error) => {
+            if (error === "Invalid PIN!") {
+              const newCount = failureCount - 1;
+              setFailCount(newCount);
+              customDispatch(
+                globalAlertType(
+                  "error",
+                  newCount > 0
+                    ? `Invalid PIN! ${newCount} attempt(s) left.`
+                    : "Wallet disabled due to multiple failed attempts.",
+                ),
+              );
+            } else {
+              customDispatch(globalAlertType("error", error));
+            }
+          },
+        });
       }
     });
   };
 
-  if (!meterNo || !meterName) {
+  if (!meterNo && !meterDetails.number) {
     return <Navigate to="/electricity" />;
   }
 
   return (
-    <Container
-      sx={{
-        maxHeight: "100%",
-        p: 2,
-        display: "grid",
-      }}
-    >
-      <Box
-        sx={{
-          background: `linear-gradient(rgba(0,0,0,0.8),rgba(0,0,0,0.7)),url(${IMAGES.ecg}) no-repeat `,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          height: { xs: 50, md: 80 },
-          width: "100%",
-          display: "grid",
-          placeItems: "center",
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Paper elevation={3} sx={{ p: { xs: 2, sm: 4 }, borderRadius: 2 }}>
+
+        
+             <IconButton
+              aria-label="back"
+              onClick={() => navigate(-1)}
+              sx={{ mb: 2, p: 0 }}
+            >
+              <ArrowBackIosNewIcon />
+            </IconButton>
+
+             <Alert severity="info" sx={{ mb: 2 }}>
+              <strong>Fee structure:</strong> GHS 2.00 for GHS 50–99, 2% for GHS
+              100+. Minimum amount: GHS 50.
+            </Alert>
+        <Grid container spacing={4}>
+          {/* Left column: Meter details */}
+          <Grid item xs={12} md={6}>
+            <AnimatedContainer>
+              <Container
+                sx={{
+                  borderRadius: 2,
+                  padding: 3,
+                  display: "flex",
+                  flexDirection: "column",
+                  rowGap: 1,
+                  bgcolor: "secondary.main",
+                  color: "secondary.contrastText",
+                }}
+              >
+                <>
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    // marginY={1}
+                    bgcolor="#fff"
+                    color="#333"
+                    padding={2}
+                  >
+                    <Typography variant="body2">Top Up Amount</Typography>
+                    <Typography variant="body2">
+                      {currencyFormatter(amount || 0)}
+                    </Typography>
+                  </Stack>
+                  <small style={{ color: "var(--primary)" }}>
+                    NOTE: Minimum amount you can buy is <b> GHS 50</b>.
+                  </small>
+                  <CheckOutItem
+                    color="secondary.contrastText"
+                    title="Meter No."
+                    value={meterDetails?.number || meterNo}
+                  />
+                  <CheckOutItem
+                    color="secondary.contrastText"
+                    title="Name"
+                    value={meterDetails?.name}
+                  />
+                  <CheckOutItem
+                    color="secondary.contrastText"
+                    title="Type"
+                    value="PREPAID (IMES)"
+                  />
+
+                  <CheckOutItem
+                    color="secondary.contrastText"
+                    title="District"
+                    value={
+                      meterDetails?.district
+                        ? `${meterDetails.district} District`
+                        : "N/A"
+                    }
+                  />
+
+                  <CheckOutItem
+                    color="secondary.contrastText"
+                    title="Email "
+                    value={meterDetails?.email || user?.email || "N/A"}
+                  />
+                  <CheckOutItem
+                    color="secondary.contrastText"
+                    title="Mobile No."
+                    value={meterDetails?.phonenumber || user?.phonenumber || "N/A"}
+                  />
+                </>
+                {meterDetails.isLoading && (
+                  <Typography>Loading Meter Information.....</Typography>
+                )}
+              </Container>
+            </AnimatedContainer>
+          </Grid>
+
+          {/* Right column: Payment form */}
+          <Grid item xs={12} md={6}>
+            <Typography variant="h6" fontWeight="bold" gutterBottom>
+              Payment Details
+            </Typography>
+       
+
+            <Stack spacing={2}>
+              <Controller
+                name="amount"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    type="number"
+                    label="Top-up Amount (GHS)"
+                    required
+                    placeholder="0.00"
+                    fullWidth
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">GH¢</InputAdornment>
+                      ),
+                    }}
+                    error={!!errors.amount}
+                    helperText={errors.amount?.message}
+                  />
+                )}
+              />
+              {calculated.total > 0 && (
+                <Paper
+                  variant="outlined"
+                  sx={{ p: 2, bgcolor: "action.hover" }}
+                >
+                  <Stack spacing={1}>
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography variant="body2">Top-up:</Typography>
+                      <Typography variant="body2">
+                        {currencyFormatter(calculated.topup)}
+                      </Typography>
+                    </Stack>
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography variant="body2">Charges:</Typography>
+                      <Typography variant="body2" color="error.main">
+                        {currencyFormatter(calculated.charges)}
+                      </Typography>
+                    </Stack>
+                    <Divider />
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography variant="subtitle2" fontWeight="bold">
+                        Total:
+                      </Typography>
+                      <Typography
+                        variant="subtitle2"
+                        fontWeight="bold"
+                        color="primary.main"
+                      >
+                        {currencyFormatter(calculated.total)}
+                      </Typography>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              )}
+
+              <PaymentOption
+                showMomo
+                showWallet={!!user?.id}
+                initialValues={{
+                  fullName: user?.name || "",
+                  email: user?.email || "",
+                }}
+                onSubmit={(values) => {
+                  // clearErrors("amount");
+                  //validate amount before proceeding
+                  if (!isValid) {
+                    //validate amount here
+                    if (amount < 50) {
+                      customDispatch(
+                        globalAlertType(
+                          "error",
+                          "Minimum amount you can buy is GHS 50.",
+                        ),
+                      );
+                      setError("amount", {
+                        type: "manual",
+                        message: "Minimum amount you can buy is GHS 50.",
+                      });
+                      return;
+                    }
+                  }
+
+                  if (
+                    values.paymentMethod === "wallet" &&
+                    isInsufficientBalance
+                  ) {
+                    customDispatch(
+                      globalAlertType("error", "Insufficient wallet balance"),
+                    );
+                    return;
+                  }
+
+                  setPrepaidPayload(values);
+                  handleOpenSummary();
+                  clearErrors("amount");
+                }}
+              />
+            </Stack>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Order Summary Dialog */}
+      <Dialog
+        open={summaryOpen}
+        onClose={handleCloseSummary}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            overflow: "hidden",
+          },
         }}
       >
-        <Typography variant="h4" color="#fff">
-          Prepaid Units
-        </Typography>
-      </Box>
-      {/* <Back to='/electricity' /> */}
-      <Container sx={{ py: 6 }}>
-        <Stack justifyContent="center" alignItems="center" py={2}>
-          <Typography variant="h4" color="secondary" paragraph>
-            Meter Details
-          </Typography>
-          <Typography variant="body2" textAlign="center">
-            Enter your transaction details and the amount to top up.
-          </Typography>
-        </Stack>
-        <Divider />
-
-        <ul style={{ paddingBlock: "8px" }}>
-          <Typography color="error">
-            NOTE: Please ensure you have sufficient balance in your account
-            before proceeding with the transaction.
-          </Typography>
-          Be informed that there is a
-          <li>
-            {" "}
-            <b> fee of GHS 2.00 </b> for transaction from{" "}
-            <b>GHS 50.00 - GHS 99.00</b> and
-          </li>
-          <li>
-            {" "}
-            <b>2% fee</b> for transaction from <b>GHS 100 and above.</b>
-          </li>
-        </ul>
-
-        <Container
-          maxWidth="md"
+        <DialogTitle
           sx={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))",
-            gap: 4,
-            paddingY: 2,
+            bgcolor: "primary.lighter",
+            color: "primary.contrastText",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            py: 2,
           }}
         >
-          <AnimatedContainer>
-            <Container
+          <Stack direction="row" spacing={1} alignItems="center">
+            <ReceiptIcon />
+            <Typography variant="h6" component="span" fontWeight={600}>
+              Confirm Checkout
+            </Typography>
+          </Stack>
+          <IconButton
+            size="small"
+            onClick={handleCloseSummary}
+            sx={{ color: "primary.contrastText" }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 3, bgcolor: "background.default" }}>
+          <Stack spacing={2}>
+            <Paper
+              elevation={0}
               sx={{
+                p: 2,
+                bgcolor: "background.paper",
                 borderRadius: 2,
-                padding: 3,
-                display: "flex",
-                flexDirection: "column",
-                rowGap: 2,
-                bgcolor: "secondary.main",
-                color: "secondary.contrastText",
+                border: "1px solid",
+                borderColor: "divider",
               }}
             >
-              <>
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  marginY={1}
-                  bgcolor="#fff"
-                  color="#333"
-                  padding={2}
-                >
-                  <Typography variant="body2">Top Up Amount</Typography>
-                  <Typography variant="body2">
-                    {currencyFormatter(amount || 0)}
-                  </Typography>
-                </Stack>
-                <small style={{ color: "var(--primary)" }}>
-                  NOTE: Minimum amount you can buy is <b> GHS 50</b>.
-                </small>
+              <Stack spacing={1}>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  Meter Details
+                </Typography>
                 <CheckOutItem
-                  color="secondary.contrastText"
-                  title="Meter No."
-                  value={meterDetails?.data?.number || meterNo}
+                  title="Meter Number"
+                  value={meterDetails.number || meterNo}
                 />
-                <CheckOutItem
-                  color="secondary.contrastText"
-                  title="Name"
-                  value={meterDetails?.data?.name || meterName}
-                />
-                <CheckOutItem
-                  color="secondary.contrastText"
-                  title="Type"
-                  value="PREPAID (IMES)"
-                />
+                <CheckOutItem title="Name" value={meterDetails.name || "N/A"} />
+              </Stack>
+            </Paper>
+            {/* Ticket Summary */}
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                bgcolor: "background.paper",
+                borderRadius: 2,
+                border: "1px solid",
+                borderColor: "divider",
+              }}
+            >
+              <Typography variant="subtitle1" fontWeight="bold" pb={2}>
+                Payment Summary
+              </Typography>
 
+              <Stack spacing={1}>
                 <CheckOutItem
-                  color="secondary.contrastText"
-                  title="District"
+                  title="Payment Method"
                   value={
-                    meterDetails?.data?.district ||
-                    sessionStorage.getItem("meter-location")
+                    prepaidPayload?.paymentMethod === "wallet"
+                      ? "Wallet"
+                      : "Mobile Money"
                   }
                 />
+                
+                {prepaidPayload?.paymentMethod !== "wallet" && (
+                  <>
+                    <CheckOutItem
+                      title="Mobile Number"
+                      value={prepaidPayload?.phonenumber}
+                    />
+                    <CheckOutItem
+                      title="Provider"
+                      value={prepaidPayload?.mobilePartner}
+                    />
+                  </>
+                )}
+                <CheckOutItem
+                  title="Top-up Amount"
+                  value={currencyFormatter(calculated.topup)}
+                />
+                <CheckOutItem
+                  title="Charges"
+                  value={currencyFormatter(calculated.charges)}
+                />
+                <CheckOutItem
+                  title="Total"
+                  value={currencyFormatter(calculated.total)}
+                  bold
+                  color="primary.main"
+                />
 
-                <CheckOutItem
-                  color="secondary.contrastText"
-                  title="Email "
-                  value={meterDetails?.data?.email || email}
-                />
-                <CheckOutItem
-                  color="secondary.contrastText"
-                  title="Moblie No."
-                  value={phoneNumber}
-                />
-              </>
-              {meterDetails.isLoading && (
-                <Typography>Loading Meter Information.....</Typography>
-              )}
-            </Container>
-          </AnimatedContainer>
-          <AnimatedContainer delay={0.3}>
-            <Formik
-              initialValues={initialValues}
-              onSubmit={onSubmit}
-              enableReinitialize={true}
-              validationSchema={prepaidNonUserPaymentValidationSchema(
-                paymentMethod === "momo",
-              )}
+              </Stack>
+            </Paper>
+            {/* Additional info / disclaimer */}
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              textAlign="center"
             >
-              {({ isSubmitting, errors, touched, handleSubmit }) => {
-                return (
-                  <Stack spacing={3} py={2}>
-                    <TextField
-                      size="small"
-                      label="Enter Amount"
-                      placeholder="Enter Amount here"
-                      type="number"
-                      inputMode="decimal"
-                      fullWidth
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      error={Boolean(touched.amount && errors.amount)}
-                      helperText={touched.amount && errors.amount}
-                      required
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">GH¢</InputAdornment>
-                        ),
-                        endAdornment: (
-                          <InputAdornment position="end">p</InputAdornment>
-                        ),
-                      }}
-                    />
-                    <TextField
-                      size="small"
-                      type="email"
-                      inputMode="email"
-                      label="Email Address(optional)"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      error={Boolean(touched.email && errors.email)}
-                      helperText={touched.email && errors.email}
-                    />
-                    <PaymentOption
-                      showWallet={user?.id}
-                      showMomo
-                      setPaymentMethod={setPaymentMethod}
-                      error={Boolean(
-                        touched.paymentMethod && errors.paymentMethod,
-                      )}
-                      value={paymentMethod}
-                      helperText={errors.paymentMethod || err}
-                      mobileMoneyDetails={{
-                        mobilePartner,
-                        setMobilePartner,
-                        mobilePartnerErr: Boolean(
-                          touched.mobilePartner && errors.mobilePartner,
-                        ),
-                        mobilePartnerHelperText: errors.mobilePartner,
-                        phonenumber: phoneNumber,
-                        setPhonenumber: setPhoneNumber,
-                        phonenumberErr: Boolean(
-                          touched.phoneNumber && errors.phoneNumber,
-                        ),
-                        phonenumberHelperText: errors.phoneNumber,
-                        confirmPhonenumber,
-                        setConfirmPhonenumber,
-                        confirmPhonenumberErr: Boolean(
-                          touched.phoneNumber && errors.confirmPhonenumber,
-                        ),
-                        confirmPhonenumberHelperText: errors.confirmPhonenumber,
-                      }}
-                      walletDetails={{
-                        token,
-                        setToken,
-                        tokenErr: Boolean(touched.token && errors.token) || err,
-                        tokenHelperText: errors.token || err,
-                      }}
-                    />
-
-                    <LoadingButton
-                      type="submit"
-                      loading={isSubmitting}
-                      variant="contained"
-                      fullWidth
-                      onClick={handleSubmit}
-                    >
-                      Top Up
-                    </LoadingButton>
-                  </Stack>
-                );
-              }}
-            </Formik>
-          </AnimatedContainer>
-        </Container>
-      </Container>
-      {/* <NonUserPayment /> */}
-
-      {/* <ServiceNotAvaialble open={serviceAvailable()} /> */}
+              By confirming, you agree to our terms and conditions.
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, gap: 1 }}>
+          <Button onClick={handleCloseSummary}>Cancel</Button>
+          <LoadingButton
+            variant="contained"
+            onClick={handleSubmit(onSubmit)}
+            loading={paymentMutation.isLoading}
+            sx={{
+              px: 3,
+              "&:hover": { bgcolor: "primary.dark" },
+            }}
+          >
+            Confirm Payment
+          </LoadingButton>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

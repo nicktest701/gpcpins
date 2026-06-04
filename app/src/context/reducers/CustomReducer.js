@@ -223,11 +223,6 @@ export const CustomReducer = (state, { type, payload }) => {
         ...state,
         openUnavailable: payload,
       };
-    case "set_Airtime_Bundle_Amount":
-      return {
-        ...state,
-        airtime_bundle_amount: Number(payload).toFixed(2),
-      };
 
     case "setGlobalAlert":
       return {

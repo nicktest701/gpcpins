@@ -46,7 +46,7 @@ const fadeIn = keyframes`
 `;
 
 // Spinner component using MUI CircularProgress
-const Spinner = ({ size = 20, color = "#F78E2A" }) => (
+export const Spinner = ({ size = 20, color = "#F78E2A" }) => (
   <CircularProgress
     size={size}
     sx={{ color, animation: `${spin} 0.9s linear infinite` }}
@@ -64,7 +64,6 @@ function PaymentStatus() {
   const [transaction, setTransaction] = useState(null);
 
   const txRef = user?.id || state?.transactionReference || null;
-
 
   // console.log(paymentStatus)
   // 1. DEFINE SUCCESS HANDLER FIRST (With complete dependency array)
@@ -98,6 +97,7 @@ function PaymentStatus() {
           });
         }, 3000);
       }
+      queryClient.invalidateQueries(["notifications"]);
     },
     [state, navigate, queryClient, customDispatch],
   );
@@ -135,8 +135,8 @@ function PaymentStatus() {
   const confirmPayment = useQuery({
     queryKey: ["confirm-payment", state?.id],
     queryFn: () => ConfirmPayment({ id: state?.id, type: state?.categoryType }),
-    enabled: false,
-    // enabled: !!state?.id && !!state?.categoryType,
+    // enabled: false,
+    enabled: !!state?.id && !!state?.categoryType,
     refetchInterval: 15000,
     refetchIntervalInBackground: false,
     retry: 3,
@@ -339,63 +339,7 @@ function PaymentStatus() {
               />
             </Box>
 
-            {/* Status badge */}
-            <Box
-              sx={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                px: "14px",
-                py: "6px",
-                borderRadius: "100px",
-                fontSize: "13px",
-                fontWeight: 600,
-                bgcolor:
-                  statusType === "waiting"
-                    ? "#FFE16A"
-                    : statusType === "success"
-                      ? "#dcfce7"
-                      : "#fee2e2",
-                color:
-                  statusType === "waiting"
-                    ? "#7A4F01"
-                    : statusType === "success"
-                      ? "#15803d"
-                      : "#b91c1c",
-              }}
-            >
-              <Box
-                sx={{
-                  zIndex: 999,
-                  width: "7px",
-                  height: "7px",
-                  borderRadius: "50%",
-                  bgcolor:
-                    statusType === "waiting"
-                      ? "#F78E2A"
-                      : statusType === "success"
-                        ? "#16a34a"
-                        : "#dc2626",
-                  animation:
-                    statusType === "waiting"
-                      ? `${blink} 1.4s ease-in-out infinite`
-                      : "none",
-                }}
-              />
-              {statusType === "waiting" && "Waiting for confirmation"}
-              {statusType === "success" && "Payment received!"}
-              {statusType === "error" && "Payment cancelled"}
-            </Box>
-
-            {/* Divider */}
-            <Box
-              sx={{
-                width: "100%",
-                height: "1px",
-                bgcolor: "#f3f4f6",
-                my: "2px",
-              }}
-            />
+        
 
             {/* Cancelled state */}
             {isCancelled && (
@@ -569,69 +513,18 @@ function PaymentStatus() {
                       }}
                     >
                       <Typography
-                        variant="subtitle2"
+                        variant="caption"
+                        textAlign="center"
                         sx={{
                           mb: "10px",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.06em",
+                          textAlign: "center",
+                       
+                          fontWeight: 500,
                         }}
                       >
-                        How to complete
+                        A prompt has been sent to your mobile phone. Enter your
+                        Mobile Money PIN to complete the payment.
                       </Typography>
-                      {[
-                        <>
-                          Check your phone for a{" "}
-                          <Box
-                            component="span"
-                            sx={{ color: "#F78E2A", fontWeight: 700 }}
-                          >
-                            MoMo prompt
-                          </Box>
-                        </>,
-                        <>
-                          Approve &amp; enter your{" "}
-                          <Box
-                            component="span"
-                            sx={{ color: "#F78E2A", fontWeight: 700 }}
-                          >
-                            Mobile Money PIN
-                          </Box>
-                        </>,
-                      ].map((text, i) => (
-                        <Stack
-                          key={i}
-                          direction="row"
-                          alignItems="flex-start"
-                          gap="10px"
-                          sx={{ mb: i === 1 ? 0 : "10px" }}
-                        >
-                          <Box
-                            sx={{
-                              minWidth: "22px",
-                              height: "22px",
-                              borderRadius: "50%",
-                              bgcolor: "#F78E2A",
-                              color: "#fff",
-                              fontSize: "11px",
-                              fontWeight: 700,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              flexShrink: 0,
-                              mt: "1px",
-                            }}
-                          >
-                            {i + 1}
-                          </Box>
-                          <Typography
-                            variant="caption"
-                            sx={{ lineHeight: 1.5 }}
-                          >
-                            {text}
-                          </Typography>
-                        </Stack>
-                      ))}
                     </Box>
                     <MomoGuide mobilePartner={state?.mobilePartner} />
                     <Stack direction="row" alignItems="center" gap="10px">

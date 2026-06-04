@@ -499,60 +499,27 @@ export const prepaidValidationSchema = () => {
   });
 };
 
-export const prepaidNonUserPaymentValidationSchema = (momo) => {
-  return object().shape({
+export const prepaidPaymentValidationSchema = object().shape({
     amount: number()
       .required("Required")
       .min(50, "Minimum amount you can buy is GHS 50."),
-    email: string().test("isValidEmail", "", (value) => {
-      if (value?.trim() === "" || value === undefined) {
-        return true;
-      }
-
-      if (!isValidEmail(value)) {
-        throw new ValidationError(
-          "Invalid email format",
-          value, // Value to associate the error with
-          "email", // Field to associate the error with
-        );
-      }
-
-      return true;
-    }),
-    paymentMethod: string().required("Payment Method Required*"),
-    ...(momo ? momoSchema : null),
   });
-};
 
-export const prepaidMeterValidationSchema = () => {
-  return object().shape({
+
+export const prepaidMeterValidationSchema = object().shape({
     number: string()
       .trim()
       .uppercase()
       .required("Required*")
-      .matches(/^[a-zA-Z]\d{9}$/, "Invalid Meter id"),
+      .matches(/^[a-zA-Z]\d{9}$/, "Invalid Meter Number"),
     confirmNumber: string()
       .trim()
       .uppercase()
       .required("Required*")
-      .oneOf([ref("number"), null], "Meter IDs do not match"),
-    // SPNNumber: string().nullable()
-    //   .trim()
-    //   .uppercase(),
-    // confirmSPNNumber: string()
-    //   .when("SPNNumber", {
-    //     is: SPNNumber => SPNNumber !== null && SPNNumber !== '',
-    //     then: string().required("Required*"),
-    //     otherwise: string().trim()
-    //       .uppercase()
-    //       .oneOf([ref("SPNNumber"), null], "SPN Numbers do not match")
-    //   }).trim()
-    //   .uppercase()
-    //   .oneOf([ref("SPNNumber"), null], "SPN Numbers do not match")
-    // ,
-    name: string().trim().required("Required*"),
-  });
-};
+      .oneOf([ref("number"), null], "Meter Numbers do not match"),
+
+  })
+
 
 export const airtimeORbundleValidationSchema = object({
   type: string().trim().required("Top-up type is required"),

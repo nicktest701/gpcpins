@@ -8,22 +8,30 @@ import {
   Paper,
   Button,
   Chip,
-  Stack,
+
   Typography,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { useCustomContext } from "../../../context/providers/CustomProvider";
 
 const MeterTable = ({ meters }) => {
   const navigate = useNavigate();
-  const { customDispatch } = useCustomContext();
 
   const handleRowClick = (meter) => {
-    customDispatch({
-      type: "openViewMeter",
-      payload: { open: true, details: meter },
-    });
-    navigate(`/electricity/meters/${meter.id}`);
+    // customDispatch({
+    //   type: "openViewMeter",
+    //   payload: { open: true, details: meter },
+    // });
+         navigate(`/electricity/prepaid/${meter.number}/buy`, {
+        state: {
+          meterDetails: {
+            number: meter?.number,
+            name: meter.name,
+            address: meter.address,
+            spn: meter.spn,
+            // any other data
+          },
+        },
+      });
   };
 
   return (

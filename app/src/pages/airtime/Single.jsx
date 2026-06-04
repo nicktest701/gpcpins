@@ -116,13 +116,13 @@ function Single() {
                 color: "primary.contrastText",
               }}
             >
-              <Stack spacing={1}>
+              <Stack>
                 <Stack
                   direction="row"
                   alignItems="center"
                   justifyContent="space-between"
                 >
-                  <Typography variant="h5" fontWeight={700}>
+                  <Typography variant="h5" fontWeight={700} pb={0}>
                     Airtime & Bundle Purchase
                   </Typography>
 

@@ -332,7 +332,6 @@ class TransactionService {
   }
 
 
-
   async notifyLowBalance(balance) {
     const body = `Your one-4-all top up account balance is running low. Remaining balance: GHS ${balance}. Please recharge.`;
 
@@ -344,7 +343,6 @@ class TransactionService {
     }
   }
 }
-
 
 
 

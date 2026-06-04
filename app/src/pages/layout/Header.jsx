@@ -38,21 +38,17 @@ import MenuItem from "@mui/material/MenuItem";
 import Swal from "sweetalert2";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { IMAGES, currencyFormatter } from "@/constants";
-import EvoucherDropdown from "@/components/dropdowns/EvoucherDropdown";
 import { getInitials } from "@/config/validation";
-import PrepaidDropdown from "@/components/dropdowns/PrepaidDropdown";
 import NotificationDropdown from "@/components/dropdowns/NotificationDropdown";
 
-import { getAllBroadcastMessages } from "@/api/broadcastMessageAPI";
-import { useQuery, useIsFetching, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useIsFetching } from "@tanstack/react-query";
 import { getWalletBalance } from "@/api/walletAPI";
-import GlobalSpinner from "@/components/GlobalSpinner";
 import { useCustomContext } from "../../context/providers/CustomProvider";
 import { useAuth } from "../../context/providers/AuthProvider";
+import Navbar from "../../components/dropdowns/Navbar";
 
 function Header() {
   const { user, logout } = useAuth();
-  const queryClient = useQueryClient();
   const [showAlert, setShowAlert] = useState(true);
   const isFetching = useIsFetching();
   const { pathname } = useLocation();
@@ -60,6 +56,7 @@ function Header() {
     customState: { openSidebar, globalAlert },
     customDispatch,
     notifications: notifs,
+    walletBalance: walletBalanceCache,
   } = useCustomContext();
 
   const theme = useTheme();
@@ -67,8 +64,6 @@ function Header() {
   const [photo, setPhoto] = useState(null);
   const [shadow, setShadow] = useState("none");
   const [anchorEl, setAnchorEl] = useState(null);
-  const [showEvoucherDropdown, setShowEvoucherDropdown] = useState(false);
-  const [showPrepaidDropdown, setShowPrepaidDropdown] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] =
     useState(false);
   const navigate = useNavigate();
@@ -77,21 +72,19 @@ function Header() {
     queryKey: ["wallet-balance", user?.id],
     queryFn: () => getWalletBalance(user?.id),
     enabled: !!user?.id,
-    initialData: queryClient?.getQueryData(["wallet-balance"]),
+    initialData: walletBalanceCache,
   });
 
-  const notifications = useQuery({
-    queryKey: ["notifications", user?.id],
-    queryFn: () => getAllBroadcastMessages(),
-    enabled: !!user?.id,
-    initialData: notifs,
-    retry: 1,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  // const notifications = useQuery({
+  //   queryKey: ["notifications", user?.id],
+  //   queryFn: () => getAllBroadcastMessages(),
+  //   enabled: !!user?.id,
+  //   initialData: notifs,
+  //   retry: 1,
+  //   staleTime: 5 * 60 * 1000, // 5 minutes
+  // });
 
-  const unReadNotifications = notifications?.data?.filter(
-    (item) => item?.active === 1,
-  );
+  const unReadNotifications = notifs?.filter((item) => item?.active === 1);
 
   useLayoutEffect(() => {
     setPhoto(user?.profile);
@@ -374,17 +367,27 @@ function Header() {
           }}
         >
           {/* Left side: menu icon + mobile wallet info */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <IconButton
-              onClick={toggleSideBar}
-              sx={{
-                transition: theme.transitions.create("transform"),
-                "&:hover": { transform: "scale(1.1)" },
-              }}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              width: { xs: "100%", md: "auto" },
+            }}
+          >
+            <Box
+              sx={{  flexGrow: 1, flex: 1 }}
             >
-              <MenuIcon />
-            </IconButton>
-
+              <IconButton
+                onClick={toggleSideBar}
+                sx={{
+                  transition: theme.transitions.create("transform"),
+                  "&:hover": { transform: "scale(1.1)" },
+                }}
+              >
+                <MenuIcon />
+              </IconButton>
+            </Box>
             {/* Mobile wallet balance (visible only on xs) */}
             {user?.id && (
               <Box
@@ -438,45 +441,7 @@ function Header() {
           </Box>
 
           {/* Desktop navigation links */}
-          <Stack
-            direction="row"
-            spacing={4}
-            sx={{
-              display: { xs: "none", md: "flex" },
-              alignItems: "center",
-            }}
-          >
-            <NavLink to="/" style={myLinkStyles} className="nav-item">
-              Home
-            </NavLink>
-            <Box
-              sx={{ position: "relative" }}
-              onMouseEnter={() => setShowEvoucherDropdown(true)}
-              onMouseLeave={() => setShowEvoucherDropdown(false)}
-            >
-              <NavLink to="evoucher" style={myLinkStyles} className="nav-item">
-                Vouchers & Tickets
-              </NavLink>
-              <EvoucherDropdown display={showEvoucherDropdown} />
-            </Box>
-            <Box
-              sx={{ position: "relative" }}
-              onMouseEnter={() => setShowPrepaidDropdown(true)}
-              onMouseLeave={() => setShowPrepaidDropdown(false)}
-            >
-              <NavLink
-                to="electricity"
-                style={myLinkStyles}
-                className="nav-item"
-              >
-                Prepaid Units
-              </NavLink>
-              <PrepaidDropdown display={showPrepaidDropdown} />
-            </Box>
-            <NavLink to="airtime" style={myLinkStyles} className="nav-item">
-              Airtime & Data Bundle
-            </NavLink>
-          </Stack>
+          <Navbar />
 
           {/* Right side: desktop actions */}
           <Stack
@@ -555,7 +520,7 @@ function Header() {
                     </IconButton>
                   </Tooltip>
                   <NotificationDropdown
-                    notifications={notifications?.data}
+                    notifications={notifs}
                     open={showNotificationDropdown}
                     onClose={setShowNotificationDropdown}
                   />

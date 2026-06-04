@@ -627,7 +627,6 @@ function CinemaTicketCheckout() {
               textAlign="center"
             >
               By confirming, you agree to our terms and conditions.
-            
             </Typography>
           </Stack>
         </DialogContent>

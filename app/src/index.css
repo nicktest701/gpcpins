@@ -205,7 +205,7 @@ svg {
   font-weight: 600;
 }
 
-.css-eqpfi5-MuiAccordionSummary-content{
+/* .css-eqpfi5-MuiAccordionSummary-content{
   margin:0 !important;
   
 
@@ -213,7 +213,7 @@ svg {
 .css-eqpfi5-MuiAccordionSummary-content.Mui-expanded{
   margin:0 !important;
 
-}
+} */
 
 #root {
   height: 100svh;

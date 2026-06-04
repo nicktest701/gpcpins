@@ -1,209 +1,248 @@
+import { useState } from "react";
+import {
+  Container,
+  Box,
+  Typography,
+  TextField,
+  Alert,
+  Skeleton,
+  Paper,
+  Stack,
+  Divider,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton,
+} from "@mui/material";
+import SearchOffIcon from '@mui/icons-material/SearchOff';
 import { LoadingButton } from "@mui/lab";
-import { Box, Container, TextField, Typography, MenuItem } from "@mui/material";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import CloseIcon from "@mui/icons-material/Close";
 import { IMAGES } from "../../constants";
 import AnimatedContainer from "../../components/animations/AnimatedContainer";
-// import ServiceNotAvaialble from "../ServiceNotAvaialble";
-// import { serviceAvailable } from "../../config/serviceAvailable";
-import { Formik } from "formik";
-import DOMPurify from "dompurify";
 import { prepaidMeterValidationSchema } from "../../config/validationSchema";
+import { getMeterByNumber } from "@/api/meterAPI"; // assuming this API exists
 
 function Prepaid() {
   const navigate = useNavigate();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [submittedNumber, setSubmittedNumber] = useState("");
 
-  const initialValues = {
-    number: "",
-    confirmNumber: "",
-    name: "",
-    district: "ASHANTI REGION",
-    type: "IMES",
+  // React Hook Form
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: yupResolver(prepaidMeterValidationSchema),
+    defaultValues: {
+      number: "",
+      confirmNumber: "",
+    },
+  });
+
+  // Query to fetch meter details (enabled only when modal opens)
+  const {
+    data: meter,
+    isLoading: meterLoading,
+    isError: meterError,
+    error: meterErrorObj,
+    refetch: refetchMeter,
+  } = useQuery({
+    queryKey: ["meter-by-id", submittedNumber],
+    queryFn: () => getMeterByNumber(submittedNumber),
+    enabled:!! submittedNumber, // manual trigger
+    retry: 1,
+  });
+
+  const onVerify = (values) => {
+    const meterNumber = values?.number?.toUpperCase();
+    setSubmittedNumber(meterNumber);
+    setModalOpen(true);
+    // We'll refetch after modal opens, but we'll call refetch in useEffect when modal opens and number changes.
   };
 
-  const onSubmit = (values) => {
-    const meterInfo = {
-      number: DOMPurify.sanitize(values?.number?.toUpperCase()),
-      name: DOMPurify.sanitize(values?.name?.toUpperCase()),
-      district: DOMPurify.sanitize(values?.district?.toUpperCase()),
-      type: values?.type?.toUpperCase(),
-    };
 
-    sessionStorage.setItem("meter", JSON.stringify(meterInfo));
-    sessionStorage.setItem("meter-location", values.district);
-    navigate(
-      `verify/${values.number.toUpperCase()}/${values.name?.toUpperCase()}`
-    );
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    // Optionally reset meter data
+    setSubmittedNumber(null);
+  };
+
+  const handleProceedToVerify = () => {
+    if (meter) {
+      navigate(`prepaid/${submittedNumber}/buy`, {
+        state: {
+          meterDetails: {
+            number: submittedNumber,
+            name: meter.name,
+            address: meter.address,
+            spn: meter.spn,
+            // any other data
+          },
+        },
+      });
+    }
   };
 
   return (
-    <Container
-      sx={{
-        textAlign: "center",
-        paddingY: 2,
-        backgroundColor: "#fff",
-        // width: "95%",
-      }}
-    >
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* Hero Banner */}
       <Box
         sx={{
-          background: `linear-gradient(rgba(0,0,0,0.8),rgba(0,0,0,0.7)),url(${IMAGES.ecg}) no-repeat `,
+          background: `linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.65)), url(${IMAGES.ecg}) no-repeat center`,
           backgroundSize: "cover",
-          backgroundPosition: "center",
-          height: { xs: 60, md: 100 },
-          display: "grid",
-          placeItems: "center",
+          borderRadius: 2,
+          p: { xs: 3, md: 5 },
+          mb: 4,
         }}
       >
-        <Typography variant="h4" color="#fff">
+        <Typography variant="h3" component="h1" color="white" fontWeight="bold" textAlign="center">
           Prepaid Units
         </Typography>
+        <Typography variant="body1" color="white" textAlign="center" sx={{ mt: 1 }}>
+          Buy electricity units for your IMES meter instantly
+        </Typography>
       </Box>
-      <Container sx={{ paddingY: 10 }}>
-        <AnimatedContainer>
-          <Typography variant="h5" color="secondary" paragraph>
+
+      <AnimatedContainer>
+        <Paper elevation={3} sx={{ p: { xs: 2, sm: 4 }, borderRadius: 2 }}>
+          <Typography variant="h5" color="primary" fontWeight="bold" gutterBottom>
             Buy Your Prepaid Units Online
           </Typography>
-          <Typography variant="body2" paragraph>
-            We&lsquo;ve simplified things for easy & quick buying of your home
-            and office prepaid units.
+          <Typography variant="body2" color="text.secondary" paragraph>
+            We&apos;ve simplified things for easy & quick buying of your home and office prepaid units.
           </Typography>
-        </AnimatedContainer>
-        <AnimatedContainer delay={0.3}>
-          <Container
-            maxWidth="sm"
-            sx={{
-              // background: 'linear-gradient(145deg, #e6e6e6, #ffffff)',
-              backgroundColor: "#fff",
-              boxShadow: "20px 20px 60px #d9d9d9,-20px -20px 60px #ffffff",
-              borderRadius: 2,
-              display: "grid",
-              placeItems: "center",
-              gap: 2,
-              p: 2,
-              mt: 4,
-            }}
+
+          <Divider sx={{ my: 3 }} />
+
+          <Typography variant="h6" color="error" fontWeight="bold" gutterBottom>
+            Please Note!!!
+          </Typography>
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            Our prepaid electricity units are exclusively available to residents with{" "}
+            <strong>IMES meter type</strong>. Please ensure your location eligibility before
+            proceeding. Thank you for your cooperation.
+          </Alert>
+
+          <form onSubmit={handleSubmit(onVerify)} noValidate>
+            <Stack spacing={2} maxWidth="sm" mx="auto">
+              <Controller
+                name="number"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="IMES Meter ID"
+                    placeholder="e.g. Q788798766"
+                    fullWidth
+                    error={!!errors.number}
+                    helperText={errors.number?.message}
+                    inputProps={{ style: { textTransform: "uppercase" } }}
+                  />
+                )}
+              />
+              <Controller
+                name="confirmNumber"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Confirm Meter ID"
+                    placeholder="e.g. Q788798766"
+                    fullWidth
+                    error={!!errors.confirmNumber}
+                    helperText={errors.confirmNumber?.message}
+                    inputProps={{ style: { textTransform: "uppercase" } }}
+                  />
+                )}
+              />
+              <LoadingButton
+                type="submit"
+                variant="contained"
+                loading={isSubmitting}
+                size="large"
+                sx={{ py: 1.5, mt: 1 }}
+              >
+                Verify Meter
+              </LoadingButton>
+            </Stack>
+          </form>
+        </Paper>
+      </AnimatedContainer>
+
+      {/* Meter Details Modal */}
+      <Dialog open={modalOpen} onClose={handleCloseModal} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          Meter Details
+          <IconButton
+            onClick={handleCloseModal}
+            sx={{ position: "absolute", right: 8, top: 8 }}
           >
-            <Typography variant="h5" color="error" fontStyle="italic">
-              Please Note!!!
-            </Typography>
-            <Typography
-              variant="caption"
-              sx={{ placeSelf: "self-start" }}
-              paragraph
-            >
-              Our prepaid electricity units are exclusively available to
-              residents with <b>IMES</b> meter type. Please ensure your location
-              eligibility before proceeding with any purchases. Thank you for
-              your cooperation.
-            </Typography>
-            {/* within <b>MENHYIA NORTH AND SOUTH (ASHANTI)</b> */}
-            <Formik
-              initialValues={initialValues}
-              onSubmit={onSubmit}
-              // enableReinitialize={true}
-              validationSchema={prepaidMeterValidationSchema}
-            >
-              {({
-                isSubmitting,
-                errors,
-                touched,
-                handleSubmit,
-                getFieldProps,
-              }) => {
-                return (
-                  <>
-                    <TextField
-                      id="number"
-                      name="number"
-                      label="IMES Meter ID"
-                      placeholder="e.g.Q788798766"
-                      fullWidth
-                      {...getFieldProps("number")}
-                      error={Boolean(touched.number && errors.number)}
-                      helperText={touched.number && errors.number}
-                      inputProps={{
-                        style: { textTransform: "uppercase" },
-                      }}
-                    />
-                    <TextField
-                      id="confirmNumber"
-                      name="confirmNumber"
-                      label="Confirm Meter ID"
-                      placeholder="e.g.Q788798766"
-                      fullWidth
-                      {...getFieldProps("confirmNumber")}
-                      error={Boolean(
-                        touched.confirmNumber && errors.confirmNumber
-                      )}
-                      helperText={touched.confirmNumber && errors.confirmNumber}
-                      inputProps={{
-                        style: { textTransform: "uppercase" },
-                      }}
-                    />
-                    <TextField
-                      id="name"
-                      name="name"
-                      label="Meter Name"
-                      placeholder="Enter Meter Name here"
-                      fullWidth
-                      {...getFieldProps("name")}
-                      error={Boolean(touched.name && errors.name)}
-                      helperText={touched.name && errors.name}
-                    />
-                    <TextField
-                      id="type"
-                      name="type"
-                      select
-                      label="Prepaid Meter Type"
-                      placeholder="Select Meter Type"
-                      fullWidth
-                      {...getFieldProps("type")}
-                      error={Boolean(touched.type && errors.type)}
-                      helperText={touched.type && errors.type}
-                    >
-                      <MenuItem value="IMES">IMES</MenuItem>
-                    </TextField>
-
-                    <TextField
-                      id="location"
-                      name="location"
-                      select
-                      label="Meter Location"
-                      placeholder="Select Meter Location"
-                      fullWidth
-                      {...getFieldProps("district")}
-                      error={Boolean(touched.district && errors.district)}
-                      helperText={touched.district && errors.district}
-                    >
-                      {/* <MenuItem value="MENHYIA NORTH,ASHANTI">
-                        MENHYIA NORTH,ASHANTI
-                      </MenuItem>
-                      <MenuItem value="MENHYIA SOUTH,ASHANTI">
-                        MENHYIA SOUTH,ASHANTI
-                      </MenuItem> */}
-                      <MenuItem value="ASHANTI REGION">ASHANTI REGION</MenuItem>
-                    </TextField>
-
-                    <LoadingButton
-                      loading={isSubmitting}
-                      variant="contained"
-                      fullWidth
-                      onClick={handleSubmit}
-                      sx={{ my: 2, py: 2 }}
-                    >
-                      Verify
-                    </LoadingButton>
-                  </>
-                );
-              }}
-            </Formik>
-          </Container>
-        </AnimatedContainer>
-      </Container>
-
-      {/* <ServiceNotAvaialble open={serviceAvailable()} /> */}
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {meterLoading ? (
+            <Stack spacing={2}>
+              <Skeleton variant="text" width="80%" height={32} />
+              <Skeleton variant="text" width="60%" height={24} />
+              <Skeleton variant="rectangular" height={80} />
+            </Stack>
+          ) : meterError ? (
+            <Alert severity="error" action={
+              <Button color="inherit" size="small" onClick={() => refetchMeter()}>
+                Retry
+              </Button>
+            }>
+              {meterErrorObj?.message || "Failed to fetch meter details. Please check the meter number."}
+            </Alert>
+          ) : meter ? (
+            <Stack spacing={2}>
+              <Typography variant="body2">
+                <strong>Meter Number:</strong> {submittedNumber}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Meter Name:</strong> {meter.name || "N/A"}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Address:</strong> {meter.address || "N/A"}
+              </Typography>
+              {meter.spn && (
+                <Typography variant="body2">
+                  <strong>SPN Number:</strong> {meter.spn}
+                </Typography>
+              )}
+              <Typography variant="body2" color="success.main">
+                <strong>Type:</strong> IMES Prepaid
+              </Typography>
+            </Stack>
+          ) : (
+            <Stack spacing={2} alignItems="center" py={4}>
+              <SearchOffIcon sx={{width: 60, height: 60}}/>
+            <Typography severity="warning">Meter not found. Please verify the number and try again.</Typography>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseModal}>Cancel</Button>
+          <LoadingButton
+            variant="contained"
+            onClick={handleProceedToVerify}
+            disabled={!meter || meterError}
+          >
+            Proceed to Buy
+          </LoadingButton>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }
 
 export default Prepaid;
+

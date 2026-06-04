@@ -1,5 +1,6 @@
 const nodemailer = require("nodemailer");
 const { resendMailText } = require("./mailText");
+const { getFileStream } = require("./uploadFile");
 // const { Resend } = require("resend");
 const { thankYouText } = (require = require("./mailText"));
 
@@ -32,7 +33,8 @@ const sendMail = async (transaction_id, email_address) => {
     attachments: [
       {
         filename: `${transaction_id}.pdf`,
-        path: `./vouchers/${transaction_id}.pdf`,
+        content: getFileStream("vouchers", transaction_id),
+        // path: `./vouchers/${transaction_id}.pdf`,
       },
     ],
   };
@@ -51,7 +53,7 @@ const sendMail = async (transaction_id, email_address) => {
 const sendTicketMail = async (
   transaction_id,
   email_address,
-  type = "Voucher"
+  type = "Voucher",
 ) => {
   // if (process.env.NODE_ENV !== 'production') return true
 
@@ -65,7 +67,7 @@ const sendTicketMail = async (
     attachments: [
       {
         filename: `${transaction_id}.pdf`,
-        path: `./vouchers/${transaction_id}.pdf`,
+        content: getFileStream("vouchers", transaction_id),
       },
     ],
   };
@@ -85,7 +87,7 @@ const sendTicketMail = async (
 const resendReceiptMail = async (
   transaction_id,
   email_address,
-  downloadLink
+  downloadLink,
 ) => {
   // if (process.env.NODE_ENV !== "production") return true;
 
@@ -114,7 +116,7 @@ const sendReportMail = async (
   email_address,
   content,
   transaction_id,
-  subject
+  subject,
 ) => {
   if (process.env.NODE_ENV !== "production") return true;
 

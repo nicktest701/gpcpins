@@ -27,7 +27,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import DOMPurify from "dompurify";
 import { LoadingButton } from "@mui/lab";
-import { prepaidNonUserPaymentValidationSchema } from "@/config/validationSchema";
+import { prepaidPaymentValidationSchema } from "@/config/validationSchema";
 import { CustomContext } from "@/context/providers/CustomProvider";
 import { AuthContext } from "@/context/providers/AuthProvider";
 import { globalAlertType } from "@/components/alert/alertType";
@@ -520,7 +520,7 @@ export default ViewMeter;
 // import Swal from "sweetalert2";
 // import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 // import { deleteMeter } from "@/api/meterAPI";
-// import { prepaidNonUserPaymentValidationSchema } from "@/config/validationSchema";
+// import { prepaidPaymentValidationSchema } from "@/config/validationSchema";
 // import AnimatedContainer from "@/components/animations/AnimatedContainer";
 // import { globalAlertType } from "@/components/alert/alertType";
 // // import { AuthContext } from "@/context/providers/AuthProvider";
@@ -900,7 +900,7 @@ export default ViewMeter;
 //                   initialValues={initialValues}
 //                   onSubmit={onSubmit}
 //                   enableReinitialize={true}
-//                   validationSchema={prepaidNonUserPaymentValidationSchema(
+//                   validationSchema={prepaidPaymentValidationSchema(
 //                     paymentMethod === "momo",
 //                   )}
 //                 >

@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, IconButton, Box, Button } from "@mui/material";
+import { Dialog, DialogContent, IconButton, Box, Button,useTheme,useMediaQuery } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import Service from "./Service";
 import HomeSwiper from "./HomeSwiper";
@@ -31,6 +31,8 @@ const modalStyles = {
 
 function Home() {
   const [showAdModal, setShowAdModal] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md")); // or "sm"
 
   // Check sessionStorage on mount
   useEffect(() => {
@@ -54,7 +56,7 @@ function Home() {
         alt="Advertisement"
         style={{
           width: "100%",
-          height: "200px",
+          height: isMobile ? "150px" : "200px",
           objectFit: "contain",
           borderRadius: "8px",
           marginBottom: "16px",

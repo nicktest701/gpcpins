@@ -139,7 +139,7 @@ function Shell() {
             />
 
             <Route
-              path="verify/:meterNo/:meterName"
+              path="prepaid/:meterNo/buy"
               element={
                 <Suspense fallback={<PayLoading />}>
                   <BuyPrepaid />

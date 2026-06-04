@@ -4,7 +4,7 @@ import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Link, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { FileDownloadRounded } from "@mui/icons-material";
 import CheckOutItem from "../components/items/CheckOutItem";
@@ -13,12 +13,11 @@ import moment from "moment";
 import { IMAGES, currencyFormatter } from "../constants";
 import { downloadVouchers, makePayment } from "../api/paymentAPI";
 import { Alert } from "@mui/material";
-// import { globalAlertType } from "../components/alert/alertType";
 import { LoadingButton } from "@mui/lab";
+import { Spinner } from "./PaymentStatus";
 
 function Checkout() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const queryClient = useQueryClient();
   const { state } = useLocation();
   const path = state?.payload;
 
@@ -60,7 +59,7 @@ function Checkout() {
       searchParams.get("completed") === null,
 
     onSuccess: () => {
-      queryClient.invalidateQueries(["notifications"]);
+      // queryClient.invalidateQueries(["notifications"]);
       setSearchParams((params) => {
         params.set("completed", "true");
         return params;
@@ -157,6 +156,8 @@ function Checkout() {
                 />
                 <Divider flexItem />
                 {generatedVouchers?.isLoading && (
+                  <Stack direction="row" alignItems="center" justifyContent="center" spacing={1}>
+<Spinner size={16} />
                   <Typography
                     textAlign="center"
                     fontStyle="italic"
@@ -165,6 +166,7 @@ function Checkout() {
                     Please wait..We are currently generating your{" "}
                     {isVoucher ? "Vouchers" : "Tickets"}
                   </Typography>
+                  </ Stack>
                 )}
               </Stack>
 
@@ -210,7 +212,7 @@ function Checkout() {
         severity="info"
         sx={{ borderRadius: 0, py: 1, fontSize: "12px" }}
       >
-        You are recommended to keep a copy of your <b>TRANSACTION NUMBER.</b> In
+        You are recommended to keep a copy of your <b>TRANSACTION ID.</b> In
         case you didn&lsquo;t receive or lost your{" "}
         {`${isVoucher ? "Vouchers" : "Tickets"}`}, you can retrieve it from{" "}
         <Link to="/evoucher">here</Link>

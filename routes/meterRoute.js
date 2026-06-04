@@ -78,6 +78,34 @@ router.get(
 );
 
 router.get(
+  "/meter/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    if (!isValidUUID2(id)) {
+      return res.status(400).json("Invalid Request ID!");
+    }
+
+    const meter = await knex("meters")
+      .select(
+        "id",
+        "name",
+        "number",
+        "type",
+        "spn",
+        "address",
+        "district",
+        "geo_code as geoCode",
+        "account_number as accountNumber",
+        "created_at as createdAt",
+        "updated_at as updatedAt",
+      )
+      .where("number", id)
+      .first();
+
+    res.status(200).json(meter);
+  }),
+);
+router.get(
   "/:id",
   asyncHandler(async (req, res) => {
     const { id } = req.params;

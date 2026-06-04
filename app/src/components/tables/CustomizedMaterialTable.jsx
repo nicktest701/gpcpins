@@ -1,5 +1,5 @@
 
-import { Box, Stack, Typography } from "@mui/material";
+import { Box, Paper, Stack, Typography } from "@mui/material";
 import MaterialTable from '@material-table/core';
  import { MTableToolbar } from '@material-table/core';
 
@@ -30,12 +30,15 @@ const CustomizedMaterialTable = ({
 
   return (
     // <AnimatedContainer>
-    <Box
+    <Paper
+    elevation={2}
       sx={{
-        borderRadius: 0,
-        paddingBlock: "16px",
+        borderRadius: 2,
+        // paddingBlock: "16px",
         width: { xs: "85svw", md: "100%" },
+        mt:2,
         marginInline: "auto",
+        px:2,
         py: 4,
       }}
       className="scroll-container"
@@ -177,7 +180,7 @@ const CustomizedMaterialTable = ({
               ]
         }
       />
-    </Box>
+    </Paper>
     // </AnimatedContainer>
   );
 };

@@ -114,9 +114,9 @@ const prepaidSchema = Joi.object({
   meter: Joi.alternatives().try(Joi.object(), Joi.string()).required(),
   info: Joi.object({
     amount: Joi.number().required(),
-    email: Joi.required(),
-    mobileNo: Joi.required(),
-    provider: Joi.required(),
+    email: Joi.string().allow(null).optional(),
+    phonenumber: Joi.string().allow(null).optional(),
+    provider: Joi.string().allow(null).optional(),
   }).required(),
   topup: Joi.number().required(),
   charges: Joi.number().required(),

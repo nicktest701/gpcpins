@@ -46,6 +46,7 @@ import football from '../assets/images/football.jpg';
 import football_low from '../assets/images/football_low.jpg';
 import pending from '../assets/images/pending.svg';
 import checker from '../assets/images/checker.png';
+import checker2 from '../assets/images/gpcpins.png';
 
 //cinema
 
@@ -87,6 +88,7 @@ export const IMAGES = {
   student,
   football,
   checker,
+  checker2,
   //low quality images
   ecg_low,
   ges_low,

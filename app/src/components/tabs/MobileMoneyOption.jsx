@@ -15,11 +15,10 @@ import {
 } from "@mui/material";
 import { PhoneRounded } from "@mui/icons-material";
 import { useFormContext, useWatch } from "react-hook-form";
-
 import MobilePartner from "../MobilePartner";
 import { useAuth } from "../../context/providers/AuthProvider";
 import { getMobilePartner } from "../../constants/PhoneCode";
-
+import MobileMoney from '@/assets/icons/MobileMoney'
 function MobileMoneyOption() {
   const { user } = useAuth();
 
@@ -81,17 +80,19 @@ function MobileMoneyOption() {
       sx={{
         border: "1px solid",
         borderColor: "divider",
-        borderRadius: 2,
-        mb: 1,
+        // borderRadius: 2,
+        mb: 2,
         overflow: "hidden",
+        borderRadius: 1,
       }}
     >
       <AccordionSummary
         sx={{
           backgroundColor:
             paymentMethod === "momo"
-              ? "primary.lightest"
+              ? "whitesmoke"
               : "background.default",
+              py:1.3
         }}
         onClick={handleSelect}
       >
@@ -106,9 +107,11 @@ function MobileMoneyOption() {
               width="100%"
             >
               <Stack alignItems="center" direction="row">
-                {/* <MobileWalletIcon width={64} height={64} /> */}
+               <div style={{marginLeft: 12}}>
+                 <MobileMoney width={36} height={36} />
+               </div>
                 <div>
-                  <Typography variant="body2">Mobile Money</Typography>
+                  <Typography variant="body2" ml={1.5}>Mobile Money</Typography>
                   {/* {!expanded && (
                     <Typography fontWeight={700}>
                       {currencyFormatter(walletBalance.data)}
@@ -153,12 +156,19 @@ function MobileMoneyOption() {
               <TextField
                 size="small"
                 value={user?.phonenumber || ""}
+                defaultValue={user?.phonenumber || ""}
                 InputLabelProps={{
                   shrink: true,
-                }}
-                InputProps={{
-                  readOnly: true,
-                }}
+                }}     
+                fullWidth
+                 InputProps={{
+                   readOnly: true,
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <PhoneRounded fontSize="small" />
+                          </InputAdornment>
+                        ),
+                      }}
               />
             </>
           ) : (
@@ -216,6 +226,8 @@ function MobileMoneyOption() {
             <FormControlLabel
               control={<Switch size="small" />}
               label="Use Saved Number"
+              labelProps={{ sx: { fontSize: 10 } }}
+
               onChange={handleUseSavedNumber}
             />
           )}

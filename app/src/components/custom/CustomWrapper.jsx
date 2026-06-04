@@ -10,6 +10,9 @@ function CustomWrapper({ children, title, item, img }) {
         height: "100svh",
         display: "flex",
         flexDirection: "column",
+
+
+   
       }}
     >
       <CustomBreadCrumb title={title} item={item} />
@@ -24,6 +27,7 @@ function CustomWrapper({ children, title, item, img }) {
           backgroundPosition: "center center",
           paddingX: { xs: 3, md: 2 },
           paddingY: 4,
+        
         }}
       >
         {children}

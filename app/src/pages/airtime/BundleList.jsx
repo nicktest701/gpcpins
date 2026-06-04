@@ -16,25 +16,27 @@ import {
   Tooltip,
   Stack,
   IconButton,
+  Skeleton,
 } from "@mui/material";
 import LoadingButton from "@mui/lab/LoadingButton";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
 import { getBundleList } from "../../api/paymentAPI";
 import { currencyFormatter } from "../../constants";
 import { generateRandomCode } from "../../config/generateRandomCode";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import SearchIcon from "@mui/icons-material/Search";
-import ClearIcon from "@mui/icons-material/Clear";
+import { useCustomContext } from "../../context/providers/CustomProvider";
 import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
 
 function BundleList({ setSelectedBundle, selectedBundle }) {
-  const { customDispatch } = useContext(CustomContext);
+  const { customDispatch } = useCustomContext();
   const { state } = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
+  const [err, setError] = useState("");
 
   // Fetch bundles
   const {
@@ -55,6 +57,7 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
       state?.bundleInfo?.provider !== "None" &&
       !!state?.bundleInfo?.network,
     retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
   });
 
   // Filter bundles by search term
@@ -75,7 +78,11 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
   };
 
   const handleProceed = () => {
-    if (!selectedBundle) return;
+    setError("Please select one bundle option to proceed!");
+    if (!selectedBundle?.plan_id) {
+      setError("");
+      return;
+    }
 
     setSearchParams((params) => {
       params.set("kyTNM", generateRandomCode(150));
@@ -98,10 +105,7 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
       confirmButtonText: "Yes, cancel",
     }).then((result) => {
       if (result.isConfirmed) {
-        customDispatch({
-          type: "set_Airtime_Bundle_Amount",
-          payload: 0,
-        });
+      
         setSearchParams((params) => {
           params.delete("show_list");
           return params;
@@ -115,12 +119,31 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
 
   const clearSearch = () => setSearchTerm("");
 
+  // Loading skeleton grid
+  const LoadingSkeleton = () => (
+    <Grid container spacing={2}>
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <Grid item xs={12} sm={6} md={4} key={i}>
+          <Card variant="outlined" sx={{ p: 2 }}>
+            <Skeleton variant="text" width="80%" height={28} />
+            <Skeleton variant="text" width="60%" height={20} sx={{ mt: 1 }} />
+            <Skeleton variant="text" width="40%" height={32} sx={{ mt: 1 }} />
+            <Skeleton variant="text" width="30%" height={16} sx={{ mt: 1 }} />
+          </Card>
+        </Grid>
+      ))}
+    </Grid>
+  );
+
   return (
     <Dialog
       open={Boolean(searchParams?.get("show_list"))}
-      maxWidth="md"
+      maxWidth="lg"
       fullWidth
       onClose={handleClose}
+      PaperProps={{
+        sx: { borderRadius: 2 },
+      }}
     >
       <CustomDialogTitle
         title={`${state?.bundleInfo?.provider} Data Bundles`}
@@ -129,13 +152,14 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
       />
 
       <DialogContent>
-        {/* Search input */}
+        {/* Search input - disabled while loading/error */}
         <TextField
           fullWidth
           size="small"
           placeholder="Search by name, volume, or category..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          disabled={isLoading || isError}
           sx={{ mb: 2 }}
           InputProps={{
             startAdornment: (
@@ -145,7 +169,11 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
             ),
             endAdornment: searchTerm && (
               <InputAdornment position="end">
-                <IconButton size="small" onClick={clearSearch}>
+                <IconButton
+                  size="small"
+                  onClick={clearSearch}
+                  disabled={isLoading || isError}
+                >
                   <ClearIcon fontSize="small" />
                 </IconButton>
               </InputAdornment>
@@ -154,11 +182,7 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
         />
 
         {/* Loading state */}
-        {isLoading && (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-            <CircularProgress />
-          </Box>
-        )}
+        {isLoading && <LoadingSkeleton />}
 
         {/* Error state */}
         {isError && (
@@ -169,6 +193,7 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
                 Retry
               </Button>
             }
+            sx={{ mb: 2 }}
           >
             Failed to load bundles. {error?.message || "Please try again."}
           </Alert>
@@ -176,7 +201,7 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
 
         {/* Empty state */}
         {!isLoading && !isError && filteredBundles.length === 0 && (
-          <Alert severity="info">
+          <Alert severity="info" sx={{ mb: 2 }}>
             {searchTerm
               ? `No bundles match "${searchTerm}". Try a different search.`
               : "No bundles available for this provider."}
@@ -219,6 +244,7 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
                           : "background.paper",
                         color: isSelected ? "white" : "text.primary",
                         borderColor: isSelected ? "primary.main" : "divider",
+                        boxShadow: isSelected ? 2 : 0,
                         "&:hover": {
                           transform: "translateY(-4px)",
                           boxShadow: 2,
@@ -261,15 +287,24 @@ function BundleList({ setSelectedBundle, selectedBundle }) {
       </DialogContent>
 
       <DialogActions>
+        {err && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {err}
+          </Alert>
+        )}
         <Button onClick={handleClose}>Cancel</Button>
-        <LoadingButton
-          variant="contained"
-          disabled={!selectedBundle || isError}
-          onClick={handleProceed}
-          loading={isLoading}
-        >
-          Proceed
-        </LoadingButton>
+        <Tooltip title={!selectedBundle?.plan_id ? "Please select a bundle option!" : ""}>
+          <span>
+            <LoadingButton
+              variant="contained"
+              disabled={!selectedBundle?.plan_id || isLoading || isError}
+              onClick={handleProceed}
+              loading={isLoading}
+            >
+              Proceed
+            </LoadingButton>
+          </span>
+        </Tooltip>
       </DialogActions>
     </Dialog>
   );

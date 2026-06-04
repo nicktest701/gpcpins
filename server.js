@@ -37,6 +37,8 @@ const sendEMail = require("./config/sendEmail");
 const knex = require("./db/knex");
 const socketAuth = require("./middlewares/socketAuth");
 const { initSocketServer } = require("./config/socket");
+const tokenMetrics = require("./services/brassica/token.metrics");
+const { initializeSchedulers } = require("./queues/schedulers.js");
 
 // server.js or app.js
 require("./workers/reservationExpiry.worker");
@@ -85,124 +87,13 @@ const subClient = pubClient.duplicate();
 |--------------------------------------------------------------------------
 */
 
-async function initSocket() {
-  try {
-    await pubClient.connect();
-    await subClient.connect();
-
-    console.log("Redis connected");
-
-    pubClient.on("error", (err) => {
-      console.error("Redis Pub Error:", err);
-    });
-
-    subClient.on("error", (err) => {
-      console.error("Redis Sub Error:", err);
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | SOCKET REDIS ADAPTER
-    |--------------------------------------------------------------------------
-    */
-
-    io.adapter(createAdapter(pubClient, subClient));
-
-    /*
-    |--------------------------------------------------------------------------
-    | SOCKET AUTH
-    |--------------------------------------------------------------------------
-    */
-
-    io.use(socketAuth);
-
-    /*
-    |--------------------------------------------------------------------------
-    | SOCKET CONNECTION
-    |--------------------------------------------------------------------------
-    */
-
-    io.on("connection", async (socket) => {
-      console.log("Socket Connected:", socket.id);
-
-      if (socket.user?.id) {
-        const userRoom = `user:${socket.user.id}`;
-        const paymentRoom = `payment:${socket.user.id}`;
-
-        await socket.join(userRoom);
-        await socket.join(paymentRoom);
-
-        console.log(`User joined room: ${userRoom}`);
-        console.log(`User joined payment room: ${paymentRoom}`);
-
-        await pubClient.set(`socket:${socket.user.id}`, socket.id, {
-          EX: 60 * 60 * 24,
-        });
-      }
-
-      socket.on("join-user-room", async (userId) => {
-        if (!userId || typeof userId !== "string") return;
-        const userRoom = `user:${userId}`;
-        await socket.join(userRoom);
-
-        socket.emit("user-room-joined", {
-          room: userRoom,
-        });
-      });
-
-      socket.on("join-payment-room", async (txRef) => {
-        console.log(txRef);
-
-        if (!txRef || typeof txRef !== "string") return;
-        const paymentRoom = `payment:${txRef}`;
-
-        await socket.join(paymentRoom);
-
-        console.log(`User payment room: ${paymentRoom}`);
-
-        socket.emit("payment-room-joined", {
-          room: paymentRoom,
-        });
-      });
-
-      socket.on("leave-user-room", async (userId) => {
-        const userRoom = `user:${userId}`;
-
-        await socket.leave(userRoom);
-      });
-
-      socket.on("leave-payment-room", async (txRef) => {
-        const paymentRoom = `payment:${txRef}`;
-
-        await socket.leave(paymentRoom);
-      });
-
-      socket.on("disconnect", async () => {
-        if (socket.user?.id) {
-          await pubClient.del(`socket:${socket.user.id}`);
-        }
-      });
-    });
-
-    // Start server
-    const serverApp = server.listen(PORT, () => {
-      console.log(`Server running in ${NODE_ENV} mode on port ${PORT}`);
-    });
-
-    // Set timeout
-    serverApp.setTimeout(120000); // 2 minutes
-  } catch (err) {
-    console.error("Socket init failed:", err);
-  }
-}
-
 /*
 |--------------------------------------------------------------------------
-| START SOCKET SYSTEM
+| START SYSTEM
 |--------------------------------------------------------------------------
 */
 
-initSocket();
+bootstrap();
 
 // Security middleware setup
 app.set("trust proxy", 1);
@@ -408,6 +299,17 @@ app.get("/api/gabs/v1/health", (req, res) => {
   });
 });
 
+// router.get("/internal/brassica/token-stats", (req, res) => {
+
+// logger.info({
+//   provider: "BRASSICA",
+//   event: "TOKEN_REFRESHED",
+//   timestamp: Date.now()
+// });
+
+//   res.json(tokenMetrics);
+// });
+
 // Serve frontend in production
 if (NODE_ENV === "production") {
   app.get("/*", function (req, res) {
@@ -449,55 +351,161 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Process event handlers for graceful shutdown
-process.on("uncaughtException", (err) => {
-  console.error("Unhandled Exception:", err);
-  // In production, we might want to restart the process here
-  if (NODE_ENV === "production") {
-    process.exit(1);
-  }
-});
-
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled Rejection at:", promise, "reason:", reason);
-});
-
-// Graceful shutdown handlers
-const gracefulShutdown = async (signal) => {
-  console.log(`${signal} received. Starting graceful shutdown...`);
-
+async function bootstrap() {
   try {
-    await knex.destroy();
-    console.log("Database connection closed.");
+    await pubClient.connect();
+    await subClient.connect();
 
-    server.close(() => {
-      console.log("HTTP server closed.");
-      process.exit(0);
+    console.log("Redis connected");
+
+    pubClient.on("error", (err) => {
+      console.error("Redis Pub Error:", err);
     });
 
-    // Force close after 10 seconds
-    setTimeout(() => {
-      console.error(
-        "Could not close connections in time, forcefully shutting down",
-      );
-      process.exit(1);
-    }, 10000);
+    subClient.on("error", (err) => {
+      console.error("Redis Sub Error:", err);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | SOCKET REDIS ADAPTER
+    |--------------------------------------------------------------------------
+    */
+
+    io.adapter(createAdapter(pubClient, subClient));
+
+    /*
+    |--------------------------------------------------------------------------
+    | SOCKET AUTH
+    |--------------------------------------------------------------------------
+    */
+
+    io.use(socketAuth);
+
+    /*
+    |--------------------------------------------------------------------------
+    | SOCKET CONNECTION
+    |--------------------------------------------------------------------------
+    */
+
+    io.on("connection", async (socket) => {
+      console.log("Socket Connected:", socket.id);
+
+      if (socket.user?.id) {
+        const userRoom = `user:${socket.user.id}`;
+        const paymentRoom = `payment:${socket.user.id}`;
+
+        await socket.join(userRoom);
+        await socket.join(paymentRoom);
+
+        console.log(`User joined room: ${userRoom}`);
+        console.log(`User joined payment room: ${paymentRoom}`);
+
+        await pubClient.set(`socket:${socket.user.id}`, socket.id, {
+          EX: 60 * 60 * 24,
+        });
+      }
+
+      socket.on("join-user-room", async (userId) => {
+        if (!userId || typeof userId !== "string") return;
+        const userRoom = `user:${userId}`;
+        await socket.join(userRoom);
+
+        socket.emit("user-room-joined", {
+          room: userRoom,
+        });
+      });
+
+      socket.on("join-payment-room", async (txRef) => {
+        console.log(txRef);
+
+        if (!txRef || typeof txRef !== "string") return;
+        const paymentRoom = `payment:${txRef}`;
+
+        await socket.join(paymentRoom);
+
+        console.log(`User payment room: ${paymentRoom}`);
+
+        socket.emit("payment-room-joined", {
+          room: paymentRoom,
+        });
+      });
+
+      socket.on("leave-user-room", async (userId) => {
+        const userRoom = `user:${userId}`;
+
+        await socket.leave(userRoom);
+      });
+
+      socket.on("leave-payment-room", async (txRef) => {
+        const paymentRoom = `payment:${txRef}`;
+
+        await socket.leave(paymentRoom);
+      });
+
+      socket.on("disconnect", async () => {
+        if (socket.user?.id) {
+          await pubClient.del(`socket:${socket.user.id}`);
+        }
+      });
+    });
+
+    //initialise queues
+    await initializeSchedulers();
+
+    // Start server
+    const serverApp = server.listen(PORT, () => {
+      console.log(`Server running in ${NODE_ENV} mode on port ${PORT}`);
+    });
+
+    // Set timeout
+    serverApp.setTimeout(120000); // 2 minutes
+
+    process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+    process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+
+    // Process event handlers for graceful shutdown
+    process.on("uncaughtException", (err) => {
+      console.error("Unhandled Exception:", err);
+      // In production, we might want to restart the process here
+      if (NODE_ENV === "production") {
+        process.exit(1);
+      }
+    });
+
+    process.on("unhandledRejection", (reason, promise) => {
+      console.error("Unhandled Rejection at:", promise, "reason:", reason);
+    });
+
+    // Graceful shutdown handlers
+    const gracefulShutdown = async (signal) => {
+      console.log(`${signal} received. Starting graceful shutdown...`);
+
+      try {
+        await knex.destroy();
+        console.log("Database connection closed.");
+
+        server.close(() => {
+          console.log("HTTP server closed.");
+          process.exit(0);
+        });
+
+        // Force close after 10 seconds
+        setTimeout(() => {
+          console.error(
+            "Could not close connections in time, forcefully shutting down",
+          );
+          process.exit(1);
+        }, 10000);
+      } catch (err) {
+        console.error("Error during shutdown:", err.message);
+        process.exit(1);
+      }
+    };
   } catch (err) {
-    console.error("Error during shutdown:", err.message);
-    process.exit(1);
+    console.error("Socket init failed:", err);
   }
-};
-
-process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-
-// // Start server
-// const serverApp = server.listen(PORT, () => {
-//   console.log(`Server running in ${NODE_ENV} mode on port ${PORT}`);
-// });
-
-// // Set timeout
-// // serverApp.setTimeout(120000); // 2 minutes
+}
 
 module.exports = {
   io,

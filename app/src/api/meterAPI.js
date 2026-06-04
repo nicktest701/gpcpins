@@ -49,6 +49,17 @@ export const getMeterById = async (meterId) => {
     throw error.response.data;
   }
 };
+export const getMeterByNumber = async (meterNumber) => {
+  try {
+    const res = await api({
+      url: `/meters/meter/${meterNumber}`,
+      method: "GET",
+    });
+    return res.data;
+  } catch (error) {
+    throw error.response.data;
+  }
+};
 
 ///
 export const postMeter = async (newMeter) => {

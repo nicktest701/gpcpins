@@ -1,10 +1,11 @@
 // PaymentOption.jsx
 
 import { useEffect } from "react";
-import { Box, FormControl, FormHelperText, RadioGroup } from "@mui/material";
+import {Link, useLocation} from "react-router-dom";
+import { Box, FormControl, FormHelperText, RadioGroup,Typography,IconButton,Stack } from "@mui/material";
 import { FormProvider, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-
+import {ArrowBackIosNewRounded} from "@mui/icons-material";
 import MobileMoneyOption from "./tabs/MobileMoneyOption";
 import WalletOption from "./WalletOption";
 import { paymentValidationSchema } from "../config/validationSchema";
@@ -26,6 +27,8 @@ function PaymentOption({
   onSubmit,
   initialValues = {},
 }) {
+
+
   const methods = useForm({
     resolver: yupResolver(paymentValidationSchema),
     defaultValues: {
@@ -45,7 +48,7 @@ function PaymentOption({
     formState: { errors, isSubmitting, isValid },
   } = methods;
 
-  // console.log(errors)
+const {pathname}=useLocation();
 
   const paymentMethod = watch("paymentMethod");
 
@@ -72,8 +75,28 @@ function PaymentOption({
         component="form"
         noValidate
         onSubmit={handleSubmit(submitHandler)}
-        sx={{ pt: 3 }}
+       
       >
+<Box sx={{ mb: 2 }}>
+         <Stack direction="row" alignItems="center" spacing={1}>
+          {!pathname.includes("prepaid") ||!pathname.includes("airtime") && (
+
+            <Link to={-1} style={{color:"inherit", textDecoration:"none"}}>
+          <IconButton>
+            <ArrowBackIosNewRounded fontSize="small" />
+          </IconButton>
+          </Link>
+          )}
+           <Typography variant="h6" fontWeight="bold">
+          Payment Information
+          </Typography>
+         </Stack>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, mb: 3 }}>
+          Choose the payment method you want to use for this transaction.
+           {/* You can also provide your name and email address to receive a receipt for your purchase. */}
+          </Typography>
+</Box>
+
         {/* PERSONAL DETAILS */}
 
         {/* <FormControl fullWidth sx={{ py: 2 }}>

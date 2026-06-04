@@ -249,13 +249,13 @@ function Sidebar() {
                 />
                 <NavLinkItem
                   to="electricity/meters"
-                  title="Meters"
+                  title="My Meters"
                   // icon={<SimCardOutlined />}
                 />
               </NavLinkItemCollapse>
               <NavLinkItem
                 to="airtime"
-                title="Airtime & Data"
+                title="Airtime & Data Bundle"
                 icon={<CardMembership />}
               />
             </List>
@@ -359,11 +359,70 @@ function Sidebar() {
           <>
             <List disablePadding>
               <NavLinkItem to="/" title="Home" icon={<DashboardRounded />} />
-              <NavLinkItem
+           
+            <List disablePadding>
+              <NavLinkItem to="/" title="Home" icon={<DashboardRounded />} />
+              {/* <NavLinkItem
                 to="evoucher"
-                title="E-Voucher"
-                icon={<SdCardRounded />}
+                title="Voucher & Tickets"
+                icon={<PaymentRounded />}
+              /> */}
+              <NavLinkItemCollapse
+                icon={<MoneyRounded />}
+                title="Voucher & Tickets"
+              >
+                <NavLinkItem
+                  to="/evoucher/waec-checker"
+                  title="Waec & SHS Placement Checker"
+                  // icon={<MoneyRounded />}
+                />
+                <NavLinkItem
+                  to="/evoucher/university-form"
+                  title="University & Polytechnic Forms"
+                  // icon={<SimCardOutlined />}
+                />
+                <NavLinkItem
+                  to="/evoucher/security-service"
+                  title=" Security Service Forms"
+                  // icon={<SimCardOutlined />}
+                />
+                <NavLinkItem
+                  to="/evoucher/cinema-ticket"
+                  title="Cinema & Event Tickets"
+                  // icon={<SimCardOutlined />}
+                />
+                <NavLinkItem
+                  to="/evoucher/bus-ticket"
+                  title=" Bus Tickets"
+                  // icon={<SimCardOutlined />}
+                />
+                <NavLinkItem
+                  to="/evoucher/stadia-ticket"
+                  title="Stadium Tickets"
+                  // icon={<SimCardOutlined />}
+                />
+              </NavLinkItemCollapse>
+              <NavLinkItemCollapse
+                icon={<MoneyRounded />}
+                title="Prepaid Units"
+              >
+                <NavLinkItem
+                  to="electricity"
+                  title="Buy Prepaid"
+                  // icon={<MoneyRounded />}
+                />
+                <NavLinkItem
+                  to="electricity/meters"
+                  title="Meters"
+                  // icon={<SimCardOutlined />}
+                />
+              </NavLinkItemCollapse>
+              <NavLinkItem
+                to="airtime"
+                title="Airtime & Data Bundle"
+                icon={<CardMembership />}
               />
+            </List>
               <NavLinkItem
                 to="electricity"
                 title="Prepaid Units"
@@ -371,7 +430,7 @@ function Sidebar() {
               />
               <NavLinkItem
                 to="airtime"
-                title="Airtime & Data"
+                title="Airtime & Data Bundle"
                 icon={<CardMembership />}
               />
             </List>

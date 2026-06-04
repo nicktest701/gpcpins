@@ -57,7 +57,7 @@ router.get(
       .where("user_id", id)
       .select("active", "created_at", "updated_at")
       .first();
-    console.log(wallet);
+
 
     if (_.isEmpty(wallet) || Boolean(wallet?.active) === false) {
       const now = moment();

@@ -9,10 +9,10 @@ const MobileWalletIcon = (props) => (
     {...props}
   >
     <g clipPath="url(#a)">
-      <path
+      {/* <path
         fill="#F0F0F0"
         d="M850 375.512c0 6.903-190.279 12.5-425 12.5s-425-5.597-425-12.5c0-6.904 190.279-12.5 425-12.5s425 5.596 425 12.5Z"
-      />
+      /> */}
       <rect width={193.894} height={372} x={310.106} fill="#040505" rx={15} />
       <path
         fill="#474747"

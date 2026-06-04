@@ -1,6 +1,6 @@
 // redisClient.js
 const redis = require("redis");
-const { Redis } = require("@upstash/redis");
+
 
 // let redisClient;
 

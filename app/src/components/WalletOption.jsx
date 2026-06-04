@@ -78,16 +78,14 @@ function WalletOption() {
       sx={{
         border: "1px solid",
         borderColor: "divider",
-        borderRadius: 2,
+        borderRadius: 1,
         overflow: "hidden",
       }}
     >
       <AccordionSummary
         sx={{
           backgroundColor:
-            paymentMethod === "wallet"
-              ? "primary.lightest"
-              : "background.default",
+            paymentMethod === "wallet" ? "whitesmoke" : "background.default",
         }}
         onClick={handleSelect}
       >
@@ -104,11 +102,11 @@ function WalletOption() {
                 <MobileWalletIcon width={64} height={64} />
                 <div>
                   <Typography variant="body2">Wallet</Typography>
-                  {!expanded && (
+                  {/* {!expanded && (
                     <Typography fontWeight={700}>
                       {currencyFormatter(walletBalance.data)}
                     </Typography>
-                  )}
+                  )} */}
                 </div>
               </Stack>
               <Radio
@@ -135,7 +133,6 @@ function WalletOption() {
               direction="row"
               justifyContent="space-between"
               alignItems="center"
-              mb={2}
             >
               <FormLabel>Balance</FormLabel>
 
@@ -143,6 +140,9 @@ function WalletOption() {
                 {currencyFormatter(walletBalance.data)}
               </Typography>
             </Stack>
+            <Typography variant="caption" gutterBottom>
+              Make payment with the available balance in your wallet.
+            </Typography>
 
             {walletStatus.data?.active === false ? (
               <Typography variant="caption" color="error">
@@ -150,7 +150,7 @@ function WalletOption() {
                 {walletStatus.data?.timeOut}.
               </Typography>
             ) : (
-              <Stack spacing={1}>
+              <Stack spacing={1} mt={2}>
                 <Typography variant="body2" fontWeight={600}>
                   Wallet PIN
                 </Typography>

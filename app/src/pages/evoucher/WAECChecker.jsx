@@ -73,7 +73,7 @@ function WAECChecker() {
           href="https://www.gpcpins.com/evoucher/waec-checker"
         />
       </Helmet>
-      <CustomWrapper img={IMAGES.main} title="WAEC CHECKERS" item=" WAEC">
+      <CustomWrapper img={IMAGES.checker2} title="WAEC CHECKERS" item=" WAEC">
         <Formik
           initialValues={initialValues}
           validationSchema={waecValidationSchema}
@@ -93,6 +93,7 @@ function WAECChecker() {
                   bgcolor: "#fff",
                   gap: 2,
                   borderRadius: 2,
+                  mt:{ xs: 2, md: 8 },
                 }}
               >
                 <Typography
@@ -190,19 +191,6 @@ function WAECChecker() {
                     );
                   }}
                 />
-
-                {/* <TextField
-                
-                  type="email"
-                  inputMode="email"
-                  variant="outlined"
-                  label="Email Address(optional)"
-                  fullWidth
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  error={Boolean(touched.email && errors.email)}
-                  helperText={touched.email && errors.email}
-                /> */}
 
                 <Button variant="contained" size='large' onClick={handleSubmit} fullWidth>
                   Proceed to buy

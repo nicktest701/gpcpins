@@ -2,7 +2,7 @@ import { Stack, Typography } from "@mui/material";
 
 const CheckOutItem = ({ title, titleColor, value, color }) => {
   return (
-    <Stack direction="row" spacing={2}>
+    <Stack width='100%' direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap">
       <Typography
         variant="body2"
         fontWeight="700"

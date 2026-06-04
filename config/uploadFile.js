@@ -91,22 +91,20 @@ async function uploadToFirebase({
     });
 
     throw new Error("File upload failed");
+  } finally {
+    //
+    // ALWAYS CLEAN TEMP FILE
+    //
+    try {
+      if (fs.existsSync(localFilePath)) {
+        await fsPromises.unlink(localFilePath);
+
+        console.log("Temporary file deleted:", localFilePath);
+      }
+    } catch (cleanupError) {
+      console.error("Cleanup Error:", cleanupError.message);
+    }
   }
-
-  // finally {
-  //   //
-  //   // ALWAYS CLEAN TEMP FILE
-  //   //
-  //   try {
-  //     if (fs.existsSync(localFilePath)) {
-  //       await fsPromises.unlink(localFilePath);
-
-  //       // console.log("Temporary file deleted:", localFilePath);
-  //     }
-  //   } catch (cleanupError) {
-  //     console.error("Cleanup Error:", cleanupError.message);
-  //   }
-  // }
 }
 
 /**
@@ -250,6 +248,38 @@ async function deleteFile(storagePath) {
   }
 }
 
+async function deleteServerFile(filePath) {
+  try {
+    await fsPromises.unlink(filePath);
+    console.log(`Successfully deleted: ${filePath}`);
+    return true;
+  } catch (error) {
+    // Prevent crashing if the file is already gone
+    if (error.code === "ENOENT") {
+      console.warn(`File not found, nothing to delete: ${filePath}`);
+      return false;
+    }
+
+    // Handle permissions or other system errors
+    console.error(`Error deleting file at ${filePath}:`, error.message);
+    throw error;
+  }
+}
+
+function getFileStream(path, transactionId) {
+  const bucketFilePath = `gpcpins/${path}/${transactionId}.pdf`;
+  const fileStream = storage.file(bucketFilePath).createReadStream();
+
+  fileStream.on("error", (err) => {
+    console.error(
+      `Firebase stream error for transaction ${transactionId}:`,
+      err,
+    );
+  });
+
+  return fileStream;
+}
+
 //
 // -----------------------------------------------------------------------------
 // EXPORTS
@@ -262,4 +292,6 @@ module.exports = {
   uploadAttachment,
   uploadFiles,
   deleteFile,
+  deleteServerFile,
+  getFileStream,
 };

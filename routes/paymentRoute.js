@@ -1,10 +1,8 @@
 const router = require("express").Router();
 const { randomBytes } = require("crypto");
 const pLimit = require("p-limit");
-const fs = require("fs");
 const multer = require("multer");
 const cors = require("cors");
-const path = require("path");
 const _ = require("lodash");
 const moment = require("moment");
 const { rateLimit } = require("express-rate-limit");
@@ -29,13 +27,9 @@ const generateQRCode = require("../config/qrcode");
 const currencyFormatter = require("../config/currencyFormatter");
 const sendElectricityMail = require("../config/ecgMail");
 const verifyAdmin = require("../middlewares/verifyAdmin");
-const {
-  uploadVoucherFile,
-  // uploadReceiptFile,
-} = require("../config/uploadFile");
 
+const { uploadVoucherFile } = require("../config/uploadFile");
 const { imageUrlToBase64 } = require("../config/ImageToBase64");
-
 const { isValidUUID2 } = require("../config/validation");
 const knex = require("../db/knex");
 const {
@@ -52,6 +46,7 @@ const {
   prepaidSchema,
   ticketSchema,
   bundleSchema,
+  airtimeSchema,
 } = require("../utils/validationSchema");
 const { validatePayment } = require("../middlewares/validators");
 const { idempotencyMiddleware } = require("../middlewares/idempotency");
@@ -59,6 +54,9 @@ const { paymentLimiter } = require("../middlewares/rateLimiter");
 const { paymentLockMiddleware } = require("../middlewares/paymentLock");
 const { emitPaymentSuccess, emitCheckerUpdate } = require("../config/emitters");
 const redisClient = require("../config/redisClient");
+const { storage } = require("../firebase");
+const { messageQueue } = require("../queues/message.queue");
+const { getInternationalMobileFormat } = require("../config/PhoneCode");
 
 // ===============================
 // 1. Configuration & Constants
@@ -138,35 +136,27 @@ router.get(
   rlimit,
   asyncHandler(async (req, res) => {
     const { id: userID } = req.user;
-    const { id: queryId } = req?.query;
+    const { id: transactionId } = req?.query;
 
-    if (!queryId || !isValidUUID2(queryId)) {
+    if (!transactionId || !isValidUUID2(transactionId)) {
       return res.status(400).json("Invalid Request!");
     }
 
     //let
 
-    const trans = await knex("payments")
-      .join(
-        "voucher_transactions",
-        "voucher_transactions.payment_id",
-        "=",
-        "payments.id",
-      )
-      .where("voucher_transactions.id", queryId)
+    const trans = await knex("vw_payments_voucher_transactions")
+      .where("id", transactionId)
       .select(
-        "payments.id as paymentId",
-        "payments.service",
-        "payments.provider",
-        "payments.partner",
-        "payments.amount",
-        "payments.status",
-        "payments.created_at as createdAt",
-        "payments.updated_at as updatedAt",
-        "payments.is_processed",
-        "payments.mode",
-        "voucher_transactions.*",
-        "voucher_transactions.id as id",
+        "paymentId",
+        "paymentReference",
+        "id",
+        "info",
+        "email",
+        "phonenumber",
+        "vouchers",
+        "status",
+        "createdAt",
+        "updatedAt",
       )
       .first();
 
@@ -190,8 +180,8 @@ router.get(
       return res.status(404).json("Payment not completed!");
     }
 
-    const userInfo = JSON.parse(info);
-    const userVoucher = JSON.parse(vouchers);
+    const userInfo = safeJSON(info);
+    const userVoucher = safeJSON(vouchers);
 
     //Check if voucher pdf already exists
     if (userInfo?.downloadLink) {
@@ -206,17 +196,16 @@ router.get(
       return res.status(404).json("Payment not completed!");
     }
 
-    const soldVouchers = await knex("vouchers")
-      .join("categories", "vouchers.category_id", "=", "categories.id")
-      .whereIn("vouchers.id", userVoucher)
+    const soldVouchers = await knex("vw_category_voucher_view")
+      .whereIn("id", userVoucher)
       .select(
-        "vouchers.id as id",
-        "vouchers.pin as pin",
-        "vouchers.serial as serial",
-        "categories.id as categoryId",
-        "categories.name as voucherType",
-        "categories.price as price",
-        "categories.details as details",
+        "id",
+        "pin",
+        "serial",
+        "categoryId",
+        "voucherType",
+        "price",
+        "categoryDetails as details",
       );
 
     //if creating new transaction fails
@@ -244,7 +233,7 @@ router.get(
           serial,
           pin,
           status: "sold",
-          logo: detailsInfo?.logo,
+          // logo: detailsInfo?.logo,
         };
       },
     );
@@ -256,7 +245,7 @@ router.get(
       updatedAt,
       formType: details?.formType || "",
       dataURL: details?.voucherURL,
-      agentName: userInfo?.agentName || "GPC Customer",
+      agentName: userInfo?.user?.name || "GPC Customer",
       agentPhoneNumber: phonenumber,
       agentEmail: email,
       formattedDate: moment(new Date(createdAt)).format("LLL"),
@@ -267,6 +256,8 @@ router.get(
 
     try {
       const result = await processVouchers(generatedTransaction);
+      const internationalPhoneFormat =
+        getInternationalMobileFormat(phonenumber);
 
       if (result === "done") {
         const downloadLink = await uploadVoucherFile(`${id}.pdf`);
@@ -279,33 +270,55 @@ router.get(
               downloadLink,
             }),
           });
+
         await knex("payments").where("id", paymentId).update({
           status: "completed",
           is_processed: true,
         });
-        await knex("notifications").insert({
-          id: generateId(),
-          user_id: userID,
-          type: "voucher",
-          title: modifiedVoucher[0].voucherType + " Voucher",
-          body: `Voucher Processing completed!`,
-          link: downloadLink,
-        });
+
+        if (userID) {
+          await knex("notifications").insert({
+            id: generateId(),
+            user_id: userID,
+            type: "voucher",
+            title: modifiedVoucher[0].voucherType + " Voucher",
+            body: `Voucher Processing completed!`,
+            link: downloadLink,
+          });
+        }
 
         res.status(200).json({ id: id, downloadLink });
+        await emitCheckerUpdate({ userId: userID, data: downloadLink });
 
-        setImmediate(async () => {
+        queueMicrotask(async () => {
           await emitCheckerUpdate({ userId: userID, data: downloadLink });
+
+          await messageQueue.add(
+            "send-document",
+            {
+              sessionId: process.env.WHATSAPP_SESSION_ID,
+              type: "send-document",
+              phone: internationalPhoneFormat,
+              message: downloadLink,
+              downloadLink,
+              fileName: `${id}.pdf`,
+              caption: `Here is a copy of your ${modifiedVoucher[0].voucherType} voucher.Thank you!`,
+            },
+            {
+              jobId: `${id}`, // prevent duplicates
+              attempts: 1,
+              backoff: {
+                type: "exponential",
+                delay: 5000,
+              },
+              removeOnComplete: true,
+            },
+          );
+
           if (email) {
             await sendTicketMail(id, email, modifiedVoucher[0]?.voucherType);
           }
         });
-
-        // await sendWhatsappMessage({
-        //   user: getInternationalMobileFormat(userInfo?.agentPhoneNumber),
-        //   message: "Thank you for your purchase!",
-        //   media: downloadLink,
-        // });
       }
     } catch (error) {
       console.log(error);
@@ -320,34 +333,25 @@ router.get(
   verifyOptionalToken,
   asyncHandler(async (req, res) => {
     const { id: userID } = req.user;
-
     const { id: queryId } = req?.query;
 
     if (!queryId || !isValidUUID2(queryId)) {
       return res.status(400).json("Invalid Request!");
     }
 
-    const trans = await knex("payments")
-      .join(
-        "voucher_transactions",
-        "voucher_transactions.payment_id",
-        "=",
-        "payments.id",
-      )
-      .where("voucher_transactions.id", queryId)
+    const trans = await knex("vw_payments_voucher_transactions")
+      .where("id", queryId)
       .select(
-        "payments.id as paymentId",
-        "payments.service",
-        "payments.provider",
-        "payments.partner",
-        "payments.amount",
-        "payments.status",
-        "payments.created_at as createdAt",
-        "payments.updated_at as updatedAt",
-        "payments.is_processed",
-        "payments.mode",
-        "voucher_transactions.*",
-        "voucher_transactions.id as id",
+        "id",
+        "paymentId",
+        "paymentReference",
+        "info",
+        "email",
+        "phonenumber",
+        "vouchers",
+        "status",
+        "createdAt",
+        "updatedAt",
       )
       .first();
 
@@ -356,8 +360,9 @@ router.get(
     }
 
     const {
-      paymentId,
       id,
+      paymentId,
+      paymentReference,
       info,
       email,
       phonenumber,
@@ -371,8 +376,8 @@ router.get(
       return res.status(404).json("Payment not completed.!");
     }
 
-    const userInfo = JSON.parse(info);
-    const userVoucher = JSON.parse(vouchers);
+    const userInfo = safeJSON(info);
+    const userVoucher = safeJSON(vouchers);
 
     //Check if voucher pdf already exists
     if (userInfo?.downloadLink) {
@@ -449,7 +454,7 @@ router.get(
           details,
           year,
         }) => {
-          const detailsInfo = JSON.parse(details);
+          const detailsInfo = safeJSON(details);
 
           const item = _.find(
             detailsInfo?.pricing,
@@ -637,7 +642,7 @@ router.get(
 
     try {
       const { id, categoryType } = req.params;
-      const { confirm } = req.query;
+      // const { confirm } = req.query;
 
       if (!isValidUUID2(id)) {
         return res.status(400).json("Invalid request");
@@ -646,7 +651,6 @@ router.get(
       // ---------------- FETCH TRANSACTION + PAYMENT ----------------
 
       const transaction = await getTransaction(categoryType, id, trx);
-      // console.log(transaction)
 
       if (!transaction) {
         await trx.rollback();
@@ -704,9 +708,8 @@ router.get(
       await trx.commit();
 
       // ---------------- ASYNC EXTERNAL CALLS ----------------
-      if (confirm) {
-        triggerAsyncProcessing(transaction, categoryType, selectedVouchers); // 🔥 non-blocking
-      }
+
+      triggerAsyncProcessing(transaction, categoryType, selectedVouchers); // 🔥 non-blocking
 
       return res.status(200).json(formatResponse(transaction));
     } catch (error) {
@@ -738,17 +741,56 @@ router.get(
   verifyOptionalToken,
   asyncHandler(async (req, res) => {
     const id = req.params.id;
-    const filePath = path.join(process.cwd(), "/vouchers/", `${id}.pdf`);
 
-    if (fs.existsSync(filePath)) {
-      return res.sendFile(filePath);
-    } else {
+    // Map the ID to your path inside the Firebase Storage bucket
+    const bucketFilePath = `gpcpins/vouchers/${id}.pdf`;
+    const file = storage.file(bucketFilePath);
+
+    // 1. Check if the file actually exists in Firebase Storage
+    const [exists] = await file.exists();
+
+    if (!exists) {
       return res
-        .status(400)
+        .status(404) // Changed to 404 as it is standard for missing resources
         .json("We couldnt find a transaction which match your transaction id");
     }
+
+    // 2. Set optimal headers for PDF download
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="voucher-${id}.pdf"`,
+    );
+
+    // 3. Stream the file directly from Firebase to the client response
+    const downloadStream = file.createReadStream();
+
+    downloadStream.on("error", (err) => {
+      console.error("Firebase storage download error:", err);
+      if (!res.headersSent) {
+        res.status(500).json("Error retrieving your file.");
+      }
+    });
+
+    downloadStream.pipe(res);
   }),
 );
+// router.get(
+//   "/download/:id",
+//   verifyOptionalToken,
+//   asyncHandler(async (req, res) => {
+//     const id = req.params.id;
+//     const filePath = path.join(process.cwd(), "/vouchers/", `${id}.pdf`);
+
+//     if (fs.existsSync(filePath)) {
+//       return res.sendFile(filePath);
+//     } else {
+//       return res
+//         .status(400)
+//         .json("We couldnt find a transaction which match your transaction id");
+//     }
+//   }),
+// );
 
 // Make Voucher / Ticket Payment @route   POST payment/momo
 
@@ -807,7 +849,9 @@ router.post(
         selectedVouchers.length === 0 ||
         selectedVouchers.length < quantity
       ) {
-        return res.status(404).json("Voucher/Ticket not available");
+        return res
+          .status(404)
+          .json(`${voucherName} ${service} not available. Try again later!`);
       }
 
       // ---------------- CREATE PAYMENT ----------------
@@ -947,27 +991,27 @@ router.post(
         categoryType: service,
       };
 
-      if (process.env.NODE_ENV === "development" && !isWallet) {
-        const payload = {
-          ResponseCode: "0000",
-          Message: "success",
-          Data: {
-            Amount: totalAmount,
-            Charges: 0.05,
-            AmountAfterCharges: 0.8,
-            Description:
-              " The Vodafone Cash payment has been approved and processed successfully",
-            ClientReference: reference,
-            TransactionId: "09f84e20a283942e807128e8c21d08d6",
-            ExternalTransactionId: generateId(),
-            AmountCharged: 0.85,
-            OrderId: "09f84e20a283942e807128e8c21d08d6",
-            PaymentDate: "2024-05-14T00:44:57.5142719Z",
-          },
-        };
+      // if (process.env.NODE_ENV === "development" && !isWallet) {
+      //   const payload = {
+      //     ResponseCode: "0000",
+      //     Message: "success",
+      //     Data: {
+      //       Amount: totalAmount,
+      //       Charges: 0.05,
+      //       AmountAfterCharges: 0.8,
+      //       Description:
+      //         " The Vodafone Cash payment has been approved and processed successfully",
+      //       ClientReference: reference,
+      //       TransactionId: "09f84e20a283942e807128e8c21d08d6",
+      //       ExternalTransactionId: generateId(),
+      //       AmountCharged: 0.85,
+      //       OrderId: "09f84e20a283942e807128e8c21d08d6",
+      //       PaymentDate: "2024-05-14T00:44:57.5142719Z",
+      //     },
+      //   };
 
-        await paymentCallback(res, payload, "v");
-      }
+      //   await paymentCallback(res, payload, "v");
+      // }
       res.status(200).json(completedTransaction);
 
       if (isWallet) {
@@ -1328,7 +1372,7 @@ router.post(
   paymentLimiter,
   idempotencyMiddleware,
   paymentLockMiddleware,
-  // validatePayment(voucherSchema),
+  validatePayment(airtimeSchema),
   asyncHandler(async (req, res) => {
     const { id: userId, name } = req.user;
 
@@ -1353,6 +1397,7 @@ router.post(
     try {
       const response = await accountBalance();
       const balance = Number(response?.balance);
+
       if (Number(response?.balance) < Number(amount)) {
         if (balance < 1000) {
           await notifyLowBalance(balance);
@@ -2102,26 +2147,14 @@ router.post(
   paymentLimiter,
   idempotencyMiddleware,
   paymentLockMiddleware,
-  // validatePayment(prepaidSchema),
+  validatePayment(prepaidSchema),
   asyncHandler(async (req, res) => {
-    const { id } = req.user;
+    const { id: userID } = req.user;
     const { meter, info, charges, topup, amount, isWallet, token } = req.body;
 
+    // console.log(req.body)
     const transx = await knex.transaction();
-    let meterId = generateId();
-    let newMeter;
-    const userID = id ?? generateId();
-
-    if (typeof meter === "object") {
-      newMeter = {
-        id: meterId,
-        ...meter,
-        user_id: userID,
-      };
-      await transx("meters").insert(newMeter);
-    } else {
-      meterId = meter;
-    }
+    let meterId = meter;
 
     try {
       // Call the API to create a transaction
@@ -2196,22 +2229,29 @@ router.post(
       }
 
       // ---------------- INSERT PAYMENT ----------------
-      await transx("payments").insert({
-        id: paymentId,
-        user_id: userID,
-        reference: transaction_reference,
-        service: "prepaid",
-        amount: amount,
-        charges,
-        provider: isWallet ? "wallet" : info?.provider,
-        mode: isWallet ? "Wallet" : "Mobile Money",
-        year: moment().year(),
-        status: paymentStatus,
-        externalTransactionId: null,
-        partner: JSON.stringify(partnerResponse),
-      });
 
-      const transaction = await transx("electricity_transactions").insert({
+      try {
+        await transx("payments").insert({
+          id: paymentId,
+          user_id: userID || "",
+          reference: transaction_reference,
+          service: "prepaid",
+          amount: amount,
+          charges,
+          provider: isWallet ? "wallet" : info?.provider,
+          mode: isWallet ? "Wallet" : "Mobile Money",
+          year: moment().year(),
+          status: paymentStatus,
+          externalTransactionId: null,
+          partner: JSON.stringify(partnerResponse),
+        });
+      } catch (error) {
+        console.log(error);
+        await transx.rollback();
+        return res.status(500).json("Transaction Failed!");
+      }
+
+      await transx("electricity_transactions").insert({
         id: transaction_id,
         payment_id: paymentId,
         meter_id: meterId,
@@ -2226,19 +2266,134 @@ router.post(
         phonenumber: info?.phonenumber,
       });
 
-      // //if creating new transaction fails
-      if (_.isEmpty(transaction)) {
-        await transx.rollback();
-        return res.status(404).json("Error Processing your request!");
-      }
-
       await transx.commit();
-
       res.status(201).json({ id: transaction_id });
+
+      if (isWallet) {
+        setImmediate(async () => {
+          await emitPaymentSuccess({
+            userId: userID,
+            txRef: transaction_reference,
+            amount: amount,
+            transaction: {
+              id: transaction_id || paymentId,
+              paymentReference: transaction_reference,
+              status: paymentStatus,
+              userName: "Customer",
+              email: info?.email,
+              phonenumber: info?.phonenumber,
+              paymentMode: "Wallet",
+              amount: amount,
+              createdAt: new Date().toISOString(),
+            },
+          });
+        });
+      }
     } catch (error) {
       console.log(error);
       await transx.rollback();
       return res.status(500).json("Transaction Failed!");
+    }
+  }),
+);
+
+//@ Payment callback brassica
+router.post(
+  "/callback",
+  cors(corsOptions),
+  rlimit,
+  asyncHandler(async (req, res) => {
+    const payload = req.body;
+
+    const reference = payload?.transactionId;
+
+    if (!reference) return res.sendStatus(400);
+    console.log(reference);
+
+    res.sendStatus(200);
+  }),
+);
+
+//@ Payment callback
+router.post(
+  "/callback/e",
+  cors(corsOptions),
+  rlimit,
+  asyncHandler(async (req, res) => {
+    const { type } = req.params;
+    const payload = req.body;
+
+    const reference = payload?.transactionId;
+    if (!reference) return res.sendStatus(400);
+
+    const doneKey = `payment:processed:${reference}`;
+    const lockKey = `payment:lock:${reference}`;
+
+    // 1. Already processed?
+    if (await redisClient.get(doneKey)) {
+      return res.sendStatus(200);
+    }
+
+    // 2. Acquire lock
+    const lock = await redisClient.set(lockKey, "1", "NX", "EX", 60);
+    if (!lock) return res.sendStatus(200);
+
+    let trx;
+
+    try {
+      const statusMap = {
+        200: "completed",
+        202: "pending",
+      };
+
+      const newStatus = statusMap[payload.status] || "failed";
+
+      const table = PAYMENT_TABLE_MAP["w"];
+      if (!table) return res.sendStatus(204);
+
+      trx = await knex.transaction();
+
+      const payment = await trx(table)
+        .where({ paymentReference: reference })
+        .first();
+
+      if (!payment) {
+        await trx.rollback();
+        return res.sendStatus(204);
+      }
+
+      // idempotency DB guard
+      if (payment.status === "completed") {
+        await trx.commit();
+        return res.sendStatus(200);
+      }
+
+      await trx("payments")
+        .where({ id: payment.paymentId })
+        .andWhereNot({ status: "completed" })
+        .update({
+          status: newStatus,
+          externalTransactionId: payload?.Data?.ExternalTransactionId,
+          updated_at: knex.fn.now(),
+        });
+
+      await trx.commit();
+
+      // mark processed
+      await redisClient.set(doneKey, "1", "EX", 86400);
+      await redisClient.del(lockKey);
+
+      res.sendStatus(200);
+
+      // async events
+      queueMicrotask(() =>
+        handlePostPaymentEvents(payment, newStatus, payload),
+      );
+    } catch (err) {
+      if (trx) await trx.rollback();
+      await redisClient.del(lockKey);
+      console.error(err);
+      res.sendStatus(500);
     }
   }),
 );
@@ -2722,7 +2877,6 @@ async function markProcessed(trx, transaction) {
             type: "airtime",
             title: "Airtime Transfer",
             body: `You have successfully recharged ${transaction.recipient} with GHS ${transaction.amount} of airtime, you were charged GHS ${transaction.amount}.Transaction ID :${transaction?.id},`,
-            link: "/transactions",
           });
         }
 
@@ -2792,14 +2946,16 @@ async function processBundle(trx, transaction) {
   }
 }
 async function processPrepaid(trx, transaction, info) {
-  await trx("notifications").insert({
-    id: generateId(),
-    user_id: transaction.userId,
-    type: "prepaid",
-    title: "Prepaid Units",
-    body: `Payment made for prepaid meter: ${transaction.number} is being processed. Transaction ID: ${transaction.id}`,
-    info: JSON.stringify({ info }),
-  });
+  if (transaction?.userId) {
+    await trx("notifications").insert({
+      id: generateId(),
+      user_id: transaction?.userId,
+      type: "prepaid",
+      title: "Prepaid Units",
+      body: `Payment made for prepaid meter: ${transaction.number} is being processed. Transaction ID: ${transaction.id}`,
+      info: JSON.stringify({ info }),
+    });
+  }
 }
 async function processWalletTopUp(trx, transaction) {
   await trx("wallets")
@@ -2955,6 +3111,7 @@ async function sendAirtimeLogic(transaction) {
 async function sendVoucherSMS(selectedVouchers, transaction, categoryType) {
   const { phonenumber, email } = transaction;
   if (transaction.status === "completed") {
+    let message = "";
     if (categoryType === "voucher") {
       const detailsInfo = JSON.parse(selectedVouchers[0]?.details ?? {});
       // console.log(detailsInfo);
@@ -2964,12 +3121,12 @@ async function sendVoucherSMS(selectedVouchers, transaction, categoryType) {
       });
       const smsData = await Promise.all([smsInfo]);
 
-      await sendSMS(
-        `${selectedVouchers[0]?.voucherType} ${detailsInfo?.voucherURL}   
+      message = `${selectedVouchers[0]?.voucherType} voucher.
+ ${detailsInfo?.voucherURL}   
 [Pin--Serial]
-${smsData.join(" ")}.`,
-        phonenumber,
-      );
+${smsData.join(" ")}.
+Buy more at https://www.gpcpins.com/evoucher`;
+      await sendSMS(message, phonenumber);
     }
 
     if (categoryType === "ticket") {
@@ -2980,21 +3137,39 @@ ${smsData.join(" ")}.`,
       });
       const smsData = await Promise.all([smsInfo]);
 
-      await sendSMS(
-        `${selectedVouchers[0]?.voucherType}   
+      message = `${selectedVouchers[0]?.voucherType}   
 [Seat No./Type--Serial]
 ${smsData.join(" ")},  
 
 ${moment(detailsInfo?.date)?.format("dddd,Do MMMM,YYYY")},${moment(
-          detailsInfo?.time,
-        ).format("hh:mm a")},  
+        detailsInfo?.time,
+      ).format("hh:mm a")},  
 ${email || ""},${
-          phonenumber
-        }.Please visit https://www.gpcpins.com/evoucher to print your tickets.
-`,
-        phonenumber,
-      );
+        phonenumber
+      }.Please visit https://www.gpcpins.com/evoucher to print your tickets.
+`;
+
+      await sendSMS(message, phonenumber);
     }
+
+    await messageQueue.add(
+      "send-text",
+      {
+        sessionId: process.env.WHATSAPP_SESSION_ID,
+        type: "send-text",
+        phone: getInternationalMobileFormat(phonenumber),
+        message: message,
+      },
+      {
+        jobId: `${transaction?.paymentReference}`,
+        attempts: 1,
+        backoff: {
+          type: "exponential",
+          delay: 5000,
+        },
+        removeOnComplete: true,
+      },
+    );
   }
 }
 
@@ -3009,6 +3184,7 @@ async function sendWalletTopUpMessage(transaction) {
     limit(() => Promise.all([sms]));
   }
 }
+
 async function sendElectricityMessage(transaction, type) {
   if (transaction.status === "completed") {
     const message = `The number ${transaction?.phonenumber} with METER NO. '${

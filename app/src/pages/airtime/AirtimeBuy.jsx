@@ -22,7 +22,7 @@ import {
 } from "@mui/material";
 
 import LoadingButton from "@mui/lab/LoadingButton";
-
+import PaymentIcon from "@mui/icons-material/Payment";
 import CloseIcon from "@mui/icons-material/Close";
 import ReceiptIcon from "@mui/icons-material/Receipt";
 import PhoneAndroidIcon from "@mui/icons-material/PhoneAndroid";
@@ -63,7 +63,7 @@ import { makeAirtimeTransaction } from "../../api/paymentAPI";
 import { getNonUser } from "../../api/userAPI";
 
 import { currencyFormatter, getCode } from "../../constants";
-
+import { useSocket } from "../../context/providers/SocketProvider";
 /**
  * VALIDATION
  */
@@ -86,6 +86,7 @@ function AirtimeBuy() {
   const { pathname } = useLocation();
 
   const { user } = useAuth();
+  const { joinPaymentRoom, leavePaymentRoom } = useSocket();
 
   const { customDispatch } = useCustomContext();
 
@@ -133,6 +134,22 @@ function AirtimeBuy() {
 
   const isBundleSelected = type !== "Bundle" || !!selectedBundle?.plan_id;
 
+  useEffect(() => {
+    if (user?.id) {
+      joinPaymentRoom(user?.id);
+      return;
+    }
+
+    if (paymentData?.phonenumber) {
+      joinPaymentRoom(paymentData?.phonenumber);
+    }
+
+    return () => {
+      leavePaymentRoom(user?.id);
+      leavePaymentRoom(paymentData?.phonenumber);
+    };
+  }, [user?.id, paymentData?.phonenumber, joinPaymentRoom, leavePaymentRoom]);
+
   /**
    * FORM
    */
@@ -141,6 +158,7 @@ function AirtimeBuy() {
     register,
     watch,
     setValue,
+    setError,
     formState: { errors },
   } = useForm({
     resolver: yupResolver(airtimeSchema),
@@ -168,9 +186,15 @@ function AirtimeBuy() {
    * WALLET BALANCE
    */
 
-  const walletBalance = user?.id
-    ? queryClient.getQueryData(["wallet-balance", user?.id]) || 0
-    : 0;
+  const walletBalance = useMemo(() => {
+    if (!user?.id) return 0;
+
+    return Number(queryClient.getQueryData(["wallet-balance", user?.id]) || 0);
+  }, [queryClient, user?.id]);
+
+  const isInsufficientBalance =
+    paymentData?.paymentMethod === "wallet" &&
+    walletBalance < paymentData.totalAmount;
 
   /**
    * TOTAL AMOUNT
@@ -273,6 +297,9 @@ function AirtimeBuy() {
         .catch(() => false);
 
       if (!isValid) {
+        setError("amount", {
+          message: "Required*",
+        });
         return;
       }
     }
@@ -281,12 +308,7 @@ function AirtimeBuy() {
      * VALIDATE WALLET
      */
 
-    const insufficientBalance =
-      values.paymentMethod === "wallet" &&
-      user?.id &&
-      Number(walletBalance) < Number(totalAmount);
-
-    if (insufficientBalance) {
+    if (isInsufficientBalance) {
       customDispatch(globalAlertType("error", "Insufficient wallet balance."));
 
       return;
@@ -372,21 +394,6 @@ function AirtimeBuy() {
 
     try {
       /**
-       * VERIFY GUEST
-       */
-
-      if (!user?.id) {
-        await guestMutation.mutateAsync(
-          {},
-          {
-            onSuccess: async () => {
-              await paymentMutation.mutateAsync(payload);
-            },
-          },
-        );
-      }
-
-      /**
        * MAKE PAYMENT
        */
 
@@ -420,7 +427,7 @@ function AirtimeBuy() {
                 sm: 4,
               },
 
-              borderRadius: 4,
+              borderRadius: 2,
 
               overflow: "hidden",
             }}
@@ -463,9 +470,7 @@ function AirtimeBuy() {
                 sx={{
                   p: 2,
 
-                  borderRadius: 3,
-
-                  bgcolor: "primary.main",
+                  bgcolor: "secondary.main",
 
                   color: "primary.contrastText",
                 }}
@@ -488,7 +493,7 @@ function AirtimeBuy() {
 
                     <Stack>
                       <Typography fontWeight={700}>
-                        {serviceProviderInfo?.provider}
+                        {serviceProviderInfo?.providerName}
                       </Typography>
 
                       <Typography variant="body2">{recipient}</Typography>
@@ -500,7 +505,7 @@ function AirtimeBuy() {
 
                 {type === "Bundle" && selectedBundle?.plan_name && (
                   <Box mt={2}>
-                    <Typography variant="caption">
+                    <Typography variant="body2" color="primary.main">
                       {selectedBundle.plan_name} ({selectedBundle.volume})
                     </Typography>
                   </Box>
@@ -514,12 +519,14 @@ function AirtimeBuy() {
                   <TextField
                     fullWidth
                     label="Bundle Price"
-                    value={currencyFormatter(totalAmount)}
+                    value={totalAmount}
                     InputProps={{
                       readOnly: true,
-
                       startAdornment: (
                         <InputAdornment position="start">GH¢</InputAdornment>
+                      ),
+                      endAdornment: (
+                        <InputAdornment position="end">.00</InputAdornment>
                       ),
                     }}
                   />
@@ -574,7 +581,7 @@ function AirtimeBuy() {
       <Dialog
         open={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
-        maxWidth="sm"
+        maxWidth="xs"
         fullWidth
         PaperProps={{
           sx: {
@@ -588,7 +595,7 @@ function AirtimeBuy() {
             alignItems: "center",
             justifyContent: "space-between",
 
-            bgcolor: "primary.main",
+            bgcolor: "primary.lighter",
 
             color: "primary.contrastText",
           }}
@@ -625,25 +632,41 @@ function AirtimeBuy() {
               borderColor: "divider",
             }}
           >
-            <Stack spacing={1.5}>
+            <Stack spacing={1}>
               <Stack direction="row" justifyContent="space-between">
-                <Typography color="text.secondary">Service</Typography>
+                <Typography variant='body2' color="text.secondary">Service</Typography>
 
-                <Typography fontWeight={600}>{type}</Typography>
+                <Typography variant='body2' fontWeight={600}>{type}</Typography>
               </Stack>
 
               <Stack direction="row" justifyContent="space-between">
-                <Typography color="text.secondary">Recipient</Typography>
+                <Typography variant='body2' color="text.secondary">Recipient</Typography>
 
-                <Typography fontWeight={600}>{recipient}</Typography>
+                <Typography variant='body2' fontWeight={600}>{recipient}</Typography>
               </Stack>
 
               <Stack direction="row" justifyContent="space-between">
-                <Typography color="text.secondary">Network</Typography>
-
-                <Typography fontWeight={600}>
-                  {serviceProviderInfo?.providerName}
-                </Typography>
+                <Typography variant='body2' color="text.secondary">Network</Typography>
+                <Stack
+                  direction="row"
+                  gap={0.5}
+                  useFlexGap
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
+                  <Avatar
+                    variant="rounded"
+                    src={serviceProviderInfo?.image}
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      bgcolor: "white",
+                    }}
+                  />
+                  <Typography variant='body2' fontWeight={600}>
+                    {serviceProviderInfo?.providerName}
+                  </Typography>
+                </Stack>
               </Stack>
 
               {type === "Bundle" && (
@@ -651,17 +674,17 @@ function AirtimeBuy() {
                   <Divider />
 
                   <Stack direction="row" justifyContent="space-between">
-                    <Typography color="text.secondary">Bundle</Typography>
+                    <Typography variant='body2' color="text.secondary">Bundle</Typography>
 
-                    <Typography fontWeight={600}>
+                    <Typography variant='body2' fontWeight={600}>
                       {selectedBundle.plan_name}
                     </Typography>
                   </Stack>
 
                   <Stack direction="row" justifyContent="space-between">
-                    <Typography color="text.secondary">Volume</Typography>
+                    <Typography variant='body2' color="text.secondary">Volume</Typography>
 
-                    <Typography fontWeight={600}>
+                    <Typography variant='body2' fontWeight={600}>
                       {selectedBundle.volume}
                     </Typography>
                   </Stack>
@@ -671,9 +694,9 @@ function AirtimeBuy() {
               <Divider />
 
               <Stack direction="row" justifyContent="space-between">
-                <Typography color="text.secondary">Payment Method</Typography>
+                <Typography variant='body2' color="text.secondary">Payment Method</Typography>
 
-                <Typography fontWeight={600}>
+                <Typography variant='body2' fontWeight={600}>
                   {paymentData?.paymentMethod === "wallet"
                     ? "Wallet"
                     : "Mobile Money"}
@@ -682,7 +705,7 @@ function AirtimeBuy() {
 
               {paymentData?.paymentMethod !== "wallet" && (
                 <Stack direction="row" justifyContent="space-between">
-                  <Typography color="text.secondary">Payment Number</Typography>
+                  <Typography variant='body2' color="text.secondary">Payment Number</Typography>
 
                   <Typography fontWeight={600}>
                     {paymentData?.phonenumber}
@@ -693,9 +716,12 @@ function AirtimeBuy() {
               <Divider />
 
               <Stack direction="row" justifyContent="space-between">
-                <Typography variant="h6" fontWeight={700}>
-                  Total Amount
-                </Typography>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <PaymentIcon fontSize="small" color="primary" />
+                  <Typography variant="h6" fontWeight={700}>
+                    Total Amount
+                  </Typography>
+                </Stack>
 
                 <Typography variant="h6" fontWeight={700} color="primary">
                   {currencyFormatter(totalAmount)}
@@ -735,319 +761,3 @@ function AirtimeBuy() {
 }
 
 export default AirtimeBuy;
-
-// import { useEffect, useMemo, useState } from "react";
-// import {
-//   Container,
-//   Paper,
-//   TextField,
-//   Typography,
-//   Stack,
-//   Avatar,
-//   InputAdornment,
-//   Alert,
-// } from "@mui/material";
-// import { useSearchParams, Navigate, useNavigate } from "react-router-dom";
-// import Swal from "sweetalert2";
-// import { useLocation } from "react-router-dom";
-// import { useQueryClient, useMutation } from "@tanstack/react-query";
-// // import {
-// //   airtimeValidationSchema,
-// //   bundleValidationSchema,
-// // } from "../../config/validationSchema";
-// import { useCustomContext } from "../../context/providers/CustomProvider";
-// import { useAuth } from "../../context/providers/AuthProvider";
-// import { globalAlertType } from "../../components/alert/alertType";
-// import { getCode } from "../../constants";
-// import Back from "../../components/Back";
-// import PaymentOption from "../../components/PaymentOption";
-// import BundleList from "./BundleList";
-// import { getNonUser } from "../../api/userAPI";
-// import { makeAirtimeTransaction } from "../../api/paymentAPI";
-
-// function AirtimeBuy() {
-//   const queryClient = useQueryClient();
-//   const { customDispatch } = useCustomContext();
-//   const { pathname } = useLocation();
-//   const navigate = useNavigate();
-//   const { user } = useAuth();
-//   const [searchParams, _] = useSearchParams();
-//   const type = searchParams.get("type");
-//   const [selectedBundle, setSelectedBundle] = useState({
-//     plan_id: searchParams.get("plan_id"),
-//     plan_name: searchParams.get("plan_name"),
-//     volume: searchParams.get("plan_volume"),
-//     price: searchParams.get("plan_price"),
-//   });
-//   const [amount, setAmount] = useState(
-//     type === "Bundle" ? searchParams.get("plan_price") : 1,
-//   );
-//   const [failureCount, setFailCount] = useState(3);
-
-//   const recipient = searchParams.get("recipient");
-
-//   // Service provider info from recipient number
-//   const serviceProviderInfo = useMemo(() => getCode(recipient), [recipient]);
-
-//   // Check if bundle is selected (only for bundle type)
-//   const isBundleSelected =
-//     type !== "Bundle" || (selectedBundle && selectedBundle.plan_id);
-
-//   // Update amount when selectedBundle changes (for bundles)
-//   useEffect(() => {
-//     if (type === "Bundle") {
-//       setAmount("amount", selectedBundle.price);
-//     }
-//   }, [selectedBundle, type]);
-
-//   // Wallet balance check (derived)
-//   const walletBalance = user?.id
-//     ? queryClient.getQueryData(["wallet-balance", user?.id], { exact: true })
-//     : 0;
-//   const totalAmount = type === "Bundle" ? selectedBundle.price : Number(amount);
-
-//   // Payment mutation
-//   const paymentMutation = useMutation({
-//     mutationFn: makeAirtimeTransaction,
-//     onSuccess: (data) => {
-//       navigate("/confirm", {
-//         replace: true,
-//         state: {
-//           id: data?.id,
-//           categoryType: type === "Bundle" ? "bundle" : "airtime",
-//           path: pathname,
-//           // isWallet: paymentMethod === "wallet",
-//         },
-//       });
-//     },
-//     onError: async (error) => {
-//       if (error === "Invalid PIN!") {
-//         const newCount = failureCount - 1;
-//         setFailCount(newCount);
-//         if (newCount === 0) {
-//           // Wallet is now disabled
-
-//           customDispatch(
-//             globalAlertType(
-//               "error",
-//               `Wallet disabled. Please use mobile money or contact support.`,
-//             ),
-//           );
-//         } else {
-//           customDispatch(
-//             globalAlertType(
-//               "error",
-//               `${error} ${newCount} attempt(s) left. Wallet will be disabled after ${
-//                 newCount - 1
-//               } more attempt(s).`,
-//             ),
-//           );
-//         }
-//       } else {
-//         customDispatch(globalAlertType("error", error));
-//       }
-//     },
-//   });
-
-//   // Guest user check mutation
-//   const guestMutation = useMutation({
-//     mutationFn: getNonUser,
-//     onSuccess: () => {
-//       // After guest check, proceed with payment
-//       // handlePaymentSubmit();
-//     },
-//     onError: () => {
-//       customDispatch(
-//         globalAlertType("error", "Failed to verify user. Please try again."),
-//       );
-//     },
-//   });
-
-//   // Form submission handler
-//   const onSubmit = async (values) => {
-//     const isInsufficientBalance =
-//       values.paymentMethod === "wallet" &&
-//       user?.id &&
-//       (Number(walletBalance) === 0 || Number(walletBalance) < totalAmount);
-//     // Validate wallet balance
-//     if (values.paymentMethod === "wallet" && isInsufficientBalance) {
-//       customDispatch(
-//         globalAlertType(
-//           "error",
-//           "Insufficient wallet balance. Please fund your wallet or use mobile money.",
-//         ),
-//       );
-//       return;
-//     }
-
-//     Swal.fire({
-//       title: "Processing",
-//       text: `Proceed with payment?`,
-//       showCancelButton: true,
-//     }).then(({ isConfirmed }) => {
-//       if (isConfirmed) {
-//         const payload = {
-//           type: type,
-//           service: type?.toLowerCase(),
-//           amount: totalAmount,
-//           recipient: recipient,
-//           phonenumber: values.phonenumber || user?.phonenumber,
-//           provider: serviceProviderInfo.providerName,
-//           email: values.email || user?.email,
-//           isWallet: values?.paymentMethod === "wallet",
-//         };
-
-//         if (type === "Bundle") {
-//           payload.plan = {
-//             id: selectedBundle.plan_id,
-//             name: selectedBundle.plan_name,
-//             volume: selectedBundle.volume,
-//           };
-//         }
-
-//         if (values.paymentMethod === "wallet") {
-//           payload.token = values.token;
-//         }
-
-//         // If user not logged in, run guest check first
-//         if (!user?.id) {
-//           guestMutation.mutate({});
-//         } else {
-//           paymentMutation.mutate(payload);
-//         }
-//       }
-//     });
-//   };
-
-//   // Redirect if required params missing
-//   if (!recipient || !["Airtime", "Bundle"].includes(type)) {
-//     return (
-//       <Navigate to="/airtime?link=6b1bb991cea626082307742d77772268dbf4d9c5194b8bc5d09c81a5fc0a5ce5" />
-//     );
-//   }
-
-//   return (
-//     <Container maxWidth="sm" sx={{ py: 4 }}>
-//       <Back />
-//       <Typography variant="h4" gutterBottom>
-//         Complete Top-Up
-//       </Typography>
-
-//       {/* Info notice for airtime */}
-//       {type === "Airtime" && (
-//         <Alert severity="info" sx={{ mb: 3 }}>
-//           Minimum airtime: <strong>GHS 1</strong> | Maximum:{" "}
-//           <strong>GHS 100</strong>
-//         </Alert>
-//       )}
-
-//       {type === "Bundle" && !isBundleSelected && (
-//         <Alert severity="warning" sx={{ mb: 2 }}>
-//           Please select a bundle from the list to continue.
-//         </Alert>
-//       )}
-
-//       <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-//         {/* Recipient summary */}
-//         <Stack
-//           direction="row"
-//           justifyContent="space-between"
-//           alignItems="center"
-//           sx={{
-//             bgcolor: "primary.main",
-//             color: "white",
-//             p: 2,
-//             borderRadius: 1,
-//             mb: 3,
-//           }}
-//         >
-//           <Avatar
-//             variant="square"
-//             src={serviceProviderInfo?.image}
-//             sx={{ width: 60, height: 40, objectFit: "contain" }}
-//           />
-//           <Stack alignItems="flex-end">
-//             {type === "Bundle" && selectedBundle.plan_name && (
-//               <Typography variant="caption" sx={{ color: "#000" }}>
-//                 {selectedBundle.plan_name} ({selectedBundle.volume})
-//               </Typography>
-//             )}
-//             <Typography variant="body2">{recipient}</Typography>
-//             <Typography variant="caption">Recipient Number</Typography>
-//           </Stack>
-//         </Stack>
-
-//         <Stack spacing={3}>
-//           {/* Amount field */}
-//           {type === "Bundle" ? (
-//             <TextField
-//               fullWidth
-//               variant="filled"
-//               label="Bundle Price"
-//               InputProps={{
-//                 startAdornment: (
-//                   <InputAdornment position="start">GH¢</InputAdornment>
-//                 ),
-//                 readOnly: true,
-//                 style: { fontWeight: "bold", fontSize: "1.8rem" },
-//               }}
-//               value={selectedBundle.price}
-//             />
-//           ) : (
-//             <TextField
-//               fullWidth
-//               type="number"
-//               label="Top-Up Amount"
-//               InputProps={{
-//                 startAdornment: (
-//                   <InputAdornment position="start">GH¢</InputAdornment>
-//                 ),
-//                 style: { fontWeight: "bold", fontSize: "1.8rem" },
-//               }}
-//             />
-//           )}
-
-//           {/* Payment */}
-
-//           <PaymentOption
-//             showMomo
-//             showWallet={!!user?.id}
-//             initialValues={{
-//               fullName: user?.name || "",
-//               email: user?.email || "",
-//             }}
-//             onSubmit={onSubmit}
-//           />
-
-//           {/* <LoadingButton
-//               type="submit"
-//               variant="contained"
-//               size="large"
-//               loading={
-//                 isSubmitting ||
-//                 paymentMutation.isLoading ||
-//                 guestMutation.isLoading
-//               }
-//               disabled={
-//                 paymentMethod === "" ||
-//                 (paymentMethod === "wallet" && isInsufficientBalance)
-//               }
-//               fullWidth
-//             >
-//               Confirm Details
-//             </LoadingButton> */}
-//         </Stack>
-//       </Paper>
-
-//       {/* Bundle selection (only visible for Bundle type) */}
-//       {type === "Bundle" && (
-//         <BundleList
-//           selectedBundle={selectedBundle}
-//           setSelectedBundle={setSelectedBundle}
-//         />
-//       )}
-//     </Container>
-//   );
-// }
-
-// export default AirtimeBuy;

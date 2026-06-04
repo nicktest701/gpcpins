@@ -1,54 +1,98 @@
-import { Box, Stack, useTheme } from '@mui/material';
-import { NavLink } from 'react-router-dom';
 
-import { useContext } from 'react';
-import { AuthContext } from '../../context/providers/AuthProvider';
+import { NavLink } from "react-router-dom";
+import { useAuth } from "../../context/providers/AuthProvider";
+import { DropdownBase } from "./DropdownBase";
+import { useTheme } from "@mui/material";
 
+const PrepaidDropdown = () => {
+  const { user } = useAuth();
+const {palette} = useTheme();
 
-const PrepaidDropdown = ({ display }) => {
-  const {palette}=useTheme()
-  const { user } = useContext(AuthContext);
+   const dropdownItemStyles = ({ isActive }) => {
 
-  const styles = ({ isActive }) => {
-    return {
-      color: isActive ? palette.secondary.main: '#333',
-      fontWeight: isActive ? '700' : 'normal',
-      // color: isActive ? '#fff' : '#333',
-      fontSize: 13,
-    };
+  return {
+    color:  isActive ? palette.secondary.main : "#333",
+    fontWeight: isActive ? "700" : "normal",
+    fontSize: "0.85rem",
+    textDecoration: "none",
+    padding: "8px 16px",
+    width: "100%",
+    borderRadius: "4px",
+    "&:hover": {
+      backgroundColor:  palette.action.hover,
+      color:  palette.secondary.main,
+    },
   };
+};
 
   return (
-    <Box
-      sx={{
-        display: 'block',
-        position: 'absolute',
-        visibility: display ? 'visible' : 'collapse',
-        width: 300,
-        bgcolor: '#fff',
-        top: 41,
-        boxShadow: '3px 3px 1px hsl(207, 97%, 98%)',
-        transform: `translateY(${display ? 0 : 10}px)`,
-        transition: 'all 150ms ease-in-out',
-        opacity: display ? 1 : 0,
-      }}
-    >
-      <Stack justifyContent='flex-start' alignItems='flex-start' padding={0}>
-        <NavLink style={styles} to='/electricity/' className='dropdown-item'>
-          - Buy
+    <DropdownBase>
+      <NavLink to="/electricity/" style={dropdownItemStyles}>
+        Buy Prepaid
+      </NavLink>
+      {user?.id && (
+        <NavLink to="/electricity/meters" style={dropdownItemStyles}>
+          My Meters
         </NavLink>
-        {user?.id && (
-          <NavLink
-            style={styles}
-            to='/electricity/meters'
-            className='dropdown-item'
-          >
-            - Meters
-          </NavLink>
-        )}
-      </Stack>
-    </Box>
+      )}
+    </DropdownBase>
   );
 };
 
 export default PrepaidDropdown;
+
+
+// import { Box, Stack, useTheme } from '@mui/material';
+// import { NavLink } from 'react-router-dom';
+
+// import { useContext } from 'react';
+// import { AuthContext } from '../../context/providers/AuthProvider';
+
+
+// const PrepaidDropdown = ({ display }) => {
+//   const {palette}=useTheme()
+//   const { user } = useContext(AuthContext);
+
+//   const styles = ({ isActive }) => {
+//     return {
+//       color: isActive ? palette.secondary.main: '#333',
+//       fontWeight: isActive ? '700' : 'normal',
+//       // color: isActive ? '#fff' : '#333',
+//       fontSize: 13,
+//     };
+//   };
+
+//   return (
+//     <Box
+//       sx={{
+//         display: 'block',
+//         position: 'absolute',
+//         visibility: display ? 'visible' : 'collapse',
+//         width: 300,
+//         bgcolor: '#fff',
+//         top: 41,
+//         boxShadow: '3px 3px 1px hsl(207, 97%, 98%)',
+//         transform: `translateY(${display ? 0 : 10}px)`,
+//         transition: 'all 150ms ease-in-out',
+//         opacity: display ? 1 : 0,
+//       }}
+//     >
+//       <Stack justifyContent='flex-start' alignItems='flex-start' padding={0}>
+//         <NavLink style={styles} to='/electricity/' className='dropdown-item'>
+//            Buy Prepaid
+//         </NavLink>
+//         {user?.id && (
+//           <NavLink
+//             style={styles}
+//             to='/electricity/meters'
+//             className='dropdown-item'
+//           >
+//             My Meters
+//           </NavLink>
+//         )}
+//       </Stack>
+//     </Box>
+//   );
+// };
+
+// export default PrepaidDropdown;
