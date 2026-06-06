@@ -1,10 +1,10 @@
 import { useMemo } from "react";
-import { useLocation, useNavigate, useMatch } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
-  PaymentRounded,
-  MoneyRounded,
-  CardMembership,
+  LocalOffer,
+  Bolt,
+  ReceiptLong,
   Person,
   PersonOutlined,
 } from "@mui/icons-material";
@@ -14,9 +14,9 @@ import { useAuth } from "../../context/providers/AuthProvider";
 // Navigation items configuration
 const navItems = [
   { label: "Home", icon: Home, path: "/", matchPattern: "/" },
-  { label: "Vouchers", icon: PaymentRounded, path: "/evoucher", matchPattern: "/evoucher" },
-  { label: "Prepaid", icon: MoneyRounded, path: "/electricity", matchPattern: "/electricity" },
-  { label: "Airtime/Bundle", icon: CardMembership, path: "/airtime", matchPattern: "/airtime" },
+  { label: "Vouchers", icon: LocalOffer, path: "/evoucher", matchPattern: "/evoucher" },
+  { label: "Prepaid", icon: Bolt, path: "/electricity", matchPattern: "/electricity" },
+  { label: "Airtime/Bundle", icon: ReceiptLong, path: "/airtime", matchPattern: "/airtime" },
 ];
 
 function BottomNav() {

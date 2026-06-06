@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Avatar from "@mui/material/Avatar";
 import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
@@ -15,17 +15,33 @@ import { downloadVouchers, makePayment } from "../api/paymentAPI";
 import { Alert } from "@mui/material";
 import { LoadingButton } from "@mui/lab";
 import { Spinner } from "./PaymentStatus";
+import { useSocket } from "../context/providers/SocketProvider";
 
 function Checkout() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { state } = useLocation();
+  const [downloadLink, setDownloadLink] = useState(null);
   const path = state?.payload;
 
   // const [errCount, setErrCount] = useState(0);
   const {
     customState: { transaction },
   } = useCustomContext();
- 
+  const { onEvent, offEvent } = useSocket();
+
+  // Socket success listener
+  useEffect(() => {
+    const handleSuccess = (payload) => {
+      // console.log(payload);
+      setDownloadLink(payload?.data);
+    };
+    onEvent("ticket-generation", handleSuccess);
+    // onEvent("general", handleSuccess);
+    return () => {
+      offEvent("ticket-generation", handleSuccess);
+      // offEvent("general", handleSuccess);
+    };
+  }, [onEvent, offEvent]);
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
@@ -156,38 +172,66 @@ function Checkout() {
                 />
                 <Divider flexItem />
                 {generatedVouchers?.isLoading && (
-                  <Stack direction="row" alignItems="center" justifyContent="center" spacing={1}>
-<Spinner size={16} />
-                  <Typography
-                    textAlign="center"
-                    fontStyle="italic"
-                    fontWeight="bold"
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="center"
+                    spacing={1}
                   >
-                    Please wait..We are currently generating your{" "}
-                    {isVoucher ? "Vouchers" : "Tickets"}
-                  </Typography>
-                  </ Stack>
+                    <Spinner size={16} />
+                    <Typography
+                      textAlign="center"
+                      fontStyle="italic"
+                      fontWeight="bold"
+                    >
+                      Please wait..We are currently generating your{" "}
+                      {isVoucher ? "Vouchers" : "Tickets"}
+                    </Typography>
+                  </Stack>
                 )}
               </Stack>
 
               {generatedVouchers?.data?.id && (
-                <LoadingButton
-                  disabled={generatedVouchers?.isLoading}
-                  loading={generatedVouchers?.isLoading}
-                  variant="contained"
-                  color="secondary"
-                  size="small"
-                  onClick={handleDownloadVouchers}
-                  sx={{
-                    textTransform: "uppercase",
-                    "&:hover": {
-                      textDecoration: "underline",
-                    },
-                  }}
-                  endIcon={<FileDownloadRounded />}
-                >
-                  {isVoucher ? " Download Vouchers" : " Download Tickets"}
-                </LoadingButton>
+                <>
+                  {generatedVouchers?.data?.downloadLink ? (
+                    <LoadingButton
+                      disabled={generatedVouchers?.isLoading}
+                      loading={generatedVouchers?.isLoading}
+                      variant="contained"
+                      color="secondary"
+                      size="small"
+                      onClick={handleDownloadVouchers}
+                      sx={{
+                        textTransform: "uppercase",
+                        "&:hover": {
+                          textDecoration: "underline",
+                        },
+                      }}
+                      endIcon={<FileDownloadRounded />}
+                    >
+                      {isVoucher ? " Download Vouchers" : " Download Tickets"}
+                    </LoadingButton>
+                  ) : (
+                   
+                      <a
+                        href={downloadLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        download={true}
+                        style={{
+                          // width: "100%",
+                          paddingBlock: "8px",
+                          paddingInline: "16px",
+                          borderRadius:'6px',
+                          backgroundColor:'var(--secondary)',
+                          color:'#fff'
+                        }}
+                      >
+                        {isVoucher ? " Download Vouchers" : " Download Tickets"}
+                      </a>
+                  
+                  )}
+                </>
               )}
 
               <Stack

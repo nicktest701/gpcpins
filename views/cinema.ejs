@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;400;700&display=swap" rel="stylesheet">
-    <title>Document</title>
+    <title>Event Ticket (<%= movie %>)</title>
 
     <style>
         *,
@@ -139,16 +139,16 @@
             <div class="cover">
                 <!-- image container  -->
                 <div class="image-container">
-                    <img src=<%=voucher?.poster %> alt="">
+                    <img src=<%=cinema %> alt="">
                     <div class="image-fade-container"></div>
                 </div>
                 <!-- main container  -->
                 <div class="main-container">
 
                     <div style="display: flex; justify-content: flex-start;align-items: center;gap: 4px;">
-                        <img src=<%=voucher?.poster %> alt="poster" style="width: 20px;height: 20px;">
+                        <img src=<%=cinema %> alt="poster" style="width: 20px;height: 20px;">
                         <p>
-                            <%= voucher?.companyName %>
+                            <%= companyName %>
 
                         </p>
                     </div>
@@ -157,7 +157,7 @@
                     <div class="title-container">
                         <p class="title">Movie</p>
                         <p class="main-title">
-                            <%= voucher?.movie %>
+                            <%= movie %>
                         </p>
                     </div>
 
@@ -165,9 +165,9 @@
                     <div class="date-time-container">
                         <p class="title">date & time</p>
                         <p><span>
-                                <%= voucher?.date %>
-                            </span> <span>
-                                <%= voucher?.time %>
+                                <%= date %>
+                            </span> ,<span>
+                                <%= time %>
                             </span></p>
                     </div>
 
@@ -175,7 +175,7 @@
                     <div class="location-container">
                         <p class="title">Location</p>
                         <p>
-                            <%= voucher?.theatre %> , <%= voucher?.location %>
+                            <%= theatre %> , <%= location %>
                         </p>
                     </div>
 

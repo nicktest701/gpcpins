@@ -20,17 +20,16 @@ import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   DashboardRounded,
-  PaymentRounded,
-  MoneyRounded,
+  Bolt,
+  LocalOffer,
   CardMembership,
   PersonOutlined,
   NotificationsOutlined,
   WalletOutlined,
   NoteAltOutlined,
   ExitToAppRounded,
+  ReceiptLong,
   Close,
-  SimCardOutlined,
-  SdCardRounded,
 } from "@mui/icons-material";
 import { useAuth } from "../../context/providers/AuthProvider";
 import {
@@ -198,19 +197,15 @@ function Sidebar() {
 
             <List disablePadding>
               <NavLinkItem to="/" title="Home" icon={<DashboardRounded />} />
-              {/* <NavLinkItem
-                to="evoucher"
-                title="Voucher & Tickets"
-                icon={<PaymentRounded />}
-              /> */}
+           
               <NavLinkItemCollapse
-                icon={<MoneyRounded />}
+                icon={<LocalOffer />}
                 title="Voucher & Tickets"
               >
                 <NavLinkItem
                   to="/evoucher/waec-checker"
                   title="Waec & SHS Placement Checker"
-                  // icon={<MoneyRounded />}
+                  // icon={<LocalOffer />}
                 />
                 <NavLinkItem
                   to="/evoucher/university-form"
@@ -239,13 +234,13 @@ function Sidebar() {
                 />
               </NavLinkItemCollapse>
               <NavLinkItemCollapse
-                icon={<MoneyRounded />}
+                icon={<Bolt />}
                 title="Prepaid Units"
               >
                 <NavLinkItem
                   to="electricity"
                   title="Buy Prepaid"
-                  // icon={<MoneyRounded />}
+                  // icon={<LocalOffer />}
                 />
                 <NavLinkItem
                   to="electricity/meters"
@@ -256,7 +251,7 @@ function Sidebar() {
               <NavLinkItem
                 to="airtime"
                 title="Airtime & Data Bundle"
-                icon={<CardMembership />}
+                icon={<ReceiptLong />}
               />
             </List>
 
@@ -362,19 +357,15 @@ function Sidebar() {
            
             <List disablePadding>
               <NavLinkItem to="/" title="Home" icon={<DashboardRounded />} />
-              {/* <NavLinkItem
-                to="evoucher"
-                title="Voucher & Tickets"
-                icon={<PaymentRounded />}
-              /> */}
+       
               <NavLinkItemCollapse
-                icon={<MoneyRounded />}
+                icon={<LocalOffer />}
                 title="Voucher & Tickets"
               >
                 <NavLinkItem
                   to="/evoucher/waec-checker"
                   title="Waec & SHS Placement Checker"
-                  // icon={<MoneyRounded />}
+                  // icon={<LocalOffer />}
                 />
                 <NavLinkItem
                   to="/evoucher/university-form"
@@ -403,13 +394,13 @@ function Sidebar() {
                 />
               </NavLinkItemCollapse>
               <NavLinkItemCollapse
-                icon={<MoneyRounded />}
+                icon={<Bolt />}
                 title="Prepaid Units"
               >
                 <NavLinkItem
                   to="electricity"
                   title="Buy Prepaid"
-                  // icon={<MoneyRounded />}
+                  // icon={<LocalOffer />}
                 />
                 <NavLinkItem
                   to="electricity/meters"
@@ -420,13 +411,13 @@ function Sidebar() {
               <NavLinkItem
                 to="airtime"
                 title="Airtime & Data Bundle"
-                icon={<CardMembership />}
+                icon={<ReceiptLong />}
               />
             </List>
               <NavLinkItem
                 to="electricity"
                 title="Prepaid Units"
-                icon={<MoneyRounded />}
+                icon={<LocalOffer />}
               />
               <NavLinkItem
                 to="airtime"

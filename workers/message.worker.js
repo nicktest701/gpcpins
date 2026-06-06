@@ -2,18 +2,14 @@
 const { Worker } = require("bullmq");
 const redisClient = require("../config/redisClient");
 const { sendText } = require("../services/message.sender");
+const { redisConnectionOptions } = require("../config/configurations");
 
-const connectionOptions = {
-  url: process.env.REDIS_HOST_EXT,
-  maxRetriesPerRequest: null,
-};
 
 const worker = new Worker(
   "messages",
   async (job) => {
     const { sessionId, phone, message } = job.data;
 
-    console.log(job)
     // const { message_uuid, sessionId, phone, message } = job.data;
 
     // // 1. idempotency lock
@@ -30,7 +26,7 @@ const worker = new Worker(
     }
   },
   {
-    connection: connectionOptions,
+    connection: redisConnectionOptions,
     concurrency: 10,
   },
 );

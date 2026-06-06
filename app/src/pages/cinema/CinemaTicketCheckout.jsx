@@ -39,27 +39,15 @@ import {
 
 import moment from "moment";
 import _ from "lodash";
-
 import { currencyFormatter } from "@/constants";
-
 import { getCategory } from "@/api/categoryAPI";
-
 import { makeMomoTransaction } from "@/api/paymentAPI";
-
-import { getNonUser } from "@/api/userAPI";
-
 import { globalAlertType } from "@/components/alert/alertType";
-
 import Back from "@/components/Back";
-
 import PaymentOption from "@/components/PaymentOption";
-
 import { useCustomContext } from "@/context/providers/CustomProvider";
-
 import { useAuth } from "@/context/providers/AuthProvider";
-
 import AnimatedContainer from "@/components/animations/AnimatedContainer";
-
 import VoucherPlaceHolderItem from "@/components/items/VoucherPlaceHolderItem";
 import { useSocket } from "../../context/providers/SocketProvider";
 
@@ -120,6 +108,7 @@ function CinemaTicketCheckout() {
     retry: false,
     onSettled: () => {
       handleCloseSummary();
+      paymentMutation.reset();
     },
     onSuccess: (data) => {
       customDispatch({
@@ -172,11 +161,6 @@ function CinemaTicketCheckout() {
 
       customDispatch(globalAlertType("error", error || "Payment failed"));
     },
-  });
-
-  const guestMutation = useMutation({
-    mutationFn: getNonUser,
-    retry: false,
   });
 
   /*
@@ -270,19 +254,7 @@ function CinemaTicketCheckout() {
     setWalletError("");
 
     const payload = buildPayload(values);
-
-    // if (!user?.id) {
-    //   guestMutation.mutateAsync(
-    //     {},
-    //     {
-    //       onSuccess: () => {
-    //         paymentMutation.mutateAsync(payload);
-    //       },
-    //     },
-    //   );
-    // } else {
     paymentMutation.mutateAsync(payload);
-    // }
   };
 
   if (cinemaTicketTotal.length === 0 || totalQuantity === 0) {
@@ -642,7 +614,7 @@ function CinemaTicketCheckout() {
 
           <LoadingButton
             variant="contained"
-            loading={paymentMutation.isLoading || guestMutation.isLoading}
+            loading={paymentMutation.isLoading}
             onClick={processPayment}
             sx={{
               px: 3,

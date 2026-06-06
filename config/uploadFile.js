@@ -99,7 +99,7 @@ async function uploadToFirebase({
       if (fs.existsSync(localFilePath)) {
         await fsPromises.unlink(localFilePath);
 
-        console.log("Temporary file deleted:", localFilePath);
+        // console.log("Temporary file deleted:", localFilePath);
       }
     } catch (cleanupError) {
       console.error("Cleanup Error:", cleanupError.message);

@@ -72,7 +72,7 @@ function Header() {
  
   });
 
-  console.log("Notifications:", notifications.data);
+ 
   const unreadCount = useMemo(
     () => notifications.data?.filter((item) => item.active === 1).length || 0,
     [notifications.data],

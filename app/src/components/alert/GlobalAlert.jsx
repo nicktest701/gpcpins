@@ -48,10 +48,10 @@ const GlobalAlert = () => {
           color: alertData?.severity === "info" ? "#08660D" : "error.main",
           borderBottom: `2px solid ${color}`,
           bgcolor: "#fff",
-          py: 1,
+          py: 2,
           borderRadius: 1,
           fontSize: 12,
-           boxShadow: "10px 10px 30px #d9d9d9,-10px -10px 30px #ffffff",
+          //  boxShadow: "10px 10px 30px #d9d9d9,-10px -10px 30px #ffffff",
         }}
       >
         {alertData?.message}

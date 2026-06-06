@@ -1,5 +1,5 @@
-const moment = require('moment');
-const _ = require('lodash');
+const moment = require("moment");
+const _ = require("lodash");
 
 function getWeekNumber(date) {
   const currentDate = date || moment();
@@ -10,13 +10,12 @@ function getDatesInWeek(year, month, weekNumber) {
   const firstDayOfWeek = moment()
     .year(year)
     .month(month)
-    .startOf('month')
-    .add((weekNumber - 1) * 7, 'days');
+    .startOf("month")
+    .add((weekNumber - 1) * 7, "days");
   const datesInWeek = [];
 
-
   for (let i = 0; i < 7; i++) {
-    const currentDay = moment(firstDayOfWeek).add(i, 'days');
+    const currentDay = moment(firstDayOfWeek).add(i, "days");
     datesInWeek.push(currentDay.toDate());
   }
 
@@ -29,8 +28,8 @@ function getDatesOfLastSevenDates(pattern) {
   const datesInWeek = [];
 
   for (let i = 0; i < 7; i++) {
-    const currentDay = moment(firstDayOfWeek).subtract(i, 'days');
-    datesInWeek.push(currentDay.format(pattern || 'ddd,Do MMM'));
+    const currentDay = moment(firstDayOfWeek).subtract(i, "days");
+    datesInWeek.push(currentDay.format(pattern || "ddd,Do MMM"));
   }
 
   return datesInWeek?.reverse();
@@ -51,7 +50,7 @@ function isDateInMonthYear(date, targetMonth, targetYear) {
 
 function groupDatesByMonth(dates) {
   const groupedDates = _.groupBy(dates, (date) =>
-    moment(date).format('MM-YYYY')
+    moment(date).format("MM-YYYY"),
   );
   return groupedDates;
 }
@@ -61,8 +60,7 @@ function hasTokenExpired(date) {
   const tokenDate = moment(date); // Another date and time
 
   // Calculate the difference in minutes
-  const minutesDifference = currentDate.diff(tokenDate, 'minutes');
-
+  const minutesDifference = currentDate.diff(tokenDate, "minutes");
 
   // Check if the difference is more than 15 minutes
   return minutesDifference > 15;
@@ -107,6 +105,38 @@ function parseDateRange(startDate, endDate) {
   return { start, end };
 }
 
+function formatDate(dateString) {
+  const date = new Date(dateString);
+
+  // Use 'en-US' to guarantee English month names
+  const options = { month: "long", day: "numeric", year: "numeric" };
+
+  return date.toLocaleDateString("en-US", options);
+}
+
+function formatTime(dateString) {
+  const date = new Date(dateString);
+
+  const options = { hour: "numeric", minute: "2-digit", hour12: true };
+
+  return date.toLocaleTimeString("en-US", options);
+}
+
+function formatDateTime(dateString) {
+  const date = new Date(dateString);
+
+  const options = {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  };
+
+  return date.toLocaleString("en-US", options);
+}
+
 module.exports = {
   getWeekNumber,
   getDatesInWeek,
@@ -114,5 +144,8 @@ module.exports = {
   groupDatesByMonth,
   getDatesOfLastSevenDates,
   hasTokenExpired,
-  parseDateRange
+  parseDateRange,
+  formatDate,
+  formatTime,
+  formatDateTime
 };

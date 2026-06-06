@@ -8,7 +8,6 @@ import {
   Stack,
   IconButton,
   Skeleton,
-  Alert,
   Button,
   TextField,
   InputAdornment,
@@ -18,9 +17,14 @@ import {
   InputLabel,
   Pagination,
   Grid,
-  Divider,
 } from "@mui/material";
-import { Search, Clear, Refresh, ArrowUpward, ArrowDownward } from "@mui/icons-material";
+import {
+  Search,
+  Clear,
+  Refresh,
+  ArrowUpward,
+  ArrowDownward,
+} from "@mui/icons-material";
 import moment from "moment";
 import { currencyFormatter } from "../../constants";
 
@@ -43,7 +47,7 @@ const WalletTransactionList = ({ data, isLoading, onRefresh, total }) => {
       filtered = filtered.filter(
         (item) =>
           item.id?.toLowerCase().includes(term) ||
-          item.comment?.toLowerCase().includes(term)
+          item.comment?.toLowerCase().includes(term),
       );
     }
 
@@ -54,9 +58,13 @@ const WalletTransactionList = ({ data, isLoading, onRefresh, total }) => {
 
     // Type filter (deposit/credit/refund vs purchase/withdrawal)
     if (typeFilter !== "all") {
-      const isDepositType = ["deposit", "refund", "credit"].includes(typeFilter);
+      const isDepositType = ["deposit", "refund", "credit"].includes(
+        typeFilter,
+      );
       filtered = filtered.filter((item) => {
-        const itemIsDeposit = ["deposit", "refund", "credit"].includes(item.type);
+        const itemIsDeposit = ["deposit", "refund", "credit"].includes(
+          item.type,
+        );
         return isDepositType ? itemIsDeposit : !itemIsDeposit;
       });
     }
@@ -86,8 +94,11 @@ const WalletTransactionList = ({ data, isLoading, onRefresh, total }) => {
 
   // Total of filtered transactions
   const filteredTotal = useMemo(
-    () => currencyFormatter(filteredData.reduce((sum, item) => sum + Number(item.amount), 0)),
-    [filteredData]
+    () =>
+      currencyFormatter(
+        filteredData.reduce((sum, item) => sum + Number(item.amount), 0),
+      ),
+    [filteredData],
   );
 
   if (isLoading) {
@@ -108,7 +119,12 @@ const WalletTransactionList = ({ data, isLoading, onRefresh, total }) => {
     return (
       <Paper sx={{ p: 4, textAlign: "center" }}>
         <Typography color="text.secondary">No transactions found</Typography>
-        <Button variant="text" onClick={onRefresh} startIcon={<Refresh />} sx={{ mt: 2 }}>
+        <Button
+          variant="text"
+          onClick={onRefresh}
+          startIcon={<Refresh />}
+          sx={{ mt: 2 }}
+        >
           Refresh
         </Button>
       </Paper>
@@ -116,11 +132,17 @@ const WalletTransactionList = ({ data, isLoading, onRefresh, total }) => {
   }
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} pt={4}>
       {/* Header with total and refresh */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Typography variant="subtitle1" fontWeight="bold">
-          Total: {total}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Typography variant="h1" fontWeight="bold">
+          {total}
         </Typography>
         <IconButton onClick={onRefresh} size="small">
           <Refresh />
@@ -128,7 +150,7 @@ const WalletTransactionList = ({ data, isLoading, onRefresh, total }) => {
       </Box>
 
       {/* Search and Filters */}
-      <Paper sx={{ p: 2 }}>
+      <Paper>
         <Stack spacing={2}>
           {/* Search field */}
           <TextField
@@ -157,161 +179,207 @@ const WalletTransactionList = ({ data, isLoading, onRefresh, total }) => {
           />
 
           {/* Filters row */}
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Status</InputLabel>
-                <Select
-                  value={statusFilter}
-                  label="Status"
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value);
-                    handleFilterChange();
-                  }}
-                >
-                  <MenuItem value="all">All</MenuItem>
-                  <MenuItem value="completed">Completed</MenuItem>
-                  <MenuItem value="failed">Failed</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Type</InputLabel>
-                <Select
-                  value={typeFilter}
-                  label="Type"
-                  onChange={(e) => {
-                    setTypeFilter(e.target.value);
-                    handleFilterChange();
-                  }}
-                >
-                  <MenuItem value="all">All</MenuItem>
-                  <MenuItem value="deposit">Deposit / Refund / Credit</MenuItem>
-                  <MenuItem value="purchase">Purchase / Withdrawal</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-          </Grid>
+
+          <FormControl fullWidth size="small">
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={statusFilter}
+              label="Status"
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                handleFilterChange();
+              }}
+            >
+              <MenuItem value="all">All</MenuItem>
+              <MenuItem value="completed">Completed</MenuItem>
+              <MenuItem value="failed">Failed</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth size="small">
+            <InputLabel>Type</InputLabel>
+            <Select
+              value={typeFilter}
+              label="Type"
+              onChange={(e) => {
+                setTypeFilter(e.target.value);
+                handleFilterChange();
+              }}
+            >
+              <MenuItem value="all">All</MenuItem>
+              <MenuItem value="deposit">Deposit / Refund / Credit</MenuItem>
+              <MenuItem value="purchase">Purchase / Withdrawal</MenuItem>
+            </Select>
+          </FormControl>
 
           {(searchTerm || statusFilter !== "all" || typeFilter !== "all") && (
             <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-              <Button size="small" onClick={handleClearFilters} startIcon={<Clear />}>
+              <Button
+                size="small"
+                onClick={handleClearFilters}
+                startIcon={<Clear />}
+              >
                 Clear Filters
               </Button>
             </Box>
           )}
-
-          {filteredData.length === 0 && (
-            <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
-              No transactions match the current filters.
-            </Typography>
-          )}
         </Stack>
       </Paper>
 
-      {/* Filtered total display */}
-      {filteredData.length > 0 && (
-        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-          <Typography variant="caption" color="text.secondary">
-            Showing {filteredData.length} of {data.length} transactions | Filtered total: {filteredTotal}
-          </Typography>
-        </Box>
-      )}
-
-      {/* Transaction list */}
-      <List disablePadding>
-        {paginatedData.map((transaction) => {
-          const isDeposit = ["deposit", "refund", "credit"].includes(transaction.type);
-          const date = moment(transaction.createdAt);
-          const amountNum = Number(transaction.amount);
-          const walletAmount = Number(transaction.walletAmount);
-          const newBalance = isDeposit ? walletAmount + amountNum : walletAmount - amountNum;
-
-          return (
-            <Paper
-              key={transaction.id}
-              variant="outlined"
-              sx={{
-                mb: 2,
-                p: 2,
-                borderRadius: 2,
-                transition: "0.2s",
-                "&:hover": { bgcolor: "action.hover" },
-              }}
-            >
-              {/* Row 1: Date & Status */}
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                <Typography variant="caption" color="primary.main">
-                  {date.format("Do MMM, YYYY")}
-                  <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                    {date.format("h:mm a")}
-                  </Typography>
-                </Typography>
-                <Chip
-                  label={transaction.status === "completed" ? "Completed" : "Failed"}
-                  size="small"
-                  sx={{
-                    bgcolor: transaction.status === "completed" ? "success.darker" : "error.darker",
-                    color: "white",
-                  }}
-                />
-              </Stack>
-
-              {/* Row 2: Transaction ID */}
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                ID: {transaction.id}
+      {filteredData.length === 0 ? (
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          textAlign="center"
+          py={2}
+        >
+          No transactions match the current filters.
+        </Typography>
+      ) : (
+        <>
+          {/* Filtered total display */}
+          {filteredData.length > 0 && (
+            <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+              <Typography variant="caption" color="text.secondary">
+                Showing {filteredData.length} of {data.length} transactions |
+                Filtered total: {filteredTotal}
               </Typography>
+            </Box>
+          )}
 
-              {/* Row 3: Type and Amount */}
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  {isDeposit ? (
-                    <ArrowUpward fontSize="small" color="success" />
-                  ) : (
-                    <ArrowDownward fontSize="small" color="error" />
-                  )}
-                  <Typography variant="body2" fontWeight="medium">
-                    {transaction.comment}
-                  </Typography>
-                </Stack>
-                <Typography
-                  variant="body1"
-                  fontWeight="bold"
-                  color={isDeposit ? "success.main" : "error.main"}
+          {/* Transaction list */}
+          <List disablePadding>
+            {paginatedData.map((transaction) => {
+              const isDeposit = ["deposit", "refund", "credit"].includes(
+                transaction.type,
+              );
+              const date = moment(transaction.createdAt);
+              const amountNum = Number(transaction.amount);
+              const walletAmount = Number(transaction.walletAmount);
+              const newBalance = isDeposit
+                ? walletAmount + amountNum
+                : walletAmount - amountNum;
+
+              return (
+                <Paper
+                  key={transaction.id}
+                  variant="outlined"
+                  sx={{
+                    mb: 2,
+                    p: 2,
+                    borderRadius: 2,
+                    transition: "0.2s",
+                    "&:hover": { bgcolor: "action.hover" },
+                  }}
                 >
-                  {isDeposit ? `+${currencyFormatter(amountNum)}` : `-${currencyFormatter(amountNum)}`}
-                </Typography>
-              </Stack>
+                  {/* Row 1: Date & Status */}
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    sx={{ mb: 1 }}
+                  >
+                    <Typography variant="caption" color="primary.main">
+                      {date.format("Do MMM, YYYY")}
+                      <Typography
+                        component="span"
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ ml: 1 }}
+                      >
+                        {date.format("h:mm a")}
+                      </Typography>
+                    </Typography>
+                    <Chip
+                      label={
+                        transaction.status === "completed"
+                          ? "Completed"
+                          : "Failed"
+                      }
+                      size="small"
+                      sx={{
+                        bgcolor:
+                          transaction.status === "completed"
+                            ? "success.darker"
+                            : "error.darker",
+                        color: "white",
+                      }}
+                    />
+                  </Stack>
 
-              {/* Row 4: New Balance */}
-              <Box sx={{ borderTop: "1px dashed", borderColor: "divider", pt: 1 }}>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography variant="caption" color="text.secondary">
-                    Balance after:
+                  {/* Row 2: Transaction ID */}
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 1 }}
+                  >
+                    ID: {transaction.id}
                   </Typography>
-                  <Typography variant="caption" fontWeight="bold">
-                    {currencyFormatter(newBalance)}
-                  </Typography>
-                </Stack>
-              </Box>
-            </Paper>
-          );
-        })}
-      </List>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <Box sx={{ display: "flex", justifyContent: "center", pt: 2 }}>
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={(event, value) => setPage(value)}
-            color="primary"
-            size="small"
-            shape="rounded"
-          />
-        </Box>
+                  {/* Row 3: Type and Amount */}
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    sx={{ mb: 1 }}
+                  >
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      {isDeposit ? (
+                        <ArrowUpward fontSize="small" color="success" />
+                      ) : (
+                        <ArrowDownward fontSize="small" color="error" />
+                      )}
+                      <Typography variant="body2" fontWeight="medium">
+                        {transaction.comment}
+                      </Typography>
+                    </Stack>
+                    <Typography
+                      variant="body1"
+                      fontWeight="bold"
+                      color={isDeposit ? "success.main" : "error.main"}
+                    >
+                      {isDeposit
+                        ? `+${currencyFormatter(amountNum)}`
+                        : `-${currencyFormatter(amountNum)}`}
+                    </Typography>
+                  </Stack>
+
+                  {/* Row 4: New Balance */}
+                  <Box
+                    sx={{
+                      borderTop: "1px dashed",
+                      borderColor: "divider",
+                      pt: 1,
+                    }}
+                  >
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography variant="caption" color="text.secondary">
+                        Balance after:
+                      </Typography>
+                      <Typography variant="caption" fontWeight="bold">
+                        {currencyFormatter(newBalance)}
+                      </Typography>
+                    </Stack>
+                  </Box>
+                </Paper>
+              );
+            })}
+          </List>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <Box sx={{ display: "flex", justifyContent: "center", pt: 2 }}>
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={(event, value) => setPage(value)}
+                color="primary"
+                size="small"
+                shape="rounded"
+              />
+            </Box>
+          )}
+        </>
       )}
     </Stack>
   );

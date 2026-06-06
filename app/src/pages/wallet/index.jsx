@@ -3,7 +3,7 @@ import {
   Container,
   Box,
   ListItemText,
-  Divider,
+  Paper,
   Button,
   ButtonGroup,
 } from "@mui/material";
@@ -81,15 +81,17 @@ function Wallet() {
           }
         />
 
-        <Box
+        <Paper
+        elevation={1}
           sx={{
             display: "flex",
             flexDirection: { xs: "column", md: "row" },
             justifyContent: "center",
             alignItems: "center",
             p: 4,
-            // bgcolor: "primary.lighter",
-            border: "1px solid lightgray",
+ 
+            borderRadius: 2,
+            mb: 4,
           }}
         >
           <ListItemText
@@ -99,13 +101,14 @@ function Wallet() {
             secondaryTypographyProps={{ color: "secondary" }}
           />
           <ButtonGroup variant="contained">
-            <Button onClick={openAddMoney}>Top-up </Button>
+            <Button onClick={openAddMoney} variant="outlined">
+              Top-up{" "}
+            </Button>
             <Button onClick={openChangePin} color="secondary">
               Change Pin
             </Button>
           </ButtonGroup>
-        </Box>
-        <Divider />
+        </Paper>
 
         {isMobile ? (
           <WalletTransactionList

@@ -1,11 +1,6 @@
 import { useContext, useMemo } from "react";
 import moment from "moment";
-import {
-
-  Event,
-  AccessTime,
-  Theaters,
-} from "@mui/icons-material";
+import { Event, AccessTime, Theaters } from "@mui/icons-material";
 import {
   Container,
   Box,
@@ -24,7 +19,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Back from "../../components/Back";
 import MovieItem from "./MovieItem";
-import { CustomContext } from "../../context/providers/CustomProvider";
+import { useCustomContext } from "../../context/providers/CustomProvider";
 import { currencyFormatter } from "../../constants";
 import { getCategory } from "../../api/categoryAPI";
 import { getAllRemainingTickets } from "../../api/voucherAPI";
@@ -37,7 +32,7 @@ function Movie() {
   const { id } = useParams();
   const {
     customState: { cinemaTicketTotal },
-  } = useContext(CustomContext);
+  } = useCustomContext();
 
   // Fetch movie details
   const {
@@ -65,11 +60,11 @@ function Movie() {
   });
 
   const totalItemsSelected = useMemo(
-    () => _.sumBy(cinemaTicketTotal, "quantity"),
+    () => _.sumBy(cinemaTicketTotal || [], "quantity"),
     [cinemaTicketTotal],
   );
   const totalPrice = useMemo(
-    () => _.sumBy(cinemaTicketTotal, "total"),
+    () => _.sumBy(cinemaTicketTotal || [], "total"),
     [cinemaTicketTotal],
   );
 

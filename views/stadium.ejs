@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Football Ticket (<%= homeTeam %> vs <%= awayTeam %>)</title>
 
     <style>
         *,
@@ -175,32 +175,32 @@
                 <div class="content">
                     <h3>FOOTBALL TICKET</h3> 
                     <p style="font-size: 1rem;">
-                        <%= voucher?.companyName %>
+                        <%= companyName %>
                     </p>
                     <div class="main">
                         <p>
-                            <%= voucher?.matchType %>
+                            <%= matchType %>
                         </p>
                         <p>
-                            <%= voucher?.date %>
+                            <%= date %>
                         </p>
                         <div><span>Kick Off:</span>
-                            <%= voucher?.time %>
+                            <%= time %>
                         </div>
                         <div class="team">
                             <div class="home">
 
-                                <img src=<%=voucher?.homeImage %> alt="code" style='width:50px;height:50px;' />
+                                <img src=<%=homeImage %> alt="code" style='width:50px;height:50px;' />
                                 <p style="font-size:1rem;">
-                                    <%= voucher?.home %>
+                                    <%= homeTeam %>
                                 </p>
                             </div>
 
                             <h1>VS</h1>
                             <div class="away">
-                                <img src=<%=voucher?.awayImage %> alt="code" style='width:50px;height: 50px;' />
+                                <img src=<%=awayImage %> alt="code" style='width:50px;height: 50px;' />
                                 <p style="font-size:1rem;">
-                                    <%= voucher?.away %>
+                                    <%= awayTeam %>
                                 </p>
                             </div>
                         </div>
@@ -208,7 +208,7 @@
 
                             <div class="stand">
                                 <span style=" border-left: solid 2px #083d77;">
-                                    <%= voucher?.venue %>
+                                    <%= venue %>
                                 </span>
                                 <span>
                                     <%= voucher?.type %>
@@ -227,7 +227,7 @@
                 </div>
 
                 <div class="company">
-                    <small>powered by frebbytech consults</small>
+                    <small>powered by frebbytech solutions</small>
                 </div>
             </div>
 

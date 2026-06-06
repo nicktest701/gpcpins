@@ -1201,28 +1201,34 @@ export const airtimeTransactionsColumns = (type) => [
       <Button
         size="small"
         label={
-          status === "completed" && Boolean(isProcessed)
+          status === "completed"
             ? "Completed"
-            : status === "refunded" && Boolean(isProcessed)
+            : status === "refunded"
               ? "Refunded"
-              : "Pending"
+              : status === "pending" || !isProcessed
+                ? "Pending"
+                : "Failed"
         }
         sx={{
           color: "#fff",
           bgcolor:
-            status === "completed" && Boolean(isProcessed)
+            status === "completed"
               ? "success.darker"
-              : status === "refunded" && Boolean(isProcessed)
+              : status === "refunded"
                 ? "secondary.main"
-                : "warning.darker",
+                : status === "pending"
+                  ? "warning.dark"
+                  : "error.darker",
           borderRadius: 1,
         }}
       >
-        {status === "completed" && Boolean(isProcessed)
+        {status === "completed"
           ? "Completed"
-          : status === "refunded" && Boolean(isProcessed)
+          : status === "refunded"
             ? "Refunded"
-            : "Pending"}
+            : status === "pending" || !isProcessed
+              ? "Pending"
+              : "Failed"}
       </Button>
     ),
   },
@@ -1304,7 +1310,9 @@ export const transactionsColumns = (type) => [
             ? "Completed"
             : status === "refunded"
               ? "Refunded"
-              : "Pending"
+              : status === "pending"
+                ? "Pending"
+                : "Failed"
         }
         sx={{
           color: "#fff",
@@ -1313,7 +1321,9 @@ export const transactionsColumns = (type) => [
               ? "success.darker"
               : status === "refunded"
                 ? "secondary.main"
-                : "warning.darker",
+                : status === "pending"
+                  ? "warning.dark"
+                  : "error.darker",
           borderRadius: 1,
         }}
       >
@@ -1321,7 +1331,9 @@ export const transactionsColumns = (type) => [
           ? "Completed"
           : status === "refunded"
             ? "Refunded"
-            : "Pending"}
+            : status === "pending"
+              ? "Pending"
+              : "Failed"}
       </Button>
     ),
   },
@@ -1331,7 +1343,7 @@ export const transactionsColumns = (type) => [
     // hidden: true,
   },
   {
-    title: "Domain",
+    title: "Service",
     field: "domain",
   },
   {
@@ -1407,7 +1419,6 @@ export const MOBILE_PROVIDER = [
     image: IMAGES.airtel_money,
   },
 ];
-
 
 export const SERVICE_PROVIDER = [
   {

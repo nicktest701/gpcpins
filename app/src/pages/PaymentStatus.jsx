@@ -155,10 +155,15 @@ function PaymentStatus() {
     (confirmPayment.isError &&
       confirmPayment?.error === "Payment Cancelled!") ||
     confirmPayment?.failureReason === "Payment Cancelled!";
+
   const isSuccess =
-    status === "success" || (!!confirmPayment.data && !isCancelled);
+    status === "success" ||
+    (!!confirmPayment.data && !isCancelled) ||
+    paymentStatus?.success === true;
+
   const isPolling =
     confirmPayment.isLoading || status === "pending" || paymentStatus === null;
+
   const statusType = isCancelled ? "error" : isSuccess ? "success" : "waiting";
 
   if (!txRef) {
@@ -339,8 +344,6 @@ function PaymentStatus() {
               />
             </Box>
 
-        
-
             {/* Cancelled state */}
             {isCancelled && (
               <>
@@ -441,7 +444,7 @@ function PaymentStatus() {
             )}
 
             {/* Success state */}
-            {isSuccess && !isCancelled && (
+            {isSuccess && (
               <>
                 <Typography
                   variant="h6"
@@ -453,7 +456,7 @@ function PaymentStatus() {
                 >
                   Payment done!
                 </Typography>
-                <Typography
+                {/* <Typography
                   variant="body2"
                   sx={{ textAlign: "center", color: "#6b7280" }}
                 >
@@ -467,7 +470,7 @@ function PaymentStatus() {
                   {transaction
                     ? new Date(transaction.createdAt).toLocaleString()
                     : ""}
-                </Typography>
+                </Typography> */}
                 <Stack direction="row" alignItems="center" gap="10px">
                   <Spinner size={18} />
                   <Typography
@@ -491,9 +494,10 @@ function PaymentStatus() {
                     my: "2px",
                   }}
                 />
+
                 {state?.isWallet ? (
                   <Stack direction="row" alignItems="center" gap="10px">
-                    <Spinner size={20} />
+                    {/* <Spinner size={20} /> */}
                     <Typography
                       variant="caption"
                       sx={{ color: "#6b7280", fontWeight: 500 }}
@@ -518,7 +522,7 @@ function PaymentStatus() {
                         sx={{
                           mb: "10px",
                           textAlign: "center",
-                       
+
                           fontWeight: 500,
                         }}
                       >

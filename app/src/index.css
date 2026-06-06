@@ -39,7 +39,7 @@ body {
 
 /* Target WebKit browsers (Chrome, Safari) */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 16px;
   /* Set the width of the scrollbar */
 }
 

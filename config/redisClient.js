@@ -1,10 +1,8 @@
 // redisClient.js
 const redis = require("redis");
+const logger = require("../utils/logger");
 
 
-// let redisClient;
-
-// if (process.env.NODE_ENV === "production") {
 const redisClient = redis.createClient({
   url: process.env.REDIS_HOST_EXT,
   socket: {
@@ -14,7 +12,7 @@ const redisClient = redis.createClient({
 
 redisClient.on("error", (err) => {
   if (process.env.NODE_ENV !== "production") {
-    console.error("Redis client error:", err);
+    logger.error("Redis client error:", err);
   }
   throw err;
 });
@@ -24,16 +22,11 @@ redisClient.on("error", (err) => {
     await redisClient.connect();
   } catch (error) {
     if (process.env.NODE_ENV !== "production") {
-      console.error("Redis client error:", error);
+      logger.error("Redis client error:", error);
     }
     throw error;
   }
 })();
-// } else {
-//   redisClient = new Redis({
-//     url: process.env.UPSTASH_REDIS_REST_URL,
-//     token: process.env.UPSTASH_REDIS_REST_TOKEN,
-//   });
-// }
+
 
 module.exports = redisClient;

@@ -1,11 +1,19 @@
 // PaymentOption.jsx
 
 import { useEffect } from "react";
-import {Link, useLocation} from "react-router-dom";
-import { Box, FormControl, FormHelperText, RadioGroup,Typography,IconButton,Stack } from "@mui/material";
+import { Link, useLocation } from "react-router-dom";
+import {
+  Box,
+  FormControl,
+  FormHelperText,
+  RadioGroup,
+  Typography,
+  IconButton,
+  Stack,
+} from "@mui/material";
 import { FormProvider, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import {ArrowBackIosNewRounded} from "@mui/icons-material";
+import { ArrowBackIosNewRounded } from "@mui/icons-material";
 import MobileMoneyOption from "./tabs/MobileMoneyOption";
 import WalletOption from "./WalletOption";
 import { paymentValidationSchema } from "../config/validationSchema";
@@ -21,13 +29,23 @@ const defaultValues = {
   token: "",
 };
 
+function useShouldShowComponent() {
+  const { pathname } = useLocation();
+  const excludedPaths = ["airtime", "prepaid",'movie','bus-ticket','match'];
+
+  // Splits path into segments to avoid partial word matching errors
+  const pathSegments = pathname.toLowerCase().split("/");
+
+  return !excludedPaths.some((path) => pathSegments.includes(path));
+}
+
 function PaymentOption({
   showWallet = false,
   showMomo = true,
   onSubmit,
   initialValues = {},
 }) {
-
+  const shouldShow = useShouldShowComponent();
 
   const methods = useForm({
     resolver: yupResolver(paymentValidationSchema),
@@ -48,7 +66,7 @@ function PaymentOption({
     formState: { errors, isSubmitting, isValid },
   } = methods;
 
-const {pathname}=useLocation();
+
 
   const paymentMethod = watch("paymentMethod");
 
@@ -71,31 +89,32 @@ const {pathname}=useLocation();
 
   return (
     <FormProvider {...methods}>
-      <Box
-        component="form"
-        noValidate
-        onSubmit={handleSubmit(submitHandler)}
-       
-      >
-<Box sx={{ mb: 2 }}>
-         <Stack direction="row" alignItems="center" spacing={1}>
-          {!pathname.includes("prepaid") ||!pathname.includes("airtime") && (
-
-            <Link to={-1} style={{color:"inherit", textDecoration:"none"}}>
-          <IconButton>
-            <ArrowBackIosNewRounded fontSize="small" />
-          </IconButton>
-          </Link>
-          )}
-           <Typography variant="h6" fontWeight="bold">
-          Payment Information
+      <Box component="form" noValidate onSubmit={handleSubmit(submitHandler)}>
+        <Box sx={{ mb: 2 }}>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            {shouldShow && (
+              <Link
+                to={-1}
+                style={{ color: "inherit", textDecoration: "none" }}
+              >
+                <IconButton>
+                  <ArrowBackIosNewRounded fontSize="small" />
+                </IconButton>
+              </Link>
+            )}
+            <Typography variant="h6" fontWeight="bold">
+              Payment Information
+            </Typography>
+          </Stack>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ mt: 1, mb: 3 }}
+          >
+            Choose the payment method you want to use for this transaction.
+            {/* You can also provide your name and email address to receive a receipt for your purchase. */}
           </Typography>
-         </Stack>
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, mb: 3 }}>
-          Choose the payment method you want to use for this transaction.
-           {/* You can also provide your name and email address to receive a receipt for your purchase. */}
-          </Typography>
-</Box>
+        </Box>
 
         {/* PERSONAL DETAILS */}
 

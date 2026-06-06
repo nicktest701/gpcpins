@@ -4,7 +4,7 @@ const compression = require("compression");
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
-const logger = require("morgan");
+const morgan = require("morgan");
 const helmet = require("helmet");
 const createError = require("http-errors");
 const cron = require("node-cron");
@@ -37,11 +37,13 @@ const sendEMail = require("./config/sendEmail");
 const knex = require("./db/knex");
 const socketAuth = require("./middlewares/socketAuth");
 const { initSocketServer } = require("./config/socket");
-const tokenMetrics = require("./services/brassica/token.metrics");
 const { initializeSchedulers } = require("./queues/schedulers.js");
+const logger = require("./utils/logger.js");
 
 // server.js or app.js
 require("./workers/reservationExpiry.worker");
+require("./workers/ticket.worker");
+require("./workers/voucher.worker");
 
 // Default server port
 const PORT = process.env.PORT || 5000;
@@ -162,11 +164,12 @@ app.use(
 );
 
 // Middlewares
-if (NODE_ENV === "development") {
-  app.use(logger("dev"));
-} else {
-  app.use(logger("combined")); // More detailed logging in production
-}
+// 1. Pipe HTTP Request Logging through Winston
+const morganStream = {
+  write: (message) => logger.info(message.trim(), { tags: ["http"] }),
+};
+// Use 'combined' format for standard Apache-style production metrics
+app.use(morgan("combined", { stream: morganStream }));
 
 // Security headers with Helmet
 app.use(
@@ -299,17 +302,6 @@ app.get("/api/gabs/v1/health", (req, res) => {
   });
 });
 
-// router.get("/internal/brassica/token-stats", (req, res) => {
-
-// logger.info({
-//   provider: "BRASSICA",
-//   event: "TOKEN_REFRESHED",
-//   timestamp: Date.now()
-// });
-
-//   res.json(tokenMetrics);
-// });
-
 // Serve frontend in production
 if (NODE_ENV === "production") {
   app.get("/*", function (req, res) {
@@ -326,7 +318,8 @@ app.use((req, res, next) => {
 app.use((err, req, res, next) => {
   const status = err.status || 500;
 
-  console.log(err);
+  logger.error(err);
+
   // Log error
   console.error({
     status,
@@ -356,14 +349,14 @@ async function bootstrap() {
     await pubClient.connect();
     await subClient.connect();
 
-    console.log("Redis connected");
+    logger.info("Redis connected");
 
     pubClient.on("error", (err) => {
-      console.error("Redis Pub Error:", err);
+      logger.error("Redis Pub Error:", err);
     });
 
     subClient.on("error", (err) => {
-      console.error("Redis Sub Error:", err);
+      logger.error("Redis Sub Error:", err);
     });
 
     /*
@@ -389,7 +382,9 @@ async function bootstrap() {
     */
 
     io.on("connection", async (socket) => {
-      console.log("Socket Connected:", socket.id);
+      if (NODE_ENV === "development") {
+       logger.info("Socket Connected:", socket.id);
+      }
 
       if (socket.user?.id) {
         const userRoom = `user:${socket.user.id}`;
@@ -398,8 +393,10 @@ async function bootstrap() {
         await socket.join(userRoom);
         await socket.join(paymentRoom);
 
-        console.log(`User joined room: ${userRoom}`);
-        console.log(`User joined payment room: ${paymentRoom}`);
+        if (NODE_ENV === "development") {
+         logger.info(`User joined room: ${userRoom}`);
+         logger.info(`User joined payment room: ${paymentRoom}`);
+        }
 
         await pubClient.set(`socket:${socket.user.id}`, socket.id, {
           EX: 60 * 60 * 24,
@@ -417,14 +414,14 @@ async function bootstrap() {
       });
 
       socket.on("join-payment-room", async (txRef) => {
-        console.log(txRef);
+       logger.info(txRef);
 
         if (!txRef || typeof txRef !== "string") return;
         const paymentRoom = `payment:${txRef}`;
 
         await socket.join(paymentRoom);
 
-        console.log(`User payment room: ${paymentRoom}`);
+       logger.info(`User payment room: ${paymentRoom}`);
 
         socket.emit("payment-room-joined", {
           room: paymentRoom,
@@ -455,7 +452,7 @@ async function bootstrap() {
 
     // Start server
     const serverApp = server.listen(PORT, () => {
-      console.log(`Server running in ${NODE_ENV} mode on port ${PORT}`);
+      logger.info(`Server running in ${NODE_ENV} mode on port ${PORT}`);
     });
 
     // Set timeout
@@ -466,7 +463,7 @@ async function bootstrap() {
 
     // Process event handlers for graceful shutdown
     process.on("uncaughtException", (err) => {
-      console.error("Unhandled Exception:", err);
+      logger.error("Unhandled Exception:", err);
       // In production, we might want to restart the process here
       if (NODE_ENV === "production") {
         process.exit(1);
@@ -474,36 +471,36 @@ async function bootstrap() {
     });
 
     process.on("unhandledRejection", (reason, promise) => {
-      console.error("Unhandled Rejection at:", promise, "reason:", reason);
+      logger.error("Unhandled Rejection at:", promise, "reason:", reason);
     });
 
     // Graceful shutdown handlers
     const gracefulShutdown = async (signal) => {
-      console.log(`${signal} received. Starting graceful shutdown...`);
+      logger.info(`${signal} received. Starting graceful shutdown...`);
 
       try {
         await knex.destroy();
-        console.log("Database connection closed.");
+        logger.info("Database connection closed.");
 
         server.close(() => {
-          console.log("HTTP server closed.");
+          logger.info("HTTP server closed.");
           process.exit(0);
         });
 
         // Force close after 10 seconds
         setTimeout(() => {
-          console.error(
+          logger.error(
             "Could not close connections in time, forcefully shutting down",
           );
           process.exit(1);
         }, 10000);
       } catch (err) {
-        console.error("Error during shutdown:", err.message);
+        logger.error("Error during shutdown:", err.message);
         process.exit(1);
       }
     };
   } catch (err) {
-    console.error("Socket init failed:", err);
+    logger.error("Socket init failed:", err);
   }
 }
 

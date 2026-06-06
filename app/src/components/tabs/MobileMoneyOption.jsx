@@ -226,7 +226,7 @@ function MobileMoneyOption() {
             <FormControlLabel
               control={<Switch size="small" />}
               label="Use Saved Number"
-              labelProps={{ sx: { fontSize: 10 } }}
+              // ={{ sx: { fontSize: 10 } }}
 
               onChange={handleUseSavedNumber}
             />

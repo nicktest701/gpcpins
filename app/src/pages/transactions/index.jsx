@@ -1,10 +1,9 @@
-import { useContext, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import CustomTitle from "@/components/custom/CustomTitle";
 import { Container, MenuItem, TextField, Box } from "@mui/material";
 import { NoteAlt } from "@mui/icons-material";
 import _ from "lodash";
 import CustomizedMaterialTable from "@/components/tables/CustomizedMaterialTable";
-import { AuthContext } from "@/context/providers/AuthProvider";
 import Swal from "sweetalert2";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,7 +18,6 @@ import {
 } from "@/mocks/columns";
 import ActionMenu from "@/components/menu/ActionMenu";
 import { globalAlertType } from "@/components/alert/alertType";
-import { CustomContext } from "@/context/providers/CustomProvider";
 import CustomTotal from "@/components/custom/CustomTotal";
 import { currencyFormatter } from "@/constants";
 import CustomRangePicker from "@/components/pickers/CustomRangePicker";
@@ -27,14 +25,16 @@ import CustomRangePicker from "@/components/pickers/CustomRangePicker";
 // Add import at top
 import { useMediaQuery, useTheme } from "@mui/material";
 import TransactionList from "./TransactionList";
+import { useAuth } from "../../context/providers/AuthProvider";
+import { useCustomContext } from "../../context/providers/CustomProvider";
 
 const Transaction = () => {
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   // Inside Transaction component, after useState declarations:
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md")); // adjust breakpoint as needed
-  const { customDispatch } = useContext(CustomContext);
+  const { customDispatch } = useCustomContext();
   const [type, setType] = useState("All");
   const [status, setStatus] = useState("all");
   const [airtimeType, setAirtimeType] = useState("single");
@@ -64,6 +64,8 @@ const Transaction = () => {
     let filteredTransaction = transactions?.data;
     if (type !== "All") {
       if (type === "Airtime") {
+        console.log(transactions?.data);
+
         filteredTransaction = transactions?.data?.filter(
           (item) => item.domain === type && item.kind === airtimeType,
         );

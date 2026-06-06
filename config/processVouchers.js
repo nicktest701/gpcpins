@@ -34,9 +34,7 @@ const processVouchers = async (transaction) => {
     const template = await Promise.all(chunkedVouchers);
 
     const result = await generateArrayVoucher(template, transaction?.id);
-    // const result = limit(() =>
-    //   generateArrayVoucher(template, transaction?._id)
-    // );
+  
     if (result) {
       return "done";
     }

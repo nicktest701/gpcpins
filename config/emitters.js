@@ -115,9 +115,25 @@ const emitCheckerUpdate = async ({ userId, data }) => {
   }
 };
 
+const emitGeneralInfo = async ({ emitter, userId, data }) => {
+  const io = getIO();
+  try {
+    io.to(`user:${userId}`).emit(emitter, {
+      data,
+    });
+
+    io.to(`payment:${userId}`).emit(emitter, {
+      data,
+    });
+  } catch (error) {
+    console.error(error);
+  }
+};
+
 module.exports = {
   emitPaymentSuccess,
   emitPaymentFailure,
   emitWalletUpdate,
   emitCheckerUpdate,
+  emitGeneralInfo,
 };

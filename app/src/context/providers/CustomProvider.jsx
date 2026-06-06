@@ -284,6 +284,8 @@ function CustomProvider({ children }) {
     return () => offEvent("payment-failed", handleFailed);
   }, [onEvent, offEvent]);
 
+
+
   /**
    * Dispatch Helpers
    */
