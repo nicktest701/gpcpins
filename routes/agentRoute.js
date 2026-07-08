@@ -248,7 +248,7 @@ router.get(
         return res.status(400).json("Invalid code.Try again");
       }
     } else {
-      const agent = await knex("agents")
+      const agent = await knex("users")
         .select("_id", "phonenumber", "active")
         .where("_id", id)
         .limit(1);

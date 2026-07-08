@@ -1,15 +1,15 @@
-import Add from '@mui/icons-material/Add';
-import Autocomplete from '@mui/material/Autocomplete';
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import TextField from '@mui/material/TextField';
-import MaterialTable, { MTableToolbar } from 'material-table';
-import { useContext, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import _ from 'lodash';
-import { getVoucherByCategory, removeVoucher } from '../../api/voucherAPI';
-import { tableIcons } from '../../config/tableIcons';
-import { VOUCHER_COLUMNS, TICKETS_COLUMNS } from '../../mocks/columns';
+import Add from "@mui/icons-material/Add";
+import Autocomplete from "@mui/material/Autocomplete";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import TextField from "@mui/material/TextField";
+import MaterialTable, { MTableToolbar } from "material-table";
+import { useContext, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import _ from "lodash";
+import { getVoucherByCategory, removeVoucher } from "../../api/voucherAPI";
+import { tableIcons } from "../../config/tableIcons";
+import { VOUCHER_COLUMNS, TICKETS_COLUMNS } from "../../mocks/columns";
 
 import {
   Chip,
@@ -20,16 +20,16 @@ import {
   RadioGroup,
   Stack,
   Typography,
-} from '@mui/material';
-import Swal from 'sweetalert2';
-import { CustomContext } from '../../context/providers/CustomProvider';
-import { DeleteRounded, Refresh } from '@mui/icons-material';
-import { duplicateTickets } from '../../config/duplicateTickets';
-import { globalAlertType } from '../alert/alertType';
-import { getCategoryData } from '../../config/getCategoryData';
-import { getMainCategory } from '../../api/categoryAPI';
-import { useParams, useSearchParams } from 'react-router-dom';
-import LoadChecker from '../modals/LoadChecker';
+} from "@mui/material";
+import Swal from "sweetalert2";
+import { CustomContext } from "../../context/providers/CustomProvider";
+import { DeleteRounded, Refresh } from "@mui/icons-material";
+import { duplicateTickets } from "../../config/duplicateTickets";
+import { globalAlertType } from "../alert/alertType";
+import { getCategoryData } from "../../config/getCategoryData";
+import { getMainCategory } from "../../api/categoryAPI";
+import { useParams, useSearchParams } from "react-router-dom";
+import LoadChecker from "../modals/LoadChecker";
 
 const LoadVoucher = () => {
   const { category } = useParams();
@@ -39,15 +39,15 @@ const LoadVoucher = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [openLoadChecker, setOpenLoadChecker] = useState(false);
   const [checkerType, setCheckerType] = useState({
-    id: '',
-    voucherType: '',
+    id: "",
+    voucherType: "",
   });
   const [voucherData, setVoucherData] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
-  const [sortValue, setSortValue] = useState('all');
+  const [sortValue, setSortValue] = useState("all");
 
-  const isTicket = ['bus', 'cinema', 'stadium'].includes(category);
-  const isVoucher = ['waec', 'university', 'security'].includes(category);
+  const isTicket = ["bus", "cinema", "stadium"].includes(category);
+  const isVoucher = ["waec", "university", "security"].includes(category);
 
   let modifiedvoucherTypeColumns = VOUCHER_COLUMNS.map((column) => {
     return { ...column };
@@ -63,21 +63,21 @@ const LoadVoucher = () => {
     setCheckerType(value);
 
     setSearchParams((params) => {
-      params.set('_pid', value?.id);
-      params.set('type', value?.voucherType);
+      params.set("_pid", value?.id);
+      params.set("type", value?.voucherType);
       return params;
     });
 
-    if (category === 'bus') {
+    if (category === "bus") {
       customDispatch({
-        type: 'ticketDetails',
+        type: "ticketDetails",
         payload: value?.details,
       });
     }
-    if (['cinema', 'stadium'].includes(category)) {
+    if (["cinema", "stadium"].includes(category)) {
       const duplicates = duplicateTickets(value?.details?.pricing);
       customDispatch({
-        type: 'ticketDetails',
+        type: "ticketDetails",
         payload: {
           quantity: value?.details?.quantity,
           duplicates,
@@ -87,14 +87,14 @@ const LoadVoucher = () => {
   };
 
   const categories = useQuery({
-    queryKey: ['category', category],
+    queryKey: ["category", category],
     queryFn: () => getMainCategory(category),
     enabled: !!category,
     onSuccess: () => {
-      if (checkerType?.id !== searchParams.get('_pid')) {
+      if (checkerType?.id !== searchParams.get("_pid")) {
         setCheckerType({
-          id: '',
-          voucherType: '',
+          id: "",
+          voucherType: "",
         });
       }
       setVoucherData([]);
@@ -124,7 +124,7 @@ const LoadVoucher = () => {
   });
 
   const vouchers = useQuery(
-    ['voucher', category, checkerType?.id],
+    ["voucher", category, checkerType?.id],
     () => getVoucherByCategory(category, checkerType?.id),
     {
       enabled: !!category && !!checkerType?.id,
@@ -135,17 +135,17 @@ const LoadVoucher = () => {
         }
         setVoucherData([]);
       },
-    }
+    },
   );
 
   const handleChangeSortValue = (event) => {
     const value = event.target.value;
     setSortValue(value);
-    if (value === 'all') {
+    if (value === "all") {
       return;
     }
     const data = queryClient
-      .getQueryData(['voucher', category, searchParams.get('_pid')])
+      .getQueryData(["voucher", category, searchParams.get("_pid")])
       ?.filter(({ status }) => status === value);
     setVoucherData(data);
   };
@@ -153,27 +153,27 @@ const LoadVoucher = () => {
   const getUsedVouchers = () =>
     _.filter(
       vouchers?.data,
-      ({ status, active }) => !active && ['sold', 'used'].includes(status)
+      ({ status, active }) => !active && ["sold", "used"].includes(status),
     )?.length;
 
   const handleOpenLoadCheckers = () => {
     if (
-      category === 'bus' &&
+      category === "bus" &&
       checkerType?.details?.noOfSeats === voucherData?.length
     ) {
       Swal.fire({
-        title: 'Ticket Limit Reached!',
-        text: 'Expected tickets limit reached.No more tickets can be loaded again!',
+        title: "Ticket Limit Reached!",
+        text: "Expected tickets limit reached.No more tickets can be loaded again!",
       });
       return;
     }
     if (
-      ['stadium', 'cinema'].includes(category) &&
+      ["stadium", "cinema"].includes(category) &&
       checkerType?.details?.quantity === voucherData?.length
     ) {
       Swal.fire({
-        title: 'Ticket Limit Reached!',
-        text: 'Expected tickets limit reached.No more tickets can be loaded again!',
+        title: "Ticket Limit Reached!",
+        text: "Expected tickets limit reached.No more tickets can be loaded again!",
       });
       return;
     }
@@ -191,24 +191,22 @@ const LoadVoucher = () => {
 
   function removeVouchers() {
     Swal.fire({
-      title: 'Removing',
-      text: 'Do you want to remove all selected vouchers?',
+      title: "Removing",
+      text: "Do you want to remove all selected vouchers?",
       showCancelButton: true,
     }).then(({ isConfirmed }) => {
       if (isConfirmed) {
         deleteMoreAsync(selectedItems, {
           onSettled: () => {
-            queryClient.invalidateQueries([
-              'voucher',
-              category,
-              searchParams?.get('_pid'),
-            ]);
+            queryClient.invalidateQueries({
+              queryKey: ["voucher", category, searchParams?.get("_pid")],
+            });
           },
           onSuccess: (data) => {
-            customDispatch(globalAlertType('info', data));
+            customDispatch(globalAlertType("info", data));
           },
           onError: (error) => {
-            customDispatch(globalAlertType('error', error));
+            customDispatch(globalAlertType("error", error));
           },
         });
       }
@@ -218,14 +216,14 @@ const LoadVoucher = () => {
   return (
     <Box
       sx={{
-        width: '100%',
+        width: "100%",
         borderRadius: 0,
         py: 4,
-        border: '1px solid lightgray',
+        border: "1px solid lightgray",
       }}
     >
       <MaterialTable
-        title='Pins & Serials'
+        title="Pins & Serials"
         icons={tableIcons}
         components={{
           Toolbar: (props) => {
@@ -233,18 +231,18 @@ const LoadVoucher = () => {
               <>
                 <MTableToolbar {...props} />
                 <Box
-                  display='flex'
-                  flexDirection={{ xs: 'column', sm: 'row' }}
-                  justifyContent='space-between'
-                  alignItems='center'
+                  display="flex"
+                  flexDirection={{ xs: "column", sm: "row" }}
+                  justifyContent="space-between"
+                  alignItems="center"
                   gap={2}
                   paddingY={3}
                 >
                   <Autocomplete
                     options={categories.data ? categories?.data : []}
                     loading={categories?.isLoading}
-                    size='small'
-                    closeText=' '
+                    size="small"
+                    closeText=" "
                     disableClearable
                     value={checkerType}
                     sx={{ width: 500 }}
@@ -252,23 +250,23 @@ const LoadVoucher = () => {
                     isOptionEqualToValue={(option, value) =>
                       value?.id === undefined ||
                       value?.id === null ||
-                      value?.id === '' ||
+                      value?.id === "" ||
                       option?.id === value?.id
                     }
-                    getOptionLabel={(option) => option?.voucherType || ''}
+                    getOptionLabel={(option) => option?.voucherType || ""}
                     renderInput={(params) => {
                       return (
                         <TextField
                           {...params}
                           label={
                             isVoucher
-                              ? 'Available Vouchers'
-                              : 'Available Tickets'
+                              ? "Available Vouchers"
+                              : "Available Tickets"
                           }
-                          size='small'
+                          size="small"
                           sx={{ minWidth: 320 }}
                           helperText={
-                            isVoucher ? 'Select Vouchers' : 'Select Tickets'
+                            isVoucher ? "Select Vouchers" : "Select Tickets"
                           }
                         />
                       );
@@ -276,62 +274,62 @@ const LoadVoucher = () => {
                   />
 
                   <Button
-                    variant='contained'
+                    variant="contained"
                     startIcon={<Add />}
                     onClick={handleOpenLoadCheckers}
-                    disabled={checkerType?.id === '' ? true : false}
-                    size='sm'
+                    disabled={checkerType?.id === "" ? true : false}
+                    size="sm"
                   >
-                    {isVoucher ? 'Load Vouchers' : 'Load Tickets'}
+                    {isVoucher ? "Load Vouchers" : "Load Tickets"}
                   </Button>
                 </Box>
                 {vouchers?.data && (
                   <>
-                    <Stack direction='row' spacing={4}>
-                      {['stadium', 'cinema'].includes(category) && (
+                    <Stack direction="row" spacing={4}>
+                      {["stadium", "cinema"].includes(category) && (
                         <ListItemText
-                          primary='Expected Tickets'
+                          primary="Expected Tickets"
                           primaryTypographyProps={{
-                            color: 'primary',
-                            fontWeight: 'bold',
+                            color: "primary",
+                            fontWeight: "bold",
                           }}
                           secondary={checkerType?.details?.quantity}
                         />
                       )}
-                      {category === 'bus' && (
+                      {category === "bus" && (
                         <>
                           <ListItemText
-                            primary='Vehicle Registration No.'
+                            primary="Vehicle Registration No."
                             primaryTypographyProps={{
-                              color: 'primary',
-                              fontWeight: 'bold',
+                              color: "primary",
+                              fontWeight: "bold",
                             }}
                             secondary={checkerType?.details?.vehicleNo}
                           />
                           <ListItemText
-                            primary='No. of seats'
+                            primary="No. of seats"
                             primaryTypographyProps={{
-                              color: 'primary',
-                              fontWeight: 'bold',
+                              color: "primary",
+                              fontWeight: "bold",
                             }}
                             secondary={checkerType?.details?.noOfSeats}
                           />
                         </>
                       )}
                       <ListItemText
-                        primary={isVoucher ? 'Total Vouchers' : 'Total Tickets'}
+                        primary={isVoucher ? "Total Vouchers" : "Total Tickets"}
                         primaryTypographyProps={{
-                          color: 'primary',
-                          fontWeight: 'bold',
+                          color: "primary",
+                          fontWeight: "bold",
                         }}
                         secondary={voucherData?.length}
                       />
 
                       <ListItemText
-                        primary='Used'
+                        primary="Used"
                         primaryTypographyProps={{
-                          color: 'primary',
-                          fontWeight: 'bold',
+                          color: "primary",
+                          fontWeight: "bold",
                         }}
                         secondary={`${getUsedVouchers()} out of ${
                           voucherData?.length
@@ -339,49 +337,49 @@ const LoadVoucher = () => {
                       />
                       <RadioGroup
                         row
-                        aria-labelledby='demo-row-radio-buttons-group-label'
-                        name='row-radio-buttons-group'
+                        aria-labelledby="demo-row-radio-buttons-group-label"
+                        name="row-radio-buttons-group"
                         sx={{
-                          justifyContent: 'center',
-                          alignItems: 'center',
+                          justifyContent: "center",
+                          alignItems: "center",
                           py: 2,
                         }}
                         value={sortValue}
                         onChange={handleChangeSortValue}
                       >
                         <FormControlLabel
-                          value='new'
+                          value="new"
                           control={<Radio />}
-                          label='New'
+                          label="New"
                         />
                         <FormControlLabel
-                          value='sold'
+                          value="sold"
                           control={<Radio />}
-                          label='Sold'
+                          label="Sold"
                         />
                         {isTicket && (
                           <>
                             <FormControlLabel
-                              value='used'
+                              value="used"
                               control={<Radio />}
-                              label='Used'
+                              label="Used"
                             />
                             <FormControlLabel
-                              value='expired'
+                              value="expired"
                               control={<Radio />}
-                              label='Expired'
+                              label="Expired"
                             />
                           </>
                         )}
                       </RadioGroup>
                     </Stack>
-                    {['stadium', 'cinema'].includes(category) && (
-                      <Stack direction='row' spacing={2}>
+                    {["stadium", "cinema"].includes(category) && (
+                      <Stack direction="row" spacing={2}>
                         {checkerType?.details?.pricing?.map((item) => {
                           return (
                             <Chip
-                              color='primary'
-                              size='small'
+                              color="primary"
+                              size="small"
                               key={item?.id}
                               label={item?.type}
                               icon={<IconButton>{item?.quantity}</IconButton>}
@@ -392,7 +390,7 @@ const LoadVoucher = () => {
                     )}
 
                     {voucherData && (
-                      <Typography variant='h5'>
+                      <Typography variant="h5">
                         {_.capitalize(sortValue)}- {voucherData?.length}
                       </Typography>
                     )}
@@ -407,43 +405,43 @@ const LoadVoucher = () => {
         isLoading={vouchers.isFetching}
         options={{
           // search: search || false,
-          paginationType: 'stepped',
-          searchFieldVariant: 'outlined',
+          paginationType: "stepped",
+          searchFieldVariant: "outlined",
           searchFieldStyle: {
-            borderRadius: '20px',
-            fontSize: '13px',
-            marginTop: '10px',
-            marginRight: '20px',
-            height: '40px',
-            width: '300px',
+            borderRadius: "20px",
+            fontSize: "13px",
+            marginTop: "10px",
+            marginRight: "20px",
+            height: "40px",
+            width: "300px",
           },
           sorting: true,
           exportButton: true,
           exportAllData: true,
           headerStyle: {
-            backgroundColor: '#fff',
-            fontWeight: 'bold',
+            backgroundColor: "#fff",
+            fontWeight: "bold",
           },
           selection: true,
           showTextRowsSelected: false,
         }}
         style={{
-          padding: '12px',
-          boxShadow: 'none',
+          padding: "12px",
+          boxShadow: "none",
         }}
         actions={[
           {
             icon: () => <Refresh />,
             onClick: () => {
-              setSortValue('all');
+              setSortValue("all");
               vouchers.refetch();
             },
             isFreeAction: true,
           },
           {
             icon: () => <DeleteRounded />,
-            position: 'toolbarOnSelect',
-            tooltip: 'Delete all',
+            position: "toolbarOnSelect",
+            tooltip: "Delete all",
             onClick: () => removeVouchers(),
           },
         ]}

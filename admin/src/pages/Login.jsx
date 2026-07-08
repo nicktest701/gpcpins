@@ -150,7 +150,7 @@ const Login = () => {
         >
           {/* <IconButton onClick={goHome}>
               <Avatar
-                src={IMAGES.coat_of_arms}
+                src={IMAGES.logo}
                 sx={{ width: 100, height: 100 }}
               />
             </IconButton> */}

@@ -20,6 +20,8 @@ const { otpGen } = require("otp-gen-agent");
 const generateId = require("../config/generateId");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const { uploadAttachment } = require("../config/uploadFile");
+const { pinSchema, pinResetSchema } = require("../utils/validationSchema");
+const { validate } = require("../middlewares/validators");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -36,7 +38,7 @@ const Upload = multer({ storage: Storage });
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 50, // 5 requests per windowMs
+  max: 20, // 5 requests per windowMs
   message: "Too many requests!. please try again later.",
 });
 
@@ -46,18 +48,11 @@ router.get(
   verifyToken,
   asyncHandler(async (req, res) => {
     const { id } = req.user;
-    const { action } = req.query;
-
-    if (action && action === "disable") {
-      await knex("wallets").where("user_id", id).update({ active: 0 });
-      return res.sendStatus(204);
-    }
 
     const wallet = await knex("wallets")
       .where("user_id", id)
       .select("active", "created_at", "updated_at")
       .first();
-
 
     if (_.isEmpty(wallet) || Boolean(wallet?.active) === false) {
       const now = moment();
@@ -92,6 +87,7 @@ router.get(
 //Get Wallet Balance
 router.get(
   "/balance",
+  limit,
   verifyToken,
   asyncHandler(async (req, res) => {
     const { id: userId } = req.user;
@@ -253,6 +249,7 @@ router.get(
 //POST Top up wallet balance
 router.post(
   "/topup",
+  limit,
   verifyToken,
   verifyAdmin,
   Upload.single("attachment"),
@@ -320,71 +317,74 @@ router.post(
 );
 
 //Send wallet top up request
-router.post(
-  "/top-up-request",
-  verifyToken,
-  asyncHandler(async (req, res) => {
-    const user = req.user;
+// router.post(
+//   "/top-up-request",
+//   verifyToken,
+//   asyncHandler(async (req, res) => {
+//     const user = req.user;
 
-    if (_.isEmpty(user)) {
-      return res.status(400).json("Invalid Request!");
-    }
-    try {
-      const mailBody = `<div>
-      <h1 style='text-transform:uppercase;'>Wallet Top Up Request</h1><br/>
-      <div style='text-align:left;'>
+//     if (_.isEmpty(user)) {
+//       return res.status(400).json("Invalid Request!");
+//     }
+//     try {
+//       const mailBody = `<div>
+//       <h1 style='text-transform:uppercase;'>Wallet Top Up Request</h1><br/>
+//       <div style='text-align:left;'>
 
-      <p>A request has been placed by <strong>${
-        user?.fullname
-      }</strong> to top up wallet balance.
-      <p><strong>Fullname:</strong> ${user?.firstname} ${user?.lastname}</p>
-      <p><strong>Email:</strong> ${user?.email}</p><br/>
-      <p><strong>Telephone Number:</strong> ${user?.phonenumber}</p><br/>
-      <p><strong>Top Up Amount:</strong> ${currencyFormatter(
-        req?.body?.amount,
-      )}</p><br/>
-       
-      </div>
-      </div>`;
+//       <p>A request has been placed by <strong>${
+//         user?.fullname
+//       }</strong> to top up wallet balance.
+//       <p><strong>Fullname:</strong> ${user?.firstname} ${user?.lastname}</p>
+//       <p><strong>Email:</strong> ${user?.email}</p><br/>
+//       <p><strong>Telephone Number:</strong> ${user?.phonenumber}</p><br/>
+//       <p><strong>Top Up Amount:</strong> ${currencyFormatter(
+//         req?.body?.amount,
+//       )}</p><br/>
 
-      // const message = `A request has been placed by ${
-      //   user?.name
-      // } to top up wallet balance.
-      // Name: ${user?.name},
-      // Email: ${user?.email},
-      // Telephone Number: ${user?.phonenumber},
-      // Top Up Amount: ${currencyFormatter(req?.body?.amount)}
-      // `;
+//       </div>
+//       </div>`;
 
-      // await knex("notifications").insert({
-      //   id: generateId(),
-      //   type:'admin',
-      //   title: "Wallet top up request",
-      //   message,
-      // });
+//       // const message = `A request has been placed by ${
+//       //   user?.name
+//       // } to top up wallet balance.
+//       // Name: ${user?.name},
+//       // Email: ${user?.email},
+//       // Telephone Number: ${user?.phonenumber},
+//       // Top Up Amount: ${currencyFormatter(req?.body?.amount)}
+//       // `;
 
-      await sendOTPSMS(
-        `Your request has been received.We'll get back to you shortly.`,
-        user?.phonenumber,
-      );
+//       // await knex("notifications").insert({
+//       //   id: generateId(),
+//       //   type:'admin',
+//       //   title: "Wallet top up request",
+//       //   message,
+//       // });
 
-      await sendEMail(
-        process.env.MAIL_CLIENT_USER,
-        mailTextShell(mailBody),
-        "Wallet Top Up Request",
-      );
+//       await sendOTPSMS(
+//         `Your request has been received.We'll get back to you shortly.`,
+//         user?.phonenumber,
+//       );
 
-      res.status(200).json("Request Sent!");
-    } catch (error) {
-      res.status(500).json("An unknown error has occurred");
-    }
-  }),
-);
+//       await sendEMail(
+//         process.env.MAIL_CLIENT_USER,
+//         mailTextShell(mailBody),
+//         "Wallet Top Up Request",
+//       );
+
+//       res.status(200).json("Request Sent!");
+//     } catch (error) {
+//       res.status(500).json("An unknown error has occurred");
+//     }
+//   }),
+// );
 
 //update wallet pin
+
 router.put(
   "/",
+  limit,
   verifyToken,
+  validate(pinResetSchema),
   asyncHandler(async (req, res) => {
     const { id: _id, email, phonenumber } = req.user;
     const { id, pin, isAdmin, userEmail } = req.body;
@@ -438,6 +438,23 @@ router.put(
     });
 
     res.status(200).json("Wallet Pin Changed!");
+  }),
+);
+
+//Get Wallet Balance
+router.put(
+  "/status",
+  limit,
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.user;
+
+    if (!id) {
+      return res.sendStatus(204);
+    }
+
+    await knex("wallets").where("user_id", id).update({ active: 0 });
+    return res.sendStatus(204);
   }),
 );
 

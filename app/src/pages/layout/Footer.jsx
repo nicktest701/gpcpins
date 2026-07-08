@@ -165,11 +165,11 @@ function Footer() {
             Copyright &copy; {new Date().getFullYear()} | Gab Powerful Consult
           </Typography>
           <Typography textAlign="center" variant="body2" >
-            Designed by  ❤
+            Crafted by  
             <a
               rel="noreferrer"
               target="_blank"
-              href="https://nanaakwasi-8d50e.web.app/"
+              href="https://nanaakwasi.dev"
               style={{
                 textDecoration: "underline",
                 color: "#5CE0E6",
@@ -178,7 +178,7 @@ function Footer() {
             >
              nanaakwasi.dev 
             </a>
-            {"  "}❤
+            {"  "}
           </Typography>
         </Container>
       </Box>

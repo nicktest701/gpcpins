@@ -280,18 +280,9 @@ function BusTicketCheckout() {
       }
     }
 
-    // if (!user?.id) {
-    //   guestMutation.mutateAsync(
-    //     {},
-    //     {
-    //       onSuccess: () => {
-    //         paymentMutation.mutateAsync(payload);
-    //       },
-    //     },
-    //   );
-    // } else {
-    paymentMutation.mutateAsync(payload);
-    // }
+
+    paymentMutation.muPendingnc(payload);
+
   };
 
   if (busLoading || seatsLoading) {
@@ -748,7 +739,7 @@ function BusTicketCheckout() {
             Cancel
           </Button>
           <LoadingButton
-            loading={paymentMutation.isLoading}
+            loading={paymentMutation.isPending}
             variant="contained"
             onClick={processPayment}
             sx={{

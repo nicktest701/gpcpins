@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { IMAGES } from "../constants";
 import { useCustomContext } from "../context/providers/CustomProvider";
-
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ConfirmPayment } from "../api/paymentAPI";
-import { globalAlertType } from "../components/alert/alertType";
+import _ from "lodash";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ConfirmPayment, reConfirmPayment } from "../api/paymentAPI";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import MomoGuide from "../components/momo-guide";
 
@@ -19,6 +18,7 @@ import {
 } from "@mui/material";
 import { keyframes } from "@mui/system";
 import { useAuth } from "../context/providers/AuthProvider";
+import { LoadingButton } from "@mui/lab";
 
 // ──────────────────────────────────────────────────────────────────────
 // Keyframes for animations
@@ -61,23 +61,26 @@ function PaymentStatus() {
   const { customDispatch, paymentStatus } = useCustomContext();
 
   const [status, setStatus] = useState("pending");
-  const [transaction, setTransaction] = useState(null);
 
-  const txRef = user?.id || state?.transactionReference || null;
+  const txRef =
+    user?.id || state?.phonenumber || state?.transactionReference || null;
 
-  // console.log(paymentStatus)
   // 1. DEFINE SUCCESS HANDLER FIRST (With complete dependency array)
   const handlePaymentSuccess = useCallback(
     (data) => {
-      if (!data?.id) return;
+      if (!data?.id || data?.status !== "completed") return;
+      // console.log("Payment confirmed:", data);
       setStatus("success");
-      setTransaction(data);
 
-      if (state?.isWallet) queryClient.getQueryData(["wallet-balance"]);
-      customDispatch(globalAlertType("info", "Transaction Confirmed!"));
+      if (state?.isWallet) {
+        queryClient.invalidateQueries({
+          queryKey: ["wallet-balance", user?.id],
+        });
+      }
+      // customDispatch(globalAlertType("info", "Transaction Confirmed!"));
 
-      const walletTypes = ["airtime", "prepaid", "bundle", "wallet"];
-      if (walletTypes.includes(state?.categoryType)) {
+      const serviceType = ["airtime", "prepaid", "bundle", "wallet"];
+      if (serviceType.includes(state?.categoryType)) {
         setTimeout(() => {
           navigate("/payment/success", {
             replace: true,
@@ -97,9 +100,28 @@ function PaymentStatus() {
           });
         }, 3000);
       }
-      queryClient.invalidateQueries(["notifications"]);
+      queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
     },
-    [state, navigate, queryClient, customDispatch],
+    [state, navigate, queryClient, customDispatch, user?.id],
+  );
+
+  const handlePaymentError = useCallback(
+    (error) => {
+      // console.log(error);
+      if (!error) return;
+      setStatus("failed");
+      // customDispatch(
+      //   globalAlertType("error", error?.reason || "Transaction failed"),
+      // );
+      queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
+      // setTimeout(() => {
+      //   navigate("/payment/failed", {
+      //     replace: true,
+      //     state: { path: state?.path },
+      //   });
+      // }, 3000);
+    },
+    [queryClient, user?.id],
   );
 
   // Redirect if no state (safety)
@@ -120,49 +142,81 @@ function PaymentStatus() {
     return () => window.removeEventListener("beforeunload", handler);
   }, []);
 
-  // Socket success listener
-  useEffect(() => {
-    // console.log(paymentStatus);
-
-    if (paymentStatus !== null) {
-      if (paymentStatus?.success === true) {
-        handlePaymentSuccess(paymentStatus?.transaction);
-      }
-    }
-  }, [paymentStatus, handlePaymentSuccess]);
-
   // Polling query (fallback)
   const confirmPayment = useQuery({
-    queryKey: ["confirm-payment", state?.id],
-    queryFn: () => ConfirmPayment({ id: state?.id, type: state?.categoryType }),
+    queryKey: ["confirm-payment", state?.id, state?.categoryType],
+    queryFn: () =>
+      ConfirmPayment({ id: state?.id, serviceType: state?.categoryType }),
     // enabled: false,
-    enabled: !!state?.id && !!state?.categoryType,
+    enabled: !!state?.id && !!state?.categoryType && status === "pending",
     refetchInterval: 15000,
     refetchIntervalInBackground: false,
     retry: 3,
     refetchOnWindowFocus: false,
-    onSuccess: (data) => {
-      if (data?.status === "completed") handlePaymentSuccess(data);
-      if (data.status === "failed") {
-        setStatus("failed");
-      }
-    },
   });
+
+  const {
+    isLoading,
+    isSuccess: isDone,
+    isError,
+    data,
+    error,
+    failureReason,
+  } = confirmPayment;
+
+  // Socket success listener
+  useEffect(() => {
+    if (!_.isEmpty(paymentStatus) && paymentStatus?.success === true) {
+      handlePaymentSuccess(paymentStatus?.transaction);
+      return;
+    }
+    if (isDone) {
+      handlePaymentSuccess(data);
+    }
+  }, [isDone, paymentStatus, data, handlePaymentSuccess]);
+
+  // Socket success listener
+  useEffect(() => {
+    if (!_.isEmpty(paymentStatus) && paymentStatus?.success === false) {
+      handlePaymentError(paymentStatus);
+      return;
+    }
+    if (
+      isError &&
+      (error === "Payment failed!" || failureReason === "Payment failed!")
+    ) {
+      handlePaymentError(paymentStatus);
+    }
+  }, [isError, error, failureReason, paymentStatus, handlePaymentError]);
+
+  const { mutateAsync, isPending } = useMutation({
+    mutationFn: reConfirmPayment,
+  });
+
+  const handleReConfirmPayment = () => {
+    mutateAsync({
+      paymentReference: state?.transactionReference,
+      type: state?.categoryType,
+    });
+  };
 
   // Derived states
   const isCancelled =
-    status === "failed" ||
-    (confirmPayment.isError &&
-      confirmPayment?.error === "Payment Cancelled!") ||
-    confirmPayment?.failureReason === "Payment Cancelled!";
+    // status === "failed" ||
+    paymentStatus?.success === false ||
+    (isError && error === "Payment failed!");
 
   const isSuccess =
-    status === "success" ||
-    (!!confirmPayment.data && !isCancelled) ||
-    paymentStatus?.success === true;
+    // status === "success" ||
+    (!!data && !isCancelled) || paymentStatus?.success === true;
 
   const isPolling =
-    confirmPayment.isLoading || status === "pending" || paymentStatus === null;
+    // status === "pending"||
+    (isLoading || paymentStatus === null) && !isSuccess && !isCancelled;
+
+  // console.log("isPolling", isPolling);
+  // console.log("isSuccess", isSuccess);
+  // console.log("isError", paymentStatus);
 
   const statusType = isCancelled ? "error" : isSuccess ? "success" : "waiting";
 
@@ -218,7 +272,11 @@ function PaymentStatus() {
           <Box
             sx={{
               width: "100%",
-              background: "linear-gradient(135deg, #fabb7f 0%, #F78E2A 100%)",
+              background: isPolling
+                ? "linear-gradient(135deg, #fabb7f 0%, #F78E2A 100%)"
+                : isCancelled
+                  ? "#B72136"
+                  : "#229A16",
               p: "28px 24px 20px",
               display: "flex",
               flexDirection: "column",
@@ -343,9 +401,76 @@ function PaymentStatus() {
                 }}
               />
             </Box>
+            {/* Polling / waiting state */}
+            {isPolling ? (
+              <>
+                <Box
+                  sx={{
+                    width: "100%",
+                    height: "1px",
+                    bgcolor: "#f3f4f6",
+                    my: "2px",
+                  }}
+                />
 
-            {/* Cancelled state */}
-            {isCancelled && (
+                {state?.isWallet ? (
+                  <Stack direction="row" alignItems="center" gap="10px">
+                    {/* <Spinner size={20} /> */}
+                    <Typography
+                      variant="caption"
+                      sx={{ color: "#6b7280", fontWeight: 500 }}
+                    >
+                      Processing payment…
+                    </Typography>
+                  </Stack>
+                ) : (
+                  <>
+                    <Box
+                      sx={{
+                        width: "100%",
+                        bgcolor: "#f5f3ff",
+                        borderRadius: "14px",
+                        p: "16px 18px",
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        textAlign="center"
+                        sx={{
+                          mb: "10px",
+                          textAlign: "center",
+
+                          fontWeight: 500,
+                        }}
+                      >
+                        A prompt has been sent to your mobile phone. Enter your
+                        Mobile Money PIN to complete the payment.
+                      </Typography>
+                    </Box>
+
+                    <LoadingButton
+                      variant="contained"
+                      onClick={handleReConfirmPayment}
+                      loading={isPending}
+                      sx={{ my: 2 }}
+                    >
+                      Click here to confirm if paid
+                    </LoadingButton>
+                    <MomoGuide mobilePartner={state?.mobilePartner} />
+                    {/* <Stack direction="row" alignItems="center" gap="10px">
+                      <Spinner size={16} />
+                      <Typography
+                        variant="caption"
+                        sx={{ color: "#6b7280", fontWeight: 500 }}
+                      >
+                        Waiting for payment confirmation…
+                      </Typography>
+                    </Stack> */}
+                  </>
+                )}
+              </>
+            ) : isCancelled ? (
               <>
                 <Typography
                   variant="h6"
@@ -393,7 +518,7 @@ function PaymentStatus() {
                       fontSize: "12px",
                     }}
                   >
-                    processor error
+                    processing failure
                   </Box>
                   , or exceeding your{" "}
                   <Box
@@ -410,41 +535,28 @@ function PaymentStatus() {
                   >
                     daily limit
                   </Box>
-                  . Please try again.
+                  .
                 </Typography>
                 <Link
-                  to={pathname}
-                  style={{ textDecoration: "none" }}
-                  onClick={() => {
-                    // optional: reload logic
+                  to={state?.path}
+                  style={{
+                    textDecoration: "none",
+                    display: "inline-block",
+                    padding: "10px 24px",
+                    backgroundColor: "var(--secondary)",
+                    color: "white",
+                    borderRadius: "6px",
+                    fontWeight: 600,
+                    fontSize: "14px",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "background-color 0.2s",
                   }}
                 >
-                  <Box
-                    sx={{
-                      width: "100%",
-                      textAlign: "center",
-                      py: "14px",
-                      borderRadius: "12px",
-                      border: "none",
-                      background:
-                        "linear-gradient(135deg, #4f46e5 0%, #F78E2A 100%)",
-                      color: "#fff",
-                      fontSize: "15px",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      transition: "opacity 0.18s, transform 0.12s",
-                      "&:hover": { opacity: 0.88 },
-                      "&:active": { transform: "scale(0.97)" },
-                    }}
-                  >
-                    Try Again
-                  </Box>
+                  Try Again
                 </Link>
               </>
-            )}
-
-            {/* Success state */}
-            {isSuccess && (
+            ) : (
               <>
                 <Typography
                   variant="h6"
@@ -480,68 +592,6 @@ function PaymentStatus() {
                     Confirming transaction
                   </Typography>
                 </Stack>
-              </>
-            )}
-
-            {/* Polling / waiting state */}
-            {isPolling && (
-              <>
-                <Box
-                  sx={{
-                    width: "100%",
-                    height: "1px",
-                    bgcolor: "#f3f4f6",
-                    my: "2px",
-                  }}
-                />
-
-                {state?.isWallet ? (
-                  <Stack direction="row" alignItems="center" gap="10px">
-                    {/* <Spinner size={20} /> */}
-                    <Typography
-                      variant="caption"
-                      sx={{ color: "#6b7280", fontWeight: 500 }}
-                    >
-                      Processing payment…
-                    </Typography>
-                  </Stack>
-                ) : (
-                  <>
-                    <Box
-                      sx={{
-                        width: "100%",
-                        bgcolor: "#f5f3ff",
-                        borderRadius: "14px",
-                        p: "16px 18px",
-                        boxSizing: "border-box",
-                      }}
-                    >
-                      <Typography
-                        variant="caption"
-                        textAlign="center"
-                        sx={{
-                          mb: "10px",
-                          textAlign: "center",
-
-                          fontWeight: 500,
-                        }}
-                      >
-                        A prompt has been sent to your mobile phone. Enter your
-                        Mobile Money PIN to complete the payment.
-                      </Typography>
-                    </Box>
-                    <MomoGuide mobilePartner={state?.mobilePartner} />
-                    <Stack direction="row" alignItems="center" gap="10px">
-                      <Spinner size={16} />
-                      <Typography
-                        variant="caption"
-                        sx={{ color: "#6b7280", fontWeight: 500 }}
-                      >
-                        Waiting for payment confirmation…
-                      </Typography>
-                    </Stack>
-                  </>
-                )}
               </>
             )}
           </Box>

@@ -1,16 +1,11 @@
-import { useQueryClient, useMutation } from "@tanstack/react-query";
-import React, { useState, useLayoutEffect, useContext } from "react";
+import { useMutation } from "@tanstack/react-query";
+import React, { useState, useContext, useEffect } from "react";
 import { logoutUser } from "@/api/userAPI";
-import { useNavigate } from "react-router-dom";
 
-import {
-  deleteToken,
-  deleteUser,
-  getUser,
-  parseJwt,
-  saveUser,
-} from "@/config/sessionHandler";
+import { deleteToken } from "@/config/sessionHandler";
 import GlobalSpinner from "@/components/GlobalSpinner";
+import { getUser } from "../../api/userAPI";
+import { getToken } from "../../config/sessionHandler";
 
 export const AuthContext = React.createContext();
 
@@ -23,38 +18,46 @@ export const useAuth = () => {
 };
 
 function AuthProvider({ children }) {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState({
-    id: "",
-    profile: "",
-    name: "",
-    email: "",
-    phonenumber: "",
-    permissions: [],
-    role: "",
-    active: true,
-  });
+  const [accessToken, setAccessToken] = useState("");
+  const [user, setUser] = useState(null);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     setLoading(true);
-    const loggedInUser = getUser();
-    setUser(loggedInUser);
-    setLoading(false);
+
+    async function getAuthUser() {
+      await getUser()
+        .then((data) => {
+          setUser(data.user);
+          const token = getToken();
+          setAccessToken(token);
+        })
+        .catch((e) => {
+          setUser(null);
+          setAccessToken("");
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+
+    getAuthUser();
   }, []);
 
   function login(data) {
-    const newUser = parseJwt(data);
-    setUser({ ...user, ...newUser });
-    saveUser(data);
+    setUser(data?.user);
+    setAccessToken(data?.accessToken);
+  }
+
+  function updateUser(data) {
+    setUser({ ...user, ...data });
   }
 
   function updateProfilePhoto(data) {
     setUser({ ...user, ...data });
   }
 
-  const { mutateAsync, isLoading } = useMutation({
+  const { mutateAsync, isPending } = useMutation({
     mutationFn: logoutUser,
   });
 
@@ -64,36 +67,31 @@ function AuthProvider({ children }) {
 
       {
         onSettled: () => {
-          queryClient.invalidateQueries(["wallet-balance"]);
-        },
-        onSuccess: () => {
-          navigate("/");
-
+          window.location.href = "/";
           deleteToken();
-          deleteUser();
-
-          setUser({
-            id: "",
-            profile: "",
-            lastname: "",
-            firstname: "",
-            name: "",
-            email: "",
-            phonenumber: "",
-            role: "",
-          });
+          setAccessToken("");
+          setUser(null);
         },
       },
     );
   }
 
-  if (isLoading || loading) {
+  if (isPending || loading) {
     return <GlobalSpinner />;
   }
 
   return (
     <div style={{ position: "relative" }}>
-      <AuthContext.Provider value={{ user, updateProfilePhoto, login, logout }}>
+      <AuthContext.Provider
+        value={{
+          user,
+          accessToken,
+          updateUser,
+          updateProfilePhoto,
+          login,
+          logout,
+        }}
+      >
         {children}
       </AuthContext.Provider>
     </div>

@@ -1,5 +1,6 @@
 const Joi = require("joi");
 
+const phoneNumberREgex = /^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/;
 const serviceTypeEnum = [
   "ticket",
   "voucher",
@@ -15,6 +16,37 @@ const userSchema = Joi.object({
   phoneNumber: Joi.string().empty("").default("").optional(),
   provider: Joi.string().empty("").default("").optional(),
 });
+
+const userIdentitySchema = Joi.object({
+  nid: Joi.string()
+    .pattern(/^(?:GHA-\d{9}-\d|\d{10})$/)
+    .optional(),
+    
+  dob: Joi.date().optional(),
+})
+.xor('nid', 'dob') // Enforces that exactly ONE of these fields must be present
+.messages({
+    'object.xor': 'You must provide either your National/Voter ID or Date of Birth !'
+});
+
+
+const registrationSchema = Joi.object({
+  email: Joi.string().email().required(),
+  phonenumber: Joi.string().required(),
+});
+
+const googleRegistrationSchema = Joi.object({
+  email: Joi.string().email().required(),
+  firstname: Joi.string().required(),
+  lastname: Joi.string().required(),
+  
+  // Optional strings that must not be empty if they are provided
+  phonenumber: Joi.string().optional().empty(''),
+  profile: Joi.string().optional().empty(''),
+  
+  register: Joi.boolean().optional(),
+});
+
 
 const planSchema = Joi.object({
   id: Joi.string().required(),
@@ -98,8 +130,8 @@ const bulkAirtimeSchema = Joi.object({
   service: Joi.string()
     .valid(...serviceTypeEnum)
     .required(),
-  amount: Joi.required(),
   recipient: Joi.string().required(),
+  amount: Joi.required(),
   phonenumber: Joi.required(),
   provider: Joi.required(),
   email: Joi.required(),
@@ -110,6 +142,10 @@ const bulkAirtimeSchema = Joi.object({
 });
 
 const prepaidSchema = Joi.object({
+  type: Joi.string().allow(null).required(),
+  service: Joi.string()
+    .valid(...serviceTypeEnum)
+    .required(),
   user: Joi.alternatives().try(Joi.object(), Joi.string()).optional(),
   meter: Joi.alternatives().try(Joi.object(), Joi.string()).required(),
   info: Joi.object({
@@ -131,6 +167,62 @@ const walletTopUpSchema = Joi.object({
   phoneNumber: Joi.string().required(),
 });
 
+const loginSchema = Joi.object({
+  email: Joi.alternatives()
+    .try(Joi.string().email(), Joi.string().pattern(phoneNumberREgex))
+    .required()
+    .messages({
+      "alternatives.match": '"Input" must be a valid email or phone number',
+      "any.required": '"email" is a required field',
+    }),
+
+  type: Joi.string().valid("email", "phone").required(),
+});
+
+const otpSchema = Joi.object({
+  id: Joi.string().required(),
+  email: Joi.alternatives()
+    .try(Joi.string().email(), Joi.string().pattern(phoneNumberREgex))
+    .required()
+    .messages({
+      "alternatives.match": '"Input" must be a valid email or phone number',
+      "any.required": '"email" is a required field',
+    }),
+  type: Joi.string().valid("email", "phone").required(),
+  token: Joi.string()
+    .pattern(/^[0-9]{6}$/)
+    .required(),
+});
+
+const pinSchema = Joi.object({
+  token: Joi.string()
+    .pattern(/^[0-9]{6}$/)
+    .required(),
+});
+
+const pinResetSchema = Joi.object({
+  id: Joi.string().required(),
+  pin: Joi.string()
+    .pattern(/^[0-9]{4}$/)
+    .required(),
+  userEmail: Joi.string().email().required(),
+  isAdmin: Joi.boolean().optional(),
+});
+
+const airtimeTopUpSchema = Joi.object({
+  recipient: Joi.string().required(),
+  amount: Joi.number().positive().required(),
+  network: Joi.number().valid(4, 6, 1).required(),
+  transaction_reference: Joi.string().required(),
+});
+
+const bundleTopUpSchema = Joi.object({
+  recipient: Joi.string().required(),
+  data_code: Joi.string().required(),
+  network: Joi.number().valid(4, 6, 1).required(),
+  transaction_reference: Joi.string().required(),
+});
+
 module.exports = {
   voucherSchema,
   ticketSchema,
@@ -139,4 +231,13 @@ module.exports = {
   bulkAirtimeSchema,
   prepaidSchema,
   walletTopUpSchema,
+  otpSchema,
+  registrationSchema,
+  googleRegistrationSchema,
+  loginSchema,
+  userIdentitySchema,
+  pinSchema,
+  pinResetSchema,
+  airtimeTopUpSchema,
+  bundleTopUpSchema
 };

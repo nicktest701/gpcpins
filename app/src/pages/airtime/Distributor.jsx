@@ -48,7 +48,7 @@ function Distributor() {
     },
   });
 
-  const { mutateAsync, isLoading } = useMutation({
+  const { mutateAsync, isPending } = useMutation({
     mutationFn: createNewAgent,
     onSuccess: (data) => {
       customDispatch(globalAlertType("info", data));
@@ -321,7 +321,7 @@ function Distributor() {
               type="submit"
               variant="contained"
               size="large"
-              loading={isSubmitting || isLoading}
+              loading={isSubmitting || isPending}
               fullWidth
               sx={{ mt: 2 }}
             >

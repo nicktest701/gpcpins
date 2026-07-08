@@ -3,7 +3,6 @@ const knex = require("../db/knex");
 const redisClient = require("../config/redisClient");
 const { signMainRefreshToken } = require("../config/token");
 
-
 const verifyToken = (req, res, next) => {
   req.user = null;
 
@@ -40,10 +39,8 @@ const verifyToken = (req, res, next) => {
 };
 
 const verifyRefreshToken = async (req, res, next) => {
-  // const authHeader =
-  //   req.headers["authorization"] || req.headers["Authorization"];
-
   const cookieToken = req.cookies.refreshToken;
+  console.log(cookieToken);
 
   if (!cookieToken) {
     return res.status(401).json("Unauthorized Access");
@@ -97,7 +94,6 @@ const verifyRefreshToken = async (req, res, next) => {
       createdAt: user?.created_at,
     };
 
-
     if (
       user?.role === process.env.ADMIN_ID ||
       user?.role === Number(process.env.SCANNER_ID)
@@ -129,6 +125,7 @@ const verifyRefreshToken = async (req, res, next) => {
     });
 
     req.user = newUser;
+    req.walletCount = 3;
 
     next();
   });
@@ -140,9 +137,6 @@ const verifyOptionalToken = (req, res, next) => {
 
   if (!authHeader) {
     req.user = {
-      // id: process.env.CUSTOMER_ID,
-      // name: process.env.CUSTOMER_EMAIL,
-      // email: process.env.CUSTOMER_NAME,
       id: "",
       email: "",
       name: "",

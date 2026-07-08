@@ -5,6 +5,7 @@ import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
+  Avatar,
   FormControlLabel,
   InputAdornment,
   Radio,
@@ -18,7 +19,8 @@ import { useFormContext, useWatch } from "react-hook-form";
 import MobilePartner from "../MobilePartner";
 import { useAuth } from "../../context/providers/AuthProvider";
 import { getMobilePartner } from "../../constants/PhoneCode";
-import MobileMoney from '@/assets/icons/MobileMoney'
+import MobileMoney from "@/assets/icons/MobileMoney";
+import { MOBILE_PROVIDER } from "../../mocks/columns";
 function MobileMoneyOption() {
   const { user } = useAuth();
 
@@ -26,6 +28,7 @@ function MobileMoneyOption() {
     control,
     register,
     setValue,
+    watch,
     formState: { errors },
   } = useFormContext();
 
@@ -89,10 +92,8 @@ function MobileMoneyOption() {
       <AccordionSummary
         sx={{
           backgroundColor:
-            paymentMethod === "momo"
-              ? "whitesmoke"
-              : "background.default",
-              py:1.3
+            paymentMethod === "momo" ? "whitesmoke" : "background.default",
+          py: 1.3,
         }}
         onClick={handleSelect}
       >
@@ -107,11 +108,13 @@ function MobileMoneyOption() {
               width="100%"
             >
               <Stack alignItems="center" direction="row">
-               <div style={{marginLeft: 12}}>
-                 <MobileMoney width={36} height={36} />
-               </div>
+                <div style={{ marginLeft: 12 }}>
+                  <MobileMoney width={36} height={36} />
+                </div>
                 <div>
-                  <Typography variant="body2" ml={1.5}>Mobile Money</Typography>
+                  <Typography variant="body2" ml={1.5}>
+                    Mobile Money
+                  </Typography>
                   {/* {!expanded && (
                     <Typography fontWeight={700}>
                       {currencyFormatter(walletBalance.data)}
@@ -133,24 +136,6 @@ function MobileMoneyOption() {
 
       <AccordionDetails>
         <Stack spacing={2} pt={1}>
-          <MobilePartner
-            size="small"
-            value={useWatch({
-              control,
-              name: "mobilePartner",
-            })}
-            setValue={(value) =>
-              setValue("mobilePartner", value, {
-                shouldValidate: true,
-              })
-            }
-            error={!!errors.mobilePartner}
-            helperText={errors.mobilePartner?.message}
-            InputLabelProps={{
-              shrink: true,
-            }}
-          />
-
           {showSavedNumber ? (
             <>
               <TextField
@@ -159,20 +144,52 @@ function MobileMoneyOption() {
                 defaultValue={user?.phonenumber || ""}
                 InputLabelProps={{
                   shrink: true,
-                }}     
+                }}
                 fullWidth
-                 InputProps={{
-                   readOnly: true,
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <PhoneRounded fontSize="small" />
-                          </InputAdornment>
-                        ),
-                      }}
+                InputProps={{
+                  readOnly: true,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Avatar
+                        variant="square"
+                        alt="network"
+                        src={
+                          MOBILE_PROVIDER?.find(
+                            (item) =>
+                              item.value ===
+                              getMobilePartner(user?.phonenumber),
+                          ).image
+                        }
+                        style={{
+                          width: "28px",
+                          height: 16,
+                          objectFit: "contain",
+                        }}
+                      />
+                    </InputAdornment>
+                  ),
+                }}
               />
             </>
           ) : (
             <>
+              <MobilePartner
+                size="small"
+                value={watch({
+                  control,
+                  name: "mobilePartner",
+                })}
+                setValue={(value) =>
+                  setValue("mobilePartner", value, {
+                    shouldValidate: true,
+                  })
+                }
+                error={!!errors.mobilePartner}
+                helperText={errors.mobilePartner?.message}
+                InputLabelProps={{
+                  shrink: true,
+                }}
+              />
               <TextField
                 size="small"
                 type="tel"
@@ -187,7 +204,7 @@ function MobileMoneyOption() {
                   shrink: true,
                 }}
                 fullWidth
-                  placeholder="024XXXXXXX"
+                placeholder="024XXXXXXX"
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -201,7 +218,7 @@ function MobileMoneyOption() {
                 size="small"
                 type="tel"
                 label="Confirm Mobile Number"
-                 placeholder="Re-enter phone number"
+                placeholder="Re-enter phone number"
                 inputMode="tel"
                 autoComplete="tel"
                 {...register("confirmPhonenumber")}
@@ -211,13 +228,13 @@ function MobileMoneyOption() {
                   shrink: true,
                 }}
                 fullWidth
-                 InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <PhoneRounded fontSize="small" />
-                          </InputAdornment>
-                        ),
-                      }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PhoneRounded fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
               />
             </>
           )}

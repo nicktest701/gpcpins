@@ -107,7 +107,7 @@ const RetrieveVoucher = ({ general }) => {
         <LoadingButton
           variant="contained"
           size="large"
-          color={general ? "primary" : "secondary"}
+          color='primary'
           fullWidth
           endIcon={<FindInPageRounded />}
           onClick={handleLostVoucher}

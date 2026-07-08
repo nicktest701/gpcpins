@@ -82,7 +82,7 @@ export default function MomoGuide({ mobilePartner = "mtn-gh" }) {
         anchorEl={anchorEl}
         onClose={handleClose}
         anchorOrigin={{
-          vertical: "bottom",
+          vertical: "top",
           horizontal: "left",
         }}
         transformOrigin={{
@@ -92,7 +92,7 @@ export default function MomoGuide({ mobilePartner = "mtn-gh" }) {
         slotProps={{
           paper: {
             sx: {
-              width: { xs: "90vw", sm: 400, md: 480 },
+              width: { xs: 320, sm: 400 },
               maxWidth: "100%",
               maxHeight: { xs: "80vh", md: "90vh" },
               overflowY: "auto",

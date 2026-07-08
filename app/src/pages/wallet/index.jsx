@@ -13,9 +13,9 @@ import _ from "lodash";
 import CustomTitle from "../../components/custom/CustomTitle";
 import { PaymentsRounded } from "@mui/icons-material";
 import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
-import { useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import TopUpRequest from "./TopUpRequest";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import { AuthContext, useAuth } from "../../context/providers/AuthProvider";
 import { useContext } from "react";
 import { currencyFormatter } from "../../constants";
 import { WALLET_TOPUP_TRANSACTIONS } from "../../mocks/columns";
@@ -29,7 +29,7 @@ import { useMediaQuery, useTheme } from "@mui/material";
 import WalletTransactionList from "./WalletTransactionList";
 
 function Wallet() {
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [openPicker, setOpenPicker] = useState(false);
   // Inside Wallet component, before return:
@@ -69,6 +69,9 @@ function Wallet() {
       return params;
     });
   };
+  if (!user?.id) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <>
@@ -82,14 +85,14 @@ function Wallet() {
         />
 
         <Paper
-        elevation={1}
+          elevation={1}
           sx={{
             display: "flex",
             flexDirection: { xs: "column", md: "row" },
             justifyContent: "center",
             alignItems: "center",
             p: 4,
- 
+
             borderRadius: 2,
             mb: 4,
           }}

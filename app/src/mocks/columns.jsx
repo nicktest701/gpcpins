@@ -1197,40 +1197,46 @@ export const airtimeTransactionsColumns = (type) => [
         rowData?.status?.toLowerCase().lastIndexOf(data.toLowerCase()) > -1
       );
     },
-    render: ({ status, isProcessed }) => (
-      <Button
-        size="small"
-        label={
-          status === "completed"
-            ? "Completed"
-            : status === "refunded"
-              ? "Refunded"
-              : status === "pending" || !isProcessed
-                ? "Pending"
-                : "Failed"
-        }
-        sx={{
-          color: "#fff",
-          bgcolor:
-            status === "completed"
-              ? "success.darker"
-              : status === "refunded"
-                ? "secondary.main"
-                : status === "pending"
-                  ? "warning.dark"
-                  : "error.darker",
-          borderRadius: 1,
-        }}
-      >
-        {status === "completed"
-          ? "Completed"
-          : status === "refunded"
-            ? "Refunded"
-            : status === "pending" || !isProcessed
+    render: ({ status, isProcessed }) => {
+      const isPending =
+        (status === "completed" && !isProcessed) || status === "pending";
+      const isCompleted = status === "completed" && isProcessed;
+      const isRefunded = status === "refunded";
+
+      return (
+        <Button
+          size="small"
+          label={
+            isPending
               ? "Pending"
-              : "Failed"}
-      </Button>
-    ),
+              : isCompleted
+                ? "Completed"
+                : isRefunded
+                  ? "Refunded"
+                  : "Failed"
+          }
+          sx={{
+            color: "#fff",
+            bgcolor: isCompleted
+              ? "success.darker"
+              : isRefunded
+                ? "secondary.main"
+                : isPending
+                  ? "warning.dark"
+                  : "error.dark",
+            borderRadius: 1,
+          }}
+        >
+          {isPending
+            ? "Pending"
+            : isCompleted
+              ? "Completed"
+              : isRefunded
+                ? "Refunded"
+                : "Failed"}
+        </Button>
+      );
+    },
   },
   {
     title: "TRANSACTION Id",
@@ -1302,40 +1308,47 @@ export const transactionsColumns = (type) => [
   {
     title: "Status",
     field: "status",
-    render: ({ status }) => (
-      <Button
-        size="small"
-        label={
-          status === "completed"
-            ? "Completed"
-            : status === "refunded"
-              ? "Refunded"
-              : status === "pending"
-                ? "Pending"
-                : "Failed"
-        }
-        sx={{
-          color: "#fff",
-          bgcolor:
-            status === "completed"
-              ? "success.darker"
-              : status === "refunded"
-                ? "secondary.main"
-                : status === "pending"
-                  ? "warning.dark"
-                  : "error.darker",
-          borderRadius: 1,
-        }}
-      >
-        {status === "completed"
-          ? "Completed"
-          : status === "refunded"
-            ? "Refunded"
-            : status === "pending"
+    render: ({ status, isProcessed ,domain}) => {
+      const isPending =
+        (status === "completed" && !isProcessed) || status === "pending";
+      const isCompleted = status === "completed" && isProcessed;
+      const isRefunded = status === "refunded";
+
+
+      return (
+        <Button
+          size="small"
+          label={
+            isPending
               ? "Pending"
-              : "Failed"}
-      </Button>
-    ),
+              : isCompleted
+                ? "Completed"
+                : isRefunded
+                  ? "Refunded"
+                  : "Failed"
+          }
+          sx={{
+            color: "#fff",
+            bgcolor: isCompleted
+              ? "success.darker"
+              : isRefunded
+                ? "secondary.main"
+                : isPending
+                  ? "warning.dark"
+                  : "error.dark",
+            borderRadius: 1,
+          }}
+        >
+          {isPending
+            ? "Pending"
+            : isCompleted
+              ? "Completed"
+              : isRefunded
+                ? "Refunded"
+                : "Failed"}
+        </Button>
+      );
+    },
   },
   {
     title: "TRANSACTION Id",

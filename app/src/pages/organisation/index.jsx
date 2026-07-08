@@ -40,7 +40,7 @@ const Organisation = () => {
     description: '',
   };
 
-  const { mutateAsync, isLoading } = useMutation({
+  const { mutateAsync, isPending } = useMutation({
     mutationFn: postOrganizationMessage,
   });
   const onSubmit = (values, options) => {
@@ -303,7 +303,7 @@ const Organisation = () => {
                         <LoadingButton
                           variant='contained'
                           onClick={handleSubmit}
-                          loading={isLoading}
+                          loading={isPending}
                         >
                           Create account
                         </LoadingButton>

@@ -1,4 +1,4 @@
-import { useState, useMemo, useContext } from "react";
+import { useState, useMemo, } from "react";
 import {
   Container,
   Divider,
@@ -114,6 +114,8 @@ function BuyPrepaid() {
   const onSubmit = async () => {
     const payload = {
       meter: meterDetails.number,
+      type:'prepaid',
+      service:'prepaid',
       info: {
         amount: calculated.total,
         email: prepaidPayload?.email || user?.email,
@@ -509,7 +511,7 @@ function BuyPrepaid() {
           <LoadingButton
             variant="contained"
             onClick={handleSubmit(onSubmit)}
-            loading={paymentMutation.isLoading}
+            loading={paymentMutation.isPending}
             sx={{
               px: 3,
               "&:hover": { bgcolor: "primary.dark" },

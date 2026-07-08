@@ -129,7 +129,7 @@ const Notifications = () => {
   const deleteAllMutation = useMutation({
     mutationFn: () => removeNotification(),
     onSuccess: () => {
-      queryClient.invalidateQueries(["notifications"]);
+      queryClient.invalidateQueries({queryKey:["notifications"]});
       customDispatch(globalAlertType("success", "All notifications deleted"));
     },
     onError: (error) => {
@@ -336,7 +336,7 @@ const Notifications = () => {
           <Stack spacing={1}>
             {filteredNotifications.map((notif) => (
               <Paper
-                key={notif._id}
+                key={notif.id}
                 elevation={0}
                 sx={{
                   p: 2,
@@ -410,7 +410,7 @@ const Notifications = () => {
       </Paper>
 
       {/* Loading overlays for mutations */}
-      {(markAllMutation.isLoading || deleteAllMutation.isLoading) && (
+      {(markAllMutation.isPending || deleteAllMutation.isPending) && (
         <GlobalSpinner />
       )}
     </AnimatedContainer>

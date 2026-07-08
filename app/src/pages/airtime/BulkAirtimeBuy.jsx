@@ -37,7 +37,7 @@ import { useAuth } from "../../context/providers/AuthProvider";
 import { useCustomContext } from "../../context/providers/CustomProvider";
 
 import { makeAirtimeTransaction } from "../../api/paymentAPI";
-import { getNonUser } from "../../api/userAPI";
+
 
 import { globalAlertType } from "../../components/alert/alertType";
 import Back from "../../components/Back";
@@ -139,22 +139,10 @@ function BulkAirtimeBuy() {
     },
   });
 
-  const guestMutation = useMutation({
-    mutationFn: getNonUser,
-    retry: false,
 
-    onError: () => {
-      customDispatch(
-        globalAlertType(
-          "error",
-          "Unable to verify guest session. Please try again.",
-        ),
-      );
-    },
-  });
 
   const handleClosePreview = () => {
-    if (paymentMutation.isLoading || guestMutation.isLoading) {
+    if (paymentMutation.isPending) {
       return;
     }
 
@@ -222,9 +210,7 @@ function BulkAirtimeBuy() {
     }
 
     try {
-      if (!user?.id) {
-        await guestMutation.mutateAsync({});
-      }
+ 
 
       paymentMutation.mutate(paymentData.payload);
     } catch (error) {
@@ -348,7 +334,7 @@ function BulkAirtimeBuy() {
                 showMomo={false}
                 showWallet={!!user?.id}
                 submitText="Review Payment"
-                loading={paymentMutation.isLoading || guestMutation.isLoading}
+                loading={paymentMutation.isPending}
                 initialValues={{
                   fullName: user?.name || "",
                   email: user?.email || "",
@@ -391,7 +377,7 @@ function BulkAirtimeBuy() {
 
           <IconButton
             onClick={handleClosePreview}
-            disabled={paymentMutation.isLoading || guestMutation.isLoading}
+            disabled={paymentMutation.isPending}
             sx={{
               color: "primary.contrastText",
             }}
@@ -458,7 +444,7 @@ function BulkAirtimeBuy() {
         <DialogActions sx={{ p: 2 }}>
           <Button
             onClick={handleClosePreview}
-            disabled={paymentMutation.isLoading || guestMutation.isLoading}
+            disabled={paymentMutation.isPending}
           >
             Cancel
           </Button>
@@ -466,7 +452,7 @@ function BulkAirtimeBuy() {
           <LoadingButton
             variant="contained"
             onClick={executePayment}
-            loading={paymentMutation.isLoading || guestMutation.isLoading}
+            loading={paymentMutation.isPending}
           >
             Confirm Payment
           </LoadingButton>
@@ -477,253 +463,3 @@ function BulkAirtimeBuy() {
 }
 
 export default BulkAirtimeBuy;
-
-// import { useContext, useState, useMemo, useEffect } from "react";
-// import { Container, TextField, Typography, Stack, Paper } from "@mui/material";
-// import LoadingButton from "@mui/lab/LoadingButton";
-// import { useForm, Controller } from "react-hook-form";
-// import { yupResolver } from "@hookform/resolvers/yup";
-// import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-// import {
-//   useSearchParams,
-//   Navigate,
-//   useLocation,
-//   useNavigate,
-// } from "react-router-dom";
-// import Swal from "sweetalert2";
-// import { AuthContext, useAuth } from "../../context/providers/AuthProvider";
-// import {
-//   CustomContext,
-//   useCustomContext,
-// } from "../../context/providers/CustomProvider";
-// import { globalAlertType } from "../../components/alert/alertType";
-// import { currencyFormatter } from "../../constants";
-// import Back from "../../components/Back";
-// import VoucherPlaceHolderItem from "../../components/items/VoucherPlaceHolderItem";
-// import PaymentOption from "../../components/PaymentOption";
-// import { disableWallet, getNonUser } from "../../api/userAPI";
-// import { makeAirtimeTransaction } from "../../api/paymentAPI";
-// import { bulkAirtimeValidationSchema } from "../../config/validationSchema";
-
-// function BulkAirtimeBuy() {
-//   const queryClient = useQueryClient();
-//   const { customDispatch } = useCustomContext();
-//   const { pathname, state } = useLocation();
-//   const navigate = useNavigate();
-//   const [searchParams] = useSearchParams();
-//   const { user } = useAuth();
-//   const [failureCount, setFailCount] = useState(3);
-
-//   const pricingList = state?.recipientPayload;
-//   const sessionAmount = state?.totalAmount;
-
-//   useEffect(() => {
-//     if (!pricingList) {
-//       navigate(
-//         "/airtime?link=c458dd2cf0e7223a51319f98cc8e2c8ea27d6dc66e048cd1b4434f6aae90fc2a",
-//       );
-//     }
-//   }, [pricingList]);
-
-//   // const pricingInfo = searchParams.get("info");
-
-//   const totalAmount = useMemo(() => {
-//     return pricingList.reduce((sum, item) => sum + (item.price || 0), 0);
-//   }, [pricingList]);
-
-//   // Validate session storage amount matches total
-
-//   // React Hook Form setup
-//   const {
-//     control,
-//     handleSubmit,
-//     watch,
-//     setValue,
-//     formState: { errors, isSubmitting },
-//     reset,
-//   } = useForm({
-//     resolver: yupResolver(bulkAirtimeValidationSchema()),
-//     defaultValues: {
-//       amount: sessionAmount,
-//     },
-//   });
-
-//   const token = watch("token");
-
-//   // Wallet balance check
-//   const walletBalance = user?.id
-//     ? queryClient.getQueryData(["wallet-balance", user?.id], { exact: true })
-//     : 0;
-//   const isInsufficientBalance =
-//     paymentMethod === "wallet" &&
-//     user?.id &&
-//     (Number(walletBalance) === 0 || Number(walletBalance) < totalAmount);
-
-//   // Payment mutation
-//   const paymentMutation = useMutation({
-//     mutationFn: makeAirtimeTransaction,
-//     onSuccess: (data) => {
-//       navigate("/confirm", {
-//         replace: true,
-//         state: {
-//           id: data?.id,
-//           categoryType: "airtime",
-//           path: pathname,
-//           isWallet: paymentMethod === "wallet",
-//         },
-//       });
-//     },
-//     onError: async (error) => {
-//       if (error === "Invalid PIN!") {
-//         const newCount = failureCount - 1;
-//         setFailCount(newCount);
-//         if (newCount === 0) {
-//           setValue("token", "");
-//           customDispatch(
-//             globalAlertType(
-//               "error",
-//               `Wallet disabled. Please use mobile money or contact support.`,
-//             ),
-//           );
-//         } else {
-//           setValue("token", "");
-//           customDispatch(
-//             globalAlertType(
-//               "error",
-//               `${error} ${newCount} attempt(s) left. Wallet will be disabled after ${
-//                 newCount - 1
-//               } more attempt(s).`,
-//             ),
-//           );
-//         }
-//       } else {
-//         customDispatch(globalAlertType("error", error));
-//       }
-//     },
-//   });
-
-//   // Guest user check mutation
-//   const guestMutation = useMutation({
-//     mutationFn: getNonUser,
-//     onSuccess: () => {
-//       // After guest check, proceed with payment
-//       handlePaymentSubmit();
-//     },
-//     onError: () => {
-//       customDispatch(
-//         globalAlertType("error", "Failed to verify user. Please try again."),
-//       );
-//     },
-//   });
-
-//   // Payment submission logic
-//   const handlePaymentSubmit = (payload) => {
-//     paymentMutation.mutate(payload);
-//   };
-
-//   const onSubmit = (values) => {
-//     // Validate wallet balance
-//     if (paymentMethod === "wallet" && isInsufficientBalance) {
-//       customDispatch(
-//         globalAlertType(
-//           "error",
-//           "Insufficient wallet balance. Please fund your wallet or use mobile money.",
-//         ),
-//       );
-//       return;
-//     }
-
-//     Swal.fire({
-//       title: "Processing",
-//       text: `Proceed with payment?`,
-//       showCancelButton: true,
-//     }).then(({ isConfirmed }) => {
-//       if (isConfirmed) {
-//         const payload = {
-//           type: "Bulk",
-//           service: "airtime",
-//           amount: totalAmount,
-//           recipient: "", // not used for bulk
-//           phonenumber: values.phonenumber || user?.phonenumber,
-//           provider: values.mobilePartner,
-//           email: values.email || user?.email,
-//           isWallet: paymentMethod === "wallet",
-//           bulk: true,
-//           pricing: pricingList, // send the list
-//         };
-
-//         if (paymentMethod === "wallet") {
-//           payload.token = token;
-//         }
-
-//         // If user not logged in, run guest check first
-//         if (!user?.id) {
-//           guestMutation.mutate({});
-//         } else {
-//           paymentMutation.mutate(payload);
-//         }
-//       }
-//     });
-//   };
-
-//   return (
-//     <Container maxWidth="sm" sx={{ py: 4 }}>
-//       <Back />
-//       <Typography variant="h4" gutterBottom>
-//         Payment Information
-//       </Typography>
-//       <Typography variant="body2" color="text.secondary" paragraph>
-//         Verify your payment details to complete the transaction.
-//       </Typography>
-
-//       <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-//         {/* Pricing summary */}
-//         <Stack
-//           sx={{
-//             bgcolor: "action.hover",
-//             p: 2,
-//             borderRadius: 1,
-//             mb: 3,
-//           }}
-//         >
-//           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-//             Recipients ({pricingList.length})
-//           </Typography>
-//           {pricingList.map((item) => (
-//             <VoucherPlaceHolderItem
-//               key={item.id}
-//               title={`${item.type} (${item.recipient})`}
-//               value={currencyFormatter(item.price)}
-//             />
-//           ))}
-//           <Stack direction="row" justifyContent="space-between" sx={{ mt: 1 }}>
-//             <Typography variant="body2" fontWeight="bold">
-//               Total Amount:
-//             </Typography>
-//             <Typography variant="body1" fontWeight="bold" color="primary.main">
-//               {currencyFormatter(totalAmount)}
-//             </Typography>
-//           </Stack>
-//         </Stack>
-
-//         <form onSubmit={handleSubmit(onSubmit)} noValidate>
-//           <Stack spacing={3}>
-//             {/* Payment options */}
-//             <PaymentOption
-//               showMomo
-//               showWallet={!!user?.id}
-//               initialValues={{
-//                 fullName: user?.name || "",
-
-//                 email: user?.email || "",
-//               }}
-//               onSubmit={() => {}}
-//             />
-//           </Stack>
-//         </form>
-//       </Paper>
-//     </Container>
-//   );
-// }
-
-// export default BulkAirtimeBuy;

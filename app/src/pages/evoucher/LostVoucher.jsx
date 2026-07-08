@@ -47,7 +47,7 @@ const LostVoucher = () => {
     transaction?.data?.categoryType?.toLowerCase(),
   );
 
-  const { mutateAsync, data, isLoading } = useMutation({
+  const { mutateAsync, data, isPending } = useMutation({
     mutationFn: makePayment,
   });
 
@@ -207,7 +207,7 @@ const LostVoucher = () => {
                     <Divider flexItem />
                     {transaction?.data?.downloadLink && (
                       <Button
-                        disabled={isLoading}
+                        disabled={isPending}
                         variant="contained"
                         target="_blank"
                         sx={{
@@ -288,7 +288,7 @@ const LostVoucher = () => {
                   >
                     {data?.id ? (
                       <Button
-                        disabled={isLoading}
+                        disabled={isPending}
                         variant="contained"
                         onClick={handleDownloadVouchers}
                         sx={{ maxWidth: "300px", borderRadius: 1 }}
@@ -299,7 +299,7 @@ const LostVoucher = () => {
                       </Button>
                     ) : (
                       <Button
-                        disabled={isLoading}
+                        disabled={isPending}
                         variant="contained"
                         onClick={retrieveVouchers}
                         sx={{ maxWidth: "400px", borderRadius: 1 }}
@@ -310,7 +310,7 @@ const LostVoucher = () => {
                       </Button>
                     )}
                   </Stack>
-                  {isLoading && (
+                  {isPending && (
                     <Stack
                       direction={{ xs: "column", md: "row" }}
                       spacing={2}

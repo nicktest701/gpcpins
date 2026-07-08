@@ -13,7 +13,7 @@ import { LoadingButton } from "@mui/lab";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { globalAlertType } from "../../components/alert/alertType";
-import { CustomContext } from "../../context/providers/CustomProvider";
+import { CustomContext, useCustomContext } from "../../context/providers/CustomProvider";
 import { sendWalletTopUp } from "../../api/walletAPI";
 import MobilePartner from "../../components/MobilePartner";
 import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
@@ -26,7 +26,7 @@ import { topUpSchema } from "../../config/validationSchema";
 function TopUpRequest() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { customDispatch } = useContext(CustomContext);
+  const { customDispatch } = useCustomContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const open = Boolean(searchParams.get("add-money"));
 

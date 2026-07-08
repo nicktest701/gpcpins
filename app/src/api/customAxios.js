@@ -2,8 +2,6 @@ import axios from "axios";
 // import { isMobileBrowser } from "../config/isMobileBrowser";
 import {
   deleteToken,
-  deleteUser,
-  getRefreshToken,
   getToken,
   saveAccessToken,
 } from "../config/sessionHandler";
@@ -26,6 +24,7 @@ api.interceptors.request.use(
     }
 
     const token = getToken();
+
     if (token) {
       // axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
@@ -53,16 +52,13 @@ api.interceptors.response.use(
         originalRequest._retry = true;
 
         try {
-          const refreshToken = getRefreshToken();
+          // const refreshToken = getRefreshToken();
 
           // Initiate token refresh
           const res = await axios({
             method: "GET",
             url: `${BASE_URL}/users/auth/token`,
             withCredentials: true,
-            headers: {
-              Authorization: refreshToken ? `Bearer ${refreshToken}` : "",
-            },
           });
 
           // if (isMobileBrowser()) {
@@ -72,7 +68,6 @@ api.interceptors.response.use(
           // Retry the original request with the new access token
           return api(originalRequest);
         } catch (refreshError) {
-          deleteUser();
           deleteToken();
 
           window.location.href = "/";

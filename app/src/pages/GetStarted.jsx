@@ -1,22 +1,29 @@
-import { Box, Stack, TextField, Typography } from "@mui/material";
+import {
+  Box,
+  Stack,
+  TextField,
+  Typography,
+  Paper,
+  Fade,
+  Container,
+} from "@mui/material";
 import LoadingButton from "@mui/lab/LoadingButton";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Formik } from "formik";
 import moment from "moment";
-import CustomFormControl from "../components/inputs/CustomFormControl";
 import CustomDatePicker from "../components/inputs/CustomDatePicker";
 import { putUser } from "../api/userAPI";
-import { CustomContext } from "../context/providers/CustomProvider";
-import { AuthContext } from "../context/providers/AuthProvider";
+import { useCustomContext } from "../context/providers/CustomProvider";
+import { useAuth } from "../context/providers/AuthProvider";
 import { globalAlertType } from "../components/alert/alertType";
 import GlobalSpinner from "../components/GlobalSpinner";
 import { getStartedValidationSchema } from "../config/validationSchema";
 
 function GetStarted() {
-  const { user, login } = useContext(AuthContext);
-  const { customDispatch } = useContext(CustomContext);
+  const { user } = useAuth();
+  const { customDispatch } = useCustomContext();
   const navigate = useNavigate();
   const { state } = useLocation();
   const queryClient = useQueryClient();
@@ -31,15 +38,16 @@ function GetStarted() {
     phonenumber: state?.phonenumber,
   };
 
-  const { mutateAsync, isLoading } = useMutation({
+  const { mutateAsync, isPending } = useMutation({
     mutationFn: putUser,
   });
   const onSubmit = (values) => {
     mutateAsync(
       {
         ...values,
-        dob: date,
-        name: `${values?.firstname} ${values?.lastname}`,
+        dob: moment(date).format('YYYY-MM-DD'),
+        firstname:values?.firstname,
+        lastname:values?.lastname,
         phonenumber: values?.phonenumber,
         google: state?.google,
         register: true,
@@ -50,68 +58,69 @@ function GetStarted() {
           navigate("/");
         },
         onSuccess: (data) => {
-          login(data?.accessToken);
           queryClient.invalidateQueries(["user"]);
           customDispatch(
             globalAlertType(
               "info",
-              `Welcome,${values?.firstname} ${values?.lastname}`
-            )
+              `Welcome,${values?.firstname} ${values?.lastname}`,
+            ),
           );
         },
         onError: (error) => {
           customDispatch(globalAlertType("error", error));
         },
-      }
+      },
     );
   };
 
   return (
-    <Box
+    <Container
+      maxWidth="xs"
       sx={{
-        display: "grid",
-        placeItems: "center",
-        height: "100svh",
-        width: "100%",
-        bgcolor: "primary.main",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        py: 4,
       }}
     >
-      <Box sx={{ minWidth: 300 }}>
-        <Formik
-          initialValues={initValues}
-          validationSchema={getStartedValidationSchema}
-          onSubmit={onSubmit}
-          enableReinitialize={true}
+      <Fade in timeout={800}>
+        <Paper
+          elevation={1}
+          sx={{
+            width: "100%",
+            p: { xs: 3, sm: 4 },
+            borderRadius: 4,
+          }}
         >
-          {({ touched, values, errors, handleSubmit, handleChange }) => {
-            return (
-              <Stack
-                spacing={3}
-                width="100%"
-                sx={{
-                  backgroundColor: "#fff",
-                  boxShadow: "2px 2px 5px #d9d9d9",
-                  //   boxShadow: "20px 20px 60px #d9d9d9,-20px -20px 60px #ffffff",
-                  borderRadius: 2,
+          <Formik
+            initialValues={initValues}
+            validationSchema={getStartedValidationSchema}
+            onSubmit={onSubmit}
+            enableReinitialize={true}
+          >
+            {({ touched, values, errors, handleSubmit, handleChange }) => {
+              return (
+                <Stack
+                  spacing={3}
+                  width="100%"
+           
+                >
+                  <div>
+                    <Typography variant="h4" color="primary">
+                      Welcome
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      fontStyle="italic"
+                      fontWeight="bold"
+                    >
+                      Just a few more steps to go
+                    </Typography>
+                  </div>
 
-                  p: 4,
-                }}
-              >
-                <div>
-                  <Typography variant="h4" color="primary">
-                    Welcome
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    fontStyle="italic"
-                    fontWeight="bold"
-                  >
-                    Just a few more steps to go
-                  </Typography>
-                </div>
-                <CustomFormControl>
                   <TextField
-                    size="small"
                     label="First Name"
                     fullWidth
                     required
@@ -122,7 +131,6 @@ function GetStarted() {
                   />
 
                   <TextField
-                    size="small"
                     label="Last Name"
                     fullWidth
                     required
@@ -131,61 +139,62 @@ function GetStarted() {
                     error={Boolean(touched?.lastname && errors?.lastname)}
                     helperText={touched?.lastname && errors?.lastname}
                   />
-                </CustomFormControl>
 
-                <CustomDatePicker
-                  label="Date Of Birth"
-                  format="Do MMMM,YYYY"
-                  value={date}
-                  setValue={setDate}
-                  error={Boolean(touched.date && errors.date)}
-                  helperText={touched.date && errors.date}
-                  minDate={moment("1900-01-01")}
-                  disableFuture={true}
-                />
-                {!state.phonenumber && (
-                  <TextField
-                    size="small"
-                    type="tel"
-                    inputMode="tel"
-                    variant="outlined"
-                    label="Phone Number"
-                    fullWidth
-                    required
-                    value={values?.phonenumber}
-                    onChange={handleChange("phonenumber")}
-                    error={Boolean(touched?.phonenumber && errors?.phonenumber)}
-                    helperText={touched?.phonenumber && errors?.phonenumber}
+                  <CustomDatePicker
+                    label="Date Of Birth"
+                    format="Do MMMM,YYYY"
+                    value={date}
+                    setValue={setDate}
+                    error={Boolean(touched.date && errors.date)}
+                    helperText={touched.date && errors.date}
+                    minDate={moment("1900-01-01")}
+                    disableFuture={true}
+                    size="lg"
                   />
-                )}
+                  {!state.phonenumber && (
+                    <TextField
+                      type="tel"
+                      inputMode="tel"
+                      variant="outlined"
+                      label="Phone Number"
+                      fullWidth
+                      required
+                      value={values?.phonenumber}
+                      onChange={handleChange("phonenumber")}
+                      error={Boolean(
+                        touched?.phonenumber && errors?.phonenumber,
+                      )}
+                      helperText={touched?.phonenumber && errors?.phonenumber}
+                    />
+                  )}
 
-                <TextField
-                  size="small"
-                  label="National ID Number"
-                  fullWidth
-                  value={values?.nid}
-                  onChange={handleChange("nid")}
-                  error={Boolean(touched?.nid && errors?.nid)}
-                  helperText={touched?.nid && errors?.nid}
-                />
+                  <TextField
+                    label="National ID Number"
+                    fullWidth
+                    value={values?.nid}
+                    onChange={handleChange("nid")}
+                    error={Boolean(touched?.nid && errors?.nid)}
+                    helperText={touched?.nid && errors?.nid}
+                  />
 
-                <LoadingButton
-                  disabled={isLoading}
-                  loading={isLoading}
-                  variant="contained"
-                  fullWidth
-                  onClick={handleSubmit}
-                  sx={{ py: 2 }}
-                >
-                  Get Started
-                </LoadingButton>
-              </Stack>
-            );
-          }}
-        </Formik>
-        {isLoading && <GlobalSpinner />}
-      </Box>
-    </Box>
+                  <LoadingButton
+                    disabled={isPending}
+                    loading={isPending}
+                    variant="contained"
+                    fullWidth
+                    onClick={handleSubmit}
+                    sx={{ py: 2 }}
+                  >
+                    Get Started
+                  </LoadingButton>
+                </Stack>
+              );
+            }}
+          </Formik>
+          {isPending && <GlobalSpinner />}
+        </Paper>
+      </Fade>
+    </Container>
   );
 }
 

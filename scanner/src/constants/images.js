@@ -1,5 +1,5 @@
 
-import coat_of_arms from '../assets/images/logo-black.svg';
+import logo from '../assets/images/logo-black.svg';
 import logo_white from '../assets/images/logo-white.svg';
 import login from '../assets/images/login.svg';
 import success from '../assets/images/success.png';
@@ -10,7 +10,7 @@ import auth from '../assets/images/auth.png';
 
 export const IMAGES = {
   hand,
-  coat_of_arms,
+  logo,
   success,
   logo_white,
   login,

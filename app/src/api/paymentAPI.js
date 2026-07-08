@@ -54,13 +54,26 @@ export const makePayment = async ({ id, type }) => {
   }
 };
 
-export const ConfirmPayment = async ({ id, type, confirm }) => {
+export const ConfirmPayment = async ({ id, serviceType }) => {
   try {
     const res = await api({
       method: "GET",
-      url: `/payment/confirm/${id}/${type}`,
-      params: {
-        confirm,
+      url: `/payment/confirm/${id}/${serviceType}`,
+    });
+
+    return res.data;
+  } catch (error) {
+    throw error.response.data;
+  }
+};
+export const reConfirmPayment = async ({ paymentReference, type }) => {
+  try {
+    const res = await api({
+      method: "POST",
+      url: `/payment/re-confirm`,
+      data: {
+        type,
+        paymentReference,
       },
     });
 

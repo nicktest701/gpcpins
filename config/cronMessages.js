@@ -7,7 +7,6 @@ const { sendSMS } = require("./sms");
 
 const limit = pLimit(3);
 async function sendBirthdayWishes() {
-  //  const date = moment(new Date("2024-02-19 14:34:19"));
   const formattedDate = moment().format("MMMM DD");
 
   const users = await knex.raw(
@@ -17,17 +16,7 @@ async function sendBirthdayWishes() {
       FROM users
   ) AS users_
   WHERE dobb = ?;`,
-    [formattedDate]
-  );
-
-  const agents = await knex.raw(
-    `SELECT *
-  FROM (
-      SELECT CONCAT(firstname," ",lastname) as name,email,phonenumber, DATE_FORMAT(dob,'%M %d') AS dobb
-      FROM agents
-  ) AS agents_
-  WHERE dobb = ?;`,
-    [formattedDate]
+    [formattedDate],
   );
 
   const wish = (name) => `
@@ -51,7 +40,7 @@ Best wishes,
 Gab Powerful Team
 `;
 
-  const customers = [...users[0], ...agents[0]];
+  const customers = users[0];
 
   if (customers?.length > 0) {
     limit(() => {
@@ -59,7 +48,7 @@ Gab Powerful Team
         await sendEMail(
           user?.email,
           mailTextShell(wish(user?.name)),
-          "Happy Birthday!"
+          "Happy Birthday!",
         );
 
         if (user?.phonenumber) {

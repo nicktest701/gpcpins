@@ -1,5 +1,5 @@
 // import { isMobileBrowser } from "../config/isMobileBrowser";
-import { saveNonToken, saveToken, saveUser } from "../config/sessionHandler";
+import { getToken, saveAccessToken, saveToken } from "../config/sessionHandler";
 import api from "./customAxios";
 
 //Get all User
@@ -11,10 +11,7 @@ export const getUserToken = async () => {
       url: `/users/auth/token`,
     });
 
-    // Save token to localStorage for mobile browsers
-    // if (isMobileBrowser()) {
     saveToken(res.data?.accessToken, res.data?.refreshToken);
-    // }
 
     return res.data;
   } catch (error) {
@@ -23,30 +20,17 @@ export const getUserToken = async () => {
 };
 
 export const getUser = async () => {
+  const token = getToken();
   try {
     const res = await api({
       method: "GET",
       url: `/users/auth`,
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+      },
     });
 
-    saveUser(res.data?.accessToken);
-
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
-
-export const getNonUser = async () => {
-  try {
-    const res = await api({
-      method: "POST",
-      url: `/users/sample`,
-    });
-
-    // if (isMobileBrowser()) {
-    saveNonToken(res.data?.accessToken, res.data?.refreshToken);
-    // }
+    // saveUser(res.data?.accessToken);
 
     return res.data;
   } catch (error) {
@@ -77,10 +61,9 @@ export const loginGoogleUser = async (userInfo) => {
     });
 
     // if (isMobileBrowser()) {
-    saveToken(res.data?.accessToken, res.data?.refreshToken);
-    saveUser(res.data?.accessToken);
-    // }
+    saveAccessToken(res.data?.accessToken);
 
+    // }
 
     return res.data;
   } catch (error) {
@@ -110,28 +93,25 @@ export const verifyUserOTP = async (data) => {
       data,
     });
 
-    saveToken(res.data?.accessToken, res.data?.refreshToken);
-    saveUser(res.data?.accessToken);
+    saveAccessToken(res.data?.accessToken);
+
     return res.data;
   } catch (error) {
     throw error.response.data;
   }
 };
 
-
 export const verifyUserIdentity = async (data) => {
- 
   try {
     const res = await api({
       method: "GET",
       url: `/users/verify-identity`,
       params: {
-        ...data
-      }
+        ...data,
+      },
     });
 
-    saveToken(res.data?.accessToken, res.data?.refreshToken);
-    saveUser(res.data?.accessToken);
+    saveAccessToken(res.data?.accessToken);
     return res.data;
   } catch (error) {
     throw error.response.data;
@@ -187,7 +167,6 @@ export const createNewAgent = async (agentInfo) => {
 };
 
 export const putUser = async (updatedUser) => {
-
   try {
     const res = await api({
       method: "PUT",
@@ -195,8 +174,7 @@ export const putUser = async (updatedUser) => {
       data: updatedUser,
     });
 
-    saveToken(res.data?.accessToken, res.data?.refreshToken);
-    saveUser(res.data?.accessToken);
+    saveAccessToken(res.data?.accessToken);
 
     return res.data;
   } catch (error) {
@@ -216,8 +194,6 @@ export const deleteUser = async (id) => {
     throw error.response.data;
   }
 };
-
-
 
 export const getWalletTransaction = async ({ startDate, endDate }) => {
   try {
@@ -268,8 +244,8 @@ export const getWalletStatus = async () => {
 export const disableWallet = async () => {
   try {
     const res = await api({
-      method: "GET",
-      url: `/users/wallet/status?action=disable`,
+      method: "PUT",
+      url: `/wallet/status`,
     });
 
     return res.data;

@@ -1,10 +1,9 @@
 import { LoadingButton } from '@mui/lab';
-import { Card, Container, Paper, Stack, TextField } from '@mui/material';
+import { Paper, Stack, TextField } from '@mui/material';
 import { useMutation } from '@tanstack/react-query';
 import { Formik } from 'formik';
 import { useContext } from 'react';
 import { messageValidationSchema } from '../config/validationSchema';
-import AnimatedContainer from '../components/animations/AnimatedContainer';
 import { CustomContext } from '../context/providers/CustomProvider';
 import { globalAlertType } from '../components/alert/alertType';
 import { postMessage } from '../api/messageAPI';
@@ -18,7 +17,7 @@ const ContactMessage = () => {
     body: '',
   };
 
-  const { mutateAsync, isLoading } = useMutation({
+  const { mutateAsync, isPending } = useMutation({
     mutationFn: postMessage,
   });
 
@@ -87,7 +86,7 @@ const ContactMessage = () => {
               />
 
               <LoadingButton
-                loading={isLoading}
+                loading={isPending}
                 variant='contained'
                 size='small'
                 fullWidth

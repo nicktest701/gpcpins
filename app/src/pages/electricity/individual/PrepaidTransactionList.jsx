@@ -18,7 +18,7 @@ import {
   Pagination,
   Divider,
 } from "@mui/material";
-import { Search, Clear, Refresh, Visibility, Delete } from "@mui/icons-material";
+import { Search, Clear, Refresh, Visibility, } from "@mui/icons-material";
 import moment from "moment";
 import { currencyFormatter } from "@/constants";
 
@@ -241,9 +241,9 @@ const PrepaidTransactionList = ({
                   <IconButton size="small" onClick={() => onView(tx)}>
                     <Visibility fontSize="small" />
                   </IconButton>
-                  <IconButton size="small" color="error" onClick={() => onDelete(tx.id)}>
+                  {/* <IconButton size="small" color="error" onClick={() => onDelete(tx.id)}>
                     <Delete fontSize="small" />
-                  </IconButton>
+                  </IconButton> */}
                 </Stack>
               </Stack>
             </Paper>

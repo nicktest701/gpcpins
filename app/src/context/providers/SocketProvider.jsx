@@ -8,9 +8,8 @@ import {
   useRef,
   useState,
 } from "react";
-
+import _ from "lodash";
 import { io } from "socket.io-client";
-import { getToken } from "../../config/sessionHandler";
 import { useAuth } from "./AuthProvider";
 
 /*
@@ -28,7 +27,7 @@ const SocketContext = createContext(null);
 */
 
 export const SocketProvider = ({ children }) => {
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const socketRef = useRef(null);
   const [connected, setConnected] = useState(false);
   const [socketId, setSocketId] = useState(null);
@@ -59,7 +58,7 @@ export const SocketProvider = ({ children }) => {
       timeout: 20000,
 
       auth: {
-        token: getToken() || "",
+        token: accessToken || "",
       },
     });
 
@@ -72,11 +71,13 @@ export const SocketProvider = ({ children }) => {
     */
 
     socket.on("connect", () => {
-      console.log("Socket Connected:", socket.id);
+      console.log("Socket Connected:", socket?.id);
 
       setConnected(true);
-      setSocketId(socket.id);
-      socket.emit("join-user-room", user.id);
+      setSocketId(socket?.id);
+      if (!_.isEmpty(user)) {
+        socket.emit("join-user-room", user?.id);
+      }
     });
 
     /*
@@ -117,7 +118,7 @@ export const SocketProvider = ({ children }) => {
 
     return () => {
       if (socketRef.current) {
-        socketRef.current.emit("leave-user-room", user.id);
+        socketRef.current.emit("leave-user-room", user?.id);
         socketRef.current.removeAllListeners();
         socketRef.current.disconnect();
         socketRef.current = null;
@@ -125,7 +126,7 @@ export const SocketProvider = ({ children }) => {
       setConnected(false);
       setSocketId(null);
     };
-  }, [user?.id]); // Only re-run if the specific user ID updates
+  }, [user?.id,accessToken]); // Only re-run if the specific user ID updates
 
   /*
   |--------------------------------------------------------------------------
@@ -204,7 +205,7 @@ export const SocketProvider = ({ children }) => {
     if (!socketRef.current) return;
 
     socketRef.current.auth = {
-      token: localStorage.getItem("accessToken") || "",
+      token: accessToken || "",
     };
 
     socketRef.current.disconnect();

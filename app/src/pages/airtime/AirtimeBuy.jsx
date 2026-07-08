@@ -60,7 +60,7 @@ import { globalAlertType } from "../../components/alert/alertType";
 
 import { makeAirtimeTransaction } from "../../api/paymentAPI";
 
-import { getNonUser } from "../../api/userAPI";
+
 
 import { currencyFormatter, getCode } from "../../constants";
 import { useSocket } from "../../context/providers/SocketProvider";
@@ -257,17 +257,6 @@ function AirtimeBuy() {
     },
   });
 
-  /**
-   * GUEST USER MUTATION
-   */
-
-  const guestMutation = useMutation({
-    mutationFn: getNonUser,
-    retry: false,
-    onError: () => {
-      customDispatch(globalAlertType("error", "Unable to verify guest user."));
-    },
-  });
 
   /**
    * OPEN CHECKOUT PREVIEW
@@ -750,7 +739,7 @@ function AirtimeBuy() {
           <LoadingButton
             variant="contained"
             onClick={executePayment}
-            loading={paymentMutation.isLoading || guestMutation.isLoading}
+            loading={paymentMutation.isPending }
           >
             Confirm Payment
           </LoadingButton>

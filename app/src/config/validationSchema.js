@@ -500,26 +500,35 @@ export const prepaidValidationSchema = () => {
 };
 
 export const prepaidPaymentValidationSchema = object().shape({
-    amount: number()
-      .required("Required")
-      .min(50, "Minimum amount you can buy is GHS 50."),
-  });
-
+  amount: number()
+    .required("Required")
+    .min(50, "Minimum amount you can buy is GHS 50."),
+});
 
 export const prepaidMeterValidationSchema = object().shape({
-    number: string()
-      .trim()
-      .uppercase()
-      .required("Required*")
-      .matches(/^[a-zA-Z]\d{9}$/, "Invalid Meter Number"),
-    confirmNumber: string()
-      .trim()
-      .uppercase()
-      .required("Required*")
-      .oneOf([ref("number"), null], "Meter Numbers do not match"),
+  number: string()
+    .trim()
+    .uppercase()
+    .required("Required*")
+    .matches(/^[a-zA-Z]\d{9}$/, "Invalid Meter Number"),
+    
+  name: string().test("isValidName", "", (value) => {
+    if (!value?.trim()) {
+      return true;
+    }
 
-  })
+    if (!isValidName(value)) {
+      throw new ValidationError("Invalid name format", value, "fullName");
+    }
 
+    return true;
+  }),
+  // confirmNumber: string()
+  //   .trim()
+  //   .uppercase()
+  //   .required("Required*")
+  //   .oneOf([ref("number"), null], "Meter Numbers do not match"),
+});
 
 export const airtimeORbundleValidationSchema = object({
   type: string().trim().required("Top-up type is required"),

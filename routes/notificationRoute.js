@@ -100,6 +100,7 @@ router.get(
         "link",
         "photo",
         "active",
+        "is_read",
         "created_at",
         "updated_at",
       )
@@ -117,6 +118,7 @@ router.get(
         "link",
         "photo",
         "active",
+        "is_read",
         "created_at",
         "updated_at",
       )
@@ -125,9 +127,9 @@ router.get(
 
     const unionQuery = knex
       .unionAll([broadcastSubquery, notificationsSubquery])
-      .orderBy("created_at", "desc")
-      // .offset(offset)
-      // .limit(limit);
+      .orderBy("created_at", "desc");
+    // .offset(offset)
+    // .limit(limit);
 
     const results = await unionQuery;
 
@@ -144,7 +146,8 @@ router.get(
       info: item.info ? safeJSON(item.info) : null,
       link: item.link,
       photo: item.photo,
-      active: item.active,
+      active: Boolean(item.active),
+      isRead: Boolean(item.is_read),
       createdAt: item.created_at,
       updatedAt: item.updated_at,
     });
@@ -171,7 +174,6 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id: userId, createdAt: userCreatedAt } = req.user;
 
- 
     // ---------- VALIDATION ----------
     if (!isValidUUID2(userId)) {
       return res.status(400).json({ message: "Invalid user identifier" });
@@ -181,7 +183,6 @@ router.get(
     // Use the user's creation date as the lower bound for notifications
     const { start: startDate } = parseDateRange(userCreatedAt, new Date());
 
-  
     // ---------- UNION QUERY (PAGINATED) ----------
     const broadcastSubquery = knex("broadcast_messages")
       .select(
@@ -217,15 +218,13 @@ router.get(
       .where("user_id", userId)
       .where("created_at", ">=", startDate);
 
-
     const unionQuery = knex
       .unionAll([broadcastSubquery, notificationsSubquery])
-      .orderBy("created_at", "desc")
-      // .offset(offset)
-      // .limit(limit);
+      .orderBy("created_at", "desc");
+    // .offset(offset)
+    // .limit(limit);
 
     const results = await unionQuery;
-   
 
     // ---------- NORMALIZATION ----------
     // Convert snake_case to camelCase and safely parse JSON info
@@ -247,7 +246,6 @@ router.get(
 
     // ---------- RESPONSE ----------
 
-  
     res.status(200).json(notifications);
 
     // res.status(200).json({
@@ -262,15 +260,13 @@ router.get(
   }),
 );
 
-
 router.get(
   "/verifier",
   verifyToken,
   asyncHandler(async (req, res) => {
-    console.log(req.user)
+    console.log(req.user);
     const { id: userId, createdAt: userCreatedAt } = req.user;
 
- 
     // ---------- VALIDATION ----------
     if (!isValidUUID2(userId)) {
       return res.status(400).json({ message: "Invalid user identifier" });
@@ -280,7 +276,6 @@ router.get(
     // Use the user's creation date as the lower bound for notifications
     const { start: startDate } = parseDateRange(userCreatedAt, new Date());
 
-  
     // ---------- UNION QUERY (PAGINATED) ----------
     const broadcastSubquery = knex("broadcast_messages")
       .select(
@@ -316,15 +311,13 @@ router.get(
       .where("user_id", userId)
       .where("created_at", ">=", startDate);
 
-
     const unionQuery = knex
       .unionAll([broadcastSubquery, notificationsSubquery])
-      .orderBy("created_at", "desc")
-      // .offset(offset)
-      // .limit(limit);
+      .orderBy("created_at", "desc");
+    // .offset(offset)
+    // .limit(limit);
 
     const results = await unionQuery;
-   
 
     // ---------- NORMALIZATION ----------
     // Convert snake_case to camelCase and safely parse JSON info
@@ -343,15 +336,12 @@ router.get(
     });
 
     const notifications = results.map(normalize);
-    console.log(notifications)
+    console.log(notifications);
 
     // ---------- RESPONSE ----------
     res.status(200).json(notifications);
-
- 
   }),
 );
-
 
 router.get(
   "/:id",
@@ -445,12 +435,9 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = req.user;
 
-
     const { ids } = req.body;
 
-    await knex("notifications")
-      .where("user_id",id)
-      .update({ active: false });
+    await knex("notifications").where("user_id", id).update({ active: false });
 
     res.sendStatus(204);
   }),
@@ -463,11 +450,17 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = req.user;
 
-    await knex("notifications").where("user_id", id).update({ active: false });
+    await knex("notifications")
+      .where("user_id", id)
+      .update({ active: false, is_read: true });
+
+
+  
 
     res.sendStatus(204);
   }),
 );
+
 
 //Mark agent notifications as read
 router.put(
@@ -475,14 +468,11 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = req.user;
 
-    await knex("notifications")
-      .where("user_id", id)
-      .update({ active: false });
+    await knex("notifications").where("user_id", id).update({ active: false });
 
     res.sendStatus(204);
   }),
 );
-
 
 //Mark all verifier notifications as read
 router.put(
@@ -499,7 +489,6 @@ router.put(
     res.sendStatus(204);
   }),
 );
-
 
 //Mark agent notifications as read
 router.put(
@@ -576,12 +565,15 @@ router.delete(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    notification = await knex("notifications").where("id", id).del();
+    const broadcastMessage = await knex("broadcast_messages")
+      .where("id", id)
+      .del();
+    const notification = await knex("notifications").where("id", id).del();
 
     if (!notification) {
       return res.status(404).json("Error removing notification!");
     }
-    res.status(200).json("Notification removed!");
+    res.status(204);
   }),
 );
 
@@ -591,7 +583,7 @@ router.delete(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    notification = await knex("notifications").where("id", id).del();
+    const notification = await knex("notifications").where("id", id).del();
 
     if (!notification) {
       return res.status(404).json("Error removing notification!");

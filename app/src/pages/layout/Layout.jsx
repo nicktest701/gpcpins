@@ -1,8 +1,6 @@
 import Footer from "./Footer";
 import Header from "./Header";
 import Main from "./Main";
-// import BottomNav from './BottomNav';
-// import VoucherPaymentDetails from "../../components/modals/VoucherPaymentDetails";
 import TicketPaymentDetails from "../../components/modals/TicketPaymentDetails";
 import { Box, IconButton } from "@mui/material";
 import { ArrowUpwardSharp } from "@mui/icons-material";
@@ -36,8 +34,7 @@ function Layout() {
 
       <BottomNav />
 
-      {/* <VoucherPaymentDetails /> */}
-      <TicketPaymentDetails />
+      {/* <TicketPaymentDetails /> */}
       <IconButton onClick={handleScrollToTop} className="scroll-to-top-button">
         <ArrowUpwardSharp />
       </IconButton>

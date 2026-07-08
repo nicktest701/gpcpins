@@ -1,16 +1,9 @@
-import {
-  Stack,
-  TextField,
-  Typography,
-  Button,
-  IconButton,
-
-} from "@mui/material";
+import { Stack, TextField, Button, IconButton } from "@mui/material";
 import InputAdornment from "@mui/material/InputAdornment";
-import { useContext } from "react";
+
 import _ from "lodash";
 import AnimatedContainer from "../../components/animations/AnimatedContainer";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import { useAuth } from "../../context/providers/AuthProvider";
 import CustomFormControl from "../../components/inputs/CustomFormControl";
 import { hideNID, hidePhoneNumber } from "../../config/hideDetails";
 import { Link, useSearchParams } from "react-router-dom";
@@ -20,7 +13,7 @@ import { Edit } from "@mui/icons-material";
 import ProfilePhoto from "./ProfilePhoto";
 
 const Personal = () => {
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   //verify phone number
@@ -33,11 +26,6 @@ const Personal = () => {
 
   return (
     <AnimatedContainer>
-      <Typography variant="h4">Personal Details</Typography>
-      <Typography paragraph variant="caption">
-        General Information
-      </Typography>
-
       <ProfilePhoto />
 
       <Stack spacing={2} paddingTop={3} width="100%">
@@ -47,7 +35,7 @@ const Personal = () => {
             label="First Name"
             fullWidth
             required
-            value={user?.firstname}
+            value={user?.firstname || ""}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
@@ -66,7 +54,7 @@ const Personal = () => {
             label="Last Name"
             fullWidth
             required
-            value={user?.lastname}
+            value={user?.lastname || ""}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
@@ -90,7 +78,7 @@ const Personal = () => {
           label="Email Address"
           fullWidth
           required
-          value={user?.email}
+          value={user?.email || ""}
           InputProps={{
             readOnly: true,
             disabled: true,
@@ -117,7 +105,7 @@ const Personal = () => {
           required
           value={
             user?.phonenumber
-              ? hidePhoneNumber(user.phonenumber)
+              ? hidePhoneNumber(user?.phonenumber)
               : user?.phonenumber
           }
           InputProps={{

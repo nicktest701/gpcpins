@@ -614,7 +614,7 @@ function CinemaTicketCheckout() {
 
           <LoadingButton
             variant="contained"
-            loading={paymentMutation.isLoading}
+            loading={paymentMutation.isPending}
             onClick={processPayment}
             sx={{
               px: 3,

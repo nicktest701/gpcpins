@@ -12,20 +12,15 @@ import {
   useTheme,
   Box,
 } from "@mui/material";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import moment from "moment";
 import _ from "lodash";
-import Swal from "sweetalert2";
 
 import CustomizedMaterialTable from "../../../components/tables/CustomizedMaterialTable";
 import CustomTotal from "../../../components/custom/CustomTotal";
 import { currencyFormatter } from "../../../constants";
-import {
-  deletePrepaidTransaction,
-  getAllElectricityPaymentByUserId,
-} from "../../../api/paymentAPI";
+import { getAllElectricityPaymentByUserId } from "../../../api/electricityAPI";
 import { useCustomContext } from "../../../context/providers/CustomProvider";
-import { globalAlertType } from "../../../components/alert/alertType";
 import { useAuth } from "../../../context/providers/AuthProvider";
 import ActionMenu from "../../../components/menu/ActionMenu";
 import CustomDialogTitle from "../../../components/dialogs/CustomDialogTitle";
@@ -33,7 +28,6 @@ import PaymentReceipt from "./PaymentReceipt";
 import PrepaidTransactionList from "./PrepaidTransactionList";
 
 const PrepaidTransactions = ({ open, setOpen }) => {
-  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { customDispatch } = useCustomContext();
   const theme = useTheme();
@@ -75,28 +69,28 @@ const PrepaidTransactions = ({ open, setOpen }) => {
     });
   };
 
-  const { mutateAsync } = useMutation({
-    mutationFn: deletePrepaidTransaction,
-  });
+  // const { mutateAsync } = useMutation({
+  //   mutationFn: deletePrepaidTransaction,
+  // });
 
-  const handleDelete = (id) => {
-    Swal.fire({
-      title: "Remove Transaction",
-      text: "Are you sure you want to remove this transaction?",
-      icon: "warning",
-      showCancelButton: true,
-    }).then(({ isConfirmed }) => {
-      if (isConfirmed) {
-        mutateAsync(id, {
-          onSettled: () => {
-            queryClient.invalidateQueries(["ecg-transaction-info", user?.id]);
-          },
-          onSuccess: (data) => customDispatch(globalAlertType("info", data)),
-          onError: (error) => customDispatch(globalAlertType("error", error)),
-        });
-      }
-    });
-  };
+  // const handleDelete = (id) => {
+  //   Swal.fire({
+  //     title: "Remove Transaction",
+  //     text: "Are you sure you want to remove this transaction?",
+  //     icon: "warning",
+  //     showCancelButton: true,
+  //   }).then(({ isConfirmed }) => {
+  //     if (isConfirmed) {
+  //       mutateAsync(id, {
+  //         onSettled: () => {
+  //           queryClient.invalidateQueries(["ecg-transaction-info", user?.id]);
+  //         },
+  //         onSuccess: (data) => customDispatch(globalAlertType("info", data)),
+  //         onError: (error) => customDispatch(globalAlertType("error", error)),
+  //       });
+  //     }
+  //   });
+  // };
 
   // Desktop table columns
   const columns = [
@@ -176,7 +170,7 @@ const PrepaidTransactions = ({ open, setOpen }) => {
       render: (data) => (
         <ActionMenu>
           <MenuItem onClick={() => handleView(data)}>View</MenuItem>
-          <MenuItem onClick={() => handleDelete(data.id)}>Remove</MenuItem>
+          {/* <MenuItem onClick={() => handleDelete(data.id)}>Remove</MenuItem> */}
         </ActionMenu>
       ),
     },
@@ -207,7 +201,7 @@ const PrepaidTransactions = ({ open, setOpen }) => {
                 statusFilter={statusFilter}
                 setStatusFilter={setStatusFilter}
                 onView={handleView}
-                onDelete={handleDelete}
+                // onDelete={handleDelete}
               />
             ) : (
               <>
@@ -222,7 +216,7 @@ const PrepaidTransactions = ({ open, setOpen }) => {
                   onRefresh={handleRefresh}
                   autocompleteComponent={
                     <Stack
-                    width="100%"
+                      width="100%"
                       direction="row"
                       alignItems="center"
                       justifyContent="space-between"
@@ -236,7 +230,7 @@ const PrepaidTransactions = ({ open, setOpen }) => {
                           display: "flex",
                           flexGrow: 1,
                           justifyContent: "flex-end",
-                        width: "100%",
+                          width: "100%",
                           mb: 2,
                         }}
                       >

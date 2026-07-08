@@ -15,19 +15,17 @@ import {
   useTheme,
 } from "@mui/material";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFormContext, useWatch } from "react-hook-form";
 import MobileWalletIcon from "@/assets/icons/MobileWallet";
 import { currencyFormatter } from "../constants";
 import { useAuth } from "../context/providers/AuthProvider";
-import { useCustomContext } from "../context/providers/CustomProvider";
 import { getWalletBalance, getWalletStatus } from "../api/walletAPI";
 
 function WalletOption() {
   const theme = useTheme();
-
+  const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { walletBalance: wallet } = useCustomContext();
 
   const {
     control,
@@ -43,24 +41,34 @@ function WalletOption() {
 
   const [expanded, setExpanded] = useState(paymentMethod === "wallet");
 
-  useEffect(() => {
-    setExpanded(paymentMethod === "wallet");
-  }, [paymentMethod]);
+  const fetchedBalance = queryClient.getQueryData({
+    queryKey: ["wallet-balance", user?.id],
+  });
+  const fetchedStatus = queryClient.getQueryData({
+    queryKey: ["wallet-status", user?.id],
+  });
 
   const walletBalance = useQuery({
     queryKey: ["wallet-balance", user?.id],
     queryFn: () => getWalletBalance(user?.id),
     enabled: !!user?.id,
-    staleTime: 1000 * 60,
-    initialData: wallet,
+    staleTime: 0,
+    cacheTime: 1000 * 60, // 1 minute memory life
+    initialData: fetchedBalance,
   });
 
   const walletStatus = useQuery({
     queryKey: ["wallet-status", user?.id],
     queryFn: () => getWalletStatus(),
     enabled: !!user?.id,
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 60 * 5,
+    cacheTime: 1000 * 60 * 5,
+    initialData: fetchedStatus,
   });
+
+  useEffect(() => {
+    setExpanded(paymentMethod === "wallet");
+  }, [paymentMethod]);
 
   const handleSelect = () => {
     setValue("paymentMethod", "wallet", {
@@ -102,11 +110,6 @@ function WalletOption() {
                 <MobileWalletIcon width={64} height={64} />
                 <div>
                   <Typography variant="body2">Wallet</Typography>
-                  {/* {!expanded && (
-                    <Typography fontWeight={700}>
-                      {currencyFormatter(walletBalance.data)}
-                    </Typography>
-                  )} */}
                 </div>
               </Stack>
               <Radio
@@ -140,9 +143,6 @@ function WalletOption() {
                 {currencyFormatter(walletBalance.data)}
               </Typography>
             </Stack>
-            <Typography variant="caption" gutterBottom>
-              Make payment with the available balance in your wallet.
-            </Typography>
 
             {walletStatus.data?.active === false ? (
               <Typography variant="caption" color="error">
@@ -150,35 +150,43 @@ function WalletOption() {
                 {walletStatus.data?.timeOut}.
               </Typography>
             ) : (
-              <Stack spacing={1} mt={2}>
-                <Typography variant="body2" fontWeight={600}>
-                  Wallet PIN
+              <>
+                <Typography variant="caption" gutterBottom>
+                  Make payment with the available balance in your wallet.
                 </Typography>
+                <Stack spacing={1} mt={2} justifyContent='center' alignItems='center'>
+                  <Typography variant="body2" fontWeight={600}>
+                    Wallet PIN
+                  </Typography>
 
-                <TextField
-                  size="small"
-                  type="password"
-                  placeholder="Enter 4-digit pin"
-                  inputMode="numeric"
-                  autoComplete="current-password"
-                  {...register("token")}
-                  error={!!errors.token}
-                  disabled={
-                    // Number(walletBalance.data) === 0 ||
-                    walletStatus.data?.active === false
-                  }
-                  helperText={errors.token?.message}
-                  sx={{
-                    maxWidth: 150,
-                    "& .MuiOutlinedInput-root": {
-                      transition: theme.transitions.create([
-                        "border-color",
-                        "box-shadow",
-                      ]),
-                    },
-                  }}
-                />
-              </Stack>
+                  <TextField
+                    size="small"
+                    type="password"
+                    placeholder="••••"
+                    inputMode="numeric"
+                    autoComplete="current-password"
+                    {...register("token")}
+                    error={!!errors.token}
+                    disabled={walletStatus.data?.active === false}
+                    helperText={errors.token?.message}
+                    inputProps={{
+                      style: {
+                        textAlign: "center",
+                      },
+                    }}
+                    sx={{
+                      textAlign: "center",
+                      maxWidth: 150,
+                      "& .MuiOutlinedInput-root": {
+                        transition: theme.transitions.create([
+                          "border-color",
+                          "box-shadow",
+                        ]),
+                      },
+                    }}
+                  />
+                </Stack>
+              </>
             )}
           </>
         )}

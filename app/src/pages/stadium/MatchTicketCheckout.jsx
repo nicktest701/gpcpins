@@ -31,7 +31,7 @@ import { globalAlertType } from "@/components/alert/alertType";
 import { useCustomContext } from "@/context/providers/CustomProvider";
 import VoucherPlaceHolderItem from "@/components/items/VoucherPlaceHolderItem";
 import AnimatedContainer from "@/components/animations/AnimatedContainer";
-import { ticketValidationSchema } from "@/config/validationSchema";
+
 import { useAuth } from "@/context/providers/AuthProvider";
 import PaymentOption from "@/components/PaymentOption";
 import { makeMomoTransaction } from "@/api/paymentAPI";
@@ -624,7 +624,7 @@ function MatchTicketCheckout() {
 
           <LoadingButton
             variant="contained"
-            loading={paymentMutation.isLoading}
+            loading={paymentMutation.isPending}
             onClick={processPayment}
             sx={{
               px: 3,

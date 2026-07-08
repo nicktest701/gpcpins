@@ -10,7 +10,6 @@ import ThemeProvider from "./theme";
 import Shell from "./pages/layout/Shell";
 import { ErrorBoundary } from "react-error-boundary";
 import Error from "./pages/Error";
-import ClientProvider from "./context/providers/ClientProvider";
 import { HelmetProvider } from "react-helmet-async";
 import AuthProvider from "./context/providers/AuthProvider";
 import { GoogleOAuthProvider } from "@react-oauth/google";
@@ -44,9 +43,7 @@ function App() {
               <AuthProvider>
                 <SocketProvider>
                   <CustomProvider>
-                    <ClientProvider>
-                      <Shell />
-                    </ClientProvider>
+                    <Shell />
                   </CustomProvider>
                 </SocketProvider>
               </AuthProvider>

@@ -21,8 +21,7 @@ async function sendMoney(info, type) {
             ? 0.1
             : Number(info?.amount),
           // Amount: info?.amount,
-          PrimaryCallbackUrl: `${process.env.CALLBACK_URL
-            }/${type}/${randomUUID()}`,
+          PrimaryCallbackUrl: `${process.env.CALLBACK_URL}/${type}/${randomUUID()}`,
           Description: "Vouchers",
           ClientReference: info?.transaction_reference,
         },

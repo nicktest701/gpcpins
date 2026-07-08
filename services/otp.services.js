@@ -20,7 +20,9 @@ async function storeOTP(
 ) {
   const key = `${OTP_PREFIX}:${userId}`;
 
-  await redis.set(key, otp, { ex: OTP_TTL });
+  console.log(userId,otp)
+
+  await redis.set(key, Number(otp), { ex: OTP_TTL });
 
   // reset attempts
   await redis.del(`${ATTEMPT_PREFIX}:${userId}`);

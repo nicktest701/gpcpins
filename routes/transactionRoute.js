@@ -1680,7 +1680,8 @@ router.get(
         downloadLink: info?.downloadLink || "",
         createdAt: t?.createdAt,
         updatedAt: t?.updatedAt,
-        status: t?.isProcessed ? t?.status : "pending",
+        isProcessed: Boolean(t?.isProcessed),
+        status: Boolean(t?.isProcessed) ? t?.status : "pending",
       };
     });
 
@@ -3075,13 +3076,13 @@ router.get(
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const agentsWallets = await knex("wallets")
-      .join("agents", "wallets.agent_id", "=", "agents._id")
+      .join("users", "wallets.agent_id", "=", "users.id")
       .select(
-        "agents._id as _id",
+        "users.id as _id",
         "wallets.amount as amount",
         "wallets.agent_key as clientID",
-        "agents.email as email",
-        "agents.phonenumber as phonenumber",
+        "users.email as email",
+        "users.phonenumber as phonenumber",
         knex.raw("CONCAT(firstname,' ',lastname) as name"),
         knex.raw(
           "DATE_FORMAT(wallets.updatedAt,'%D %M %Y . %r' ) as updatedAt",

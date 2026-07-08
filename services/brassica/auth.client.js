@@ -3,7 +3,7 @@
 const axios = require("axios");
 const CircuitBreaker = require("opossum");
 
-const brassicaConfig = require("../config/brassica");
+const brassicaConfig = require("../../config/brassica");
 
 const authenticateRequest = async () => {
   logger.info("Refreshing Brassica Pay Bearer token...");
@@ -23,6 +23,7 @@ const authenticateRequest = async () => {
   );
 
   const { data } = response;
+console.log(data)
   return data;
 };
 

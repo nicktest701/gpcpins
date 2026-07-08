@@ -32,11 +32,10 @@ function Checkout() {
   // Socket success listener
   useEffect(() => {
     const handleSuccess = (payload) => {
-      // console.log(payload);
       setDownloadLink(payload?.data);
     };
     onEvent("ticket-generation", handleSuccess);
-    // onEvent("general", handleSuccess);
+
     return () => {
       offEvent("ticket-generation", handleSuccess);
       // offEvent("general", handleSuccess);
@@ -171,69 +170,72 @@ function Checkout() {
                   value={transaction?.paymentReference}
                 />
                 <Divider flexItem />
-                {generatedVouchers?.isLoading && (
-                  <Stack
-                    direction="row"
-                    alignItems="center"
-                    justifyContent="center"
-                    spacing={1}
-                  >
-                    <Spinner size={16} />
-                    <Typography
-                      textAlign="center"
-                      fontStyle="italic"
-                      fontWeight="bold"
-                    >
-                      Please wait..We are currently generating your{" "}
-                      {isVoucher ? "Vouchers" : "Tickets"}
-                    </Typography>
-                  </Stack>
-                )}
               </Stack>
-
-              {generatedVouchers?.data?.id && (
+              {generatedVouchers?.isLoading && !downloadLink ? (
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="center"
+                  spacing={1}
+                >
+                  <Spinner size={16} />
+                  <Typography
+                    textAlign="center"
+                    fontStyle="italic"
+                    fontWeight="bold"
+                  >
+                    Please wait..We are currently generating your{" "}
+                    {isVoucher ? "Vouchers" : "Tickets"}
+                  </Typography>
+                </Stack>
+              ) : (
                 <>
-                  {generatedVouchers?.data?.downloadLink ? (
-                    <LoadingButton
-                      disabled={generatedVouchers?.isLoading}
-                      loading={generatedVouchers?.isLoading}
-                      variant="contained"
-                      color="secondary"
-                      size="small"
-                      onClick={handleDownloadVouchers}
-                      sx={{
-                        textTransform: "uppercase",
-                        "&:hover": {
-                          textDecoration: "underline",
-                        },
+                  {downloadLink ? (
+                    <a
+                      href={downloadLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      download={true}
+                      style={{
+                        // width: "100%",
+                        paddingBlock: "8px",
+                        paddingInline: "16px",
+                        borderRadius: "6px",
+                        backgroundColor: "var(--secondary)",
+                        color: "#fff",
                       }}
-                      endIcon={<FileDownloadRounded />}
                     >
                       {isVoucher ? " Download Vouchers" : " Download Tickets"}
-                    </LoadingButton>
+                    </a>
                   ) : (
-                   
-                      <a
-                        href={downloadLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        download={true}
-                        style={{
-                          // width: "100%",
-                          paddingBlock: "8px",
-                          paddingInline: "16px",
-                          borderRadius:'6px',
-                          backgroundColor:'var(--secondary)',
-                          color:'#fff'
-                        }}
-                      >
-                        {isVoucher ? " Download Vouchers" : " Download Tickets"}
-                      </a>
-                  
+                    <>
+                      {generatedVouchers?.data?.downloadLink && (
+                        <>
+                          <LoadingButton
+                            disabled={generatedVouchers?.isLoading}
+                            loading={generatedVouchers?.isLoading}
+                            variant="contained"
+                            color="secondary"
+                            size="small"
+                            onClick={handleDownloadVouchers}
+                            sx={{
+                              textTransform: "uppercase",
+                              "&:hover": {
+                                textDecoration: "underline",
+                              },
+                            }}
+                            endIcon={<FileDownloadRounded />}
+                          >
+                            {isVoucher
+                              ? " Download Vouchers"
+                              : " Download Tickets"}
+                          </LoadingButton>
+                        </>
+                      )}
+                    </>
                   )}
                 </>
               )}
-
               <Stack
                 rowGap={2}
                 alignItems="center"

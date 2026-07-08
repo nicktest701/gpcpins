@@ -3,13 +3,13 @@ const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
 const bcrypt = require("bcryptjs");
 const { otpGen } = require("otp-gen-agent");
-const { signMainToken } = require("../config/token");
 const multer = require("multer");
 const { rateLimit } = require("express-rate-limit");
+const { signMainToken } = require("../config/token");
 const sendMail = require("../config/sendEmail");
 const { verifyToken } = require("../middlewares/verifyToken");
-const { isValidUUID2 } = require("../config/validation");
 const verifyAdmin = require("../middlewares/verifyAdmin");
+const { isValidUUID2 } = require("../config/validation");
 const { uploadPhoto } = require("../config/uploadFile");
 const { mailTextShell } = require("../config/mailText");
 

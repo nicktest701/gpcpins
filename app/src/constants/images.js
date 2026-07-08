@@ -6,7 +6,7 @@ import vodafone_cash from '../assets/images/telecelcash.webp';
 import vodafone from '../assets/images/telecel.png';
 import airtel_money from '../assets/images/airteltigo-money.png';
 import airtel from '../assets/images/airteltigo.jpg';
-import coat_of_arms from '../assets/images/logo.png';
+import logo from '../assets/images/logo.png';
 import ecg from '../assets/images/ecg.jpg';
 import ecg_low from '../assets/images/ecg_low.jpg';
 import ges from '../assets/images/ges.jpg';
@@ -66,7 +66,7 @@ export const IMAGES = {
   mtn,
   vodafone,
   airtel,
-  coat_of_arms,
+  logo,
   ecg,
   ges,
   airtime,

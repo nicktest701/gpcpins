@@ -1,12 +1,10 @@
 const router = require("express").Router();
 const { randomBytes } = require("crypto");
 const pLimit = require("p-limit");
-const multer = require("multer");
 const cors = require("cors");
 const _ = require("lodash");
 const moment = require("moment");
 const { rateLimit } = require("express-rate-limit");
-const processVouchers = require("../config/processVouchers");
 const asyncHandler = require("express-async-handler");
 const bcrypt = require("bcryptjs");
 //functons
@@ -19,17 +17,15 @@ const {
   sendAirtime,
   POS_Balance,
   PREPAID_Balance,
+  moneyStatus,
 } = require("../config/sendMoney");
 const sendEMail = require("../config/sendEmail");
 const { sendTicketMail } = require("../config/mail");
 const { sendSMS } = require("../config/sms");
-const generateQRCode = require("../config/qrcode");
 const currencyFormatter = require("../config/currencyFormatter");
 const sendElectricityMail = require("../config/ecgMail");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 
-const { uploadVoucherFile } = require("../config/uploadFile");
-const { imageUrlToBase64 } = require("../config/ImageToBase64");
 const { isValidUUID2 } = require("../config/validation");
 const knex = require("../db/knex");
 const {
@@ -47,12 +43,18 @@ const {
   ticketSchema,
   bundleSchema,
   airtimeSchema,
+  airtimeTopUpSchema,
+  bundleTopUpSchema,
 } = require("../utils/validationSchema");
-const { validatePayment } = require("../middlewares/validators");
+const { validatePayment, validate } = require("../middlewares/validators");
 const { idempotencyMiddleware } = require("../middlewares/idempotency");
 const { paymentLimiter } = require("../middlewares/rateLimiter");
 const { paymentLockMiddleware } = require("../middlewares/paymentLock");
-const { emitPaymentSuccess, emitCheckerUpdate } = require("../config/emitters");
+const {
+  emitPaymentSuccess,
+  emitGeneralInfo,
+  emitPaymentFailure,
+} = require("../config/emitters");
 const redisClient = require("../config/redisClient");
 const { storage } = require("../firebase");
 const { messageQueue } = require("../queues/message.queue");
@@ -98,19 +100,6 @@ const STATUS_MAP = {
   "0001": "pending",
 };
 
-const Storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "./receipts/");
-  },
-  filename: function (req, file, cb) {
-    const ext = file?.mimetype?.split("/")[1];
-
-    cb(null, `${req.body?.id}-prepaid.${ext}`);
-  },
-});
-
-const Upload = multer({ storage: Storage });
-
 const corsOptions = {
   methods: "POST",
   origin: process.env.CLIENT_URL,
@@ -132,202 +121,6 @@ const rlimit = rateLimit({
 });
 
 const limit = pLimit(3);
-
-// router.get(
-//   "/vouchers",
-//   verifyOptionalToken,
-//   rlimit,
-//   asyncHandler(async (req, res) => {
-//     const { id: userID } = req.user;
-//     const { id: transactionId } = req?.query;
-
-//     if (!transactionId || !isValidUUID2(transactionId)) {
-//       return res.status(400).json("Invalid Request!");
-//     }
-
-//     //let
-
-//     const trans = await knex("vw_payments_voucher_transactions")
-//       .where("id", transactionId)
-//       .select(
-//         "paymentId",
-//         "paymentReference",
-//         "id",
-//         "info",
-//         "email",
-//         "phonenumber",
-//         "vouchers",
-//         "status",
-//         "createdAt",
-//         "updatedAt",
-//       )
-//       .first();
-
-//     if (_.isEmpty(trans)) {
-//       return res.status(404).json("Invalid request.Try again later");
-//     }
-
-//     let {
-//       paymentId,
-//       id,
-//       info,
-//       email,
-//       phonenumber,
-//       vouchers,
-//       status,
-//       createdAt,
-//       updatedAt,
-//     } = trans;
-
-//     if (["pending", "failed"].includes(status)) {
-//       return res.status(404).json("Payment not completed!");
-//     }
-
-//     const userInfo = safeJSON(info);
-//     const userVoucher = safeJSON(vouchers);
-
-//     //Check if voucher pdf already exists
-//     if (userInfo?.downloadLink) {
-//       if (email) {
-//         await sendTicketMail(id, email, "GPC Tickets");
-//       }
-
-//       return res.status(200).json({ id, downloadLink: userInfo?.downloadLink });
-//     }
-
-//     if (userVoucher?.length <= 0) {
-//       return res.status(404).json("Payment not completed!");
-//     }
-
-//     const soldVouchers = await knex("vw_category_voucher_view")
-//       .whereIn("id", userVoucher)
-//       .select(
-//         "id",
-//         "pin",
-//         "serial",
-//         "categoryId",
-//         "voucherType",
-//         "price",
-//         "categoryDetails as details",
-//       );
-
-//     //if creating new transaction fails
-//     if (_.isEmpty(soldVouchers)) {
-//       return res.status(404).json("Error Processing your request!!!");
-//     }
-
-//     const details = safeJSON(soldVouchers[0].details);
-
-//     // CONVERT LOGO TO BASE64 ONCE
-//     const base64Logo = details?.logo
-//       ? await imageUrlToBase64(details?.logo)
-//       : "";
-
-//     const modifiedVoucher = soldVouchers.map(
-//       ({ voucherType, price, details, serial, pin, id }) => {
-//         const detailsInfo = safeJSON(details);
-
-//         return {
-//           id,
-//           voucherType: voucherType,
-//           price: currencyFormatter(
-//             userInfo?.category === "waec" ? detailsInfo?.price : price,
-//           ),
-//           serial,
-//           pin,
-//           status: "sold",
-//           // logo: detailsInfo?.logo,
-//         };
-//       },
-//     );
-
-//     const generatedTransaction = {
-//       info: userInfo,
-//       id,
-//       createdAt,
-//       updatedAt,
-//       formType: details?.formType || "",
-//       dataURL: details?.voucherURL,
-//       agentName: userInfo?.user?.name || "GPC Customer",
-//       agentPhoneNumber: phonenumber,
-//       agentEmail: email,
-//       formattedDate: moment(new Date(createdAt)).format("LLL"),
-//       vouchers: modifiedVoucher,
-//       logo: base64Logo,
-//       status,
-//     };
-
-//     try {
-//       const result = await processVouchers(generatedTransaction);
-//       const internationalPhoneFormat =
-//         getInternationalMobileFormat(phonenumber);
-
-//       if (result === "done") {
-//         const downloadLink = await uploadVoucherFile(`${id}.pdf`);
-
-//         await knex("voucher_transactions")
-//           .where("id", id)
-//           .update({
-//             info: JSON.stringify({
-//               ...userInfo,
-//               downloadLink,
-//             }),
-//           });
-
-//         await knex("payments").where("id", paymentId).update({
-//           status: "completed",
-//           is_processed: true,
-//         });
-
-//         if (userID) {
-//           await knex("notifications").insert({
-//             id: generateId(),
-//             user_id: userID,
-//             type: "voucher",
-//             title: modifiedVoucher[0].voucherType + " Voucher",
-//             body: `Voucher Processing completed!`,
-//             link: downloadLink,
-//           });
-//         }
-
-//         res.status(200).json({ id: id, downloadLink });
-
-//         queueMicrotask(async () => {
-//           // await emitCheckerUpdate({ userId: userID, data: downloadLink });
-
-//           await messageQueue.add(
-//             "send-document",
-//             {
-//               sessionId: process.env.WHATSAPP_SESSION_ID,
-//               type: "send-document",
-//               phone: internationalPhoneFormat,
-//               message: downloadLink,
-//               downloadLink,
-//               fileName: `${id}.pdf`,
-//               caption: `Here is a copy of your ${modifiedVoucher[0].voucherType} voucher.Thank you!`,
-//             },
-//             {
-//               jobId: `${id}`, // prevent duplicates
-//               attempts: 1,
-//               backoff: {
-//                 type: "exponential",
-//                 delay: 5000,
-//               },
-//               removeOnComplete: true,
-//             },
-//           );
-
-//           if (email) {
-//             await sendTicketMail(id, email, modifiedVoucher[0]?.voucherType);
-//           }
-//         });
-//       }
-//     } catch (error) {
-//       logger.error(error);
-//       return res.status(500).json("Error processing your vouchers!");
-//     }
-//   }),
-// );
 
 router.get(
   "/vouchers",
@@ -362,7 +155,8 @@ router.get(
       return res.status(404).json("Transaction not found");
     }
 
-    const { id, status, info, vouchers } = transaction;
+    const { id, paymentReference, phonenumber, status, info, vouchers } =
+      transaction;
 
     if (status === "pending" || status === "failed") {
       return res.status(409).json("Payment has not been completed");
@@ -375,6 +169,12 @@ router.get(
     // ==========================================
 
     if (userInfo?.downloadLink) {
+      await emitGeneralInfo({
+        emitter: "ticket-generation",
+        userId: userID || phonenumber || paymentReference,
+        data: downloadLink,
+      });
+
       return res.status(200).json({
         success: true,
         status: "completed",
@@ -506,14 +306,183 @@ router.get(
 );
 
 router.get(
-  "/confirm/:id/:categoryType",
+  "/airtime",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { startDate, endDate } = req.query;
+
+    const transactions = await knex("vw_payments_airtime_transactions")
+      .select(
+        "id",
+        "orderId",
+        "recipient",
+        " email",
+        " phonenumber",
+        " info",
+        " year",
+        " amount",
+        " isProcessed",
+        " active",
+        " createdAt",
+        " updatedAt",
+        " status",
+        " issuerId",
+      )
+      .where({ status: "completed", kind: "bulk" });
+
+    const modifiedTransactions = transactions.map(
+      async ({ recipient, issuerId, info, isProcessed, ...rest }) => {
+        const employee = await knex("vw_users_with_roles")
+          .where("id", issuerId)
+          .select("id", "name")
+          .first();
+
+        return {
+          ...rest,
+          isProcessed: Boolean(isProcessed),
+          recipient: safeJSON(recipient),
+          info: safeJSON(info),
+          issuer: employee?.name,
+        };
+      },
+    );
+
+    const sDate = moment(startDate);
+    const eDate = moment(endDate);
+
+    const availableTransactions = await Promise.all(modifiedTransactions);
+
+    const modifiedPayments = availableTransactions?.filter(({ updatedAt }) => {
+      return moment(updatedAt).isBetween(sDate, eDate, "days", "[]");
+    });
+
+    const sortedPayments = _.orderBy(modifiedPayments, ["updatedAt"], ["desc"]);
+
+    res.status(200).json(sortedPayments);
+  }),
+);
+
+//Check Balance Status
+router.get(
+  "/balances",
+  // verifyToken,
+  // verifyAdmin,
+  asyncHandler(async (req, res) => {
+    try {
+      const [posResponse, preResponse, accResponse] = await Promise.all([
+        POS_Balance(),
+        PREPAID_Balance(),
+        accountBalance(),
+      ]);
+
+      res.status(200).json({
+        pos: posResponse?.amount || 0,
+        pre: preResponse?.amount || 0,
+        balance: accResponse?.balance || 0,
+      });
+    } catch (error) {
+      logger.error(error);
+      res.status(401).json("Am unknown error has occurred!");
+    }
+  }),
+);
+//Check Balance Status
+router.get(
+  "/hb/pos",
+  // verifyToken,
+  // verifyAdmin,
+  asyncHandler(async (req, res) => {
+    try {
+      const response = await POS_Balance();
+
+      res.status(200).json(response?.amount);
+    } catch (error) {
+      logger.error(error);
+      res.status(401).json("Am unknown error has occurred!");
+    }
+  }),
+);
+
+//Check Balance Status
+router.get(
+  "/hb/prepaid",
+  // verifyToken,
+  // verifyAdmin,
+  asyncHandler(async (req, res) => {
+    try {
+      const response = await PREPAID_Balance();
+
+      res.status(200).json(response?.amount);
+    } catch (error) {
+      logger.error(error);
+      res.status(401).json("Am unknown error has occurred!");
+    }
+  }),
+);
+
+//Check Balance Status
+router.get(
+  "/top-up/balance",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    try {
+      const response = await accountBalance();
+
+      res.status(200).json(response?.balance);
+    } catch (error) {
+      res.status(401).json("Am unknown error has occurred!");
+    }
+  }),
+);
+
+//Get List of all bundles
+router.get(
+  "/top-up/bundlelist",
+  // verifyToken,
+  asyncHandler(async (req, res) => {
+    const network = req.query?.network;
+    let response = [];
+    try {
+      if (process.env.NODE_ENV === "production") {
+        response = await getBundleList(network);
+      } else {
+        if (network === "4") {
+          response = MTN;
+        }
+        if (network === "6") {
+          response = VODAFONE;
+        }
+        if (network === "1") {
+          response = AIRTELTIGO;
+        }
+      }
+
+      const bundles = response?.bundles?.map((bundle) => {
+        const { meta, network, ...rest } = bundle;
+        if (Number(rest.price) === 0) return;
+        return rest;
+      });
+
+      // logger.info(_.groupBy(bundles, 'category'))
+
+      res.status(200).json(_.compact(bundles));
+    } catch (error) {
+      logger.error(error);
+      res.status(401).json("An unknown error has occurred");
+    }
+  }),
+);
+
+router.get(
+  "/confirm/:id/:serviceType",
   verifyOptionalToken,
   asyncHandler(async (req, res) => {
     const trx = await knex.transaction();
 
     try {
-      const { id, categoryType } = req.params;
-      // const { confirm } = req.query;
+      const { id, serviceType } = req.params;
 
       if (!isValidUUID2(id)) {
         return res.status(400).json("Invalid request");
@@ -521,7 +490,7 @@ router.get(
 
       // ---------------- FETCH TRANSACTION + PAYMENT ----------------
 
-      const transaction = await getTransaction(categoryType, id, trx);
+      const transaction = await getTransaction(serviceType, id, trx);
 
       if (!transaction) {
         await trx.rollback();
@@ -530,8 +499,14 @@ router.get(
 
       // ---------------- STATE VALIDATION ----------------
       if (transaction.status === "failed") {
+        emitPaymentFailure({
+          userId: transaction?.userId,
+          txRef: transaction.phonenumber || transaction?.paymentReference,
+          reason: "Transaction Failed",
+        });
+
         await trx.rollback();
-        return res.status(400).json("Payment failed");
+        return res.status(400).json("Payment failed!");
       }
 
       if (transaction.status !== "completed") {
@@ -609,6 +584,7 @@ router.get(
 
 router.get(
   "/download/:id",
+  limit,
   verifyOptionalToken,
   asyncHandler(async (req, res) => {
     const id = req.params.id;
@@ -646,29 +622,11 @@ router.get(
     downloadStream.pipe(res);
   }),
 );
-// router.get(
-//   "/download/:id",
-//   verifyOptionalToken,
-//   asyncHandler(async (req, res) => {
-//     const id = req.params.id;
-//     const filePath = path.join(process.cwd(), "/vouchers/", `${id}.pdf`);
-
-//     if (fs.existsSync(filePath)) {
-//       return res.sendFile(filePath);
-//     } else {
-//       return res
-//         .status(400)
-//         .json("We couldnt find a transaction which match your transaction id");
-//     }
-//   }),
-// );
-
-// Make Voucher / Ticket Payment @route   POST payment/momo
 
 router.post(
   "/",
-  verifyOptionalToken,
   paymentLimiter,
+  verifyOptionalToken,
   idempotencyMiddleware,
   paymentLockMiddleware,
   validatePayment(voucherSchema, ticketSchema),
@@ -737,15 +695,18 @@ router.post(
           .forUpdate();
 
         if (!wallet) {
+          await trx.rollback();
           return res.status(401).json("Wallet not found");
         }
 
         const isPinValid = await bcrypt.compare(token, wallet.user_key);
         if (!isPinValid) {
+          await trx.rollback();
           return res.status(401).json("Invalid PIN!");
         }
 
         if (Number(wallet.amount) < Number(totalAmount)) {
+          await trx.rollback();
           return res.status(400).json("Insufficient funds");
         }
 
@@ -791,6 +752,7 @@ router.post(
               ? "pending"
               : "failed";
       }
+      // paymentStatus = "failed";
 
       // ---------------- INSERT PAYMENT ----------------
       await trx("payments").insert({
@@ -803,7 +765,6 @@ router.post(
         provider: isWallet ? "wallet" : user?.provider,
         mode: isWallet ? "Wallet" : "Mobile Money",
         status: paymentStatus,
-        // status: "pending",
         externalTransactionId: null,
         partner: JSON.stringify(providerResponse),
       });
@@ -811,7 +772,7 @@ router.post(
       const sVouchers = selectedVouchers.map((v) => v.id);
 
       // ---------------- INSERT SERVICE TRANSACTION ----------------
-      await trx("voucher_transactions").insert({
+      const transaction = await trx("voucher_transactions").insert({
         id: transactionId,
         payment_id: paymentId,
         email: user?.email || "",
@@ -841,28 +802,52 @@ router.post(
           ),
         });
 
-      // await trx("vouchers")
-      //   .whereIn("id", sVouchers)
-      //   .update({
-      //     status: "reserved",
-      //     reserved_at: knex.fn.now(),
-      //     reservation_expires_at: knex.raw(
-      //       "DATE_ADD(NOW(), INTERVAL 10 MINUTE)",
-      //     ),
-      //   });
-
       await trx.commit();
 
       const completedTransaction = {
         paymentId,
-        transactionId,
         transactionId,
         reference,
         status: paymentStatus,
         categoryType: service,
       };
 
-      // if (process.env.NODE_ENV === "development" && !isWallet) {
+      res.status(200).json(completedTransaction);
+
+      if (isWallet && !_.isEmpty(transaction)) {
+        console.log(completedTransaction);
+
+        setImmediate(async () => {
+          if (completedTransaction?.status === "completed") {
+            await emitPaymentSuccess({
+              userId: userId,
+              txRef: user?.phonenumber || reference,
+              amount: totalAmount,
+              transaction: {
+                id: transactionId || paymentId,
+                paymentReference: reference,
+                categoryId: categoryId,
+                categoryType: category,
+                status: paymentStatus,
+                userName: user?.name || "",
+                email: user?.email,
+                phonenumber: user.phonenumber,
+                paymentMode: "Wallet",
+                amount: totalAmount,
+                createdAt: new Date().toISOString(),
+              },
+            });
+          } else {
+            await emitPaymentFailure({
+              userId,
+              txRef: user.phonenumber || reference,
+              reason: "Payment failed",
+            });
+          }
+        });
+      }
+
+      // if (!isWallet) {
       //   const payload = {
       //     ResponseCode: "0000",
       //     Message: "success",
@@ -883,46 +868,181 @@ router.post(
 
       //   await paymentCallback(res, payload, "v");
       // }
-      res.status(200).json(completedTransaction);
+    } catch (error) {
+      await trx.rollback();
+      logger.error(error);
+
+      console.log(error);
+      return res.status(500).json("Transaction failed");
+    }
+  }),
+);
+
+router.post(
+  "/electricity",
+  paymentLimiter,
+  verifyOptionalToken,
+  idempotencyMiddleware,
+  paymentLockMiddleware,
+  validatePayment(prepaidSchema),
+  asyncHandler(async (req, res) => {
+    const { id: userID } = req.user;
+    const { meter, info, charges, topup, amount, isWallet, token } = req.body;
+
+    // logger.info(req.body)
+    const transx = await knex.transaction();
+    let meterId = meter;
+
+    try {
+      // Call the API to create a transaction
+      const paymentId = generateId();
+      const transaction_id = generateId(6);
+      const transaction_reference = randomBytes(24).toString("hex");
+      const orderNo = randomBytes(20).toString("hex");
+
+      // ---------------- CREATE PAYMENT ----------------
+      let paymentStatus = "pending";
+      let partnerResponse = null;
 
       if (isWallet) {
-        // logger.info(completedTransaction);
+        // ---- WALLET VALIDATION ----
+        const wallet = await transx("wallets")
+          .where({ user_id: userID })
+          .first()
+          .forUpdate();
 
+        if (!wallet) {
+          await transx.rollback();
+          return res.status(401).json("Wallet not found");
+        }
+
+        const isPinValid = await bcrypt.compare(token, wallet.user_key);
+        if (!isPinValid) {
+          await transx.rollback();
+          return res.status(401).json("Invalid PIN!");
+        }
+
+        if (Number(wallet.amount) < Number(amount)) {
+          await transx.rollback();
+          return res.status(400).json("Insufficient funds");
+        }
+
+        // ---- DEDUCT WALLET ----
+        await transx("wallets")
+          .where({ user_id: userID })
+          .decrement("amount", amount);
+
+        await transx("wallet_transactions").insert({
+          id: generateId(),
+          user_id: userID,
+          wallet_id: wallet.id,
+          wallet_amount: wallet.amount,
+          issuer: userID,
+          type: "debit",
+          comment: `Prepaid purchase of ${topup} for meter ${meterId}`,
+          amount: amount,
+          status: "completed",
+          reference: transaction_reference,
+        });
+
+        paymentStatus = "completed";
+        partnerResponse = {
+          Data: {
+            code: "WALLET_SUCCESS",
+            phonenumber: info?.phone,
+            email: info?.email,
+          },
+        };
+      } else {
+        const payment = {
+          name: info?.name || "GPC Customer",
+          phonenumber: info?.phonenumber,
+          email: info?.email,
+          amount: Number(info?.amount).toFixed(2),
+          provider: info?.provider,
+          transaction_reference,
+        };
+
+        const partnerResponse = await sendMoney(payment, "p");
+
+        // Save the Transaction to DB and Send Email
+
+        paymentStatus =
+          partnerResponse?.ResponseCode === "0000"
+            ? "completed"
+            : partnerResponse?.ResponseCode === "0001"
+              ? "pending"
+              : "failed";
+      }
+
+      // ---------------- INSERT PAYMENT ----------------
+
+      await transx("payments").insert({
+        id: paymentId,
+        user_id: userID || "",
+        reference: transaction_reference,
+        service: "prepaid",
+        amount: amount,
+        charges,
+        provider: isWallet ? "wallet" : info?.provider,
+        mode: isWallet ? "Wallet" : "Mobile Money",
+        year: moment().year(),
+        status: paymentStatus,
+        externalTransactionId: null,
+        partner: JSON.stringify(partnerResponse),
+      });
+
+      const transaction = await transx("electricity_transactions").insert({
+        id: transaction_id,
+        payment_id: paymentId,
+        meter_id: meterId,
+        info: JSON.stringify({
+          ...info,
+          domain: "Prepaid",
+          orderNo,
+        }),
+        charges,
+        topup,
+        email: info?.email,
+        phonenumber: info?.phonenumber,
+      });
+
+      await transx.commit();
+
+      res.status(201).json({ id: transaction_id });
+
+      if (isWallet && !_.isEmpty(transaction)) {
         setImmediate(async () => {
           await emitPaymentSuccess({
-            userId: userId,
-            txRef: reference,
-            amount: totalAmount,
+            userId: userID,
+            txRef: transaction_reference || info?.phonenumber,
+            amount: amount,
             transaction: {
-              id: transactionId || paymentId,
-              paymentReference: reference,
-              categoryId: categoryId,
-              categoryType: category,
+              id: transaction_id || paymentId,
+              paymentReference: transaction_reference,
               status: paymentStatus,
-              userName: user?.name || "",
-              email: user?.email,
-              phonenumber: user.phonenumber,
+              userName: info?.name || "Customer",
+              email: info?.email,
+              phonenumber: info?.phonenumber,
               paymentMode: "Wallet",
-              amount: totalAmount,
+              amount: amount,
               createdAt: new Date().toISOString(),
             },
           });
         });
       }
     } catch (error) {
-      await trx.rollback();
       logger.error(error);
-      return res.status(500).json("Transaction failed");
+      await transx.rollback();
+      return res.status(500).json("Transaction Failed!");
     }
   }),
 );
 
-//Top up wallet
-
 router.post(
   "/wallet-topup",
-  verifyToken,
   paymentLimiter,
+  verifyToken,
   idempotencyMiddleware,
   paymentLockMiddleware,
   validatePayment(walletTopUpSchema),
@@ -1023,11 +1143,466 @@ router.post(
   }),
 );
 
+// Make Airtime Payment @route   POST payment/airtime
+router.post(
+  "/airtime",
+  paymentLimiter,
+  verifyToken,
+  idempotencyMiddleware,
+  paymentLockMiddleware,
+  validatePayment(airtimeSchema),
+  asyncHandler(async (req, res) => {
+    const { id: userId, name } = req.user;
+
+    if (_.isEmpty(req.body)) {
+      return res.status(401).json("Error Processing your request!");
+    }
+
+    const {
+      type,
+      service,
+      amount,
+      recipient,
+      phonenumber,
+      provider,
+      pricing,
+      email,
+      isWallet,
+      token,
+    } = req.body;
+
+    const trx = await knex.transaction();
+    try {
+      const response = await accountBalance();
+      const balance = Number(response?.balance);
+
+      if (Number(response?.balance) < Number(amount)) {
+        if (balance < 1000) {
+          await notifyLowBalance(balance);
+        }
+        return res.status(401).json("Service Not Available.Try again later");
+      }
+
+      if (!type || !["Airtime", "Bulk"].includes(type)) {
+        return res.status(401).json("Invalid Request");
+      }
+
+      // ---------------- GENERATE IDS ----------------
+      const paymentId = generateId();
+      const transactionId = generateId();
+      const reference = randomBytes(24).toString("hex");
+      const orderNo = randomBytes(20).toString("hex");
+
+      // ---------------- CREATE PAYMENT ----------------
+      let paymentStatus = "pending";
+      let partnerResponse = null;
+
+      if (isWallet) {
+        // ---- WALLET VALIDATION ----
+        const wallet = await trx("wallets").where({ user_id: userId }).first();
+        // .forUpdate();
+
+        if (!wallet) {
+          await trx.rollback(); // Releases the lock on failure
+          return res.status(401).json("Wallet not found");
+        }
+
+        const isPinValid = await bcrypt.compare(token, wallet.user_key);
+        if (!isPinValid) {
+          await trx.rollback(); // Releases the lock on failure
+          return res.status(401).json("Invalid PIN!");
+        }
+
+        if (Number(wallet.amount) < Number(amount)) {
+          await trx.rollback(); // Releases the lock on failure
+          return res.status(400).json("Insufficient funds");
+        }
+
+        // ---- DEDUCT WALLET ----
+        await trx("wallets")
+          .where({ user_id: userId })
+          .decrement("amount", amount);
+
+        await trx("wallet_transactions").insert({
+          id: generateId(),
+          user_id: userId,
+          wallet_id: wallet.id,
+          wallet_amount: wallet.amount,
+          issuer: userId || "GPC Customer",
+          type: "debit",
+          comment: "Airtime purchase ",
+          attachment: null,
+          amount: amount,
+          status: "completed",
+          reference,
+        });
+        paymentStatus = "completed";
+        partnerResponse = {
+          Data: { code: "WALLET_SUCCESS", phonenumber, email },
+        };
+      } else {
+        const payment = {
+          name: name || "GPC Customer",
+          email: email,
+          phonenumber,
+          amount: Number(amount).toFixed(2),
+          provider,
+          transaction_reference: reference,
+        };
+
+        partnerResponse = await sendMoney(payment, "a");
+
+        // Save the Transaction to DB and Send Email
+
+        paymentStatus =
+          partnerResponse?.ResponseCode === "0000"
+            ? "completed"
+            : partnerResponse?.ResponseCode === "0001"
+              ? "pending"
+              : "failed";
+      }
+
+      // ---------------- INSERT PAYMENT ----------------
+      await trx("payments").insert({
+        id: paymentId,
+        user_id: userId,
+        reference: reference,
+        service,
+        amount: amount,
+        provider: provider,
+        mode: isWallet ? "Wallet" : "Mobile Money",
+        year: moment().year(),
+        status: paymentStatus,
+        externalTransactionId: null,
+        partner: JSON.stringify(partnerResponse.Data),
+      });
+
+      const transaction = await trx("airtime_transactions").insert({
+        id: transactionId,
+        payment_id: paymentId,
+        order_id: orderNo,
+        airtime_type: type === "Airtime" ? "single" : "bulk",
+        recipient: recipient || JSON.stringify(pricing),
+        domain: service,
+        info: JSON.stringify({
+          phonenumber,
+          amount,
+          pricing: pricing ?? [],
+          domain: service,
+        }),
+
+        email: email,
+        phonenumber: phonenumber,
+        partner: JSON.stringify(partnerResponse.Data),
+      });
+
+      console.log({
+        id: transactionId,
+        payment_id: paymentId,
+        order_id: orderNo,
+        airtime_type: type === "Airtime" ? "single" : "bulk",
+        recipient: recipient || JSON.stringify(pricing),
+        domain: service,
+        info: JSON.stringify({
+          phonenumber,
+          amount,
+          pricing: pricing ?? [],
+          domain: service,
+        }),
+
+        email: email,
+        phonenumber: phonenumber,
+        partner: JSON.stringify(partnerResponse.Data),
+      });
+
+      // //if creating new transaction fails
+      if (_.isEmpty(transaction)) {
+        await trx.rollback();
+        return res.status(404).json("Error Processing your request!");
+      }
+
+      await trx.commit();
+      const completedTransaction = {
+        id: transactionId || paymentId,
+        paymentReference: reference,
+        status: paymentStatus,
+        email,
+        phonenumber,
+        paymentMode: "Wallet",
+        amount: amount,
+        createdAt: new Date().toISOString(),
+      };
+
+      res.status(201).json({ id: transactionId, reference });
+
+      if (isWallet && !_.isEmpty(transaction)) {
+        setImmediate(async () => {
+          await emitPaymentSuccess({
+            userId: userId,
+            txRef: phonenumber || reference,
+            amount: amount,
+            transaction: completedTransaction,
+          });
+        });
+      }
+    } catch (error) {
+      await trx.rollback();
+      logger.error(error);
+      return res.status(500).json("Transaction Failed!");
+    }
+  }),
+);
+
+// Make Bundle Payment @route   POST payment/bundle
+router.post(
+  "/bundle",
+  paymentLimiter,
+  verifyToken,
+  idempotencyMiddleware,
+  paymentLockMiddleware,
+  validatePayment(bundleSchema),
+  asyncHandler(async (req, res) => {
+    const { id: userId, name } = req.user;
+
+    if (_.isEmpty(req.body)) {
+      return res.status(401).json("Error Processing your request!");
+    }
+
+    const {
+      type,
+      service,
+      amount,
+      recipient,
+      phonenumber,
+      email,
+      provider,
+      plan,
+      isWallet,
+      token,
+    } = req.body;
+
+    const trx = await knex.transaction();
+
+    try {
+      const response = await accountBalance();
+      const balance = Number(response?.balance);
+
+      if (Number(response?.balance) < Number(amount)) {
+        if (balance < 1000) {
+          await notifyLowBalance(balance);
+        }
+        return res.status(401).json("Service Not Available.Try again later");
+      }
+
+      if (!type || type !== "Bundle") {
+        return res.status(401).json("Invalid Request");
+      }
+
+      // ---------------- GENERATE IDS ----------------
+      const paymentId = generateId();
+      const transactionId = generateId();
+      const reference = randomBytes(24).toString("hex");
+
+      if (isWallet) {
+        // ---- WALLET VALIDATION ----
+        const wallet = await trx("wallets")
+          .where({ user_id: userId })
+          .first()
+          .forUpdate();
+
+        if (!wallet) {
+          await trx.rollback();
+          return res.status(401).json("Wallet not found");
+        }
+
+        const isPinValid = await bcrypt.compare(token, wallet.user_key);
+        if (!isPinValid) {
+          await trx.rollback();
+          return res.status(401).json("Invalid PIN!");
+        }
+
+        if (Number(wallet.amount) < Number(amount)) {
+          await trx.rollback();
+          return res.status(400).json("Insufficient funds");
+        }
+
+        // ---- DEDUCT WALLET ----
+        await trx("wallets")
+          .where({ user_id: userId })
+          .decrement("amount", amount);
+
+        await trx("wallet_transactions").insert({
+          id: generateId(),
+          user_id: userId,
+          wallet_id: wallet.id,
+          wallet_amount: wallet.amount,
+          issuer: userId || "GPC Customer",
+          type: "debit",
+          comment: "Data Bundle purchase",
+          attachment: null,
+          amount: amount,
+          status: "completed",
+          reference,
+        });
+
+        paymentStatus = "completed";
+        partnerResponse = {
+          Data: { code: "WALLET_SUCCESS", phonenumber, email },
+        };
+      } else {
+        const payment = {
+          name: name || "GPC Customer",
+          email: email,
+          phonenumber,
+          amount: Number(amount).toFixed(2),
+          provider,
+          transaction_reference: reference,
+        };
+
+        partnerResponse = await sendMoney(payment, "b");
+
+        // Save the Transaction to DB and Send Email
+
+        paymentStatus =
+          partnerResponse?.ResponseCode === "0000"
+            ? "completed"
+            : partnerResponse?.ResponseCode === "0001"
+              ? "pending"
+              : "failed";
+      }
+
+      // ---------------- INSERT PAYMENT ----------------
+      await trx("payments").insert({
+        id: paymentId,
+        user_id: userId,
+        reference: reference,
+        service,
+        amount: amount,
+        provider: provider,
+        mode: isWallet ? "Wallet" : "Mobile Money",
+        year: moment().year(),
+        status: paymentStatus,
+        externalTransactionId: null,
+        partner: JSON.stringify(partnerResponse.Data),
+      });
+
+      const transaction = await trx("bundle_transactions").insert({
+        id: transactionId,
+        payment_id: paymentId,
+        recipient: recipient,
+        email: email,
+        phonenumber: phonenumber,
+        domain: service,
+        bundle_id: plan?.id,
+        bundle_name: plan?.name,
+        bundle_volume: plan?.volume,
+        info: JSON.stringify({
+          phonenumber,
+          amount,
+          plan,
+        }),
+      });
+
+      // //if creating new transaction fails
+      if (_.isEmpty(transaction)) {
+        await trx.rollback();
+        return res.status(404).json("Error Processing your request!");
+      }
+
+      await trx.commit();
+
+      const completedTransaction = {
+        id: transactionId || paymentId,
+        paymentReference: reference,
+        status: paymentStatus,
+        email,
+        phonenumber,
+        paymentMode: "Wallet",
+        amount: amount,
+        createdAt: new Date().toISOString(),
+      };
+
+      res.status(201).json({ id: transactionId, reference });
+
+      if (isWallet && !_.isEmpty(transaction)) {
+        setImmediate(async () => {
+          await emitPaymentSuccess({
+            userId: userId,
+            txRef: phonenumber || reference,
+            amount: amount,
+            transaction: completedTransaction,
+          });
+        });
+      }
+    } catch (error) {
+      await trx.rollback();
+      logger.error(error);
+      return res.status(500).json("Transaction Failed!");
+    }
+  }),
+);
+
+//Check Transaction Status
+router.post(
+  "/top-up/status",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const reference_id = req.body?.id;
+
+    try {
+      const response = await topUpStatus(reference_id);
+
+      res.status(200).json(response);
+    } catch (error) {
+      res.status(401).json(error?.response?.data);
+    }
+  }),
+);
+
+//Send bundle to recipient
+router.post(
+  "/top-up/bundle",
+  verifyToken,
+  verifyAdmin,
+  validate(bundleTopUpSchema),
+  asyncHandler(async (req, res) => {
+    const info = req.body;
+
+    try {
+      const response = await sendBundle(info);
+
+      res.status(200).json(response);
+    } catch (error) {
+      res.status(401).json("An unknown error has occurred");
+    }
+  }),
+);
+
+//Send airtime to recipient
+router.post(
+  "/top-up/airtime",
+  verifyToken,
+  verifyAdmin,
+  validate(airtimeTopUpSchema),
+  asyncHandler(async (req, res) => {
+    const info = req.body;
+
+    try {
+      const response = await sendAirtime(info);
+
+      res.status(200).json(response);
+    } catch (error) {
+      res.status(401).json("An unknown error has occurred");
+    }
+  }),
+);
+
 router.post(
   "/resend",
   verifyToken,
   asyncHandler(async (req, res) => {
-    const { id: transactionId, downloadLink } = req.body;
+    const { id: transactionId } = req.body;
 
     const transaction = await knex("vw_payments_voucher_transactions")
       .select("*")
@@ -1173,236 +1748,283 @@ ${transaction?.email || ""},${
   }),
 );
 
-/**.................Airtime....................... */
-
-router.get(
-  "/airtime",
-  verifyToken,
-  verifyAdmin,
-  asyncHandler(async (req, res) => {
-    const { startDate, endDate } = req.query;
-
-    const transactions = await knex("vw_payments_airtime_transactions")
-      .select(
-        "id",
-        "orderId",
-        "recipient",
-        " email",
-        " phonenumber",
-        " info",
-        " year",
-        " amount",
-        " isProcessed",
-        " active",
-        " createdAt",
-        " updatedAt",
-        " status",
-        " issuerId",
-      )
-      .where({ status: "completed", kind: "bulk" });
-
-    const modifiedTransactions = transactions.map(
-      async ({ recipient, issuerId, info, isProcessed, ...rest }) => {
-        const employee = await knex("vw_users_with_roles")
-          .where("id", issuerId)
-          .select("id", "name")
-          .first();
-
-        return {
-          ...rest,
-          isProcessed: Boolean(isProcessed),
-          recipient: safeJSON(recipient),
-          info: safeJSON(info),
-          issuer: employee?.name,
-        };
-      },
-    );
-
-    const sDate = moment(startDate);
-    const eDate = moment(endDate);
-
-    const availableTransactions = await Promise.all(modifiedTransactions);
-
-    const modifiedPayments = availableTransactions?.filter(({ updatedAt }) => {
-      return moment(updatedAt).isBetween(sDate, eDate, "days", "[]");
-    });
-
-    const sortedPayments = _.orderBy(modifiedPayments, ["updatedAt"], ["desc"]);
-
-    res.status(200).json(sortedPayments);
-  }),
-);
-
-// Make Airtime Payment @route   POST payment/airtime
+//@ Payment callback
 router.post(
-  "/airtime",
-  verifyToken,
-  // verifyOptionalToken,
-  paymentLimiter,
-  idempotencyMiddleware,
-  paymentLockMiddleware,
-  validatePayment(airtimeSchema),
+  "/re-confirm",
+  rlimit,
   asyncHandler(async (req, res) => {
-    const { id: userId, name } = req.user;
+    const { type, paymentReference } = req.body;
 
-    if (_.isEmpty(req.body)) {
-      return res.status(401).json("Error Processing your request!");
+    const payload = await moneyStatus(paymentReference);
+
+    const reference = payload?.data?.clientReference;
+    if (!reference || paymentReference !== reference)
+      return res.sendStatus(204);
+
+    const doneKey = `payment:processed:${reference}`;
+    const lockKey = `payment:lock:${reference}`;
+
+    // 1. Already processed?
+    if (await redisClient.get(doneKey)) {
+      return res.sendStatus(200);
     }
 
-    const {
-      type,
-      service,
-      amount,
-      recipient,
-      phonenumber,
-      provider,
-      pricing,
-      email,
-      isWallet,
-      token,
-    } = req.body;
+    // 2. Acquire lock
+    const lock = await redisClient.set(lockKey, "1", "NX", "EX", 60);
+    if (!lock) return res.sendStatus(200);
 
-    const trx = await knex.transaction();
+    let trx;
+
     try {
-      const response = await accountBalance();
-      const balance = Number(response?.balance);
+      const statusMap = {
+        "0000": "completed",
+        "0001": "pending",
+      };
 
-      if (Number(response?.balance) < Number(amount)) {
-        if (balance < 1000) {
-          await notifyLowBalance(balance);
-        }
-        return res.status(401).json("Service Not Available.Try again later");
+      if (newStatus === "pending") {
+        return res.sendStatus(204);
       }
 
-      if (!type || !["Airtime", "Bulk"].includes(type)) {
-        return res.status(401).json("Invalid Request");
-      }
+      const newStatus = statusMap[payload.responseCode] || "failed";
 
-      // ---------------- GENERATE IDS ----------------
-      const paymentId = generateId();
-      const transactionId = generateId();
-      const reference = randomBytes(24).toString("hex");
-      const orderNo = randomBytes(20).toString("hex");
+      const table = PAYMENT_TABLE_MAP[type];
+      if (!table) return res.sendStatus(204);
 
-      // ---------------- CREATE PAYMENT ----------------
-      let paymentStatus = "pending";
-      let partnerResponse = null;
+      trx = await knex.transaction();
 
-      if (isWallet) {
-        // ---- WALLET VALIDATION ----
-        const wallet = await trx("wallets")
-          .where({ user_id: userId })
-          .first()
-          .forUpdate();
+      const payment = await trx(table)
+        .where({ paymentReference: reference })
+        .first();
 
-        if (!wallet) {
-          return res.status(401).json("Wallet not found");
-        }
-
-        const isPinValid = await bcrypt.compare(token, wallet.user_key);
-        if (!isPinValid) {
-          return res.status(401).json("Invalid PIN!");
-        }
-
-        if (Number(wallet.amount) < Number(amount)) {
-          return res.status(400).json("Insufficient funds");
-        }
-
-        // ---- DEDUCT WALLET ----
-        await trx("wallets")
-          .where({ user_id: userId })
-          .decrement("amount", amount);
-
-        await trx("wallet_transactions").insert({
-          id: generateId(),
-          user_id: userId,
-          wallet_id: wallet.id,
-          wallet_amount: wallet.amount,
-          issuer: userId || "GPC Customer",
-          type: "debit",
-          comment: "Airtime purchase ",
-          attachment: null,
-          amount: amount,
-          status: "completed",
-          reference,
-        });
-
-        paymentStatus = "completed";
-        partnerResponse = {
-          Data: { code: "WALLET_SUCCESS", phonenumber, email },
-        };
-      } else {
-        const payment = {
-          name: name || "GPC Customer",
-          email: email,
-          phonenumber,
-          amount: Number(amount).toFixed(2),
-          provider,
-          transaction_reference: reference,
-        };
-
-        partnerResponse = await sendMoney(payment, "a");
-
-        // Save the Transaction to DB and Send Email
-
-        paymentStatus =
-          partnerResponse?.ResponseCode === "0000"
-            ? "completed"
-            : partnerResponse?.ResponseCode === "0001"
-              ? "pending"
-              : "failed";
-      }
-
-      // ---------------- INSERT PAYMENT ----------------
-      await trx("payments").insert({
-        id: paymentId,
-        user_id: userId,
-        reference: reference,
-        service,
-        amount: amount,
-        provider: provider,
-        mode: isWallet ? "Wallet" : "Mobile Money",
-        year: moment().year(),
-        status: paymentStatus,
-        externalTransactionId: null,
-        partner: JSON.stringify(partnerResponse.Data),
-      });
-
-      const transaction = await trx("airtime_transactions").insert({
-        id: transactionId,
-        payment_id: paymentId,
-        order_id: orderNo,
-        airtime_type: type === "Airtime" ? "single" : "bulk",
-        recipient: recipient || JSON.stringify(pricing),
-        domain: service,
-        info: JSON.stringify({
-          phonenumber,
-          amount,
-          pricing: pricing ?? [],
-          domain: service,
-        }),
-
-        email: email,
-        phonenumber: phonenumber,
-        partner: JSON.stringify(partnerResponse.Data),
-      });
-
-      // //if creating new transaction fails
-      if (_.isEmpty(transaction)) {
+      if (!payment) {
         await trx.rollback();
-        return res.status(404).json("Error Processing your request!");
+        return res.sendStatus(204);
       }
+
+      // idempotency DB guard
+      if (payment.status === "completed") {
+        await trx.commit();
+        return res.sendStatus(200);
+      }
+
+      await trx("payments")
+        .where({ id: payment.paymentId })
+        .andWhereNot({ status: "completed" })
+        .update({
+          status: newStatus,
+          externalTransactionId: payload?.data?.externalTransactionId,
+          updated_at: knex.fn.now(),
+        });
 
       await trx.commit();
 
-      res.status(201).json({ id: transactionId });
-    } catch (error) {
-      await trx.rollback();
-      logger.error(error);
-      return res.status(500).json("Transaction Failed!");
+      // mark processed
+      await redisClient.set(doneKey, "1", "EX", 86400);
+      await redisClient.del(lockKey);
+
+      res.sendStatus(200);
+
+      // async events
+      queueMicrotask(() =>
+        handlePostPaymentEvents(payment, newStatus, payload),
+      );
+    } catch (err) {
+      if (trx) await trx.rollback();
+      await redisClient.del(lockKey);
+      logger.error(err);
+      console.error(err);
+      res.sendStatus(500);
     }
   }),
 );
+
+//@ Payment callback brassica
+router.post(
+  "/callback",
+  cors(corsOptions),
+  rlimit,
+  asyncHandler(async (req, res) => {
+    const payload = req.body;
+
+    const reference = payload?.transactionId;
+
+    if (!reference) return res.sendStatus(400);
+    logger.info(reference);
+
+    res.sendStatus(200);
+  }),
+);
+
+// //@ Payment callback
+// router.post(
+//   "/callback/e",
+//   cors(corsOptions),
+//   rlimit,
+//   asyncHandler(async (req, res) => {
+//     const { type } = req.params;
+//     const payload = req.body;
+
+//     const reference = payload?.transactionId;
+//     if (!reference) return res.sendStatus(400);
+
+//     const doneKey = `payment:processed:${reference}`;
+//     const lockKey = `payment:lock:${reference}`;
+
+//     // 1. Already processed?
+//     if (await redisClient.get(doneKey)) {
+//       return res.sendStatus(200);
+//     }
+
+//     // 2. Acquire lock
+//     const lock = await redisClient.set(lockKey, "1", "NX", "EX", 60);
+//     if (!lock) return res.sendStatus(200);
+
+//     let trx;
+
+//     try {
+//       const statusMap = {
+//         200: "completed",
+//         202: "pending",
+//       };
+
+//       const newStatus = statusMap[payload.status] || "failed";
+
+//       const table = PAYMENT_TABLE_MAP["w"];
+//       if (!table) return res.sendStatus(204);
+
+//       trx = await knex.transaction();
+
+//       const payment = await trx(table)
+//         .where({ paymentReference: reference })
+//         .first();
+
+//       if (!payment) {
+//         await trx.rollback();
+//         return res.sendStatus(204);
+//       }
+
+//       // idempotency DB guard
+//       if (payment.status === "completed") {
+//         await trx.commit();
+//         return res.sendStatus(200);
+//       }
+
+//       await trx("payments")
+//         .where({ id: payment.paymentId })
+//         .andWhereNot({ status: "completed" })
+//         .update({
+//           status: newStatus,
+//           externalTransactionId: payload?.Data?.ExternalTransactionId,
+//           updated_at: knex.fn.now(),
+//         });
+
+//       await trx.commit();
+
+//       // mark processed
+//       await redisClient.set(doneKey, "1", "EX", 86400);
+//       await redisClient.del(lockKey);
+
+//       res.sendStatus(200);
+
+//       // async events
+//       queueMicrotask(() =>
+//         handlePostPaymentEvents(payment, newStatus, payload),
+//       );
+//     } catch (err) {
+//       if (trx) await trx.rollback();
+//       await redisClient.del(lockKey);
+//       logger.error(err);
+//       res.sendStatus(500);
+//     }
+//   }),
+// );
+
+//@ Payment callback
+router.post(
+  "/feedback/callback/:type/:id",
+  cors(corsOptions),
+  rlimit,
+  asyncHandler(async (req, res) => {
+    const { type } = req.params;
+    const payload = req.body;
+
+    const reference = payload?.Data?.ClientReference;
+    if (!reference || !type) return res.sendStatus(204);
+
+    const doneKey = `payment:processed:${reference}`;
+    const lockKey = `payment:lock:${reference}`;
+
+    // 1. Already processed?
+    if (await redisClient.get(doneKey)) {
+      return res.sendStatus(200);
+    }
+
+    // 2. Acquire lock
+    const lock = await redisClient.set(lockKey, "1", "NX", "EX", 60);
+    if (!lock) return res.sendStatus(200);
+
+    let trx;
+
+    try {
+      const statusMap = {
+        "0000": "completed",
+        "0001": "pending",
+      };
+
+      const newStatus = statusMap[payload.ResponseCode] || "failed";
+
+      const table = PAYMENT_TABLE_MAP[type];
+      if (!table) return res.sendStatus(204);
+
+      trx = await knex.transaction();
+
+      const payment = await trx(table)
+        .where({ paymentReference: reference })
+        .first();
+
+      if (!payment) {
+        await trx.rollback();
+        return res.sendStatus(204);
+      }
+
+      // idempotency DB guard
+      if (payment.status === "completed") {
+        await trx.commit();
+        return res.sendStatus(200);
+      }
+
+      await trx("payments")
+        .where({ id: payment.paymentId })
+        .andWhereNot({ status: "completed" })
+        .update({
+          status: newStatus,
+          externalTransactionId: payload?.Data?.ExternalTransactionId,
+          updated_at: knex.fn.now(),
+        });
+
+      await trx.commit();
+
+      // mark processed
+      await redisClient.set(doneKey, "1", "EX", 86400);
+      await redisClient.del(lockKey);
+
+      res.sendStatus(200);
+
+      // async events
+      queueMicrotask(() =>
+        handlePostPaymentEvents(payment, newStatus, payload),
+      );
+    } catch (err) {
+      if (trx) await trx.rollback();
+      await redisClient.del(lockKey);
+      logger.error(err);
+      console.error(err);
+      res.sendStatus(500);
+    }
+  }),
+);
+
+/**.................Airtime....................... */
 
 //Proccess bulk airtime
 router.put(
@@ -1507,1052 +2129,6 @@ router.put(
   }),
 );
 
-// Make Bundle Payment @route   POST payment/bundle
-router.post(
-  "/bundle",
-  verifyToken,
-  // verifyOptionalToken,
-  paymentLimiter,
-  idempotencyMiddleware,
-  paymentLockMiddleware,
-  validatePayment(bundleSchema),
-  asyncHandler(async (req, res) => {
-    const { id: userId, name } = req.user;
-
-    if (_.isEmpty(req.body)) {
-      return res.status(401).json("Error Processing your request!");
-    }
-
-    const {
-      type,
-      service,
-      amount,
-      recipient,
-      phonenumber,
-      email,
-      provider,
-      plan,
-      isWallet,
-      token,
-    } = req.body;
-
-    const trx = await knex.transaction();
-
-    try {
-      const response = await accountBalance();
-      const balance = Number(response?.balance);
-
-      if (Number(response?.balance) < Number(amount)) {
-        if (balance < 1000) {
-          await notifyLowBalance(balance);
-        }
-        return res.status(401).json("Service Not Available.Try again later");
-      }
-
-      if (!type || type !== "Bundle") {
-        return res.status(401).json("Invalid Request");
-      }
-
-      // ---------------- GENERATE IDS ----------------
-      const paymentId = generateId();
-      const transactionId = generateId();
-      const reference = randomBytes(24).toString("hex");
-
-      if (isWallet) {
-        // ---- WALLET VALIDATION ----
-        const wallet = await trx("wallets").where({ user_id: userId }).first();
-
-        if (!wallet) {
-          return res.status(401).json("Wallet not found");
-        }
-
-        const isPinValid = await bcrypt.compare(token, wallet.user_key);
-        if (!isPinValid) {
-          return res.status(401).json("Invalid PIN!");
-        }
-
-        if (Number(wallet.amount) < Number(amount)) {
-          return res.status(400).json("Insufficient funds");
-        }
-
-        // ---- DEDUCT WALLET ----
-        await trx("wallets")
-          .where({ user_id: userId })
-          .decrement("amount", amount);
-
-        await trx("wallet_transactions").insert({
-          id: generateId(),
-          user_id: userId,
-          wallet_id: wallet.id,
-          wallet_amount: wallet.amount,
-          issuer: userId || "GPC Customer",
-          type: "debit",
-          comment: "Data Bundle purchase ",
-          attachment: null,
-          amount: amount,
-          status: "completed",
-          reference,
-        });
-
-        paymentStatus = "completed";
-        partnerResponse = {
-          Data: { code: "WALLET_SUCCESS", phonenumber, email },
-        };
-      } else {
-        const payment = {
-          name: name || "GPC Customer",
-          email: email,
-          phonenumber,
-          amount: Number(amount).toFixed(2),
-          provider,
-          transaction_reference: reference,
-        };
-
-        partnerResponse = await sendMoney(payment, "b");
-
-        // Save the Transaction to DB and Send Email
-
-        paymentStatus =
-          partnerResponse?.ResponseCode === "0000"
-            ? "completed"
-            : partnerResponse?.ResponseCode === "0001"
-              ? "pending"
-              : "failed";
-      }
-
-      // ---------------- INSERT PAYMENT ----------------
-      await trx("payments").insert({
-        id: paymentId,
-        user_id: userId,
-        reference: reference,
-        service,
-        amount: amount,
-        provider: provider,
-        mode: isWallet ? "Wallet" : "Mobile Money",
-        year: moment().year(),
-        status: paymentStatus,
-        externalTransactionId: null,
-        partner: JSON.stringify(partnerResponse.Data),
-      });
-
-      const transaction = await trx("bundle_transactions").insert({
-        id: transactionId,
-        payment_id: paymentId,
-        recipient: recipient,
-        email: email,
-        phonenumber: phonenumber,
-        domain: service,
-        bundle_id: plan?.id,
-        bundle_name: plan?.name,
-        bundle_volume: plan?.volume,
-        info: JSON.stringify({
-          phonenumber,
-          amount,
-          plan,
-        }),
-      });
-
-      // //if creating new transaction fails
-      if (_.isEmpty(transaction)) {
-        await trx.rollback();
-        return res.status(404).json("Error Processing your request!");
-      }
-
-      await trx.commit();
-
-      res.status(201).json({ id: transactionId });
-    } catch (error) {
-      await trx.rollback();
-      logger.error(error);
-      return res.status(500).json("Transaction Failed!");
-    }
-  }),
-);
-
-//Check Balance Status
-router.get(
-  "/balances",
-  // verifyToken,
-  // verifyAdmin,
-  asyncHandler(async (req, res) => {
-    try {
-      const [posResponse, preResponse, accResponse] = await Promise.all([
-        POS_Balance(),
-        PREPAID_Balance(),
-        accountBalance(),
-      ]);
-
-      res.status(200).json({
-        pos: posResponse?.amount || 0,
-        pre: preResponse?.amount || 0,
-        balance: accResponse?.balance || 0,
-      });
-    } catch (error) {
-      logger.error(error);
-      res.status(401).json("Am unknown error has occurred!");
-    }
-  }),
-);
-//Check Balance Status
-router.get(
-  "/hb/pos",
-  // verifyToken,
-  // verifyAdmin,
-  asyncHandler(async (req, res) => {
-    try {
-      const response = await POS_Balance();
-
-      res.status(200).json(response?.amount);
-    } catch (error) {
-      logger.error(error);
-      res.status(401).json("Am unknown error has occurred!");
-    }
-  }),
-);
-
-//Check Balance Status
-router.get(
-  "/hb/prepaid",
-  // verifyToken,
-  // verifyAdmin,
-  asyncHandler(async (req, res) => {
-    try {
-      const response = await PREPAID_Balance();
-
-      res.status(200).json(response?.amount);
-    } catch (error) {
-      logger.error(error);
-      res.status(401).json("Am unknown error has occurred!");
-    }
-  }),
-);
-
-//Check Balance Status
-router.get(
-  "/top-up/balance",
-  verifyToken,
-  verifyAdmin,
-  asyncHandler(async (req, res) => {
-    try {
-      const response = await accountBalance();
-
-      res.status(200).json(response?.balance);
-    } catch (error) {
-      res.status(401).json("Am unknown error has occurred!");
-    }
-  }),
-);
-
-//Check Transaction Status
-router.post(
-  "/top-up/status",
-  verifyToken,
-  verifyAdmin,
-  asyncHandler(async (req, res) => {
-    const reference_id = req.body?.id;
-
-    try {
-      const response = await topUpStatus(reference_id);
-
-      res.status(200).json(response);
-    } catch (error) {
-      res.status(401).json(error?.response?.data);
-    }
-  }),
-);
-
-//Get List of all bundles
-router.get(
-  "/top-up/bundlelist",
-  // verifyToken,
-  asyncHandler(async (req, res) => {
-    const network = req.query?.network;
-    let response = [];
-    try {
-      if (process.env.NODE_ENV === "production") {
-        response = await getBundleList(network);
-      } else {
-        if (network === "4") {
-          response = MTN;
-        }
-        if (network === "6") {
-          response = VODAFONE;
-        }
-        if (network === "1") {
-          response = AIRTELTIGO;
-        }
-      }
-
-      const bundles = response?.bundles?.map((bundle) => {
-        const { meta, network, ...rest } = bundle;
-        if (Number(rest.price) === 0) return;
-        return rest;
-      });
-
-      // logger.info(_.groupBy(bundles, 'category'))
-
-      res.status(200).json(_.compact(bundles));
-    } catch (error) {
-      logger.error(error);
-      res.status(401).json("An unknown error has occurred");
-    }
-  }),
-);
-
-//Send bundle to recipient
-router.post(
-  "/top-up/bundle",
-  verifyToken,
-  verifyAdmin,
-  asyncHandler(async (req, res) => {
-    const info = req.body;
-
-    try {
-      const response = await sendBundle(info);
-
-      res.status(200).json(response);
-    } catch (error) {
-      res.status(401).json("An unknown error has occurred");
-    }
-  }),
-);
-
-//Send airtime to recipient
-router.post(
-  "/top-up/airtime",
-  verifyToken,
-  verifyAdmin,
-  asyncHandler(async (req, res) => {
-    const info = req.body;
-
-    try {
-      const response = await sendAirtime(info);
-
-      res.status(200).json(response);
-    } catch (error) {
-      res.status(401).json("An unknown error has occurred");
-    }
-  }),
-);
-
-/**.................Electricity....................... */
-
-router.get(
-  "/electricity",
-  verifyToken,
-  verifyAdmin,
-  asyncHandler(async (req, res) => {
-    const { startDate, endDate } = req.query;
-
-    const transactions = await knex(
-      "vw_meter_payment_prepaid_transaction_view",
-    ).where("status", "completed");
-
-    const modifiedTransactions = transactions.map((transaction) => {
-      return {
-        id: transaction?.id,
-        paymentId: transaction?.paymentId,
-        active: transaction?.active,
-        spn: transaction?.spn,
-        email: transaction?.email,
-        phonenumber: transaction?.phonenumber,
-        year: transaction?.year,
-        amount: transaction?.amount,
-        status: transaction?.status,
-        topup: transaction?.topup,
-        charges: transaction?.charges,
-        isProcessed: Boolean(transaction?.isProcessed),
-        createdAt: transaction?.createdAt,
-        updatedAt: transaction?.updatedAt,
-        info: JSON.parse(transaction?.info),
-        meterId: transaction?.meterId,
-        meter: {
-          id: transaction?.meterId,
-          number: transaction?.number,
-          name: transaction?.name,
-          type: transaction?.type,
-          district: transaction?.district,
-          address: transaction?.address,
-          geoCode: transaction?.geoCode,
-          accountNumber: transaction?.accountNumber,
-        },
-      };
-    });
-
-    const sDate = moment(startDate);
-    const eDate = moment(endDate);
-
-    const modifiedPayments = modifiedTransactions.filter(({ createdAt }) => {
-      return moment(createdAt).isBetween(sDate, eDate, "days", "[]");
-    });
-
-    const sortedPayments = _.orderBy(modifiedPayments, ["createdAt"], ["desc"]);
-
-    res.status(200).json(sortedPayments);
-  }),
-);
-
-router.get(
-  "/electricity/:id",
-  verifyToken,
-  asyncHandler(async (req, res) => {
-    const { id } = req.params;
-
-    if (!id || !isValidUUID2(id)) {
-      return res.status(400).json("Invalid Request!");
-    }
-
-    const transaction = await knex("vw_meter_payment_prepaid_transaction_view")
-      .select("*")
-      .where("id", id)
-      .first();
-
-    if (_.isEmpty(transaction)) {
-      return res.status(404).json({});
-    }
-
-    res.status(200).json({
-      ...transaction,
-      info: safeJSON(transaction?.info),
-    });
-  }),
-);
-router.get(
-  "/electricity/meter/:id",
-  verifyToken,
-  asyncHandler(async (req, res) => {
-    const { id } = req.params;
-
-    const transactions = await knex("meter_prepaid_transaction_view")
-      .where({
-        meter: id,
-        status: "completed",
-      })
-      .select("*")
-      .orderBy("createdAt", "desc");
-
-    const modifiedTransactions = transactions.map((transaction) => {
-      return {
-        id: transaction?.id,
-        paymentId: transaction?.paymentId,
-        active: transaction?.active,
-        email: transaction?.email,
-        mobileNo: transaction?.mobileNo,
-        year: transaction?.year,
-        topup: transaction?.topup,
-        charges: transaction?.charges,
-        amount: transaction?.amount,
-        status: transaction?.status,
-        is_processed: Boolean(transaction?.processed),
-        createdAt: transaction?.createdAt,
-        updatedAt: transaction?.updatedAt,
-        issuerName: transaction?.issuerName,
-        info: JSON.parse(transaction?.info),
-        meter: {
-          id: transaction?.meterId,
-          number: transaction?.number,
-          name: transaction?.name,
-          type: transaction?.type,
-          district: transaction?.district,
-          address: transaction?.address,
-          geoCode: transaction?.geoCode,
-          accountNumber: transaction?.accountNumber,
-        },
-      };
-    });
-
-    res.status(200).json(modifiedTransactions);
-  }),
-);
-
-router.get(
-  "/electricity/user/:id",
-  verifyToken,
-  asyncHandler(async (req, res) => {
-    const { id } = req.params;
-
-    const transactions = await knex("vw_meter_payment_prepaid_transaction_view")
-      .where({
-        userId: id,
-        active: 1,
-        status: "completed",
-      })
-      .select("*")
-      .orderBy("createdAt", "desc");
-
-    const modifiedTransactions = transactions.map((transaction) => {
-      return {
-        id: transaction?.id,
-        paymentId: transaction?.paymentId,
-        active: transaction?.active,
-        email: transaction?.email,
-        mobileNo: transaction?.mobileNo,
-        year: transaction?.year,
-        mode: transaction?.mode,
-        charges: transaction?.charges,
-        topup: transaction?.topup,
-        amount: transaction?.amount,
-        status: transaction?.status,
-        issuerName: transaction?.issuerName,
-        isProcessed: Boolean(transaction?.isProcessed),
-        createdAt: transaction?.createdAt,
-        updatedAt: transaction?.updatedAt,
-        info: JSON.parse(transaction?.info),
-        meter: {
-          id: transaction?.meterId,
-          number: transaction?.number,
-          name: transaction?.name,
-          type: transaction?.type,
-          district: transaction?.district,
-          address: transaction?.address,
-          spn: transaction?.spn,
-        },
-      };
-    });
-
-    res.status(200).json(modifiedTransactions);
-  }),
-);
-
-router.post(
-  "/electricity",
-  verifyOptionalToken,
-  paymentLimiter,
-  idempotencyMiddleware,
-  paymentLockMiddleware,
-  validatePayment(prepaidSchema),
-  asyncHandler(async (req, res) => {
-    const { id: userID } = req.user;
-    const { meter, info, charges, topup, amount, isWallet, token } = req.body;
-
-    // logger.info(req.body)
-    const transx = await knex.transaction();
-    let meterId = meter;
-
-    try {
-      // Call the API to create a transaction
-      const paymentId = generateId();
-      const transaction_id = generateId(6);
-      const transaction_reference = randomBytes(24).toString("hex");
-      const orderNo = randomBytes(20).toString("hex");
-
-      // ---------------- CREATE PAYMENT ----------------
-      let paymentStatus = "pending";
-      let partnerResponse = null;
-
-      if (isWallet) {
-        // ---- WALLET VALIDATION ----
-        const wallet = await transx("wallets")
-          .where({ user_id: userID })
-          .first();
-
-        if (!wallet) {
-          return res.status(401).json("Wallet not found");
-        }
-
-        const isPinValid = await bcrypt.compare(token, wallet.user_key);
-        if (!isPinValid) {
-          return res.status(401).json("Invalid PIN!");
-        }
-
-        if (Number(wallet.amount) < Number(amount)) {
-          return res.status(400).json("Insufficient funds");
-        }
-
-        // ---- DEDUCT WALLET ----
-        await transx("wallets")
-          .where({ user_id: userID })
-          .decrement("amount", amount);
-
-        await transx("wallet_transactions").insert({
-          id: generateId(),
-          user_id: userID,
-          wallet_id: wallet.id,
-          wallet_amount: wallet.amount,
-          issuer: userID,
-          type: "debit",
-          comment: `Prepaid purchase of ${topup} for meter ${meterId}`,
-          amount: amount,
-          status: "completed",
-          reference: transaction_reference,
-        });
-
-        paymentStatus = "completed";
-        partnerResponse = {
-          Data: {
-            code: "WALLET_SUCCESS",
-            phonenumber: info?.phone,
-            email: info?.email,
-          },
-        };
-      } else {
-        const payment = {
-          name: info?.name || "GPC Customer",
-          phonenumber: info?.phonenumber,
-          email: info?.email,
-          amount: Number(info?.amount).toFixed(2),
-          provider: info?.provider,
-          transaction_reference,
-        };
-
-        const partnerResponse = await sendMoney(payment, "p");
-
-        // Save the Transaction to DB and Send Email
-
-        paymentStatus =
-          partnerResponse?.ResponseCode === "0000"
-            ? "completed"
-            : partnerResponse?.ResponseCode === "0001"
-              ? "pending"
-              : "failed";
-      }
-
-      // ---------------- INSERT PAYMENT ----------------
-
-      try {
-        await transx("payments").insert({
-          id: paymentId,
-          user_id: userID || "",
-          reference: transaction_reference,
-          service: "prepaid",
-          amount: amount,
-          charges,
-          provider: isWallet ? "wallet" : info?.provider,
-          mode: isWallet ? "Wallet" : "Mobile Money",
-          year: moment().year(),
-          status: paymentStatus,
-          externalTransactionId: null,
-          partner: JSON.stringify(partnerResponse),
-        });
-      } catch (error) {
-        logger.error(error);
-        await transx.rollback();
-        return res.status(500).json("Transaction Failed!");
-      }
-
-      await transx("electricity_transactions").insert({
-        id: transaction_id,
-        payment_id: paymentId,
-        meter_id: meterId,
-        info: JSON.stringify({
-          ...info,
-          domain: "Prepaid",
-          orderNo,
-        }),
-        charges,
-        topup,
-        email: info?.email,
-        phonenumber: info?.phonenumber,
-      });
-
-      await transx.commit();
-      res.status(201).json({ id: transaction_id });
-
-      if (isWallet) {
-        setImmediate(async () => {
-          await emitPaymentSuccess({
-            userId: userID,
-            txRef: transaction_reference,
-            amount: amount,
-            transaction: {
-              id: transaction_id || paymentId,
-              paymentReference: transaction_reference,
-              status: paymentStatus,
-              userName: "Customer",
-              email: info?.email,
-              phonenumber: info?.phonenumber,
-              paymentMode: "Wallet",
-              amount: amount,
-              createdAt: new Date().toISOString(),
-            },
-          });
-        });
-      }
-    } catch (error) {
-      logger.error(error);
-      await transx.rollback();
-      return res.status(500).json("Transaction Failed!");
-    }
-  }),
-);
-
-//@ Payment callback brassica
-router.post(
-  "/callback",
-  cors(corsOptions),
-  rlimit,
-  asyncHandler(async (req, res) => {
-    const payload = req.body;
-
-    const reference = payload?.transactionId;
-
-    if (!reference) return res.sendStatus(400);
-    logger.info(reference);
-
-    res.sendStatus(200);
-  }),
-);
-
-//@ Payment callback
-router.post(
-  "/callback/e",
-  cors(corsOptions),
-  rlimit,
-  asyncHandler(async (req, res) => {
-    const { type } = req.params;
-    const payload = req.body;
-
-    const reference = payload?.transactionId;
-    if (!reference) return res.sendStatus(400);
-
-    const doneKey = `payment:processed:${reference}`;
-    const lockKey = `payment:lock:${reference}`;
-
-    // 1. Already processed?
-    if (await redisClient.get(doneKey)) {
-      return res.sendStatus(200);
-    }
-
-    // 2. Acquire lock
-    const lock = await redisClient.set(lockKey, "1", "NX", "EX", 60);
-    if (!lock) return res.sendStatus(200);
-
-    let trx;
-
-    try {
-      const statusMap = {
-        200: "completed",
-        202: "pending",
-      };
-
-      const newStatus = statusMap[payload.status] || "failed";
-
-      const table = PAYMENT_TABLE_MAP["w"];
-      if (!table) return res.sendStatus(204);
-
-      trx = await knex.transaction();
-
-      const payment = await trx(table)
-        .where({ paymentReference: reference })
-        .first();
-
-      if (!payment) {
-        await trx.rollback();
-        return res.sendStatus(204);
-      }
-
-      // idempotency DB guard
-      if (payment.status === "completed") {
-        await trx.commit();
-        return res.sendStatus(200);
-      }
-
-      await trx("payments")
-        .where({ id: payment.paymentId })
-        .andWhereNot({ status: "completed" })
-        .update({
-          status: newStatus,
-          externalTransactionId: payload?.Data?.ExternalTransactionId,
-          updated_at: knex.fn.now(),
-        });
-
-      await trx.commit();
-
-      // mark processed
-      await redisClient.set(doneKey, "1", "EX", 86400);
-      await redisClient.del(lockKey);
-
-      res.sendStatus(200);
-
-      // async events
-      queueMicrotask(() =>
-        handlePostPaymentEvents(payment, newStatus, payload),
-      );
-    } catch (err) {
-      if (trx) await trx.rollback();
-      await redisClient.del(lockKey);
-      logger.error(err);
-      res.sendStatus(500);
-    }
-  }),
-);
-
-//@ Payment callback
-router.post(
-  "/feedback/callback/:type/:id",
-  cors(corsOptions),
-  rlimit,
-  asyncHandler(async (req, res) => {
-    const { type } = req.params;
-    const payload = req.body;
-
-    const reference = payload?.Data?.ClientReference;
-    if (!reference || !type) return res.sendStatus(204);
-
-    const doneKey = `payment:processed:${reference}`;
-    const lockKey = `payment:lock:${reference}`;
-
-    // 1. Already processed?
-    if (await redisClient.get(doneKey)) {
-      return res.sendStatus(200);
-    }
-
-    // 2. Acquire lock
-    const lock = await redisClient.set(lockKey, "1", "NX", "EX", 60);
-    if (!lock) return res.sendStatus(200);
-
-    let trx;
-
-    try {
-      const statusMap = {
-        "0000": "completed",
-        "0001": "pending",
-      };
-
-      const newStatus = statusMap[payload.ResponseCode] || "failed";
-
-      const table = PAYMENT_TABLE_MAP[type];
-      if (!table) return res.sendStatus(204);
-
-      trx = await knex.transaction();
-
-      const payment = await trx(table)
-        .where({ paymentReference: reference })
-        .first();
-
-      if (!payment) {
-        await trx.rollback();
-        return res.sendStatus(204);
-      }
-
-      // idempotency DB guard
-      if (payment.status === "completed") {
-        await trx.commit();
-        return res.sendStatus(200);
-      }
-
-      await trx("payments")
-        .where({ id: payment.paymentId })
-        .andWhereNot({ status: "completed" })
-        .update({
-          status: newStatus,
-          externalTransactionId: payload?.Data?.ExternalTransactionId,
-          updated_at: knex.fn.now(),
-        });
-
-      await trx.commit();
-
-      // mark processed
-      await redisClient.set(doneKey, "1", "EX", 86400);
-      await redisClient.del(lockKey);
-
-      res.sendStatus(200);
-
-      // async events
-      queueMicrotask(() =>
-        handlePostPaymentEvents(payment, newStatus, payload),
-      );
-    } catch (err) {
-      if (trx) await trx.rollback();
-      await redisClient.del(lockKey);
-      logger.error(err);
-      res.sendStatus(500);
-    }
-  }),
-);
-
-//Process prepaid transaction
-router.put(
-  "/electricity",
-  verifyToken,
-  verifyAdmin,
-  Upload.single("receipt"),
-  asyncHandler(async (req, res) => {
-    const { id: userId, name } = req.user;
-    const { id, data } = req.body;
-    const { meter, meterId, paymentId, info } = data;
-
-    const transx = await knex.transaction();
-
-    try {
-      await transx("meters")
-        .where("id", meterId)
-        .update({
-          ...meter,
-        });
-
-      await transx("payments").where("id", paymentId).update({
-        is_processed: true,
-        issuer_id: userId,
-        issuer_name: name,
-      });
-
-      const updateTransactionDetails = await transx("electricity_transactions")
-        .where("id", id)
-        .update({
-          info: JSON.stringify({
-            ...info,
-            domain: "Prepaid",
-          }),
-        });
-
-      if (updateTransactionDetails !== 1) {
-        return res.status(404).json("Error updating request");
-      }
-
-      const transaction = await transx(
-        "vw_meter_payment_prepaid_transaction_view",
-      )
-        .where({
-          id: id,
-          status: "completed",
-        })
-        .select(
-          "id",
-          "number",
-          "name",
-          "paymentId",
-          "spn",
-          "email",
-          "phonenumber",
-          "topup",
-          "charges",
-          "amount",
-          "userId",
-        )
-        .first();
-
-      if (!transaction) {
-        await transx.rollback();
-        return res.status(404).json("Error updating request");
-      }
-
-      const meterInfo = {
-        id: transaction.id,
-        number: transaction?.number,
-        name: transaction?.name,
-        paymentId: paymentId,
-        email: transaction?.email,
-        mobileNo: transaction?.phonenumber,
-        spn: transaction?.spn,
-        orderNo: transaction?.orderNo,
-        topup: currencyFormatter(transaction?.topup),
-        charges: currencyFormatter(transaction?.charges),
-        amount: currencyFormatter(transaction?.amount),
-      };
-
-      //logs
-      await transx("activity_logs").insert({
-        user_id: userId,
-        title: "Processed prepaid transaction!",
-        severity: "info",
-      });
-
-      await transx("notifications").insert({
-        id: generateId(),
-        user_id: transaction?.userId,
-        type: "prepaid",
-        title: "Prepaid Units",
-        body: `You request to buy prepaid units has being completed.Click on the button below to download your receipt.In case units do not load automatically,Please enter the token on your meter to load your units.Thank you!`,
-        link: info?.downloadLink,
-      });
-
-      await transx.commit();
-
-      res
-        .status(201)
-        .json("Your request is being processed.You will be notified shortly!!");
-
-      limit(async () => {
-        await sendSMS(
-          `You request to buy prepaid units has being completed.Transaction Details:Transaction ID: ${meterInfo.id},Order No.:${meterInfo?.paymentId},-Token:${meterInfo?.orderNo},Meter No:${meterInfo?.number},Meter Name:${meterInfo?.name}-Amount Paid: ${meterInfo?.amount}.In case units do not load automatically,Please enter the token on your meter to load your units.Thank you`,
-          transaction?.phonenumber,
-        );
-        await sendElectricityMail(
-          id,
-          transaction?.email,
-          transaction?.status,
-          info?.downloadLink,
-          meterInfo,
-        );
-      });
-    } catch (error) {
-      logger.error(error);
-      await transx.rollback();
-      return res.status(500).json("Transaction Failed!");
-    }
-
-    // await sendWhatsappMessage({
-    //   user: getInternationalMobileFormat(paymentInfo?.mobileNo),
-    //   message: "Thank you for your purchase!",
-    //   media: downloadLink,
-    // });
-
-    // const template = await generatePrepaidTemplate(meterInfo);
-    // const result = limit(() => generatePrepaidReceipt(template, id));
-
-    //       result
-    //       .then(async (data) => {
-    //         if (data === "done") {    }
-    // })
-    // .catch((error) => {
-    //   logger.error(error);
-    //   return res.status(404).json("Error updating request");
-    // });
-
-    // const data = await sendSMS(
-    //   `You request to buy prepaid units has being completed.
-    //   Thank you for your purchase!
-    //   `,
-    //   updateTransactionDetails?.info?.mobileNo
-    // );
-  }),
-);
-
-router.put(
-  "/electricity/delete",
-  verifyToken,
-  asyncHandler(async (req, res) => {
-    const { ids } = req.body;
-
-    const removedTransactions = await knex("prepaid_transactions")
-      .whereIn("id", ids)
-      .update({
-        active: 0,
-      });
-
-    if (removedTransactions !== 1) {
-      return res.status(200).json("An error has occurred!");
-    }
-
-    res.status(200).json("Transactions removed!");
-  }),
-);
-
-router.delete(
-  "/electricity/:id",
-  verifyToken,
-  asyncHandler(async (req, res) => {
-    const { id } = req.params;
-
-    if (!id || !isValidUUID2(id)) {
-      return res.status(400).json("Invalid Request!");
-    }
-
-    const removedTransaction = await knex("prepaid_transactions")
-      .where("id", id)
-      .update({
-        active: 0,
-      });
-
-    if (removedTransaction !== 1) {
-      return res.status(200).json("An error has occurred!");
-    }
-
-    res.status(200).json("Transaction removed!");
-  }),
-);
-
 module.exports = router;
 
 const selectVouchers = async ({
@@ -2606,7 +2182,7 @@ const selectVouchers = async ({
 };
 
 const selectVouchersForConfirmation = async (trx, transaction) => {
-  const info = safeJSON(transaction?.info, {});
+  const info = safeJSON(transaction?.info);
   const vouchers = safeJSON(transaction?.vouchers);
   if (!info || !info.categoryId) {
     throw new Error("Invalid transaction info");
@@ -2643,8 +2219,8 @@ const selectVouchersForConfirmation = async (trx, transaction) => {
             "v.type",
             "c.name as voucherType",
             "c.details",
-          );
-        // .forUpdate(); // 🔒 LOCK ROWS
+          )
+          .forUpdate(); // 🔒 LOCK ROWS
       }),
     );
 
@@ -2669,8 +2245,8 @@ const selectVouchersForConfirmation = async (trx, transaction) => {
         "v.type",
         "c.name as voucherType",
         "c.details",
-      );
-    // .forUpdate();
+      )
+      .forUpdate();
   }
 
   // ---------------- DEFAULT (WAEC, etc.) ----------------
@@ -2691,8 +2267,8 @@ const selectVouchersForConfirmation = async (trx, transaction) => {
         "v.type",
         "c.name as voucherType",
         "c.details",
-      );
-    // .forUpdate();
+      )
+      .forUpdate();
   }
 
   // ---------------- VALIDATION ----------------
@@ -2717,11 +2293,11 @@ async function processVoucher(trx, transaction) {
 
   const ids = vouchers.map((v) => v.id);
 
-  await trx("voucher_transactions")
-    .where({ id: transaction.id })
-    .update({
-      vouchers: JSON.stringify(ids),
-    });
+  // await trx("voucher_transactions")
+  //   .where({ id: transaction.id })
+  //   .update({
+  //     vouchers: JSON.stringify(ids),
+  //   });
 
   await trx("vouchers").whereIn("id", ids).update({
     status: "sold",
@@ -3220,7 +2796,9 @@ async function handlePostPaymentEvents(payment, status, payload) {
     const phone = payment?.phonenumber;
     const service = payment?.service;
 
-    const externalId = payload?.Data?.ExternalTransactionId;
+    const externalId =
+      payload?.Data?.ExternalTransactionId ||
+      payload.data.externalTransactionId;
 
     // ---------------- MESSAGE TEMPLATE ----------------
     const isSuccess = status === "completed";
@@ -3236,7 +2814,7 @@ async function handlePostPaymentEvents(payment, status, payload) {
           await knex("notifications").insert({
             id: generateId(),
             user_id: userId,
-            type: "payment",
+            type: payment.service,
             title: isSuccess ? "Payment Successful" : "Payment Failed",
             body: message,
           });
@@ -3257,9 +2835,11 @@ async function handlePostPaymentEvents(payment, status, payload) {
 
               await emitPaymentSuccess({
                 userId,
-                txRef: userId
-                  ? reference
-                  : payment.phonenumber || info?.user?.phonenumber,
+                txRef:
+                  userId ||
+                  payment.phonenumber ||
+                  info?.user?.phonenumber ||
+                  reference,
                 amount,
                 transaction: {
                   id: payment.id,
@@ -3280,15 +2860,29 @@ async function handlePostPaymentEvents(payment, status, payload) {
             default:
               await emitPaymentSuccess({
                 userId,
-                txRef: reference,
+                txRef:
+                  payment.phonenumber || info?.user?.phonenumber || reference,
                 amount,
+                transaction: {
+                  id: payment.id,
+                  paymentReference: reference,
+                  service,
+                  status: status,
+                  userName: info?.user?.name || "",
+                  email: payment?.email,
+                  phonenumber: payment?.phonenumber,
+                  paymentMode: payment?.mode,
+                  amount: amount,
+                  externalTransactionId: externalId,
+                  createdAt: payment.createdAt,
+                },
               });
           }
         } else {
           await emitPaymentFailure({
             userId,
-            txRef: reference,
-            reason: "Payment failed at provider",
+            txRef: payment.phonenumber || info?.user?.phonenumber || reference,
+            reason: "Payment failed",
           });
         }
       } catch (err) {
@@ -3395,6 +2989,7 @@ async function handlePostPaymentEvents(payment, status, payload) {
 //     if (trx) await trx.rollback();
 //     await redisClient.del(lockKey);
 //     logger.error(err);
+//     console.log(err);
 //     res.sendStatus(500);
 //   }
 // };

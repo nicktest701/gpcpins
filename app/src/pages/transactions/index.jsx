@@ -97,7 +97,7 @@ const Transaction = () => {
     document.body.removeChild(link);
   };
 
-  const { isLoading, mutateAsync } = useMutation({
+  const { isPending, mutateAsync } = useMutation({
     mutationFn: removeAnyTransaction,
   });
 
@@ -177,7 +177,7 @@ const Transaction = () => {
       {isMobile ? (
         <TransactionList
           data={sortedTransactions}
-          isLoading={transactions.isLoading || isLoading}
+          isLoading={transactions.isLoading || isPending}
           onRefresh={transactions.refetch}
           total={currencyFormatter(
             _.sumBy(sortedTransactions, (item) => Number(item?.amount)),
@@ -192,7 +192,7 @@ const Transaction = () => {
         />
       ) : (
         <CustomizedMaterialTable
-          isLoading={transactions.isLoading || isLoading}
+          isLoading={transactions.isLoading || isPending}
           title="Transactions"
           search={true}
           columns={modifiedColumns}

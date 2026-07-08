@@ -95,7 +95,7 @@ const Login = () => {
           }}
         >
           <img
-            src={IMAGES.coat_of_arms}
+            src={IMAGES.logo}
             alt="Logo"
             style={{ width: 120, marginBottom: 32 ,}}
           />
@@ -135,7 +135,7 @@ const Login = () => {
             {isMobile && (
               <Box textAlign="center" mb={3}>
                 <img
-                  src={IMAGES.coat_of_arms}
+                  src={IMAGES.logo}
                   alt="Logo"
                   style={{ width: 80, marginBottom: 16 }}
                 />
@@ -401,7 +401,7 @@ export default Login;
 //               >
 //                 <IconButton onClick={goHome}>
 //                   <Avatar
-//                     src={IMAGES.coat_of_arms}
+//                     src={IMAGES.logo}
 //                     sx={{ width: 80, height: 80 }}
 //                   />
 //                 </IconButton>

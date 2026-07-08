@@ -114,10 +114,9 @@ router.get(
     });
   }),
 );
+
 router.get(
   "/tickets",
-  // verifyToken,
-  // verifyScanner,
   asyncHandler(async (req, res) => {
     const { id } = req.query;
 
@@ -226,7 +225,6 @@ router.get(
 
 router.get(
   "/available",
-  // verifyToken,
   asyncHandler(async (req, res) => {
     const { id, type } = req.query;
 
@@ -260,10 +258,9 @@ router.get(
 
     res.status(200).json(totalCount);
   }),
-);
+)
 router.get(
   "/available/tickets",
-  // verifyToken,
   asyncHandler(async (req, res) => {
     const { id } = req.query;
 

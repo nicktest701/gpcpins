@@ -11,7 +11,6 @@ import {
   Container,
   Button,
   Tooltip,
-  Skeleton,
   Alert,
   CircularProgress,
   alpha,
@@ -41,13 +40,13 @@ import { IMAGES, currencyFormatter } from "@/constants";
 import { getInitials } from "@/config/validation";
 import NotificationDropdown from "@/components/dropdowns/NotificationDropdown";
 
-import { useQuery, useIsFetching } from "@tanstack/react-query";
-import { getWalletBalance } from "@/api/walletAPI";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { useCustomContext } from "../../context/providers/CustomProvider";
 import { useAuth } from "../../context/providers/AuthProvider";
 import Navbar from "../../components/dropdowns/Navbar";
 
 function Header() {
+  const queryClient = useQueryClient();
   const { user, logout } = useAuth();
   const [showAlert, setShowAlert] = useState(true);
   const isFetching = useIsFetching();
@@ -55,39 +54,30 @@ function Header() {
   const {
     customState: { openSidebar, globalAlert },
     customDispatch,
-    notifications: notifs,
-    walletBalance: walletBalanceCache,
   } = useCustomContext();
 
   const theme = useTheme();
 
-  const [photo, setPhoto] = useState(null);
   const [shadow, setShadow] = useState("none");
   const [anchorEl, setAnchorEl] = useState(null);
   const [showNotificationDropdown, setShowNotificationDropdown] =
     useState(false);
   const navigate = useNavigate();
 
-  const walletBalance = useQuery({
+  const walletBalance = queryClient.getQueryData({
     queryKey: ["wallet-balance", user?.id],
-    queryFn: () => getWalletBalance(user?.id),
-    enabled: !!user?.id,
-    initialData: walletBalanceCache,
   });
 
-  // const notifications = useQuery({
-  //   queryKey: ["notifications", user?.id],
-  //   queryFn: () => getAllBroadcastMessages(),
-  //   enabled: !!user?.id,
-  //   initialData: notifs,
-  //   retry: 1,
-  //   staleTime: 5 * 60 * 1000, // 5 minutes
-  // });
 
-  const unReadNotifications = notifs?.filter((item) => item?.active === 1);
+  const notifs = queryClient.getQueryData({
+    queryKey: ["notifications", user?.id],
+  });
+
+  const unReadNotifications = notifs?.filter(
+    (item) => item?.active && !item.isRead,
+  );
 
   useLayoutEffect(() => {
-    setPhoto(user?.profile);
     if (user?.id && !user?.phonenumber) {
       customDispatch({
         type: "setGlobalAlert",
@@ -262,7 +252,7 @@ function Header() {
         >
           <Avatar
             alt="logo"
-            src={IMAGES.coat_of_arms}
+            src={IMAGES.logo}
             sx={{
               width: 56,
               height: 56,
@@ -332,7 +322,13 @@ function Header() {
             </Button>
           </Stack>
 
-          <Stack direction="row" spacing={1}>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              display: { xs: "none", lg: "flex" },
+            }}
+          >
             {[FacebookRounded, WhatsApp, Twitter, Instagram].map(
               (Icon, idx) => (
                 <IconButton
@@ -375,9 +371,7 @@ function Header() {
               width: { xs: "100%", md: "auto" },
             }}
           >
-            <Box
-              sx={{  flexGrow: 1, flex: 1 }}
-            >
+            <Box sx={{ flexGrow: 1, flex: 1 }}>
               <IconButton
                 onClick={toggleSideBar}
                 sx={{
@@ -397,45 +391,39 @@ function Header() {
                   gap: 1,
                 }}
               >
-                {walletBalance.isLoading ? (
-                  <Skeleton variant="rounded" width={80} height={32} />
-                ) : (
-                  <>
-                    <Tooltip title="Search">
-                      <IconButton
-                        size="small"
-                        onClick={handleOpenSearch}
-                        sx={{
-                          bgcolor: alpha(theme.palette.grey[500], 0.1),
-                          transition: theme.transitions.create("transform"),
-                          "&:hover": { transform: "scale(1.1)" },
-                        }}
-                      >
-                        <SearchRounded fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Wallet Balance">
-                      <Button
-                        component={Link}
-                        to="/wallet?_pid=1"
-                        size="small"
-                        variant="outlined"
-                        startIcon={<WalletRounded />}
-                        sx={{
-                          fontSize: "0.75rem",
-                          borderRadius: 2,
-                          borderColor: alpha(theme.palette.primary.main, 0.5),
-                          "&:hover": {
-                            borderColor: theme.palette.primary.main,
-                            bgcolor: alpha(theme.palette.primary.main, 0.04),
-                          },
-                        }}
-                      >
-                        {currencyFormatter(walletBalance.data)}
-                      </Button>
-                    </Tooltip>
-                  </>
-                )}
+                <Tooltip title="Search">
+                  <IconButton
+                    size="small"
+                    onClick={handleOpenSearch}
+                    sx={{
+                      bgcolor: alpha(theme.palette.grey[500], 0.1),
+                      transition: theme.transitions.create("transform"),
+                      "&:hover": { transform: "scale(1.1)" },
+                    }}
+                  >
+                    <SearchRounded fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Wallet Balance">
+                  <Button
+                    component={Link}
+                    to="/wallet?_pid=1"
+                    size="small"
+                    variant="outlined"
+                    startIcon={<WalletRounded />}
+                    sx={{
+                      fontSize: "0.75rem",
+                      borderRadius: 2,
+                      borderColor: alpha(theme.palette.primary.main, 0.5),
+                      "&:hover": {
+                        borderColor: theme.palette.primary.main,
+                        bgcolor: alpha(theme.palette.primary.main, 0.04),
+                      },
+                    }}
+                  >
+                    {currencyFormatter(walletBalance || 0)}
+                  </Button>
+                </Tooltip>
               </Box>
             )}
           </Box>
@@ -471,29 +459,25 @@ function Header() {
 
             {user?.id ? (
               <>
-                {walletBalance.isLoading ? (
-                  <Skeleton variant="rounded" width={100} height={40} />
-                ) : (
-                  <Tooltip title="Wallet Balance">
-                    <Button
-                      component={Link}
-                      to="/wallet?_pid=1"
-                      variant="outlined"
-                      color="primary"
-                      startIcon={<WalletRounded />}
-                      sx={{
-                        borderRadius: 2,
-                        borderColor: alpha(theme.palette.primary.main, 0.5),
-                        "&:hover": {
-                          borderColor: theme.palette.primary.main,
-                          bgcolor: alpha(theme.palette.primary.main, 0.04),
-                        },
-                      }}
-                    >
-                      {currencyFormatter(walletBalance.data)}
-                    </Button>
-                  </Tooltip>
-                )}
+                <Tooltip title="Wallet Balance">
+                  <Button
+                    component={Link}
+                    to="/wallet?_pid=1"
+                    variant="outlined"
+                    color="primary"
+                    startIcon={<WalletRounded />}
+                    sx={{
+                      borderRadius: 2,
+                      borderColor: alpha(theme.palette.primary.main, 0.5),
+                      "&:hover": {
+                        borderColor: theme.palette.primary.main,
+                        bgcolor: alpha(theme.palette.primary.main, 0.04),
+                      },
+                    }}
+                  >
+                    {currencyFormatter(walletBalance)}
+                  </Button>
+                </Tooltip>
 
                 <Box sx={{ position: "relative" }}>
                   <Tooltip title="Notifications">
@@ -538,10 +522,10 @@ function Header() {
                     aria-haspopup="true"
                     aria-expanded={open ? "true" : undefined}
                     onClick={handleClick}
-                    src={photo}
+                    src={user?.profile}
                     alt="profile"
                   >
-                    {getInitials(user?.email)}
+                   {getInitials(user?.name || user?.email)}
                   </Avatar>
                 </Tooltip>
               </>

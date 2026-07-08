@@ -1,10 +1,10 @@
 import { Outlet } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { Box, Typography } from "@mui/material";
 import { IMAGES } from "../../constants";
 import ServiceNotAvaialble from "../ServiceNotAvaialble";
 import { getModuleStatus } from "../../api/categoryAPI";
 import { useQuery } from "@tanstack/react-query";
+import PageHero from "../../components/custom/PageHero";
 
 <Helmet>
   <title>Airtime & Data Bundle</title>
@@ -19,7 +19,7 @@ function Airtime() {
     queryKey: ["module-status", "airtime"],
     queryFn: () => getModuleStatus("a"),
     initialData: { message: "", active: true },
-      staleTime: 1000 * 60,
+    staleTime: 1000 * 60,
     gcTime: 1000 * 60 * 10,
     retry: 2,
     refetchOnWindowFocus: false,
@@ -27,28 +27,12 @@ function Airtime() {
 
   return (
     <>
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          color: "#fff",
-          background: `linear-gradient(to top right,rgba(0,0,0,0.8),rgba(0,0,0,0.7)),url(${IMAGES.bgImage1})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          paddingX: { xs: 5, md: 2 },
-          paddingY: 4,
-          height: "35svh",
-        }}
-      >
-        <Typography variant="h2" className="hero-title" paragraph>
-          Airtime & Data Bundle
-        </Typography>
-        <Typography textAlign="center">
-          Instant Mobile Airtime and Data Refills for Every Network!
-        </Typography>
-      </Box>
+      <PageHero
+        title="Airtime & Data Bundle"
+        subtitle="  Instant Mobile Airtime and Data Refills for Every Network!"
+        bgImage={IMAGES.bgImage1}
+      />
+
       <Outlet />
 
       <ServiceNotAvaialble

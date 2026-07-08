@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo } from "react";
+import {  useEffect, useMemo } from "react";
 import {
   Drawer,
   Box,
@@ -17,12 +17,11 @@ import {
 } from "@mui/material";
 import Swal from "sweetalert2";
 import { Link, useLocation } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   DashboardRounded,
   Bolt,
   LocalOffer,
-  CardMembership,
   PersonOutlined,
   NotificationsOutlined,
   WalletOutlined,
@@ -32,12 +31,8 @@ import {
   Close,
 } from "@mui/icons-material";
 import { useAuth } from "../../context/providers/AuthProvider";
-import {
-  CustomContext,
-  useCustomContext,
-} from "../../context/providers/CustomProvider";
+import { useCustomContext } from "../../context/providers/CustomProvider";
 import { IMAGES } from "../../constants";
-import { getAllBroadcastMessages } from "../../api/broadcastMessageAPI";
 import NavLinkItem from "@/components/NavLinkItem";
 import NavLinkItemCollapse from "@/components/modals/NavLinkItemCollapse";
 
@@ -50,26 +45,23 @@ const pulse = keyframes`
 
 function Sidebar() {
   const { user, logout } = useAuth();
-  const { notifications: notifs } = useCustomContext();
+  const queryClient = useQueryClient();
   const {
     customState: { openSidebar },
     customDispatch,
-  } = useContext(CustomContext);
+  } = useCustomContext();
+
   const { pathname } = useLocation();
   const theme = useTheme();
 
   // Fetch notifications (only for logged-in users)
-  const { data: notifications } = useQuery({
+  const notifications = queryClient.getQueryData({
     queryKey: ["notifications", user?.id],
-    queryFn: () => getAllBroadcastMessages(),
-    enabled: !!user?.id,
-    initialData: notifs,
-    retry: 1,
-    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const unreadCount = useMemo(
-    () => notifications?.filter((item) => item.active === 1).length || 0,
+    () =>
+      notifications?.filter((item) => item?.active && !item.isRead).length || 0,
     [notifications],
   );
 
@@ -138,7 +130,7 @@ function Sidebar() {
         }}
       >
         <Avatar
-          src={IMAGES.coat_of_arms}
+          src={IMAGES.logo}
           alt="logo"
           sx={{
             width: 36,
@@ -197,7 +189,7 @@ function Sidebar() {
 
             <List disablePadding>
               <NavLinkItem to="/" title="Home" icon={<DashboardRounded />} />
-           
+
               <NavLinkItemCollapse
                 icon={<LocalOffer />}
                 title="Voucher & Tickets"
@@ -233,10 +225,7 @@ function Sidebar() {
                   // icon={<SimCardOutlined />}
                 />
               </NavLinkItemCollapse>
-              <NavLinkItemCollapse
-                icon={<Bolt />}
-                title="Prepaid Units"
-              >
+              <NavLinkItemCollapse icon={<Bolt />} title="Prepaid Units">
                 <NavLinkItem
                   to="electricity"
                   title="Buy Prepaid"
@@ -353,77 +342,56 @@ function Sidebar() {
           // Unauthenticated user
           <>
             <List disablePadding>
-              <NavLinkItem to="/" title="Home" icon={<DashboardRounded />} />
-           
-            <List disablePadding>
-              <NavLinkItem to="/" title="Home" icon={<DashboardRounded />} />
-       
-              <NavLinkItemCollapse
-                icon={<LocalOffer />}
-                title="Voucher & Tickets"
-              >
-                <NavLinkItem
-                  to="/evoucher/waec-checker"
-                  title="Waec & SHS Placement Checker"
-                  // icon={<LocalOffer />}
-                />
-                <NavLinkItem
-                  to="/evoucher/university-form"
-                  title="University & Polytechnic Forms"
-                  // icon={<SimCardOutlined />}
-                />
-                <NavLinkItem
-                  to="/evoucher/security-service"
-                  title=" Security Service Forms"
-                  // icon={<SimCardOutlined />}
-                />
-                <NavLinkItem
-                  to="/evoucher/cinema-ticket"
-                  title="Cinema & Event Tickets"
-                  // icon={<SimCardOutlined />}
-                />
-                <NavLinkItem
-                  to="/evoucher/bus-ticket"
-                  title=" Bus Tickets"
-                  // icon={<SimCardOutlined />}
-                />
-                <NavLinkItem
-                  to="/evoucher/stadia-ticket"
-                  title="Stadium Tickets"
-                  // icon={<SimCardOutlined />}
-                />
-              </NavLinkItemCollapse>
-              <NavLinkItemCollapse
-                icon={<Bolt />}
-                title="Prepaid Units"
-              >
+              <List disablePadding>
+                <NavLinkItem to="/" title="Home" icon={<DashboardRounded />} />
+
+                <NavLinkItemCollapse
+                  icon={<LocalOffer />}
+                  title="Voucher & Tickets"
+                >
+                  <NavLinkItem
+                    to="/evoucher/waec-checker"
+                    title="Waec & SHS Placement Checker"
+                    // icon={<LocalOffer />}
+                  />
+                  <NavLinkItem
+                    to="/evoucher/university-form"
+                    title="University & Polytechnic Forms"
+                    // icon={<SimCardOutlined />}
+                  />
+                  <NavLinkItem
+                    to="/evoucher/security-service"
+                    title=" Security Service Forms"
+                    // icon={<SimCardOutlined />}
+                  />
+                  <NavLinkItem
+                    to="/evoucher/cinema-ticket"
+                    title="Cinema & Event Tickets"
+                    // icon={<SimCardOutlined />}
+                  />
+                  <NavLinkItem
+                    to="/evoucher/bus-ticket"
+                    title=" Bus Tickets"
+                    // icon={<SimCardOutlined />}
+                  />
+                  <NavLinkItem
+                    to="/evoucher/stadia-ticket"
+                    title="Stadium Tickets"
+                    // icon={<SimCardOutlined />}
+                  />
+                </NavLinkItemCollapse>
                 <NavLinkItem
                   to="electricity"
-                  title="Buy Prepaid"
-                  // icon={<LocalOffer />}
+                  title="Prepaid Units"
+                  icon={<Bolt />}
                 />
+
                 <NavLinkItem
-                  to="electricity/meters"
-                  title="Meters"
-                  // icon={<SimCardOutlined />}
+                  to="airtime"
+                  title="Airtime & Data Bundle"
+                  icon={<ReceiptLong />}
                 />
-              </NavLinkItemCollapse>
-              <NavLinkItem
-                to="airtime"
-                title="Airtime & Data Bundle"
-                icon={<ReceiptLong />}
-              />
-            </List>
-              <NavLinkItem
-                to="electricity"
-                title="Prepaid Units"
-                icon={<LocalOffer />}
-              />
-              <NavLinkItem
-                to="airtime"
-                title="Airtime & Data Bundle"
-                icon={<CardMembership />}
-              />
+              </List>
             </List>
 
             <List

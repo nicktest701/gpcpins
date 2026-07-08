@@ -136,7 +136,7 @@ function Header() {
           <Stack direction="row" alignItems="center" spacing={2}>
             <Avatar
               alt="Logo"
-              src={IMAGES.coat_of_arms}
+              src={IMAGES.logo}
               sx={{ width: 48, height: 48, cursor: "pointer" }}
               onClick={goHome}
             />
@@ -427,7 +427,7 @@ export default Header;
 //           >
 //             <Avatar
 //               alt="logo"
-//               src={IMAGES.coat_of_arms}
+//               src={IMAGES.logo}
 //               sx={{
 //                 width: 60,
 //                 height: 60,

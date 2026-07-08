@@ -83,7 +83,7 @@ const TransactionList = ({
   const handleRefresh = () => {
     setPage(1);
     searchTerm("");
-    setType('All')
+    setType("All");
     onRefresh();
   };
 
@@ -259,18 +259,29 @@ const TransactionList = ({
           {/* Transaction list */}
           <List disablePadding>
             {paginatedData.map((transaction) => {
-              const isCompleted = transaction.status === "completed";
+              const isPending =
+                (transaction.status === "completed" &&
+                  !transaction?.isProcessed) ||
+                transaction?.status === "pending";
+
+              const isCompleted =
+                transaction.status === "completed" && transaction?.isProcessed;
+                
               const isRefunded = transaction.status === "refunded";
               const statusColor = isCompleted
                 ? "success.darker"
                 : isRefunded
                   ? "secondary.main"
-                  : "warning.darker";
+                  : isPending
+                    ? "warning.dark"
+                    : "error.dark";
               const statusLabel = isCompleted
                 ? "Completed"
                 : isRefunded
                   ? "Refunded"
-                  : "Pending";
+                  : isPending
+                    ? "Pending"
+                    : "Failed";
 
               // Show download button only for certain domains and completed status
               const showDownload =

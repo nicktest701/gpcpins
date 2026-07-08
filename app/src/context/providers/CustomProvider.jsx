@@ -7,14 +7,11 @@ import React, {
   useEffect,
   useState,
 } from "react";
-
+import _ from "lodash";
 import { useQuery } from "@tanstack/react-query";
-
 import { CustomReducer } from "../reducers/CustomReducer";
-
 import { useAuth } from "./AuthProvider";
-
-import { getWalletBalance } from "../../api/walletAPI";
+import { getWalletBalance, getWalletStatus } from "../../api/walletAPI";
 import { getAllBroadcastMessages } from "../../api/broadcastMessageAPI";
 import { getAllCategory } from "../../api/categoryAPI";
 
@@ -153,8 +150,6 @@ const INITIAL_STATE = {
       createdAt: "",
     },
   },
-
-  airtime_bundle_amount: Number(sessionStorage.getItem("value-x")) || 0,
 };
 
 function CustomProvider({ children }) {
@@ -172,7 +167,7 @@ function CustomProvider({ children }) {
 
   useGoogleOneTapLogin({
     // Strictly disable if user exists OR if already initialized
-    disabled: Boolean(user?.id) || oneTapInitialized,
+    disabled: !!user?.id || oneTapInitialized,
     onSuccess: async ({ credential }) => {
       try {
         const res = await api({
@@ -183,17 +178,18 @@ function CustomProvider({ children }) {
         });
 
         saveAccessToken(res.data?.accessToken);
-        login(res.data?.accessToken);
+        login(res.data);
 
         if (res.data?.register) {
           navigate("/user/started", { state: { google: true } });
         } else {
-          login(res.data?.accessToken);
+          login(res.data);
           navigate(pathname);
         }
-        setOneTapInitialized(true); // Mark as initialized
       } catch (error) {
         setErr("Authentication Failed!");
+      } finally {
+        setOneTapInitialized(true); // Mark as initialized
       }
     },
     onError: () => {
@@ -207,14 +203,27 @@ function CustomProvider({ children }) {
   const categoriesQuery = useQuery({
     queryKey: ["all-category"],
     queryFn: getAllCategory,
-    staleTime: 1000 * 60 * 10, // 10 mins
-    gcTime: 1000 * 60 * 30, // 30 mins
+    staleTime: 1000 * 30, // ✅ Reduced to 30s. 10 minutes was too long for notifications
+    cacheTime: 1000 * 60 * 5, // ✅ Matched to standard 5 mins
     retry: 2,
     refetchOnWindowFocus: false,
+    placeholderData: () => [], // ✅ Changed to placeholderData to keep cache clean
     select: (data) => {
       if (!Array.isArray(data)) return [];
       return data;
     },
+  });
+
+  /**
+   * Wallet Status Query
+   */
+  const { data: walletStatus, isLoading: isLoadingWalletStatus } = useQuery({
+    queryKey: ["wallet-status", user?.id], // ✅ Added user?.id so cache clears/reloads if user switches accounts
+    queryFn: () => getWalletStatus(),
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5, // ✅ Cache for 5 mins (Status rarely changes)
+    cacheTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
   });
 
   /**
@@ -224,10 +233,11 @@ function CustomProvider({ children }) {
     queryKey: ["wallet-balance", user?.id],
     queryFn: () => getWalletBalance(user?.id),
     enabled: !!user?.id,
-    staleTime: 1000 * 30,
+    staleTime: 0, // ✅ Always stale: ensures it refetches on every single mount/screen change
+    cacheTime: 1000 * 60, // 1 minute memory life
     retry: 2,
     refetchOnWindowFocus: true,
-    initialData: 0,
+    placeholderData: 0, // ✅ FIX: Shows 0 while loading, but DOES NOT trick the cache into skipping the fetch
     select: (data) => Number(data || 0),
   });
 
@@ -236,20 +246,14 @@ function CustomProvider({ children }) {
    */
   const notificationsQuery = useQuery({
     queryKey: ["notifications", user?.id],
-
-    queryFn: getAllBroadcastMessages,
+    queryFn: getAllBroadcastMessages, // Note: Ensure this fn accepts user?.id if your API needs it
     enabled: !!user?.id,
-    staleTime: 1000 * 60,
-    gcTime: 1000 * 60 * 10,
+    staleTime: 1000 * 30, // ✅ Reduced to 30s. 10 minutes was too long for notifications
+    cacheTime: 1000 * 60 * 5, // ✅ Matched to standard 5 mins
     retry: 2,
     refetchOnWindowFocus: false,
-    initialData: [],
-
-    select: (data) => {
-      if (!Array.isArray(data)) return [];
-
-      return data;
-    },
+    placeholderData: () => [], // ✅ Changed to placeholderData to keep cache clean
+    select: (data) => (Array.isArray(data) ? data : []),
   });
 
   /**
@@ -266,10 +270,8 @@ function CustomProvider({ children }) {
       setPaymentStatus(payload);
     };
     onEvent("payment-success", handleSuccess);
-    // onEvent("general", handleSuccess);
     return () => {
       offEvent("payment-success", handleSuccess);
-      // offEvent("general", handleSuccess);
     };
   }, [onEvent, offEvent]);
 
@@ -277,14 +279,10 @@ function CustomProvider({ children }) {
   useEffect(() => {
     const handleFailed = (payload) => {
       setPaymentStatus(payload);
-      // setStatus("failed");
-      // setMessage(payload.reason || "Payment failed.");
     };
     onEvent("payment-failed", handleFailed);
     return () => offEvent("payment-failed", handleFailed);
   }, [onEvent, offEvent]);
-
-
 
   /**
    * Dispatch Helpers
@@ -321,9 +319,10 @@ function CustomProvider({ children }) {
     () => ({
       customState,
       customDispatch,
-      products: categoriesQuery.data || [],
-      notifications: notificationsQuery.data || [],
-      walletBalance: walletBalanceQuery.data || 0,
+      products: categoriesQuery.data,
+      notifications: notificationsQuery.data,
+      walletBalance: walletBalanceQuery.data,
+      walletStatus,
       walletBalanceQuery,
       notificationsQuery,
       categoriesQuery,
@@ -332,6 +331,7 @@ function CustomProvider({ children }) {
       paymentStatus,
     }),
     [
+      walletStatus,
       customState,
       walletBalanceQuery,
       notificationsQuery,

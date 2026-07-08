@@ -25,6 +25,7 @@ const adminRoute = require("./routes/adminRoute");
 const agentRoute = require("./routes/agentRoute");
 const employeeRoute = require("./routes/employeeRoute");
 const meterRoute = require("./routes/meterRoute");
+const electricityRoute = require("./routes/electricityRoute");
 const categoryRoute = require("./routes/categoryRoute");
 const voucherRoute = require("./routes/voucherRoute");
 const paymentRoute = require("./routes/paymentRoute");
@@ -32,6 +33,11 @@ const transactionRoute = require("./routes/transactionRoute");
 const messageRoute = require("./routes/messageRoute");
 const broadcastMessageRoute = require("./routes/broadcastMessageRoute");
 const notificationRoute = require("./routes/notificationRoute");
+
+//brasicca
+const billerRoute = require("./routes/brassica/billers.js");
+
+//
 const { verifyToken } = require("./middlewares/verifyToken");
 const sendEMail = require("./config/sendEmail");
 const knex = require("./db/knex");
@@ -286,12 +292,14 @@ app.use("/api/gabs/v1/agents", agentRoute);
 app.use("/api/gabs/v1/category", categoryRoute);
 app.use("/api/gabs/v1/voucher", voucherRoute);
 app.use("/api/gabs/v1/employees", employeeRoute);
+app.use("/api/gabs/v1/electricity", electricityRoute);
 app.use("/api/gabs/v1/meters", meterRoute);
 app.use("/api/gabs/v1/payment", paymentRoute);
 app.use("/api/gabs/v1/transaction", transactionRoute);
 app.use("/api/gabs/v1/notifications", notificationRoute);
 app.use("/api/gabs/v1/messages", messageRoute);
 app.use("/api/gabs/v1/broadcast-messages", verifyToken, broadcastMessageRoute);
+app.use("/api/gabs/v1/billers", billerRoute);
 
 // Health check endpoint
 app.get("/api/gabs/v1/health", (req, res) => {
@@ -383,7 +391,7 @@ async function bootstrap() {
 
     io.on("connection", async (socket) => {
       if (NODE_ENV === "development") {
-       logger.info("Socket Connected:", socket.id);
+        logger.info(`Socket Connected:${socket.id}`);
       }
 
       if (socket.user?.id) {
@@ -394,8 +402,8 @@ async function bootstrap() {
         await socket.join(paymentRoom);
 
         if (NODE_ENV === "development") {
-         logger.info(`User joined room: ${userRoom}`);
-         logger.info(`User joined payment room: ${paymentRoom}`);
+          logger.info(`User joined room: ${userRoom}`);
+          logger.info(`User joined payment room: ${paymentRoom}`);
         }
 
         await pubClient.set(`socket:${socket.user.id}`, socket.id, {
@@ -414,14 +422,14 @@ async function bootstrap() {
       });
 
       socket.on("join-payment-room", async (txRef) => {
-       logger.info(txRef);
+        logger.info(txRef);
 
         if (!txRef || typeof txRef !== "string") return;
         const paymentRoom = `payment:${txRef}`;
 
         await socket.join(paymentRoom);
 
-       logger.info(`User payment room: ${paymentRoom}`);
+        logger.info(`User payment room: ${paymentRoom}`);
 
         socket.emit("payment-room-joined", {
           room: paymentRoom,
@@ -472,6 +480,7 @@ async function bootstrap() {
 
     process.on("unhandledRejection", (reason, promise) => {
       logger.error("Unhandled Rejection at:", promise, "reason:", reason);
+      console.error("Unhandled Rejection at:", promise, "reason:", reason);
     });
 
     // Graceful shutdown handlers

@@ -75,7 +75,19 @@ const emitPaymentFailure = async ({ userId, txRef, reason }) => {
         txRef,
         reason,
       });
+
+      io.to(`payment:${userId}`).emit("payment-failed", {
+        success: false,
+        txRef,
+        reason,
+      });
     }
+
+    io.to(`user:${txRef}`).emit("payment-failed", {
+      success: false,
+      txRef,
+      reason,
+    });
 
     io.to(`payment:${txRef}`).emit("payment-failed", {
       success: false,

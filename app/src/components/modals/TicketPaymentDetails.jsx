@@ -18,7 +18,7 @@ import VoucherPlaceHolderItem from "../items/VoucherPlaceHolderItem";
 import { globalAlertType } from "../alert/alertType";
 import CustomDialogTitle from "../dialogs/CustomDialogTitle";
 import { AuthContext } from "../../context/providers/AuthProvider";
-import { disableWallet, getNonUser, getWalletStatus } from "../../api/userAPI";
+import { disableWallet, getWalletStatus } from "../../api/userAPI";
 import { verifyPin } from "../../config/validation";
 import { CircularProgress } from "@mui/material";
 
@@ -51,11 +51,6 @@ function TicketPaymentDetails() {
     retry: false,
   });
 
-  const { mutateAsync, isSuccess, isLoading } = useMutation({
-    mutationFn: getNonUser,
-    retry: false,
-  });
-
   const handlePayment = () => {
     if (payload?.isWallet) {
       if (token.trim() === "") {
@@ -69,94 +64,60 @@ function TicketPaymentDetails() {
         ["wallet-balance", user?.id],
         {
           exact: true,
-        }
+        },
       );
 
       if (Number(walletBalance) < Number(payload.totalAmount)) {
         customDispatch(
           globalAlertType(
             "error",
-            "Insufficient Wallet Balance.Please request for a top up."
-          )
+            "Insufficient Wallet Balance.Please request for a top up.",
+          ),
         );
         return;
       }
       payload.token = token;
     }
 
-    //Check if user exists
-    if (!user?.id) {
-      mutateAsync({});
+    paymentMutate.mutateAsync(payload, {
+      onSettled: () => {
+        customDispatch({ type: "sumCinemaTotal", payload: [] });
+        customDispatch({ type: "sumStadiumTotal", payload: [] });
+      },
+      onSuccess: (data) => {
+        if (data) {
+          navigate(`/confirm`, {
+            replace: true,
+            state: {
+              _id: data?._id,
+              type: "ticket",
+              path: pathname,
+              isWallet: payload?.isWallet,
+            },
+          });
+          customDispatch({
+            type: "getTicketPaymentDetails",
+            payload: { open: false, data: {} },
+          });
+        }
+      },
+      onError: async (error) => {
+        if (error === "Invalid pin!") {
+          setFailCount((prevState) => prevState - 1);
 
-      if (isSuccess) {
-        paymentMutate.mutateAsync(payload, {
-          onSettled: () => {
-            customDispatch({ type: "sumCinemaTotal", payload: [] });
-            customDispatch({ type: "sumStadiumTotal", payload: [] });
-          },
-          onSuccess: (data) => {
-            if (data) {
-              navigate(`/confirm`, {
-                replace: true,
-                state: {
-                  _id: data?._id,
-                  type: "ticket",
-                  path: pathname,
-                  isWallet: payload?.isWallet,
-                },
-              });
-              customDispatch({
-                type: "getTicketPaymentDetails",
-                payload: { open: false, data: {} },
-              });
-            }
-          },
-          onError: (error) => {
-            customDispatch(globalAlertType("error", error));
-          },
-        });
-      }
-    } else {
-      paymentMutate.mutateAsync(payload, {
-        onSettled: () => {
-          customDispatch({ type: "sumCinemaTotal", payload: [] });
-          customDispatch({ type: "sumStadiumTotal", payload: [] });
-        },
-        onSuccess: (data) => {
-          if (data) {
-            navigate(`/confirm`, {
-              replace: true,
-              state: {
-                _id: data?._id,
-                type: "ticket",
-                path: pathname,
-                isWallet: payload?.isWallet,
-              },
-            });
-            customDispatch({
-              type: "getTicketPaymentDetails",
-              payload: { open: false, data: {} },
-            });
-          }
-        },
-        onError: async (error) => {
-          if (error === "Invalid pin!") {
-            setFailCount((prevState) => prevState - 1);
-
-            if (failureCount <= 3) {
-              setErr(`${error} .${failureCount - 1} attempt(s) left.`);
-              if (failureCount <= 1) {
-                await disableWallet();
-              }
-            } else {
-              setErr(error);
+          if (failureCount <= 3) {
+            setErr(`${error} .${failureCount - 1} attempt(s) left.`);
+            if (failureCount <= 1) {
+              await disableWallet();
             }
           } else {
-            customDispatch(globalAlertType("error", error));
+            setErr(error);
           }
-        },
-      });
-    }
+        } else {
+          customDispatch(globalAlertType("error", error));
+        }
+      },
+    });
   };
 
   //close Payment Details
@@ -195,7 +156,6 @@ function TicketPaymentDetails() {
       ? payload?.paymentDetails?.tickets?.join(",")
       : _.map(payload?.paymentDetails?.tickets, "type").join(",");
 
-
   return (
     <Dialog open={open} maxWidth="xs" fullWidth>
       {payload?.isWallet && isLoadingWalletStatus ? (
@@ -227,7 +187,7 @@ function TicketPaymentDetails() {
             <>
               <CustomDialogTitle
                 title="Payment Details"
-                onClose={!paymentMutate.isLoading && handleClose}
+                onClose={!paymentMutate.isPending && handleClose}
               />
               <DialogContent>
                 <Typography
@@ -257,7 +217,7 @@ function TicketPaymentDetails() {
                   <VoucherPlaceHolderItem
                     title="Amount"
                     value={currencyFormatter(
-                      payload?.paymentDetails?.totalAmount
+                      payload?.paymentDetails?.totalAmount,
                     )}
                   />
                   {/* {!payload.sales && (
@@ -308,9 +268,9 @@ function TicketPaymentDetails() {
                   variant="contained"
                   onClick={handlePayment}
                   fullWidth
-                  loading={isLoading || paymentMutate.isLoading}
+                  loading={paymentMutate.isPending}
                 >
-                  {paymentMutate.isLoading ? "Please Wait..." : " Pay"}
+                  {paymentMutate.isPending ? "Please Wait..." : " Pay"}
                 </LoadingButton>
               </DialogContent>
             </>

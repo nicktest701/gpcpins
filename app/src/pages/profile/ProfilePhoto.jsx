@@ -1,170 +1,182 @@
-import { Avatar, CircularProgress, Box, Tooltip, Card } from "@mui/material";
-import EditIcon from "@mui/icons-material/Edit";
-import { useContext, useEffect, useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import {
+  Paper,
+  Box,
+  Avatar,
+  CircularProgress,
+  Tooltip,
+  IconButton,
+  Skeleton,
+} from "@mui/material";
+import { Edit as EditIcon } from "@mui/icons-material";
 import Compressor from "compressorjs";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import { useAuth } from "../../context/providers/AuthProvider";
+import { useCustomContext } from "../../context/providers/CustomProvider";
 import { updateUserProfile } from "../../api/userAPI";
 import { globalAlertType } from "../../components/alert/alertType";
-import { CustomContext } from "../../context/providers/CustomProvider";
 import { getInitials } from "../../config/validation";
 import coverImage from "../../assets/images/cover-01.png";
 
 function ProfilePhoto() {
-  const { user, updateProfilePhoto } = useContext(AuthContext);
-  const [isLoading, setIsLoading] = useState(false);
-  const { customDispatch } = useContext(CustomContext);
-  const [photo, setPhoto] = useState(user?.profile);
+  const { user, updateProfilePhoto } = useAuth();
+  const { customDispatch } = useCustomContext();
+  const fileInputRef = useRef(null);
 
+  const [photo, setPhoto] = useState(user?.profile || null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Sync photo with user profile changes
   useEffect(() => {
     setPhoto(user?.profile);
   }, [user]);
 
-  const handleUploadFile = (e) => {
-    if (e.target.files) {
-      const image = e.target.files[0];
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
 
-      new Compressor(image, {
-        height: 200,
-        width: 200,
-        quality: 0.6,
+    new Compressor(file, {
+      height: 200,
+      width: 200,
+      quality: 0.6,
+      success: (compressedFile) => {
+        setIsUploading(true);
+        updateUserProfile({ id: user?.id, profile: compressedFile })
+          .then((result) => {
+            customDispatch(globalAlertType("info", "Profile updated!"));
+            updateProfilePhoto({ profile: result });
+            setPhoto(result); // update local preview
+          })
+          .catch((error) => {
+            customDispatch(globalAlertType("error", error.message || "Upload failed"));
+          })
+          .finally(() => {
+            setIsUploading(false);
+            // Reset file input so same file can be re-uploaded
+            if (fileInputRef.current) fileInputRef.current.value = "";
+          });
+      },
+      error: () => {
+        customDispatch(globalAlertType("error", "Failed to compress image"));
+      },
+    });
+  };
 
-        success(data) {
-          setIsLoading(true);
-          const info = {
-            id: user?.id,
-            profile: data,
-          };
-
-          updateUserProfile(info)
-            .then((result) => {
-              customDispatch(globalAlertType("info", "Profile Updated!"));
-              updateProfilePhoto({ profile: result });
-            })
-            .catch((error) => {
-              customDispatch(globalAlertType("error", error));
-            })
-            .finally(() => {
-              setIsLoading(false);
-            });
-        },
-      });
-    }
+  const handleEditClick = () => {
+    fileInputRef.current?.click();
   };
 
   return (
-    <Card
+    <Paper
+      elevation={3}
       sx={{
+        position: "relative",
         overflow: "hidden",
-        borderRadius: 1,
-        // border: "1px solid",
-        borderColor: "stroke",
+        borderRadius: 3,
         bgcolor: "background.paper",
-        boxShadow: 3,
+        width: "100%",
+        maxWidth: 600,
+        mx: "auto",
       }}
     >
+      {/* Cover Image */}
+      <Box
+        sx={{
+          height: { xs: 100, sm: 140 },
+          backgroundImage: `url(${coverImage})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          borderBottom: "1px solid",
+          borderColor: "divider",
+        }}
+      />
+
+      {/* Avatar Section - centered over cover */}
       <Box
         sx={{
           position: "relative",
-          zIndex: 20,
-          height: { xs: "200px", md: "260px" },
-          width: { xs: "200px", md: "260px" },
-        }}
-      >
-        <img
-          src={coverImage}
-          alt="profile cover"
-          style={{
-            borderTopLeftRadius: 4,
-            borderTopRightRadius: 4,
-            objectFit: "cover",
-          }}
-        />
-      </Box>
-
-      <Box
-        sx={{
-          px: 4,
-          pb: { xs: 6, lg: 8, xl: 11.5 },
-          textAlign: "center",
+          display: "flex",
+          justifyContent: "center",
+          mt: -6,
+          px: 2,
+          pb: 3,
         }}
       >
         <Box
           sx={{
             position: "relative",
-            zIndex: 30,
-            mx: "auto",
-            mt: -22,
-            // width: "100%",
-            width: {xs:80,md:120},
-            height: {xs:80,md:120},
-            borderRadius: "50%",
-            bgcolor: "rgba(255, 255, 255, 0.2)",
-            p: 1,
-            display: "flex",
-            justifyContent: "center",
-            backdropFilter: "blur(10px)",
-            "& img": {
-              width: "auto",
-              height: "auto",
-            },
-            "& label": {
-              position: "absolute",
-              bottom: 0,
-              right: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              bgcolor: "primary.main",
-              color: "white",
-              borderRadius: "50%",
-              width: 34,
-              height: 34,
-              "&:hover": {
-                bgcolor: "primary.dark",
-              },
-            },
+            display: "inline-flex",
           }}
         >
-          {isLoading ? (
-            <CircularProgress size={20} />
-          ) : (
-            <Box
+          {/* Avatar with loading overlay */}
+          <Box sx={{ position: "relative" }}>
+            <Avatar
+              src={photo}
+              alt={user?.name || "Profile"}
               sx={{
-                width: "100%",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
+                width: { xs: 90, sm: 120 },
+                height: { xs: 90, sm: 120 },
+                border: "4px solid",
+                borderColor: "background.paper",
+                boxShadow: 2,
+                bgcolor: "secondary.main",
+                fontSize: { xs: "2rem", sm: "3rem" },
               }}
             >
-              <Tooltip title="upload photo">
-                <Avatar
-                  variant="circular"
-                  src={user?.profile}
-                  alt="profile"
-                  sx={{
-                    width: { xs: 60, md: 100 },
-                    height: { xs: 60, md: 100 },
-                  }}
-                >
-                  {getInitials(user?.email)}
-                </Avatar>
-                <label htmlFor="profile">
-                  <EditIcon sx={{ fontSize: 14 }} />
-                  <input
-                    type="file"
-                    name="profile"
-                    id="profile"
-                    style={{ display: "none" }}
-                    accept=".png,.jpg,.jpeg,.webp"
-                    onChange={handleUploadFile}
-                  />
-                </label>
-              </Tooltip>
-            </Box>
-          )}
+              {getInitials(user?.name || user?.email)}
+            </Avatar>
+
+            {/* Loading overlay */}
+            {isUploading && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  borderRadius: "50%",
+                  bgcolor: "rgba(0,0,0,0.4)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <CircularProgress size={32} sx={{ color: "white" }} />
+              </Box>
+            )}
+          </Box>
+
+          {/* Edit Button */}
+          <Tooltip title="Change photo" arrow>
+            <IconButton
+              onClick={handleEditClick}
+              disabled={isUploading}
+              sx={{
+                position: "absolute",
+                bottom: 4,
+                right: 4,
+                bgcolor: "primary.main",
+                color: "white",
+                width: { xs: 32, sm: 40 },
+                height: { xs: 32, sm: 40 },
+                "&:hover": {
+                  bgcolor: "primary.dark",
+                },
+                boxShadow: 2,
+              }}
+            >
+              <EditIcon sx={{ fontSize: { xs: 18, sm: 22 } }} />
+            </IconButton>
+          </Tooltip>
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/jpg,image/webp"
+            style={{ display: "none" }}
+            onChange={handleFileSelect}
+          />
         </Box>
       </Box>
-    </Card>
+    </Paper>
   );
 }
 

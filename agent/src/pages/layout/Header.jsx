@@ -159,7 +159,7 @@ function Header() {
         >
           <Avatar
             alt="logo"
-            src={IMAGES.coat_of_arms}
+            src={IMAGES.logo}
             sx={{
               width: 60,
               height: 60,

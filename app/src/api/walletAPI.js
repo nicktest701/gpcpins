@@ -52,9 +52,8 @@ export const getWalletStatus = async () => {
       method: "GET",
       url: `/wallet/status`,
     });
-
-
     return res.data;
+  
   } catch (error) {
     throw error.response.data;
   }
@@ -94,8 +93,8 @@ export const sendWalletTopUpRequest = async (data) => {
 export const disableWallet = async () => {
   try {
     const res = await api({
-      method: "GET",
-      url: `/wallet/status?action=disable`,
+      method: "PUT",
+      url: `/wallet/status`,
     });
 
     return res.data;

@@ -1,0 +1,401 @@
+const router = require("express").Router();
+const asyncHandler = require("express-async-handler");
+const _ = require("lodash");
+const { rateLimit } = require("express-rate-limit");
+const multer = require("multer");
+const { verifyToken } = require("../middlewares/verifyToken");
+const verifyAdmin = require("../middlewares/verifyAdmin");
+const knex = require("../db/knex");
+
+const limit = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 20, // 5 requests per windowMs
+  message: "Too many requests!. please try again later.",
+});
+
+const Storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "./receipts/");
+  },
+  filename: function (req, file, cb) {
+    const ext = file?.mimetype?.split("/")[1];
+
+    cb(null, `${req.body?.id}-prepaid.${ext}`);
+  },
+});
+
+const Upload = multer({ storage: Storage });
+
+router.get(
+  "/",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { startDate, endDate } = req.query;
+
+    const transactions = await knex(
+      "vw_meter_payment_prepaid_transaction_view",
+    ).where("status", "completed");
+
+    const modifiedTransactions = transactions.map((transaction) => {
+      return {
+        id: transaction?.id,
+        paymentId: transaction?.paymentId,
+        active: transaction?.active,
+        spn: transaction?.spn,
+        email: transaction?.email,
+        phonenumber: transaction?.phonenumber,
+        year: transaction?.year,
+        amount: transaction?.amount,
+        status: transaction?.status,
+        topup: transaction?.topup,
+        charges: transaction?.charges,
+        isProcessed: Boolean(transaction?.isProcessed),
+        createdAt: transaction?.createdAt,
+        updatedAt: transaction?.updatedAt,
+        info: JSON.parse(transaction?.info),
+        meterId: transaction?.meterId,
+        meter: {
+          id: transaction?.meterId,
+          number: transaction?.number,
+          name: transaction?.name,
+          type: transaction?.type,
+          district: transaction?.district,
+          address: transaction?.address,
+          geoCode: transaction?.geoCode,
+          accountNumber: transaction?.accountNumber,
+        },
+      };
+    });
+
+    const sDate = moment(startDate);
+    const eDate = moment(endDate);
+
+    const modifiedPayments = modifiedTransactions.filter(({ createdAt }) => {
+      return moment(createdAt).isBetween(sDate, eDate, "days", "[]");
+    });
+
+    const sortedPayments = _.orderBy(modifiedPayments, ["createdAt"], ["desc"]);
+
+    res.status(200).json(sortedPayments);
+  }),
+);
+
+router.get(
+  "/:id",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    if (!id || !isValidUUID2(id)) {
+      return res.status(400).json("Invalid Request!");
+    }
+
+    const transaction = await knex("vw_meter_payment_prepaid_transaction_view")
+      .select("*")
+      .where("id", id)
+      .first();
+
+    if (_.isEmpty(transaction)) {
+      return res.status(404).json({});
+    }
+
+    res.status(200).json({
+      ...transaction,
+      info: safeJSON(transaction?.info),
+    });
+  }),
+);
+
+
+router.get(
+  "/meter/:id",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const transactions = await knex("vw_meter_payment_prepaid_transaction_view")
+      .where({
+        meterId: id,
+        status: "completed",
+      })
+      .select("*")
+      .orderBy("createdAt", "desc");
+
+    const modifiedTransactions = transactions.map((transaction) => {
+      return {
+        id: transaction?.id,
+        paymentId: transaction?.paymentId,
+        active: transaction?.active,
+        email: transaction?.email,
+        mobileNo: transaction?.phonenumber,
+        year: transaction?.year,
+        topup: transaction?.topup,
+        charges: transaction?.charges,
+        amount: transaction?.amount,
+        status: transaction?.status,
+        is_processed: Boolean(transaction?.isProcessed),
+        createdAt: transaction?.createdAt,
+        updatedAt: transaction?.updatedAt,
+        issuerName: transaction?.issuerName,
+        info: JSON.parse(transaction?.info),
+        meter: {
+          id: transaction?.meterId,
+          number: transaction?.number,
+          name: transaction?.name,
+          type: transaction?.type,
+          district: transaction?.district,
+          address: transaction?.address,
+          geoCode: transaction?.geoCode,
+          accountNumber: transaction?.accountNumber,
+        },
+      };
+    });
+
+    res.status(200).json(modifiedTransactions);
+  }),
+);
+
+router.get(
+  "/user/:id",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const transactions = await knex("vw_meter_payment_prepaid_transaction_view")
+      .where({
+        userId: id,
+        active: 1,
+        status: "completed",
+      })
+      .select("*")
+      .orderBy("createdAt", "desc");
+
+    const modifiedTransactions = transactions.map((transaction) => {
+      return {
+        id: transaction?.id,
+        paymentId: transaction?.paymentId,
+        active: transaction?.active,
+        email: transaction?.email,
+        mobileNo: transaction?.mobileNo,
+        year: transaction?.year,
+        mode: transaction?.mode,
+        charges: transaction?.charges,
+        topup: transaction?.topup,
+        amount: transaction?.amount,
+        status: transaction?.status,
+        issuerName: transaction?.issuerName,
+        isProcessed: Boolean(transaction?.isProcessed),
+        createdAt: transaction?.createdAt,
+        updatedAt: transaction?.updatedAt,
+        info: JSON.parse(transaction?.info),
+        meter: {
+          id: transaction?.meterId,
+          number: transaction?.number,
+          name: transaction?.name,
+          type: transaction?.type,
+          district: transaction?.district,
+          address: transaction?.address,
+          spn: transaction?.spn,
+        },
+      };
+    });
+
+    res.status(200).json(modifiedTransactions);
+  }),
+);
+
+
+// Process prepaid transaction
+router.put(
+  "/",
+  verifyToken,
+  verifyAdmin,
+  Upload.single("receipt"),
+  asyncHandler(async (req, res) => {
+    const { id: userId, name } = req.user;
+    const { id, data } = req.body;
+    const { meter, meterId, paymentId, info } = data;
+
+    const transx = await knex.transaction();
+
+    try {
+      await transx("meters")
+        .where("id", meterId)
+        .update({
+          ...meter,
+        });
+
+      await transx("payments").where("id", paymentId).update({
+        is_processed: true,
+        issuer_id: userId,
+        issuer_name: name,
+      });
+
+      const updateTransactionDetails = await transx("electricity_transactions")
+        .where("id", id)
+        .update({
+          info: JSON.stringify({
+            ...info,
+            domain: "Prepaid",
+          }),
+        });
+
+      if (updateTransactionDetails !== 1) {
+        return res.status(404).json("Error updating request");
+      }
+
+      const transaction = await transx(
+        "vw_meter_payment_prepaid_transaction_view",
+      )
+        .where({
+          id: id,
+          status: "completed",
+        })
+        .select(
+          "id",
+          "number",
+          "name",
+          "paymentId",
+          "spn",
+          "email",
+          "phonenumber",
+          "topup",
+          "charges",
+          "amount",
+          "userId",
+        )
+        .first();
+
+      if (!transaction) {
+        await transx.rollback();
+        return res.status(404).json("Error updating request");
+      }
+
+      const meterInfo = {
+        id: transaction.id,
+        number: transaction?.number,
+        name: transaction?.name,
+        paymentId: paymentId,
+        email: transaction?.email,
+        mobileNo: transaction?.phonenumber,
+        spn: transaction?.spn,
+        orderNo: transaction?.orderNo,
+        topup: currencyFormatter(transaction?.topup),
+        charges: currencyFormatter(transaction?.charges),
+        amount: currencyFormatter(transaction?.amount),
+      };
+
+      //logs
+      await transx("activity_logs").insert({
+        user_id: userId,
+        title: "Processed prepaid transaction!",
+        severity: "info",
+      });
+
+      await transx("notifications").insert({
+        id: generateId(),
+        user_id: transaction?.userId,
+        type: "prepaid",
+        title: "Prepaid Units",
+        body: `You request to buy prepaid units has being completed.Click on the button below to download your receipt.In case units do not load automatically,Please enter the token on your meter to load your units.Thank you!`,
+        link: info?.downloadLink,
+      });
+
+      await transx.commit();
+
+      res
+        .status(201)
+        .json("Your request is being processed.You will be notified shortly!!");
+
+      limit(async () => {
+        await sendSMS(
+          `You request to buy prepaid units has being completed.Transaction Details:Transaction ID: ${meterInfo.id},Order No.:${meterInfo?.paymentId},-Token:${meterInfo?.orderNo},Meter No:${meterInfo?.number},Meter Name:${meterInfo?.name}-Amount Paid: ${meterInfo?.amount}.In case units do not load automatically,Please enter the token on your meter to load your units.Thank you`,
+          transaction?.phonenumber,
+        );
+        await sendElectricityMail(
+          id,
+          transaction?.email,
+          transaction?.status,
+          info?.downloadLink,
+          meterInfo,
+        );
+      });
+    } catch (error) {
+      logger.error(error);
+      await transx.rollback();
+      return res.status(500).json("Transaction Failed!");
+    }
+
+    // await sendWhatsappMessage({
+    //   user: getInternationalMobileFormat(paymentInfo?.mobileNo),
+    //   message: "Thank you for your purchase!",
+    //   media: downloadLink,
+    // });
+
+    // const template = await generatePrepaidTemplate(meterInfo);
+    // const result = limit(() => generatePrepaidReceipt(template, id));
+
+    //       result
+    //       .then(async (data) => {
+    //         if (data === "done") {    }
+    // })
+    // .catch((error) => {
+    //   logger.error(error);
+    //   return res.status(404).json("Error updating request");
+    // });
+
+    // const data = await sendSMS(
+    //   `You request to buy prepaid units has being completed.
+    //   Thank you for your purchase!
+    //   `,
+    //   updateTransactionDetails?.info?.mobileNo
+    // );
+  }),
+);
+
+router.put(
+  "/delete",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { ids } = req.body;
+
+    const removedTransactions = await knex("prepaid_transactions")
+      .whereIn("id", ids)
+      .update({
+        active: 0,
+      });
+
+    if (removedTransactions !== 1) {
+      return res.status(200).json("An error has occurred!");
+    }
+
+    res.status(200).json("Transactions removed!");
+  }),
+);
+
+router.delete(
+  "/:id",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    if (!id || !isValidUUID2(id)) {
+      return res.status(400).json("Invalid Request!");
+    }
+
+    const removedTransaction = await knex("prepaid_transactions")
+      .where("id", id)
+      .update({
+        active: 0,
+      });
+
+    if (removedTransaction !== 1) {
+      return res.status(200).json("An error has occurred!");
+    }
+
+    res.status(200).json("Transaction removed!");
+  }),
+);
+
+module.exports = router;

@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import Swal from "sweetalert2";
 import DOMPurify from "dompurify";
-import { useContext, useState } from "react";
+import {  useState } from "react";
 import {
   Link,
   Navigate,
@@ -21,8 +21,11 @@ import AnimatedContainer from "../../components/animations/AnimatedContainer";
 import { LoadingButton } from "@mui/lab";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { putUser } from "../../api/userAPI";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import {
+
+  useCustomContext,
+} from "../../context/providers/CustomProvider";
+import {  useAuth } from "../../context/providers/AuthProvider";
 import { globalAlertType } from "../../components/alert/alertType";
 import { isValidPhoneNumber } from "../../constants/PhoneCode";
 
@@ -31,14 +34,14 @@ function Updates() {
   const { state } = useLocation();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { customDispatch } = useContext(CustomContext);
-  const { user, login } = useContext(AuthContext);
+  const { customDispatch } = useCustomContext();
+  const { user, updateUser } = useAuth();
   const [lastname, setLastname] = useState("");
   const [firstname, setFirstname] = useState("");
   const [phonenumber, setPhonenumber] = useState("");
   const [err, setErr] = useState("");
 
-  const { mutateAsync, isLoading } = useMutation({
+  const { mutateAsync, isPending } = useMutation({
     mutationFn: putUser,
   });
   const updateChanges = () => {
@@ -86,7 +89,7 @@ function Updates() {
         mutateAsync(data, {
           onSuccess: (data) => {
             customDispatch(globalAlertType("info", "Changes Saved!"));
-            login(data?.accessToken);
+            updateUser(data?.user);
             queryClient.invalidateQueries(["user"]);
             navigate("/profile");
           },
@@ -113,10 +116,10 @@ function Updates() {
           {field === "firstname"
             ? "First Name"
             : field === "lastname"
-            ? "Last Name"
-            : field === "phonenumber"
-            ? "Phone Number"
-            : "Value"}
+              ? "Last Name"
+              : field === "phonenumber"
+                ? "Phone Number"
+                : "Value"}
         </Typography>
 
         <Stack spacing={2}>
@@ -174,7 +177,7 @@ function Updates() {
             }}
           >
             <Link to="/profile">
-              <Button color="secondary" size="small" disabled={isLoading}>
+              <Button color="secondary" size="small" disabled={isPending}>
                 Cancel
               </Button>
             </Link>
@@ -183,10 +186,10 @@ function Updates() {
               size="small"
               variant="contained"
               onClick={updateChanges}
-              loading={isLoading}
+              loading={isPending}
               loadingIndicator={<CircularProgress color="inherit" size={16} />}
             >
-              {isLoading ? "Saving" : "Save Changes"}
+              {isPending ? "Saving" : "Save Changes"}
             </LoadingButton>
           </Box>
         </Stack>

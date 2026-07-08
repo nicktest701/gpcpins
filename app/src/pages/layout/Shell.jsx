@@ -5,7 +5,7 @@ import { useCustomContext } from "../../context/providers/CustomProvider";
 import Layout from "./Layout";
 import PayLoading from "../../components/PayLoading";
 import GlobalAlert from "../../components/alert/GlobalAlert";
-import EmailSent from "../EmailSent";
+import VerifyOTP from "../VerifyOTP";
 import User from "./User";
 
 import Login from "../Login";
@@ -40,13 +40,13 @@ const BusPreview = lazy(() => import("../bus/BusPreview"));
 const BusTicketCheckout = lazy(() => import("../bus/BusTicketCheckout"));
 const Cinema = lazy(() => import("../cinema"));
 const Movie = lazy(() => import("../cinema/Movie"));
-const CinemaTicketCheckout = lazy(() =>
-  import("../cinema/CinemaTicketCheckout")
+const CinemaTicketCheckout = lazy(
+  () => import("../cinema/CinemaTicketCheckout"),
 );
 const Stadium = lazy(() => import("../stadium"));
 const MatchTicket = lazy(() => import("../stadium/MatchTicket"));
-const MatchTicketCheckout = lazy(() =>
-  import("../stadium/MatchTicketCheckout")
+const MatchTicketCheckout = lazy(
+  () => import("../stadium/MatchTicketCheckout"),
 );
 
 const Prepaid = lazy(() => import("../electricity/Prepaid"));
@@ -64,12 +64,13 @@ import GetStarted from "../GetStarted";
 import Error from "../Error";
 import VoucherPayment from "../payment/voucherPayment";
 import PaymentStatus from "../PaymentStatus";
-
-
+import PaymentError from "../payment/PaymentError";
 
 function Shell() {
-  const { customDispatch, customState: { alertData }, } = useCustomContext();
-
+  const {
+    customDispatch,
+    customState: { alertData },
+  } = useCustomContext();
 
   useEffect(() => {
     const handleOnline = () => {
@@ -78,7 +79,7 @@ function Shell() {
 
     const handleOffline = () => {
       customDispatch(
-        globalAlertType("error", "Internet Connection Lost! Try reconnecting.")
+        globalAlertType("error", "Internet Connection Lost! Try reconnecting."),
       );
     };
 
@@ -378,7 +379,7 @@ function Shell() {
         <Route path="/user" element={<User />}>
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
-          <Route path="verify" element={<EmailSent />} />
+          <Route path="verify" element={<VerifyOTP />} />
           <Route path="started" element={<GetStarted />} />
         </Route>
 
@@ -408,6 +409,7 @@ function Shell() {
             </Suspense>
           }
         />
+        <Route path="payment/failed" element={<PaymentError />} />
 
         <Route
           path="*"

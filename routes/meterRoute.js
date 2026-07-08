@@ -63,6 +63,26 @@ router.get(
 );
 
 router.get(
+  "/find",
+  asyncHandler(async (req, res) => {
+    const { number, name } = req.query;
+
+    if (!number) {
+      return res.status(400).json("Meter number is required!");
+    }
+
+    const meter = {
+      number: number,
+      name: name || "Test dmin", // Show this to user for confirmation
+      address: "94; Okn306; Adaman",
+      type: "PREPAID",
+    };
+
+    res.status(200).json(meter);
+  }),
+);
+
+router.get(
   "/all",
   verifyAdmin,
   asyncHandler(async (req, res) => {
@@ -196,13 +216,13 @@ router.post(
 router.put(
   "/",
   asyncHandler(async (req, res) => {
-    const { _id, ...rest } = req.body;
+    const { id, ...rest } = req.body;
 
-    if (!isValidUUID2(_id)) {
+    if (!isValidUUID2(id)) {
       return res.status(400).json("Invalid Request!");
     }
 
-    const meter = await knex("meters").where("id", _id).update(rest);
+    const meter = await knex("meters").where("id", id).update(rest);
 
     if (meter !== 1) {
       return res.status(404).json("Error updating meter information!");

@@ -44,7 +44,7 @@ function ResetPhoneNumber() {
   });
 
   //Verify Code
-  const { mutateAsync, isLoading } = useMutation({
+  const { mutateAsync, isPending } = useMutation({
     mutationFn: getPhoneNumberToken,
   });
 
@@ -80,7 +80,7 @@ function ResetPhoneNumber() {
   };
 
   //Change phone number
-  const { mutateAsync: verifyMutateAsync, isLoading: verifyIsLoading } =
+  const { mutateAsync: verifyMutateAsync, isPending: verifyIsLoading } =
     useMutation({
       mutationFn: verifyUserIdentity,
     });
@@ -170,8 +170,8 @@ function ResetPhoneNumber() {
                 size="small"
                 variant="contained"
                 fullWidth
-                disabled={isLoading}
-                loading={isLoading}
+                disabled={isPending}
+                loading={isPending}
                 sx={{ width: 200 }}
                 onClick={handleSubmit}
               >

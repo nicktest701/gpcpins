@@ -637,83 +637,44 @@ input::placeholder {
   }
 }
 
-.spiral {
-  position: absolute;
-  animation: spiral 5s linear infinite;
+.spinner3 {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  border-radius: 50%;
+  -webkit-mask: radial-gradient(farthest-side, #0000 40%, #ffffff 41%);
+  mask: radial-gradient(farthest-side, #0000 40%, #ffffff 41%);
+  background: linear-gradient(
+        0deg,
+        rgba(1, 46, 84, 0.9) 50%,
+        rgba(1, 46, 84, 1) 0
+      )
+      center/4.5px 100%,
+    linear-gradient(90deg, rgba(1, 46, 84, 0.25) 50%, rgba(1, 46, 84, 0.75) 0)
+      center/100% 4.5px;
+  background-repeat: no-repeat;
+  animation: spinner2-d3o0rx 1s infinite steps(12);
 }
 
-@keyframes zigzag {
-  0% {
-    opacity: 0;
-    border-color: var(--primary);
-    transform: translateX(0) translateY(0);
-  }
+.spinner3::before,
+.spinner3::after {
+  content: "";
+  grid-area: 1/1;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.915;
+  transform: rotate(30deg);
+}
 
-  25% {
-    opacity: 1;
-    transform: translateX(100px) translateY(50px);
-  }
+.spinner3::after {
+  opacity: 0.83;
+  transform: rotate(60deg);
+}
 
-  50% {
-    opacity: 0.8;
-    transform: translateX(200px) translateY(0);
-    border-color: var(--secondary);
-  }
-
-  75% {
-    opacity: 0.6;
-    transform: translateX(300px) translateY(50px);
-  }
-
+@keyframes spinner3-d3o0rx {
   100% {
-    opacity: 0.4;
-    transform: translateX(400px) translateY(0);
+    transform: rotate(1turn);
   }
-}
-
-.zigzag {
-  position: absolute;
-  animation: zigzag 10s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite reverse;
-}
-
-.svg-container {
-  width: 200px;
-  height: 200px;
-}
-
-@keyframes shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  25%,
-  75% {
-    transform: translateX(-5px);
-  }
-
-  50% {
-    transform: translateX(5px);
-  }
-}
-
-@keyframes swing {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-
-  50% {
-    transform: rotate(10deg);
-  }
-}
-
-.shake-animation {
-  animation: shake 1s ease infinite;
-}
-
-.swing-animation {
-  animation: swing 1s ease infinite;
 }
 
 @media (max-width: 768px) {

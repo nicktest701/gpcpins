@@ -27,13 +27,14 @@ import DOMPurify from "dompurify";
 import Swal from "sweetalert2";
 import { currencyFormatter } from "@/constants";
 import { makeMomoTransaction } from "@/api/paymentAPI";
-import { getNonUser, getWalletStatus } from "@/api/userAPI";
+import { getWalletStatus, disableWallet } from "@/api/userAPI";
 import { globalAlertType } from "@/components/alert/alertType";
 import PaymentOption from "@/components/PaymentOption";
 import VoucherPlaceHolderItem from "@/components/items/VoucherPlaceHolderItem";
 import { useAuth } from "../../context/providers/AuthProvider";
 import { useCustomContext } from "../../context/providers/CustomProvider";
 import { useSocket } from "../../context/providers/SocketProvider";
+import { useSessionStorage } from "../../hooks/useSessionStorage";
 
 function VoucherPayment() {
   const { user } = useAuth();
@@ -44,26 +45,25 @@ function VoucherPayment() {
   const theme = useTheme();
   const [voucherPayload, setVoucherPayload] = useState(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
-  const [failureCount, setFailCount] = useState(3);
+  const [failureCount, setFailCount] = useSessionStorage('fail-count',3);
   const payload = state?.data;
 
   const { joinPaymentRoom, leavePaymentRoom } = useSocket();
 
   // Wallet status
-  const { data: walletStatus, isLoading: isLoadingWalletStatus } = useQuery({
+  const { data: walletStatus, isLoading: isLoadingWalletStatus} = useQuery({
     queryKey: ["wallet-status"],
     queryFn: () => getWalletStatus(),
     enabled: !!user?.id && payload?.isWallet,
   });
 
+  const fetchedBallanceStatus = queryClient.getQueryData({
+    queryKey: ["wallet-status", user?.id],
+  });
+
   // Payment mutations
   const paymentMutation = useMutation({
     mutationFn: makeMomoTransaction,
-    retry: false,
-  });
-
-  const guestMutation = useMutation({
-    mutationFn: getNonUser,
     retry: false,
   });
 
@@ -104,8 +104,6 @@ function VoucherPayment() {
     voucherPayload?.paymentMethod === "wallet" &&
     walletBalance < payload.totalAmount;
 
-  const handleCloseSummary = () => setSummaryOpen(false);
-
   const handleGoBack = () => {
     customDispatch({ type: "getVoucherPaymentDetails", payload: { data: {} } });
     navigate(state?.path || "/evoucher?_pid=1", { replace: true });
@@ -115,10 +113,10 @@ function VoucherPayment() {
   const openSummary = () => {
     setSummaryOpen(true);
   };
+  const handleCloseSummary = () => setSummaryOpen(false);
 
   // This function executes the actual payment after user confirms in the summary dialog.
   const executePayment = async () => {
-    // joinPaymentRoom(voucherPayload?.phonenumber || user?.phonenumber);
     const payloadData = {
       category: payload?.category,
       categoryId: payload?.categoryId,
@@ -149,12 +147,10 @@ function VoucherPayment() {
       showCancelButton: true,
     }).then(async (result) => {
       if (result.isConfirmed) {
-        // if (!user?.id) {
-        //   await guestMutation.mutateAsync({});
-        // }
-        paymentMutation.mutate(payloadData, {
+        paymentMutation.mutateAsync(payloadData, {
           onSettled: () => {
             handleCloseSummary();
+            paymentMutation.reset();
           },
           onSuccess: (data) => {
             if (data?.transactionId) {
@@ -163,6 +159,7 @@ function VoucherPayment() {
                 state: {
                   id: data.transactionId,
                   transactionReference: data?.reference,
+                  phonenumber: voucherPayload?.phonenumber || user?.phonenumber,
                   categoryType: "voucher",
                   path: pathname,
                   isWallet: payloadData.isWallet,
@@ -171,17 +168,24 @@ function VoucherPayment() {
               });
             }
           },
-          onError: (error) => {
+          onError: async (error) => {
             if (error === "Invalid PIN!") {
               const newCount = failureCount - 1;
               setFailCount(newCount);
               if (newCount === 0) {
+                await disableWallet();
+
+                queryClient.invalidateQueries({
+                  queryKey: ["wallet-status", user?.id],
+                });
+
                 customDispatch(
                   globalAlertType(
                     "error",
                     `Wallet disabled. Please use mobile money or contact support.`,
                   ),
                 );
+                 setFailCount(newCount);
               } else {
                 customDispatch(
                   globalAlertType(
@@ -270,6 +274,19 @@ function VoucherPayment() {
                   email: user?.email || "",
                 }}
                 onSubmit={async (values) => {
+                  if (
+                    values?.paymentMethod === "wallet" &&
+                    fetchedBallanceStatus.active === false
+                  ) {
+                    customDispatch(
+                      globalAlertType(
+                        "error",
+                        `Wallet disabled. Please use mobile money or contact support.`,
+                      ),
+                    );
+                    return;
+                  }
+
                   if (isInsufficientBalance) {
                     customDispatch(
                       globalAlertType("error", "Insufficient wallet balance"),
@@ -393,11 +410,16 @@ function VoucherPayment() {
           </Paper>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseSummary}>Cancel</Button>
+          <Button
+            onClick={handleCloseSummary}
+            disabled={paymentMutation.isPending}
+          >
+            Cancel
+          </Button>
           <LoadingButton
             variant="contained"
             onClick={executePayment}
-            loading={paymentMutation.isLoading || guestMutation.isLoading}
+            loading={paymentMutation.isPending}
           >
             Confirm Payment
           </LoadingButton>

@@ -49,11 +49,15 @@ export const getMeterById = async (meterId) => {
     throw error.response.data;
   }
 };
-export const getMeterByNumber = async (meterNumber) => {
+export const getMeterByNumber = async (meterNumber, meterName) => {
   try {
     const res = await api({
-      url: `/meters/meter/${meterNumber}`,
+      url: `/meters/find/`,
       method: "GET",
+      params: {
+        number: meterNumber,
+        name: meterName,
+      },
     });
     return res.data;
   } catch (error) {
