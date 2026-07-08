@@ -14,9 +14,11 @@ const express = require("express");
 const { body, oneOf } = require("express-validator");
 const { v4: uuidv4 } = require("uuid");
 
-const { brassicaPost } = require("../services/brassicaClient");
-const validate = require("../middleware/validate");
-const logger = require("../utils/logger");
+
+;
+const logger = require("../../utils/logger");
+const { brassicaPost } = require("../../services/brassicaClient");
+const validate = require("../../middlewares/validate");
 
 const router = express.Router();
 

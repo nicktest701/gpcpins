@@ -36,6 +36,7 @@ const notificationRoute = require("./routes/notificationRoute");
 
 //brasicca
 const billerRoute = require("./routes/brassica/billers.js");
+const billerPaymentsRoute = require("./routes/brassica/payments.js");
 
 //
 const { verifyToken } = require("./middlewares/verifyToken");
@@ -300,6 +301,7 @@ app.use("/api/gabs/v1/notifications", notificationRoute);
 app.use("/api/gabs/v1/messages", messageRoute);
 app.use("/api/gabs/v1/broadcast-messages", verifyToken, broadcastMessageRoute);
 app.use("/api/gabs/v1/billers", billerRoute);
+app.use("/api/gabs/v1/biller/payments", billerPaymentsRoute);
 
 // Health check endpoint
 app.get("/api/gabs/v1/health", (req, res) => {

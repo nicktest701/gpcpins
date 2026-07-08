@@ -36,7 +36,8 @@ class AppError extends Error {
  * @returns {Promise<object>} Brassica response body
  */
 async function brassicaPost(endpoint, body = {}, retry = true) {
-  const token = await getBrassicaToken();
+  let token = await getBrassicaToken();
+  // console.log(token)
   const url = `${brassicaConfig.baseURL}${endpoint}`;
 
   let response;
@@ -49,6 +50,8 @@ async function brassicaPost(endpoint, body = {}, retry = true) {
       },
     });
   } catch (err) {
+    console.log(err);
+
     // Network / timeout errors
     if (err.code === "ECONNABORTED") {
       throw new AppError("Request to Brassica Pay timed out.", 504, null, null);

@@ -1841,17 +1841,60 @@ router.post(
 //@ Payment callback brassica
 router.post(
   "/callback",
-  cors(corsOptions),
+  // cors(corsOptions),
   rlimit,
   asyncHandler(async (req, res) => {
     const payload = req.body;
 
-    const reference = payload?.transactionId;
+    // Acknowledge immediately — Brassica expects this JSON back
+    res.status(200).json({
+      status: "OK",
+      message: "Received successfully.",
+    });
 
-    if (!reference) return res.sendStatus(400);
-    logger.info(reference);
+    // ── Process asynchronously (after ack) ────────────────────────────────────
+    setImmediate(() => {
+      try {
+        const {
+          statusCode,
+          status,
+          transactionId,
+          extralTransactionId,
+          institutionApprovalCode,
+        } = payload;
 
-    res.sendStatus(200);
+        logger.info(
+          `[Webhook] txId=${transactionId} brassicaTxId=${extralTransactionId} ` +
+            `status=${status}(${statusCode}) approvalCode=${institutionApprovalCode}`,
+        );
+
+        // ── TODO: Replace with your business logic ─────────────────────────────
+        // Examples:
+        //   await db.transactions.updateOne({ transactionId }, { status, statusCode, institutionApprovalCode });
+        //   await notifyUser(transactionId, status);
+        //   await publishToQueue("transaction.completed", payload);
+        // ──────────────────────────────────────────────────────────────────────
+
+        if (status === "SUCCESSFUL" || statusCode === "200") {
+          // Handle success
+          logger.info(`[Webhook] Transaction ${transactionId} SUCCEEDED.`);
+        } else if (
+          status === "FAILED" ||
+          ["424", "412", "300"].includes(String(statusCode))
+        ) {
+          // Handle failure — do NOT retry 424; it is terminal
+          logger.warn(
+            `[Webhook] Transaction ${transactionId} FAILED (code=${statusCode}).`,
+          );
+        } else {
+          logger.info(
+            `[Webhook] Transaction ${transactionId} status=${status} — no action taken.`,
+          );
+        }
+      } catch (err) {
+        logger.error("[Webhook] Error processing callback payload:", err);
+      }
+    });
   }),
 );
 
@@ -1948,6 +1991,8 @@ router.post(
     const { type } = req.params;
     const payload = req.body;
 
+    // res.sendStatus(200);
+
     const reference = payload?.Data?.ClientReference;
     if (!reference || !type) return res.sendStatus(204);
 
@@ -1993,6 +2038,8 @@ router.post(
         return res.sendStatus(200);
       }
 
+      res.sendStatus(200);
+
       await trx("payments")
         .where({ id: payment.paymentId })
         .andWhereNot({ status: "completed" })
@@ -2007,8 +2054,6 @@ router.post(
       // mark processed
       await redisClient.set(doneKey, "1", "EX", 86400);
       await redisClient.del(lockKey);
-
-      res.sendStatus(200);
 
       // async events
       queueMicrotask(() =>

@@ -6,6 +6,7 @@ import {
   ref,
   ValidationError,
   boolean,
+  mixed,
 } from "yup";
 import {
   getInternationalMobileFormat,
@@ -502,16 +503,32 @@ export const prepaidValidationSchema = () => {
 export const prepaidPaymentValidationSchema = object().shape({
   amount: number()
     .required("Required")
-    .min(50, "Minimum amount you can buy is GHS 50."),
+    .min(10, "Minimum amount you can buy is GHS 10."),
 });
 
 export const prepaidMeterValidationSchema = object().shape({
-  number: string()
-    .trim()
-    .uppercase()
-    .required("Required*")
-    .matches(/^[a-zA-Z]\d{9}$/, "Invalid Meter Number"),
-    
+  // number: string()
+  //   .trim()
+  //   .uppercase()
+  //   .required("Required*")
+  //   .matches(/^[a-zA-Z]\d{9}$/, "Invalid Meter Number"),
+  number: mixed()
+    .required("Meter ID is required")
+    .test("is-valid-meter-id", "Invalid meter ID format", (value) => {
+      if (value === undefined || value === null) return false;
+
+      // Convert to string to handle both numbers and strings uniformly
+      const stringValue = String(value).trim();
+
+      // Definition of allowed formats
+      const is11DigitNumber = /^\d{11}$/.test(stringValue);
+      const isAlphanumericP10Digit = /^P\d{10}$/.test(stringValue);
+      const is13DigitNumber = /^\d{13}$/.test(stringValue);
+
+      // Return true if it matches any of the three formats
+      return is11DigitNumber || isAlphanumericP10Digit || is13DigitNumber;
+    }),
+
   name: string().test("isValidName", "", (value) => {
     if (!value?.trim()) {
       return true;

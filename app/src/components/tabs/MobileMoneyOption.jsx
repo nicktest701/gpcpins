@@ -36,6 +36,10 @@ function MobileMoneyOption() {
     control,
     name: "paymentMethod",
   });
+  const mobilePartner = useWatch({
+    control,
+    name: "mobilePartner",
+  });
 
   const [showSavedNumber, setShowSavedNumber] = useState(false);
   const [expanded, setExpanded] = useState(paymentMethod === "momo");
@@ -175,15 +179,13 @@ function MobileMoneyOption() {
             <>
               <MobilePartner
                 size="small"
-                value={watch({
-                  control,
-                  name: "mobilePartner",
-                })}
-                setValue={(value) =>
+                value={mobilePartner}
+                setValue={(value) => {
                   setValue("mobilePartner", value, {
                     shouldValidate: true,
-                  })
-                }
+                  });
+                }}
+                {...register("mobilePartner")}
                 error={!!errors.mobilePartner}
                 helperText={errors.mobilePartner?.message}
                 InputLabelProps={{

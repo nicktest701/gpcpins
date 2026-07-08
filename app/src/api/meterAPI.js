@@ -52,11 +52,12 @@ export const getMeterById = async (meterId) => {
 export const getMeterByNumber = async (meterNumber, meterName) => {
   try {
     const res = await api({
-      url: `/meters/find/`,
-      method: "GET",
-      params: {
-        number: meterNumber,
+      url: `/billers/ecg/lookup`,
+      method: "POST",
+      data: {
+        accountNumber: meterNumber,
         name: meterName,
+        accountCategory: "PREPAID",
       },
     });
     return res.data;

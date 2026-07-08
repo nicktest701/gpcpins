@@ -22,13 +22,17 @@ function MobilePartner({
       size={size || "small"}
       select
       value={stringValue || ""} // Material UI gets the string it expects
+      defaultValue=""
       onChange={(e) => {
         const targetValue = e.target.value;
+  
+
         // Find the full object to send back to the parent state
         const selectedObject = MOBILE_PROVIDER.find(
           (p) => p.value === targetValue,
         );
-        setValue(selectedObject || targetValue);
+
+        setValue(selectedObject.value);
       }}
       fullWidth
       error={error}

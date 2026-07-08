@@ -9,6 +9,8 @@ const { acquireLock, releaseLock } = require("./token.lock.js");
 const { authBreaker } = require("./auth.client.js");
 // Metrics collector used for debugging and observability.
 const tokenMetrics = require("./token.metrics.js");
+const logger = require("../../utils/logger.js");
+const redisClient = require("../../config/redisClient.js");
 
 function sleep(ms) {
   // Pause execution for a defined interval before retrying.
@@ -76,7 +78,69 @@ async function getBrassicaToken() {
   throw new Error("Unable to obtain Brassica token");
 }
 
+/**
+ * Sets a key-value pair in Redis with a 5-minute expiration time.
+ * @param {string} key - The unique identifier key.
+ * @param {any} value - The data to store (will be converted to JSON string).
+ */
+async function saveMeter(key, value) {
+  try {
+    // 5 minutes = 300 seconds
+    const EXPIRE_IN_SECONDS = 300;
+
+    // Always stringify objects/arrays before saving to Redis
+    const stringValue =
+      typeof value === "object" ? JSON.stringify(value) : String(value);
+
+    // Use the 'EX' option to set expiration in seconds
+    await redisClient.set(key, stringValue, {
+      EX: EXPIRE_IN_SECONDS,
+    });
+
+    if (process.env.NODE_ENV !== "production") {
+      logger.info(`Successfully cached key "${key}" for 5 minutes.`);
+    }
+  } catch (error) {
+    console.log(error)
+    // Log the error but don't throw it, keeping your server alive
+    logger.error(`Failed to set Redis key "${key}":`, error);
+  }
+}
+
+/**
+ * Retrieves a key from Redis and automatically parses it back from JSON if necessary.
+ * @param {string} key - The unique identifier key.
+ * @returns {any|null} The parsed data, or null if the key has expired or does not exist.
+ */
+async function getMeter(key) {
+  try {
+    const data = await redisClient.get(key);
+
+    // If the key has expired or doesn't exist, Redis returns null
+    if (!data) {
+      if (process.env.NODE_ENV !== "production") {
+        logger.info(`Redis cache miss for key: "${key}"`);
+      }
+      return null;
+    }
+
+    // Try to parse the string back into an object/array
+    try {
+      return JSON.parse(data);
+    } catch {
+      // If it's a plain string that can't be parsed, return it as-is
+      return data;
+    }
+  } catch (error) {
+    // Log the network error but don't crash the server; treat it as a temporary cache miss
+    logger.error(`Failed to get Redis key "${key}":`, error);
+    return null;
+  }
+}
+
 module.exports = {
   refreshToken,
   getBrassicaToken,
+  saveMeter,
+  getMeter,
 };

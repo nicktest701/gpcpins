@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
+const { v4: uuidv4 } = require("uuid");
 const generateId = require("../config/generateId");
 
 //model
@@ -10,6 +11,7 @@ const { isValidUUID2 } = require("../config/validation");
 const knex = require("../db/knex");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const { verifyToken } = require("../middlewares/verifyToken");
+const { getMeter } = require("../services/brassica/token.manager");
 
 router.get(
   "/",
@@ -59,26 +61,6 @@ router.get(
     // console.log(meters);
 
     res.status(200).json(meters);
-  }),
-);
-
-router.get(
-  "/find",
-  asyncHandler(async (req, res) => {
-    const { number, name } = req.query;
-
-    if (!number) {
-      return res.status(400).json("Meter number is required!");
-    }
-
-    const meter = {
-      number: number,
-      name: name || "Test dmin", // Show this to user for confirmation
-      address: "94; Okn306; Adaman",
-      type: "PREPAID",
-    };
-
-    res.status(200).json(meter);
   }),
 );
 
@@ -171,6 +153,7 @@ router.get(
         "spn",
         "address",
         "district",
+        "provider_name",
         "geo_code as geoCode",
         "account_number as accountNumber",
         "created_at as createdAt",
@@ -187,6 +170,7 @@ router.post(
   "/",
   verifyToken,
   asyncHandler(async (req, res) => {
+    let availableMeter = null;
     const newMeter = req.body;
 
     const ifMeterExists = await knex("meters")
@@ -200,10 +184,51 @@ router.post(
       return res.status(404).json("Meter already exist!.");
     }
 
-    const meter = await knex("meters").insert({
+    const savedMeter = await getMeter(`meter:${newMeter?.number}`);
+    if (savedMeter) {
+      availableMeter = savedMeter;
+    } else {
+      try {
+        const transactionId = uuidv4();
+        const response = await brassicaPost("/billerAccountLookUp", {
+          transactionId,
+          accountNumber: newMeter?.number,
+          phoneNumber: process.env.BRASSICA_CLIENT_PHONENUMBER,
+          accountCategory: "PREPAID",
+          billerType: "ECG",
+        });
+
+        if (response?.status !== "Success" || response?.statusCode !== "200") {
+          return res.status(401).json("An error has occurred!.Meter not found");
+        }
+
+        availableMeter = response;
+      } catch (error) {
+        return res
+          .status(500)
+          .json("An error has occurred!.Could not save meter details.");
+      }
+    }
+
+    const meterDetails = {
       id: generateId(),
-      ...newMeter,
-    });
+      user_id: newMeter?.user_id,
+      number: newMeter?.number,
+      spn: "",
+      name: availableMeter?.accountName,
+      type: availableMeter?.accountType,
+      district: availableMeter?.serviceDis,
+      address: availableMeter?.accountAddress,
+      geo_code: "",
+      account_number: newMeter?.number,
+      reference_id: availableMeter?.accountReferenceId,
+      region: availableMeter?.serviceRegionId,
+      provider_name: availableMeter?.serviceProviderName,
+      alt_account_number: availableMeter?.altAccountNumber,
+      look_up_id: availableMeter?.accountLookUpId,
+    };
+
+    const meter = await knex("meters").insert(meterDetails);
 
     if (_.isEmpty(meter)) {
       return res.status(400).json("Error saving meter information!");

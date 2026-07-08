@@ -36,6 +36,7 @@ function Meters() {
     data: meters,
     isLoading,
     isError,
+    error,
     refetch,
   } = useQuery({
     queryKey: ["meter", user?.id],
@@ -115,7 +116,7 @@ function Meters() {
         </Button>
       </Stack>
 
-      {isLoading ? (
+      {/* {isLoading ? (
         <LoadingSkeleton />
       ) : meters?.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: "center" }}>
@@ -131,10 +132,22 @@ function Meters() {
             Add Your First Meter
           </Button>
         </Paper>
-      ) : isMobile ? (
-        <MeterCardList meters={meters} />
+      )} */}
+
+      {isMobile ? (
+        <MeterCardList
+          meters={meters}
+          loading={isLoading}
+          error={error}
+          onRetry={refetch}
+        />
       ) : (
-        <MeterTable meters={meters} />
+        <MeterTable
+          meters={meters}
+          loading={isLoading}
+          error={error}
+          onRetry={refetch}
+        />
       )}
 
       {/* Modals */}

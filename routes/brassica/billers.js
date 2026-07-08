@@ -17,6 +17,7 @@ const asyncHandler = require("express-async-handler");
 const { brassicaPost } = require("../../services/brassicaClient");
 const validate = require("../../middlewares/validate");
 const logger = require("../../utils/logger");
+const { saveMeter } = require("../../services/brassica/token.manager");
 
 const router = express.Router();
 
@@ -143,42 +144,64 @@ router.post(
 router.post(
   "/ecg/lookup",
   [
-    body("transactionId").optional().isString().isLength({ max: 40 }),
+    // body("transactionId").optional().isString().isLength({ max: 40 }),
     body("accountNumber")
       .matches(/^\d{8,15}$/)
       .withMessage("accountNumber must be a valid ECG meter number."),
-    body("phoneNumber")
-      .matches(/^\d{12,13}$/)
-      .withMessage(
-        "phoneNumber must be in international format (e.g. 233XXXXXXXXX).",
-      ),
-    body("accountCategory")
-      .isIn(["PREPAID", "POSTPAID"])
-      .withMessage('accountCategory must be "PREPAID" or "POSTPAID".'),
+    // body("phoneNumber")
+    //   .matches(/^\d{12,13}$/)
+    //   .withMessage(
+    //     "phoneNumber must be in international format (e.g. 233XXXXXXXXX).",
+    //   ),
+    // body("accountCategory")
+    //   .isIn(["PREPAID", "POSTPAID"])
+    //   .withMessage('accountCategory must be "PREPAID" or "POSTPAID".'),
   ],
   validate,
-  asyncHandler(async (req, res, next) => {
+  asyncHandler(async (req, res) => {
     try {
-      const { accountNumber, phoneNumber, accountCategory } = req.body;
+      const { accountNumber, accountCategory } = req.body;
       const transactionId = req.body.transactionId || uuidv4();
 
       logger.info(
         `[ECGLookup] meter=${accountNumber} category=${accountCategory}`,
       );
 
-      const data = await brassicaPost("/billerAccountLookUp", {
+      const response = await brassicaPost("/billerAccountLookUp", {
         transactionId,
         accountNumber,
-        phoneNumber,
+        phoneNumber: process.env.BRASSICA_CLIENT_PHONENUMBER,
         accountCategory,
         billerType: "ECG",
       });
 
-      return res.status(200).json({ success: true, data });
+      // console.log(response);
+
+      if (response?.status !== "Success" || response?.statusCode !== "200") {
+        return res.status(401).json("Meter not found");
+      }
+
+      const { accountDetails: data } = response;
+
+      const meterDetails = {
+        name: data?.accountName,
+        type: data?.accountType,
+        address: data?.accountAddress,
+        account_number: data?.altAccountNumber,
+        provider_name: data?.serviceProviderName,
+      };
+      const key = `meter:${accountNumber}`;
+
+      await saveMeter(key, data);
+      // console.log(response)
+
+      return res.status(200).json(response);
     } catch (err) {
       // next(err);
       console.log(err);
-      return res.status(500).json("An error has occurred!");
+      return res
+        .status(500)
+        .json("Error fetching Meter details!.Try again later");
     }
   }),
 );
@@ -231,6 +254,7 @@ router.post(
         altAccountNumber,
       } = req.body;
 
+      console.log(req.body)
 
       const transactionId = req.body.transactionId || uuidv4();
 
@@ -259,7 +283,7 @@ router.post(
           paymentBy,
         },
       });
-      console.log(data)
+      console.log(data);
 
       return res.status(200).json({ success: true, data });
     } catch (err) {
