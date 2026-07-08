@@ -4,6 +4,7 @@ const axios = require("axios");
 const CircuitBreaker = require("opossum");
 
 const brassicaConfig = require("../../config/brassica");
+const logger = require("../../utils/logger");
 
 const authenticateRequest = async () => {
   logger.info("Refreshing Brassica Pay Bearer token...");

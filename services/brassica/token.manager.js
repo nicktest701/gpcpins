@@ -8,7 +8,7 @@ const { acquireLock, releaseLock } = require("./token.lock.js");
 // Circuit breaker wrapper for the brassica auth endpoint.
 const { authBreaker } = require("./auth.client.js");
 // Metrics collector used for debugging and observability.
-const { tokenMetrics } = require("./token.metrics.js");
+const tokenMetrics = require("./token.metrics.js");
 
 function sleep(ms) {
   // Pause execution for a defined interval before retrying.
