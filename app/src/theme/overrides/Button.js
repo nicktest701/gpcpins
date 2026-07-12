@@ -6,19 +6,19 @@ export default function Button(theme) {
       defaultProps: {
         disableElevation: true,
         sx: {
-          borderRadius: 2, // consistent with dialog buttons
-          paddingY: '8px',
+          borderRadius: 1.3, // consistent with dialog buttons
+          paddingY: 1.5,
           paddingX: 2,
           boxShadow: 'none',
-          textTransform: 'uppercase', // keep brand style; change to 'none' if you prefer sentence case
+          // textTransform: 'uppercase', // keep brand style; change to 'none' if you prefer sentence case
         },
       },
       styleOverrides: {
         root: {
-          borderRadius: 2,
+          borderRadius: 1,
           boxShadow: 'none',
           whiteSpace: 'nowrap',
-          fontWeight: 600,
+          // fontWeight: 600,
           letterSpacing: 0.3,
           transition: 'all 0.2s ease',
           '&:hover': {

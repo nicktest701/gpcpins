@@ -8,7 +8,7 @@ export default function Input(theme) {
       defaultProps: {
         autoComplete: 'off',
         sx: {
-          borderRadius: 0,
+          borderRadius: 1.2,
         },
 
         inputProps: {

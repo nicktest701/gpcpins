@@ -90,7 +90,7 @@ function CinemaTickets() {
               movies,award nights,music shows and many more...
             </Typography>
 
-            <div className="movie-search-container">
+            {/* <div className="movie-search-container">
               <input
                 type="search"
                 inputMode="search"
@@ -101,7 +101,7 @@ function CinemaTickets() {
               />
               {pending && <CircularProgress size="small" />}
               {movies?.length !== 0 && <MovieDropdown movies={movies} />}
-            </div>
+            </div> */}
           </Container>
         </div>
       </div>

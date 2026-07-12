@@ -1,29 +1,20 @@
-import { saveToken, } from "../config/sessionHandler";
+import { saveToken, getToken, saveAccessToken } from "../config/sessionHandler";
 import api from "./customAxios";
 
 export const getAdmin = async () => {
+  const token = getToken();
   try {
     const res = await api({
       method: "GET",
-      url: `/user/auth`,
+      url: `/admin/auth`,
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+      },
     });
+
     return res.data;
   } catch (error) {
     throw error.response.data;
-  }
-};
-
-export const getAdminToken = async () => {
-  try {
-    const res = await api({
-      method: "GET",
-      url: `/users/token`,
-    });
-    saveToken(res.data?.accessToken, res.data?.refreshToken);
-
-    return res.data;
-  } catch (error) {
-    throw "an error has occurred";
   }
 };
 
@@ -73,12 +64,11 @@ export const verifyAdminOTP = async (data) => {
   try {
     const res = await api({
       method: "POST",
-      url: `/users/verify-otp`,
+      url: `/admin/verify-otp`,
       data,
     });
 
-
-    saveToken(res.data?.accessToken, res.data?.refreshToken);
+    saveAccessToken(res.data?.accessToken);
 
     return res.data;
   } catch (error) {
@@ -87,15 +77,15 @@ export const verifyAdminOTP = async (data) => {
 };
 
 export const updateAdminProfile = async (data) => {
-  const formData = new FormData();
-  formData.append("id", data?.id);
-  formData.append("profile", data?.profile);
+  // const formData = new FormData();
+  // formData.append("id", data?.id);
+  // formData.append("profile", data?.profile);
 
   try {
     const res = await api({
       method: "PUT",
       url: `/admin/profile`,
-      data: formData,
+      data: data,
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -128,7 +118,6 @@ export const resetAdminPassword = async (updatedAdmin) => {
       url: `/admin/password-reset`,
       data: updatedAdmin,
     });
-    saveToken(res.data?.accessToken, res.data?.refreshToken);
 
     return res.data;
   } catch (error) {
@@ -143,8 +132,6 @@ export const putAdminPassword = async (updatedAdmin) => {
       data: updatedAdmin,
     });
 
-    saveToken(res.data?.accessToken, res.data?.refreshToken);
-
     return res.data;
   } catch (error) {
     throw error.response.data;
@@ -158,9 +145,6 @@ export const putAdminResetPasswordLink = async (data) => {
       url: `/employees/reset`,
       data,
     });
-
-    saveToken(res.data?.accessToken, res.data?.refreshToken);
-    // saveUser(res.data?.user);
 
     return res.data;
   } catch (error) {
@@ -195,12 +179,11 @@ export const enableOrDisableAccount = async (info) => {
   }
 };
 
-
 export const getPhoneNumberToken = async ({ token }) => {
   try {
     const res = await api({
       method: "GET",
-     url: `/wallet/pin-reset`,
+      url: `/wallet/pin-reset`,
       params: {
         code: token,
       },
@@ -212,26 +195,21 @@ export const getPhoneNumberToken = async ({ token }) => {
   }
 };
 
-
 export const verifyUserIdentity = async (data) => {
-
   try {
     const res = await api({
       method: "GET",
       url: `/users/verify-identity`,
       params: {
-        ...data
-      }
+        ...data,
+      },
     });
 
-    saveToken(res.data?.accessToken, res.data?.refreshToken);
-    // saveUser(res.data?.accessToken);
     return res.data;
   } catch (error) {
     throw error.response.data;
   }
 };
-
 
 ///SMS API
 export const getSMSAPI = async () => {
@@ -246,14 +224,13 @@ export const getSMSAPI = async () => {
   }
 };
 
-
 ///SMS API
 export const postSMSAPI = async (data) => {
   try {
     const res = await api({
       method: "POST",
       url: `/admin/sms`,
-      data
+      data,
     });
 
     return res.data;

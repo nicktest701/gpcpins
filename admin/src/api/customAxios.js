@@ -1,9 +1,8 @@
 import axios from "axios";
-// import { isMobileBrowser } from "../config/isMobileBrowser";
+
 
 import {
   deleteToken,
-  getRefreshToken,
   getToken,
   saveAccessToken,
 } from "../config/sessionHandler";
@@ -27,13 +26,13 @@ api.interceptors.request.use(
     }
 
     const token = getToken();
-    config.headers.Authorization = token ? `Bearer ${token}` : '';
+    config.headers.Authorization = token ? `Bearer ${token}` : "";
     return config;
   },
   (error) => {
     // Do something with request error
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor to handle token expiration and refresh
@@ -43,32 +42,24 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     if ([403].includes(error.response.status) && !originalRequest._retry) {
-
-
       try {
-        const refreshToken = getRefreshToken();
-
         // Initiate token refresh
         const res = await axios({
           method: "GET",
-          url: `${BASE_URL}/users/auth/token`,
+          url: `${BASE_URL}/admin/auth/token`,
           withCredentials: true,
-          headers: {
-            Authorization: refreshToken ? `Bearer ${refreshToken}` : "",
-          },
         });
 
+   
 
         saveAccessToken(res.data?.accessToken);
         originalRequest.headers.Authorization = `Bearer ${res.data?.accessToken}`;
-
 
         originalRequest._retry = true;
 
         // Retry the original request with the new access token
         return api(originalRequest);
       } catch (refreshError) {
-
         deleteToken();
         // Handle token refresh failure, possibly redirect to login page
         //  console.log("Token refresh failed:", refreshError?.message);
@@ -77,7 +68,7 @@ api.interceptors.response.use(
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

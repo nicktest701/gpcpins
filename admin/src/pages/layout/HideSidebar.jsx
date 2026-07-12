@@ -382,13 +382,13 @@ function HideSidebar() {
                   title="Refund Transactions"
                 >
                   <NavLinkItem
-                    to="refund/details"
+                    to="refund"
                     title="All Refunds"
                     icon={<FileCopyIcon />}
                   />
 
                   <NavLinkItem
-                    to="refund"
+                    to="refund/money"
                     title="Refund Money"
                     icon={<FileCopyIcon />}
                   />

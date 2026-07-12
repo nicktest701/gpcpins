@@ -102,7 +102,7 @@ function PaymentOption({
                 </IconButton>
               </Link>
             )}
-            <Typography variant="h6" fontWeight="bold">
+            <Typography variant="h6" fontWeight="bold" textTransform='uppercase'>
               Payment Information
             </Typography>
           </Stack>

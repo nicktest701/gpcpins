@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, Outlet } from "react-router-dom";
-import { useCustomData } from "../../context/providers/CustomProvider";
+import { useCustomContext } from "../../context/providers/CustomProvider";
 import { useAuth } from "../../context/providers/AuthProvider";
 import { globalAlertType } from "../../components/alert/alertType";
 
@@ -16,11 +16,8 @@ import MessageHome from "../messages/MessageHome";
 import VerifyEmployee from "../workers/VerifyEmployee";
 
 const Electricity = lazy(() => import("../electricity"));
-const ProcessPrepaidTransaction = lazy(
-  () => import("../electricity/ProcessPrepaidTransaction"),
-);
-const ViewECGTransactionNotifications = lazy(
-  () => import("../electricity/ViewECGTransactionNotifications"),
+const PrepaidTransactionDetails = lazy(
+  () => import("../electricity/PrepaidTransactionDetails"),
 );
 
 const Summary = lazy(() => import("../summary"));
@@ -45,6 +42,7 @@ import Bundle from "../summary/Bundle";
 import Transactions from "../summary/Transactions";
 import Report from "../summary/Report";
 import AgentTransaction from "../summary/agentSummary";
+import FullPageSkeleton from "@/components/skeletons/FullPageSkeleton";
 
 //Refund
 const RefundMoney = lazy(() => import("../refund/RefundMoney"));
@@ -83,7 +81,7 @@ const NotFound = lazy(() => import("../NotFound"));
 const PinsGenerator = lazy(() => import("../evoucher/PinsGenerator"));
 
 //Prepaid Meter
-const ECGTransactions = lazy(() => import("../electricity/ECGTransactions"));
+const PrepaidTransactions = lazy(() => import("../electricity/PrepaidTransactions"));
 const Meters = lazy(() => import("../electricity/Meters"));
 
 // const Client = lazy(() => import("../clients"));
@@ -112,7 +110,7 @@ const EditSecurityCategory = lazy(
 
 function Shell() {
   const { user } = useAuth();
-  const { customState, customDispatch } = useCustomData();
+  const { customState, customDispatch } = useCustomContext();
 
   useEffect(() => {
     const handleOnline = () => {
@@ -151,7 +149,7 @@ function Shell() {
             <Route
               path="evoucher"
               element={
-                <Suspense fallback={<PayLoading />}>
+                <Suspense fallback={<FullPageSkeleton />}>
                   <EVoucher />
                 </Suspense>
               }
@@ -214,27 +212,20 @@ function Shell() {
                     path="transactions"
                     element={
                       <Suspense fallback={<PayLoading />}>
-                        <ECGTransactions />
+                        <PrepaidTransactions />
                       </Suspense>
                     }
                   />
 
                   <Route
-                    path="process"
+                    path=":id"
                     element={
                       <Suspense fallback={<PayLoading />}>
-                        <ProcessPrepaidTransaction />
+                        <PrepaidTransactionDetails />
                       </Suspense>
                     }
                   />
-                  <Route
-                    path="notifications"
-                    element={
-                      <Suspense fallback={<PayLoading />}>
-                        <ViewECGTransactionNotifications />
-                      </Suspense>
-                    }
-                  />
+                
                 </>
               )}
             </Route>

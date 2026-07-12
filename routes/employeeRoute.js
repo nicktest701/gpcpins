@@ -17,6 +17,7 @@ const { uploadPhoto } = require("../config/uploadFile");
 const knex = require("../db/knex");
 const { isValidUUID2, isValidEmail } = require("../config/validation");
 const { storeOTP } = require("../services/otp.services");
+const { safeJSON } = require("../config/helpers");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -37,7 +38,8 @@ router.get(
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const { search } = req.query;
-    const { email } = req.user;
+    const { id } = req.user;
+   ;
 
     let employees = [];
     if (!_.isEmpty(search)) {
@@ -49,7 +51,7 @@ router.get(
       employees = await knex("vw_users_with_roles")
         .select("*")
         .where("role", process.env.EMPLOYEE_ID)
-        .whereNot("email", email);
+        .whereNot("id", id);
       // console.log(employees)
     }
 
@@ -57,7 +59,7 @@ router.get(
       ({ role, permissions, ...rest }) => {
         return {
           ...rest,
-          permissions: JSON.parse(permissions),
+          permissions: safeJSON(permissions),
           role: role === process.env.ADMIN_ID ? "Administrator" : "Employee",
         };
       },

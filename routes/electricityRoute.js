@@ -1,11 +1,14 @@
 const router = require("express").Router();
 const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
+const moment = require("moment");
 const { rateLimit } = require("express-rate-limit");
 const multer = require("multer");
 const { verifyToken } = require("../middlewares/verifyToken");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const knex = require("../db/knex");
+const { safeJSON } = require("../config/helpers");
+const { isValidUUID2 } = require("../config/validation");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
@@ -33,49 +36,65 @@ router.get(
   asyncHandler(async (req, res) => {
     const { startDate, endDate } = req.query;
 
-    const transactions = await knex(
-      "vw_meter_payment_prepaid_transaction_view",
-    ).where("status", "completed");
+    // 1. Build the base query with SQL-level filtering and sorting
+    let query = knex("vw_meter_payment_prepaid_transaction_view").orderBy(
+      "createdAt",
+      "desc",
+    );
 
-    const modifiedTransactions = transactions.map((transaction) => {
+    // 2. Apply database-level date filtering if dates are provided
+    if (startDate && endDate) {
+      // Formats to 'YYYY-MM-DD 00:00:00' and 'YYYY-MM-DD 23:59:59' to match your inclusive '[]' logic
+      const sDate = moment(startDate).startOf("day").toDate();
+      const eDate = moment(endDate).endOf("day").toDate();
+
+      query = query.whereBetween("createdAt", [sDate, eDate]);
+    }
+
+    const transactions = await query;
+    // console.log(transactions)
+
+   
+
+    // 3. Map the database results into your desired JSON structure
+    const sortedPayments = transactions.map((transaction) => {
+      // Safe JSON parsing helper
+      let parsedInfo = null;
+      try {
+        parsedInfo = transaction.info ? safeJSON(transaction.info) : null;
+      } catch (e) {
+        parsedInfo = transaction.info;
+      }
+
       return {
-        id: transaction?.id,
-        paymentId: transaction?.paymentId,
-        active: transaction?.active,
-        spn: transaction?.spn,
-        email: transaction?.email,
-        phonenumber: transaction?.phonenumber,
-        year: transaction?.year,
-        amount: transaction?.amount,
-        status: transaction?.status,
-        topup: transaction?.topup,
-        charges: transaction?.charges,
-        isProcessed: Boolean(transaction?.isProcessed),
-        createdAt: transaction?.createdAt,
-        updatedAt: transaction?.updatedAt,
-        info: JSON.parse(transaction?.info),
-        meterId: transaction?.meterId,
+        id: transaction.id,
+        paymentId: transaction.paymentId,
+        active: transaction.active,
+        email: transaction.email,
+        phonenumber: transaction.phonenumber,
+        year: transaction.year,
+        amount: transaction.amount,
+        status: transaction.status,
+        topup: transaction.topup,
+        charges: transaction.charges,
+        isProcessed: Boolean(transaction.isProcessed),
+        createdAt: transaction.createdAt,
+        updatedAt: transaction.updatedAt,
+        info: parsedInfo,
+        meterId: transaction.meterId,
         meter: {
-          id: transaction?.meterId,
-          number: transaction?.number,
-          name: transaction?.name,
-          type: transaction?.type,
-          district: transaction?.district,
-          address: transaction?.address,
-          geoCode: transaction?.geoCode,
-          accountNumber: transaction?.accountNumber,
+          id: transaction.meterId,
+          number: transaction.number,
+          providerName: transaction.providerName,
+          name: transaction.name,
+          type: transaction.type,
+          district: transaction.district,
+          address: transaction.address,
+          geoCode: transaction.geoCode,
+          accountNumber: transaction.accountNumber,
         },
       };
     });
-
-    const sDate = moment(startDate);
-    const eDate = moment(endDate);
-
-    const modifiedPayments = modifiedTransactions.filter(({ createdAt }) => {
-      return moment(createdAt).isBetween(sDate, eDate, "days", "[]");
-    });
-
-    const sortedPayments = _.orderBy(modifiedPayments, ["createdAt"], ["desc"]);
 
     res.status(200).json(sortedPayments);
   }),
@@ -106,7 +125,6 @@ router.get(
     });
   }),
 );
-
 
 router.get(
   "/meter/:id",
@@ -204,7 +222,6 @@ router.get(
     res.status(200).json(modifiedTransactions);
   }),
 );
-
 
 // Process prepaid transaction
 router.put(

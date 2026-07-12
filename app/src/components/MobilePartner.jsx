@@ -22,7 +22,6 @@ function MobilePartner({
       size={size || "small"}
       select
       value={stringValue || ""} // Material UI gets the string it expects
-      defaultValue=""
       onChange={(e) => {
         const targetValue = e.target.value;
   

@@ -11,7 +11,7 @@ import {
   getTransactionByEmail,
   removeAnyTransaction,
 } from "@/api/transactionAPI";
-import CustomDateRangePicker from "@/components/pickers/CustomDateRangePicker";
+// import CustomDateRangePicker from "@/components/pickers/CustomDateRangePicker";
 import {
   transactionsColumns,
   airtimeTransactionsColumns,
@@ -20,13 +20,14 @@ import ActionMenu from "@/components/menu/ActionMenu";
 import { globalAlertType } from "@/components/alert/alertType";
 import CustomTotal from "@/components/custom/CustomTotal";
 import { currencyFormatter } from "@/constants";
-import CustomRangePicker from "@/components/pickers/CustomRangePicker";
+// import CustomRangePicker from "@/components/pickers/CustomRangePicker";
 
 // Add import at top
 import { useMediaQuery, useTheme } from "@mui/material";
 import TransactionList from "./TransactionList";
 import { useAuth } from "../../context/providers/AuthProvider";
 import { useCustomContext } from "../../context/providers/CustomProvider";
+import DateRangePicker from "../../components/pickers/DateRangePicker";
 
 const Transaction = () => {
   const { user } = useAuth();
@@ -38,7 +39,7 @@ const Transaction = () => {
   const [type, setType] = useState("All");
   const [status, setStatus] = useState("all");
   const [airtimeType, setAirtimeType] = useState("single");
-  const [openPicker, setOpenPicker] = useState(false);
+  // const [openPicker, setOpenPicker] = useState(false);
   const [date, setDate] = useState([
     {
       startDate: new Date("2024-01-01"),
@@ -64,7 +65,7 @@ const Transaction = () => {
     let filteredTransaction = transactions?.data;
     if (type !== "All") {
       if (type === "Airtime") {
-        console.log(transactions?.data);
+
 
         filteredTransaction = transactions?.data?.filter(
           (item) => item.domain === type && item.kind === airtimeType,
@@ -246,12 +247,17 @@ const Transaction = () => {
                 </TextField>
               )}
 
-              <CustomRangePicker
-                date={date}
-                setDate={setDate}
-                setOpen={setOpenPicker}
-                refetch={transactions.refetch}
-              />
+                   <DateRangePicker
+                  date={date}
+                  setDate={setDate}
+                  onReset={transactions.refetch}
+                  placeholder="Pick a date range"
+                  dateFormat="ll"
+                  maxDate={new Date()}
+                  minDate={new Date("2024-01-01")}
+                />
+
+       
               <TextField
                 select
                 label="Status"
@@ -264,6 +270,7 @@ const Transaction = () => {
                 <MenuItem value="completed">Completed</MenuItem>
                 <MenuItem value="pending">Pending</MenuItem>
                 <MenuItem value="refunded">Refunded</MenuItem>
+                <MenuItem value="failed">Failed</MenuItem>
               </TextField>
 
               <CustomTotal
@@ -276,13 +283,7 @@ const Transaction = () => {
           }
         />
       )}
-      <CustomDateRangePicker
-        open={openPicker}
-        setOpen={setOpenPicker}
-        date={date}
-        setDate={setDate}
-        refetchData={transactions.refetch}
-      />
+
     </Container>
   );
 };

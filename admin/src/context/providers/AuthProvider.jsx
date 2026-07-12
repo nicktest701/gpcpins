@@ -1,12 +1,11 @@
 import { useMutation } from "@tanstack/react-query";
-import React, { useState, useLayoutEffect,useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { logoutAdmin } from "../../api/adminAPI";
-import { deleteToken, getUser } from "../../config/sessionHandler";
+import { logoutAdmin, getAdmin } from "../../api/adminAPI";
+import { deleteToken, getToken } from "../../config/sessionHandler";
 import GlobalSpinner from "../../components/spinners/GlobalSpinner";
 
 export const AuthContext = React.createContext();
-
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -16,31 +15,44 @@ export const useAuth = () => {
   return context;
 };
 
-
 function AuthProvider({ children }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [accessToken, setAccessToken] = useState("");
+  const [user, setUser] = useState(null);
 
-  const [user, setUser] = useState({
-    id: "",
-    profile: "",
-    name: "",
-    email: "",
-    phonenumber: "",
-    permissions:[],
-    role: "",
-    active: true,
-  });
-
-  useLayoutEffect(() => {
+  useEffect(() => {
     setLoading(true);
-    const user = getUser();
-    setUser(user);
-    setLoading(false);
+
+    async function getAuthUser() {
+      await getAdmin()
+        .then((data) => {
+          setUser(data.user);
+          const token = getToken();
+          setAccessToken(token);
+        })
+        .catch((e) => {
+          setUser(null);
+          setAccessToken("");
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+
+    getAuthUser();
   }, []);
 
   const login = (data) => {
-    setUser(data);
+    setUser(data?.user);
+    setAccessToken(data?.accessToken);
+  };
+
+  const updateUser = (newData) => {
+    setUser({
+      ...user,
+      ...newData,
+    });
   };
 
   const { mutateAsync, isLoading } = useMutation({
@@ -64,16 +76,20 @@ function AuthProvider({ children }) {
             role: "",
           });
         },
-      }
+      },
     );
   };
 
+  if (isLoading || loading) {
+    return <GlobalSpinner />;
+  }
   return (
     <div style={{ position: "relative" }}>
-      <AuthContext.Provider value={{ user, login, logout }}>
+      <AuthContext.Provider
+        value={{ user, accessToken, login, updateUser, logout }}
+      >
         {children}
       </AuthContext.Provider>
-      {(isLoading || loading) && <GlobalSpinner />}
     </div>
   );
 }

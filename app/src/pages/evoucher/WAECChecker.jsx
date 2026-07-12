@@ -99,12 +99,12 @@ function WAECChecker() {
                 <Typography
                   width="100%"
                   paragraph
-                  color="#fff"
-                  bgcolor="primary.lighter"
+                  color="secondary"
+                  bgcolor="whitesmoke"
                   p={1}
                   // borderRadius={1}
                 >
-                  Choose Voucher Type
+                  Choose your preferred voucher / checker yype
                 </Typography>
                 <Autocomplete
                   loading={loading || fetching}
@@ -132,13 +132,13 @@ function WAECChecker() {
                   }
                   getOptionLabel={(option) =>
                     `${option?.name}${option?.year ? ` (${option.year})` : ""}` ||
-                    "Select Voucher Type"
+                    "Select Type"
                   }
                   renderInput={(params) => {
                     return (
                       <TextField
                         {...params}
-                        size="small"
+                        // size="small"
                         label="Voucher"
                         error={Boolean(
                           touched?.categoryType?.name &&
@@ -177,7 +177,7 @@ function WAECChecker() {
                     return (
                       <TextField
                         {...params}
-                           size="small"
+                          //  size="small"
                         label="Quantity"
                         error={Boolean(
                           touched?.pricingType?.type &&

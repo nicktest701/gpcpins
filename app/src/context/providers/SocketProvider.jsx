@@ -71,7 +71,7 @@ export const SocketProvider = ({ children }) => {
     */
 
     socket.on("connect", () => {
-      console.log("Socket Connected:", socket?.id);
+      // console.log("Socket Connected:", socket?.id);
 
       setConnected(true);
       setSocketId(socket?.id);
@@ -87,7 +87,7 @@ export const SocketProvider = ({ children }) => {
     */
 
     socket.on("disconnect", (reason) => {
-      console.log("Socket Disconnected:", reason);
+      // console.log("Socket Disconnected:", reason);
 
       setConnected(false);
       setSocketId(null);

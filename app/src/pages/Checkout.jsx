@@ -171,7 +171,7 @@ function Checkout() {
                 />
                 <Divider flexItem />
               </Stack>
-              {generatedVouchers?.isLoading && !downloadLink ? (
+              {generatedVouchers?.isLoading || !downloadLink ? (
                 <Stack
                   direction="row"
                   alignItems="center"

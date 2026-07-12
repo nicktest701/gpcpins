@@ -4,10 +4,7 @@ export const getAllNotifications = async (data) => {
   try {
     const res = await api({
       method: "GET",
-      url: `/notifications`,
-      params: {
-        title: data,
-      },
+      url: `/notifications/user`,
     });
 
     return res.data;

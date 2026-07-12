@@ -49,8 +49,10 @@ async function brassicaPost(endpoint, body = {}, retry = true) {
         Authorization: `Bearer ${token}`,
       },
     });
+
+      console.log("response is", response);
   } catch (err) {
-    console.log(err);
+    console.log("err is", err);
 
     // Network / timeout errors
     if (err.code === "ECONNABORTED") {

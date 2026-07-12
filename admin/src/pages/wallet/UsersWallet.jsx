@@ -42,19 +42,19 @@ function UsersWallet() {
 
   const columns = [
     ...USERS_WALLET("users"),
-    user?.permissions?.includes("Topup user wallet amount") && {
-      field: null,
-      title: "Action",
-      render: (rowData) => (
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={() => openAddMoney(rowData)}
-        >
-          Top Up
-        </Button>
-      ),
-    },
+    // user?.permissions?.includes("Topup user wallet amount") && {
+    //   field: null,
+    //   title: "Action",
+    //   render: (rowData) => (
+    //     <Button
+    //       size="small"
+    //       variant="outlined"
+    //       onClick={() => openAddMoney(rowData)}
+    //     >
+    //       Top Up
+    //     </Button>
+    //   ),
+    // },
   ];
 
   return (

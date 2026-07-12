@@ -60,8 +60,6 @@ import { globalAlertType } from "../../components/alert/alertType";
 
 import { makeAirtimeTransaction } from "../../api/paymentAPI";
 
-
-
 import { currencyFormatter, getCode } from "../../constants";
 import { useSocket } from "../../context/providers/SocketProvider";
 /**
@@ -257,7 +255,6 @@ function AirtimeBuy() {
     },
   });
 
-
   /**
    * OPEN CHECKOUT PREVIEW
    */
@@ -381,15 +378,7 @@ function AirtimeBuy() {
       return;
     }
 
-    try {
-      /**
-       * MAKE PAYMENT
-       */
-
-      await paymentMutation.mutateAsync(payload);
-    } catch (error) {
-      console.log(error);
-    }
+    await paymentMutation.mutateAsync(payload);
   };
 
   /**
@@ -623,19 +612,29 @@ function AirtimeBuy() {
           >
             <Stack spacing={1}>
               <Stack direction="row" justifyContent="space-between">
-                <Typography variant='body2' color="text.secondary">Service</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Service
+                </Typography>
 
-                <Typography variant='body2' fontWeight={600}>{type}</Typography>
+                <Typography variant="body2" fontWeight={600}>
+                  {type}
+                </Typography>
               </Stack>
 
               <Stack direction="row" justifyContent="space-between">
-                <Typography variant='body2' color="text.secondary">Recipient</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Recipient
+                </Typography>
 
-                <Typography variant='body2' fontWeight={600}>{recipient}</Typography>
+                <Typography variant="body2" fontWeight={600}>
+                  {recipient}
+                </Typography>
               </Stack>
 
               <Stack direction="row" justifyContent="space-between">
-                <Typography variant='body2' color="text.secondary">Network</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Network
+                </Typography>
                 <Stack
                   direction="row"
                   gap={0.5}
@@ -652,7 +651,7 @@ function AirtimeBuy() {
                       bgcolor: "white",
                     }}
                   />
-                  <Typography variant='body2' fontWeight={600}>
+                  <Typography variant="body2" fontWeight={600}>
                     {serviceProviderInfo?.providerName}
                   </Typography>
                 </Stack>
@@ -663,17 +662,21 @@ function AirtimeBuy() {
                   <Divider />
 
                   <Stack direction="row" justifyContent="space-between">
-                    <Typography variant='body2' color="text.secondary">Bundle</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Bundle
+                    </Typography>
 
-                    <Typography variant='body2' fontWeight={600}>
+                    <Typography variant="body2" fontWeight={600}>
                       {selectedBundle.plan_name}
                     </Typography>
                   </Stack>
 
                   <Stack direction="row" justifyContent="space-between">
-                    <Typography variant='body2' color="text.secondary">Volume</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Volume
+                    </Typography>
 
-                    <Typography variant='body2' fontWeight={600}>
+                    <Typography variant="body2" fontWeight={600}>
                       {selectedBundle.volume}
                     </Typography>
                   </Stack>
@@ -683,9 +686,11 @@ function AirtimeBuy() {
               <Divider />
 
               <Stack direction="row" justifyContent="space-between">
-                <Typography variant='body2' color="text.secondary">Payment Method</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Payment Method
+                </Typography>
 
-                <Typography variant='body2' fontWeight={600}>
+                <Typography variant="body2" fontWeight={600}>
                   {paymentData?.paymentMethod === "wallet"
                     ? "Wallet"
                     : "Mobile Money"}
@@ -694,7 +699,9 @@ function AirtimeBuy() {
 
               {paymentData?.paymentMethod !== "wallet" && (
                 <Stack direction="row" justifyContent="space-between">
-                  <Typography variant='body2' color="text.secondary">Payment Number</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Payment Number
+                  </Typography>
 
                   <Typography fontWeight={600}>
                     {paymentData?.phonenumber}
@@ -739,7 +746,7 @@ function AirtimeBuy() {
           <LoadingButton
             variant="contained"
             onClick={executePayment}
-            loading={paymentMutation.isPending }
+            loading={paymentMutation.isPending}
           >
             Confirm Payment
           </LoadingButton>

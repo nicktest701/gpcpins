@@ -29,7 +29,7 @@ router.get(
     ]);
 
     if (!isAdmin) {
-      query.where({ userId: id, is_active: true });
+      query.where({ userId: id, isActive: true });
     }
 
     const logs = await query.orderBy("createdAt", "desc").select("*");

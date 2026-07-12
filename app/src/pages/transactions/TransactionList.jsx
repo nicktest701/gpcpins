@@ -82,7 +82,7 @@ const TransactionList = ({
 
   const handleRefresh = () => {
     setPage(1);
-    searchTerm("");
+    setSearchTerm("");
     setType("All");
     onRefresh();
   };
@@ -266,7 +266,7 @@ const TransactionList = ({
 
               const isCompleted =
                 transaction.status === "completed" && transaction?.isProcessed;
-                
+
               const isRefunded = transaction.status === "refunded";
               const statusColor = isCompleted
                 ? "success.darker"

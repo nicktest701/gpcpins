@@ -3,9 +3,6 @@ import { Link } from "react-router-dom";
 import LoadingButton from "@mui/lab/LoadingButton";
 import {
   IconButton,
-
-  Stack,
-  TextField,
   Box,
   ListItemText,
   Alert,
@@ -14,10 +11,9 @@ import {
   ArrowBackRounded,
   NoteAlt,
   NoteRounded,
-  RefreshRounded,
+
 } from "@mui/icons-material";
 import { AuthContext } from "../../context/providers/AuthProvider";
-import moment from "moment";
 import _ from "lodash";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { generateRandomCode } from "../../config/generateRandomCode";
@@ -28,12 +24,12 @@ import {
   geAllUserWalletTransactionReport,
 } from "../../api/transactionAPI";
 import { currencyFormatter } from "../../constants";
-import CustomDateRangePicker from "../../components/pickers/CustomDateRangePicker";
 import { WALLET_TRANSACTIONS } from "../../mocks/columns";
+import DateRangePicker from "@/components/pickers/DateRangePicker";
 
 function UsersWalletTransactions() {
   const { user } = useContext(AuthContext);
-  const [openPicker, setOpenPicker] = useState(false);
+
   const [date, setDate] = useState([
     {
       startDate: new Date("2024-01-01"),
@@ -44,25 +40,17 @@ function UsersWalletTransactions() {
 
   //Get all transactions by meter id
   const transactions = useQuery({
-    queryKey: ["users-wallet-transactions"],
+    queryKey: ["users-wallet-transactions",date[0]],
     queryFn: () => geAllUserWalletTransaction(date[0]),
     enabled: !!user?.id,
     initialData: [],
   });
 
-  const resetDateRange = () =>
-    setDate([
-      {
-        startDate: new Date("2024-01-01"),
-        endDate: new Date(),
-        key: "selection",
-      },
-    ]);
 
-  const { mutateAsync, isLoading, isSuccess, isError,  data } =
-    useMutation({
-      mutationFn: geAllUserWalletTransactionReport,
-    });
+
+  const { mutateAsync, isLoading, isSuccess, isError, data } = useMutation({
+    mutationFn: geAllUserWalletTransactionReport,
+  });
   const generateReport = () => {
     mutateAsync(date[0]);
   };
@@ -93,7 +81,8 @@ function UsersWalletTransactions() {
                   "No transactional report found !"
                 ) : (
                   <>
-                    A copy of the report has been sent to your email. Download or View Report{"  "}
+                    A copy of the report has been sent to your email. Download
+                    or View Report{"  "}
                     <a href={data} target="_blank" rel="noreferrer">
                       here
                     </a>
@@ -107,7 +96,7 @@ function UsersWalletTransactions() {
           isLoading={transactions.isLoading}
           title="Transactions"
           search={true}
-          columns={WALLET_TRANSACTIONS('users')}
+          columns={WALLET_TRANSACTIONS("users")}
           data={transactions.data}
           showExportButton
           emptyMessage="No Transaction available"
@@ -116,7 +105,7 @@ function UsersWalletTransactions() {
           options={{
             exportAllData: true,
             exportButton: user?.permissions?.includes(
-              "Export user wallet Transaction"
+              "Export user wallet Transaction",
             ),
           }}
           autocompleteComponent={
@@ -130,30 +119,15 @@ function UsersWalletTransactions() {
                 flexWrap: "wrap",
               }}
             >
-              <Stack direction="row" sx={{ position: "relative" }}>
-                <TextField
-                  label="Select Date Range"
-                  size="small"
-                  sx={{
-                    borderRadius: 0,
-                    width: 250,
-                  }}
-                  onClick={() => setOpenPicker(true)}
-                  value={`${moment(date[0].startDate).format("ll")} -${moment(
-                    date[0].endDate
-                  ).format("ll")}`}
-                  InputProps={{
-                    readOnly: true,
-                  }}
-                  inputProps={{
-                    style: { cursor: "pointer" },
-                  }}
-                />
-                <RefreshRounded
-                  onClick={resetDateRange}
-                  sx={{ position: "absolute", right: 8, top: 8 }}
-                />
-              </Stack>
+              <DateRangePicker
+                date={date}
+                setDate={setDate}
+                onReset={transactions.refetch}
+                placeholder="Pick a date range"
+                dateFormat="ll"
+                maxDate={new Date()}
+                minDate={new Date("2024-01-01")}
+              />
               <LoadingButton
                 variant="contained"
                 endIcon={<NoteRounded />}
@@ -167,7 +141,7 @@ function UsersWalletTransactions() {
 
               <ListItemText
                 primary={currencyFormatter(
-                  _.sumBy(transactions.data, (item) => Number(item?.amount))
+                  _.sumBy(transactions.data, (item) => Number(item?.amount)),
                 )}
                 primaryTypographyProps={{
                   fontSize: "1.5rem",
@@ -183,13 +157,6 @@ function UsersWalletTransactions() {
               />
             </Box>
           }
-        />
-        <CustomDateRangePicker
-          open={openPicker}
-          setOpen={setOpenPicker}
-          date={date}
-          setDate={setDate}
-          refetchData={transactions.refetch}
         />
       </>
     </div>

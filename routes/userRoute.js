@@ -24,9 +24,6 @@ const limit = rateLimit({
   message: "Too many requests!. please try again later.",
 });
 
-//model
-const { hasTokenExpired } = require("../config/dateConfigs");
-
 //db
 const knex = require("../db/knex");
 const { isValidUUID2, isValidEmail } = require("../config/validation");
@@ -47,6 +44,7 @@ const {
   loginSchema,
 } = require("../utils/validationSchema");
 const { validate } = require("../middlewares/validators");
+const logger = require("../utils/logger");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -61,14 +59,12 @@ const Storage = multer.diskStorage({
 
 const Upload = multer({ storage: Storage });
 
-// const ACCESS_EXPIRATION = new Date(Date.now() + 3600000);
-// const REFRESH_EXPIRATION = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+const isProduction = process.env.NODE_ENV === "production";
 
 cron.schedule("0 0 * * *", async () => {
   await sendBirthdayWishes();
 });
 
-const employeeRoles = [process.env.EMPLOYEE_ID, process.env.ADMIN_ID];
 
 router.get(
   "/",
@@ -81,8 +77,7 @@ router.get(
         knex.raw("DATE_FORMAT(dob,'%D %M, %Y') as dobb"),
         "created_at as createdAt",
       )
-      .where("role", process.env.USER_ID)
-      .whereNot("email", "customer@gpcpins.com");
+      .where("role", process.env.USER_ID);
 
     res.status(200).json(users);
   }),
@@ -131,73 +126,6 @@ router.get(
 );
 
 router.get(
-  "/verify-identity",
-  verifyToken,
-  validate(userIdentitySchema),
-  asyncHandler(async (req, res) => {
-    const { nid: userNID, dob: userDOB } = req.user;
-    const { nid, dob } = req.query;
-
-    // Validate at least one parameter is provided
-    if (!nid && !dob) {
-      return res
-        .status(400)
-        .json(
-          "Please provide either National ID (nid) or Date of Birth (dob) for verification.",
-        );
-    }
-
-    // Sanitize inputs
-    const sanitizedNID = nid?.trim();
-    const sanitizedDOB = dob?.trim();
-
-    // Validate NID if provided
-    if (sanitizedNID) {
-      if (!userNID) {
-        // User record doesn't have NID stored
-        return res
-          .status(400)
-          .json("Unable to verify National ID. Please contact support.");
-      }
-      if (sanitizedNID !== userNID) {
-        // Log mismatched NID attempt for security monitoring
-        console.warn(
-          `Identity verification failed for user ${req.user.id}: NID mismatch`,
-        );
-        return res
-          .status(400)
-          .json("The National ID provided does not match our records.");
-      }
-    }
-
-    // Validate DOB if provided
-    if (sanitizedDOB) {
-      if (!userDOB) {
-        return res
-          .status(400)
-          .json("Unable to verify Date of Birth. Please contact support.");
-      }
-
-      const storedDate = moment(userDOB);
-      const inputDate = moment(sanitizedDOB);
-
-      // Compare dates at day precision
-      if (!inputDate.isSame(storedDate, "day")) {
-        console.warn(
-          `Identity verification failed for user ${req.user.id}: DOB mismatch`,
-        );
-        return res
-          .status(400)
-          .json("The Date of Birth provided does not match our records.");
-      }
-    }
-
-    // All checks passed
-    res.status(200).json("OK");
-  }),
-);
-
-router.get(
   "/:id",
   verifyToken,
   verifyAdmin,
@@ -224,8 +152,7 @@ router.get(
   limit,
   verifyRefreshToken,
   asyncHandler(async (req, res) => {
-    const expiredTime = employeeRoles.includes(req.user.role) ? "15m" : "180d";
-    const accessToken = await signMainToken(req.user, expiredTime);
+    const accessToken = req.accessToken;
 
     res.status(200).json({
       accessToken,
@@ -404,63 +331,16 @@ router.post(
       .where("email", decodedUser?.email)
       .first();
 
-    const accessData = {
-      id: user?.id,
-      firstname: user?.firstname,
-      lastname: user?.lastname,
-      name: user?.name,
-      email: user?.email,
-      phonenumber: user?.phonenumber,
-      dob: user?.dob,
-      nid: user?.nid,
-      role: user?.role,
-      profile: user?.profile,
-      active: Boolean(user?.active),
-      createdAt: Boolean(user?.created_at),
-      permissions: safeJSON(user?.permissions),
-    };
+    if (_.isEmpty(user)) {
+      return res.status(401).json("Authentication Failed!");
+    }
 
-    const updatedUser = {
-      id: user?.id,
-      role: user?.role,
-      active: true,
-      createdAt: user?.created_at,
-    };
-
-    const deviceId = generateDeviceId(req);
-
-    const [sessionId] = await knex("user_sessions").insert({
-      user_id: user.id,
-      device_id: deviceId,
-      device_name: req.headers["user-agent"],
-      ip_address: req.ip,
-      user_agent: req.headers["user-agent"],
-    });
-
-    const accessToken = await signMainToken(updatedUser, "180d");
-    const refreshToken = signMainRefreshToken(updatedUser, "365d");
-
-    const expires = new Date();
-    expires.setDate(expires.getDate() + 7);
-
-    await knex("user_tokens").insert({
-      user_id: user.id,
-      session_id: sessionId,
-      refresh_token: refreshToken,
-      expiresAt: expires,
-    });
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "Strict",
-      path: "/users/auth/token",
-    });
-
-    res.status(201).json({
-      user:accessData,
-      accessToken,
-      register,
+    await generateAuthSession({
+      req,
+      res,
+      knex,
+      authUser: user,
+      isRegistering: register,
     });
   }),
 );
@@ -530,63 +410,16 @@ router.post(
       .where("id", userId)
       .first();
 
-    const accessData = {
-      id: authUser?.id,
-      name: authUser?.name,
-      firstname: authUser?.firstname,
-      lastname: authUser?.lastname,
-      email: authUser?.email,
-      dob: authUser?.dob,
-      nid: authUser?.nid,
-      phonenumber: authUser?.phonenumber,
-      role: authUser?.role,
-      profile: authUser?.profile,
-      active: Boolean(authUser?.active),
-      createdAt: authUser?.created_at,
-      permissions: safeJSON(authUser?.permissions),
-    };
+    if (_.isEmpty(authUser)) {
+      return res.status(401).json("Authentication Failed!");
+    }
 
-    const updatedUser = {
-      id: authUser?.id,
-      role: authUser?.role,
-      active: true,
-      createdAt: authUser?.created_at,
-    };
-
-    const deviceId = generateDeviceId(req);
-
-    const [sessionId] = await knex("user_sessions").insert({
-      user_id: user.id,
-      device_id: deviceId,
-      device_name: req.headers["user-agent"],
-      ip_address: req.ip,
-      user_agent: req.headers["user-agent"],
-    });
-
-    const accessToken = await signMainToken(updatedUser, "180d");
-    const refreshToken = signMainRefreshToken(updatedUser, "365d");
-
-    const expires = new Date();
-    expires.setDate(expires.getDate() + 7);
-
-    await knex("user_tokens").insert({
-      user_id: user.id,
-      session_id: sessionId,
-      refresh_token: refreshToken,
-      expiresAt: expires,
-    });
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "Strict",
-      path: "/users/auth/token",
-    });
-
-    res.status(201).json({
-      accessToken,
-      user: accessData,
-      register: isRegistering,
+    await generateAuthSession({
+      req,
+      res,
+      knex,
+      authUser,
+      isRegistering: isRegistering,
     });
   }),
 );
@@ -711,73 +544,13 @@ router.post(
     if (_.isEmpty(user)) {
       return res.status(401).json("Authentication Failed!");
     }
-    let accessData = {
-      id: user.id,
-      name: user?.name,
-      firstname: user?.firstname,
-      lastname: user?.lastname,
-      email: user?.email,
-      dob: user?.dob,
-      nid: user?.nid,
-      phonenumber: user?.phonenumber,
-      role: user?.role,
-      profile: user?.profile,
-      active: Boolean(user?.active),
-      createdAt: user?.created_at,
-      permissions: safeJSON(user.permissions),
-    };
 
-    if (user?.role === process.env.ADMIN_ID) {
-      accessData.isEnabled = true;
-      accessData.isAdmin = true;
-    }
-
-    const updatedUser = {
-      id: user?.id,
-      role: user?.role,
-      active: Boolean(user?.active),
-      createdAt: user?.created_at,
-    };
-    const deviceId = generateDeviceId(req);
-
-    const [sessionId] = await knex("user_sessions").insert({
-      user_id: user.id,
-      device_id: deviceId,
-      device_name: req.headers["user-agent"],
-      ip_address: req.ip,
-      user_agent: req.headers["user-agent"],
-    });
-
-    const accessToken = await signMainToken(updatedUser, "180d");
-    const refreshToken = signMainRefreshToken(updatedUser, "365d");
-
-    const expires = new Date();
-    expires.setDate(expires.getDate() + 7);
-
-    await knex("user_tokens").insert({
-      user_id: user.id,
-      session_id: sessionId,
-      refresh_token: refreshToken,
-      expiresAt: expires,
-    });
-    //logs
-    await knex("activity_logs").insert({
-      user_id: user.id,
-      title: "Logged into account.",
-      severity: "info",
-    });
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "Strict",
-      path: "/users/auth/token",
-    });
-
-    res.status(201).json({
-      refreshToken,
-      accessToken,
-      user: accessData,
+    await generateAuthSession({
+      req,
+      res,
+      knex,
+      authUser: user,
+      isRegistering: register,
     });
   }),
 );
@@ -811,6 +584,73 @@ router.post(
     delete req.user;
 
     res.sendStatus(204);
+  }),
+);
+
+router.post(
+  "/verify-identity",
+  verifyToken,
+  validate(userIdentitySchema),
+  asyncHandler(async (req, res) => {
+    const { nid: userNID, dob: userDOB } = req.user;
+    const { nid, dob } = req.body;
+
+    // Validate at least one parameter is provided
+    if (!nid && !dob) {
+      return res
+        .status(400)
+        .json(
+          "Please provide either National ID (nid) or Date of Birth (dob) for verification.",
+        );
+    }
+
+    // Sanitize inputs
+    const sanitizedNID = nid?.trim();
+    const sanitizedDOB = dob?.trim();
+
+    // Validate NID if provided
+    if (sanitizedNID) {
+      if (!userNID) {
+        // User record doesn't have NID stored
+        return res
+          .status(400)
+          .json("Unable to verify National ID. Please contact support.");
+      }
+      if (sanitizedNID !== userNID) {
+        // Log mismatched NID attempt for security monitoring
+        logger.warn(
+          `Identity verification failed for user ${req.user.id}: NID mismatch`,
+        );
+        return res
+          .status(400)
+          .json("The National ID provided does not match our records.");
+      }
+    }
+
+    // Validate DOB if provided
+    if (sanitizedDOB) {
+      if (!userDOB) {
+        return res
+          .status(400)
+          .json("Unable to verify Date of Birth. Please contact support.");
+      }
+
+      const storedDate = moment(userDOB);
+      const inputDate = moment(sanitizedDOB);
+
+      // Compare dates at day precision
+      if (!inputDate.isSame(storedDate, "day")) {
+        logger.warn(
+          `Identity verification failed for user ${req.user.id}: DOB mismatch`,
+        );
+        return res
+          .status(400)
+          .json("The Date of Birth provided does not match our records.");
+      }
+    }
+
+    // All checks passed
+    res.status(200).json("OK");
   }),
 );
 
@@ -1100,3 +940,86 @@ router.delete(
 );
 
 module.exports = router;
+
+/**
+ * Generates authentication tokens, manages database sessions, and sets cookies.
+ * @param {Object} params
+ * @param {Object} params.authUser - The authenticated user data from the DB.
+ * @param {Object} params.req - The Express request object.
+ * @param {Object} params.res - The Express response object.
+ * @param {Object} params.knex - The Knex database instance.
+ * @param {boolean} [params.isRegistering=false] - Flag indicating if this is a new registration.
+ */
+async function generateAuthSession({
+  req,
+  res,
+  knex,
+  authUser,
+  isRegistering = false,
+}) {
+  // 1. Format the user profile data
+  const accessData = {
+    id: authUser?.id,
+    name: authUser?.name,
+    firstname: authUser?.firstname,
+    lastname: authUser?.lastname,
+    email: authUser?.email,
+    dob: authUser?.dob,
+    nid: authUser?.nid,
+    phonenumber: authUser?.phonenumber,
+    role: process.env.USER_ID,
+    profile: authUser?.profile,
+    active: Boolean(authUser?.active),
+    createdAt: authUser?.created_at,
+    // permissions: safeJSON(authUser?.permissions),
+  };
+
+  const updatedUser = {
+    sub: accessData?.id,
+    role: accessData.role,
+  };
+
+  // 2. Track device and insert session
+  const deviceId = generateDeviceId(req);
+  const userAgent = req.headers["user-agent"];
+
+  const [sessionId] = await knex("user_sessions").insert({
+    user_id: accessData?.id, // Changed from user.id to authUser.id for consistency
+    device_id: deviceId,
+    device_name: userAgent,
+    ip_address: req.ip,
+    user_agent: userAgent,
+  });
+
+  // 3. Generate security tokens
+  const accessToken = await signMainToken(updatedUser, accessData);
+  const refreshToken = signMainRefreshToken(updatedUser);
+
+  // 4. Calculate expiration times
+  const expires = getExpiryTimeByRole(accessData?.role).refreshTime;
+  const expiresMs = parseTimeToMs(expires);
+
+  // 5. Store token in database
+  await knex("user_tokens").insert({
+    user_id: accessData.id,
+    session_id: sessionId,
+    refresh_token: refreshToken,
+    expiresAt: new Date(expiresMs * 1000),
+  });
+
+  // 6. Set HTTP-only cookie
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "strict" : "lax",
+    path: "/api/gabs/v1/users/auth/token",
+    maxAge: expiresMs,
+  });
+
+  // 7. Send final client response
+  return res.status(201).json({
+    accessToken,
+    user: accessData,
+    register: isRegistering,
+  });
+}

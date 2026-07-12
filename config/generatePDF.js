@@ -109,7 +109,8 @@ const generateAgentTransactionRport = async (htmltext, transaction_id) => {
   return "done";
 };
 const generateTransactionReport = async (htmltext, transaction_id, type) => {
-  //page
+  // page
+  const browser = await getBrowser();
   const page = await browser.newPage();
   await page.setContent(htmltext, { waitUntil: "domcontentloaded" });
   // await page.emulateMediaType('screen');

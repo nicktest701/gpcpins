@@ -159,7 +159,7 @@ const corsOptions = {
     if (whitelist.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      console.warn(`Blocked by CORS: ${origin}`);
+      logger.warn(`Blocked by CORS: ${origin}`);
       callback(createError.Forbidden("Not allowed by CORS"));
     }
   },
@@ -482,7 +482,9 @@ async function bootstrap() {
 
     process.on("unhandledRejection", (reason, promise) => {
       logger.error("Unhandled Rejection at:", promise, "reason:", reason);
-      console.error("Unhandled Rejection at:", promise, "reason:", reason);
+      if (NODE_ENV !== "production") {
+        console.error("Unhandled Rejection at:", promise, "reason:", reason);
+      }
     });
 
     // Graceful shutdown handlers

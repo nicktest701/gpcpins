@@ -1,6 +1,5 @@
-import { Container, Button, Box, ListItemText } from "@mui/material";
+import { Container, Box, ListItemText } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
-import { Add } from "@mui/icons-material";
 import _ from "lodash";
 import CustomizedMaterialTable from "../../../components/tables/CustomizedMaterialTable";
 import { useSearchParams, useParams } from "react-router-dom";
@@ -52,7 +51,7 @@ function AgentWallet() {
                 gap: 4,
               }}
             >
-              {user?.permissions?.includes("Topup agent wallet amount") && (
+              {/* {user?.permissions?.includes("Topup agent wallet amount") && (
                 <Button
                   variant="contained"
                   startIcon={<Add />}
@@ -61,7 +60,7 @@ function AgentWallet() {
                 >
                   Add Money to Wallet
                 </Button>
-              )}
+              )} */}
               <ListItemText
                 sx={{ textAlign: { xs: "left", md: "right" } }}
                 primary={currencyFormatter(

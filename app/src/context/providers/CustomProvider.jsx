@@ -311,6 +311,11 @@ function CustomProvider({ children }) {
     });
   }, []);
 
+  const resetPaymentStatus = useCallback(() => {
+    // console.log('payment status resetted')
+    setPaymentStatus(null);
+  }, []);
+
   /**
    * Memoized Context Value
    */
@@ -329,6 +334,7 @@ function CustomProvider({ children }) {
       setGlobalAlert,
       setLoading,
       paymentStatus,
+      resetPaymentStatus,
     }),
     [
       walletStatus,
@@ -339,6 +345,7 @@ function CustomProvider({ children }) {
       setGlobalAlert,
       setLoading,
       paymentStatus,
+      resetPaymentStatus,
     ],
   );
 

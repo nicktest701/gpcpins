@@ -1,3 +1,4 @@
+const { body } = require("express-validator");
 const Joi = require("joi");
 
 const phoneNumberREgex = /^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/;
@@ -21,14 +22,14 @@ const userIdentitySchema = Joi.object({
   nid: Joi.string()
     .pattern(/^(?:GHA-\d{9}-\d|\d{10})$/)
     .optional(),
-    
+
   dob: Joi.date().optional(),
 })
-.xor('nid', 'dob') // Enforces that exactly ONE of these fields must be present
-.messages({
-    'object.xor': 'You must provide either your National/Voter ID or Date of Birth !'
-});
-
+  .xor("nid", "dob") // Enforces that exactly ONE of these fields must be present
+  .messages({
+    "object.xor":
+      "You must provide either your National/Voter ID or Date of Birth !",
+  });
 
 const registrationSchema = Joi.object({
   email: Joi.string().email().required(),
@@ -39,14 +40,13 @@ const googleRegistrationSchema = Joi.object({
   email: Joi.string().email().required(),
   firstname: Joi.string().required(),
   lastname: Joi.string().required(),
-  
+
   // Optional strings that must not be empty if they are provided
-  phonenumber: Joi.string().optional().empty(''),
-  profile: Joi.string().optional().empty(''),
-  
+  phonenumber: Joi.string().optional().empty(""),
+  profile: Joi.string().optional().empty(""),
+
   register: Joi.boolean().optional(),
 });
-
 
 const planSchema = Joi.object({
   id: Joi.string().required(),
@@ -193,6 +193,13 @@ const otpSchema = Joi.object({
     .pattern(/^[0-9]{6}$/)
     .required(),
 });
+const adminOTPSchema = Joi.object({
+  id: Joi.string().required(),
+  email: Joi.string().email().required(),
+  token: Joi.string()
+    .pattern(/^[0-9]{6}$/)
+    .required(),
+});
 
 const pinSchema = Joi.object({
   token: Joi.string()
@@ -223,6 +230,34 @@ const bundleTopUpSchema = Joi.object({
   transaction_reference: Joi.string().required(),
 });
 
+const billerPaymentSchema = [
+  body("accountNumber")
+    .notEmpty()
+    .withMessage("accountNumber (meter number) is required."),
+  body("phoneNumber")
+    .matches(/^\d{12,13}$/)
+    .withMessage("phoneNumber must be in international format."),
+  body("accountCategory")
+    .isIn(["PREPAID", "POSTPAID"])
+    .withMessage('accountCategory must be "PREPAID" or "POSTPAID".'),
+  body("amount")
+    .isNumeric({ min: 1 })
+    .withMessage("amount must be a positive number."),
+  body("paymentBy")
+    .notEmpty()
+    .withMessage("paymentBy (payer name) is required."),
+  // Fields from the Lookup step
+  body("accountLookUpId")
+    .notEmpty()
+    .withMessage("accountLookUpId from lookup is required."),
+  body("serviceDistrictId").notEmpty(),
+  body("serviceRegionId").notEmpty(),
+  body("serviceProviderName").notEmpty(),
+  body("accountName").notEmpty(),
+  body("accountReferenceId").notEmpty(),
+  body("altAccountNumber").notEmpty(),
+];
+
 module.exports = {
   voucherSchema,
   ticketSchema,
@@ -232,6 +267,7 @@ module.exports = {
   prepaidSchema,
   walletTopUpSchema,
   otpSchema,
+  adminOTPSchema,
   registrationSchema,
   googleRegistrationSchema,
   loginSchema,
@@ -239,5 +275,6 @@ module.exports = {
   pinSchema,
   pinResetSchema,
   airtimeTopUpSchema,
-  bundleTopUpSchema
+  bundleTopUpSchema,
+  billerPaymentSchema,
 };

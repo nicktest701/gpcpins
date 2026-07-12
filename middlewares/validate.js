@@ -9,10 +9,17 @@ const { validationResult } = require("express-validator");
  */
 function validate(req, res, next) {
   const result = validationResult(req);
+
   if (!result.isEmpty()) {
     const err = new Error("Validation failed.");
     err.type = "VALIDATION_ERROR";
     err.errors = result.array();
+    const errors = result.array().map((e) => e.msg);
+    if (errors.length > 0) {
+      err.message = errors[0];
+      err.stack = errors[0];
+    }
+
     return next(err);
   }
   next();

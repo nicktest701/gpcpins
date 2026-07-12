@@ -18,6 +18,7 @@ const { brassicaPost } = require("../../services/brassicaClient");
 const validate = require("../../middlewares/validate");
 const logger = require("../../utils/logger");
 const { saveMeter } = require("../../services/brassica/token.manager");
+const { billerPaymentSchema } = require("../../utils/validationSchema");
 
 const router = express.Router();
 
@@ -209,33 +210,7 @@ router.post(
 // ─── POST /api/billers/ecg/pay ────────────────────────────────────────────────
 router.post(
   "/ecg/pay",
-  [
-    body("accountNumber")
-      .notEmpty()
-      .withMessage("accountNumber (meter number) is required."),
-    body("phoneNumber")
-      .matches(/^\d{12,13}$/)
-      .withMessage("phoneNumber must be in international format."),
-    body("accountCategory")
-      .isIn(["PREPAID", "POSTPAID"])
-      .withMessage('accountCategory must be "PREPAID" or "POSTPAID".'),
-    body("amount")
-      .isNumeric({ min: 1 })
-      .withMessage("amount must be a positive number."),
-    body("paymentBy")
-      .notEmpty()
-      .withMessage("paymentBy (payer name) is required."),
-    // Fields from the Lookup step
-    body("accountLookUpId")
-      .notEmpty()
-      .withMessage("accountLookUpId from lookup is required."),
-    body("serviceDistrictId").notEmpty(),
-    body("serviceRegionId").notEmpty(),
-    body("serviceProviderName").notEmpty(),
-    body("accountName").notEmpty(),
-    body("accountReferenceId").notEmpty(),
-    body("altAccountNumber").notEmpty(),
-  ],
+  billerPaymentSchema,
   validate,
   asyncHandler(async (req, res, next) => {
     try {
@@ -254,7 +229,7 @@ router.post(
         altAccountNumber,
       } = req.body;
 
-      console.log(req.body)
+
 
       const transactionId = req.body.transactionId || uuidv4();
 

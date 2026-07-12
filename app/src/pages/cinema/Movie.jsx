@@ -1,4 +1,4 @@
-import { useContext, useMemo } from "react";
+import { useMemo } from "react";
 import moment from "moment";
 import { Event, AccessTime, Theaters } from "@mui/icons-material";
 import {
@@ -227,7 +227,7 @@ function Movie() {
 
             <Divider />
 
-            {totalItemsSelected > 0 && (
+            {/* {totalItemsSelected > 0 && (
               <Paper
                 elevation={1}
                 sx={{
@@ -252,7 +252,7 @@ function Movie() {
                   </Button>
                 </Stack>
               </Paper>
-            )}
+            )} */}
 
             {/* Ticket Pricing Section */}
             <Typography variant="h5" fontWeight="bold" gutterBottom>

@@ -6,7 +6,6 @@ const moment = require("moment");
 const knex = require("../db/knex");
 const { isValidUUID2 } = require("../config/validation");
 const { verifyToken } = require("../middlewares/verifyToken");
-const verifyAgent = require("../middlewares/verifyAgent");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const verifyScanner = require("../middlewares/verifyScanner");
 const { safeJSON } = require("../config/helpers");
@@ -30,7 +29,10 @@ router.get(
         .where("title", title)
         .select("*");
     } else {
-      notification = await knex("notifications").select("*");
+      notification = await knex("notifications")
+        .select("*")
+        .limit(50)
+        .orderBy("created_at", "desc");
     }
 
     notification.filter(({ created_at }) => {
@@ -127,9 +129,9 @@ router.get(
 
     const unionQuery = knex
       .unionAll([broadcastSubquery, notificationsSubquery])
-      .orderBy("created_at", "desc");
+      .orderBy("created_at", "desc")
+      .limit(50);
     // .offset(offset)
-    // .limit(limit);
 
     const results = await unionQuery;
 
@@ -454,13 +456,9 @@ router.put(
       .where("user_id", id)
       .update({ active: false, is_read: true });
 
-
-  
-
     res.sendStatus(204);
   }),
 );
-
 
 //Mark agent notifications as read
 router.put(

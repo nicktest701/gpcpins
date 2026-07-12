@@ -35,7 +35,7 @@ const validatePayment = (schema, otherSchema) => (req, res, next) => {
   next();
 };
 const validate = (schema) => (req, res, next) => {
-  console.log(req.body)
+  // console.log(req.body)
   const { error, value } = schema.validate(req.body, {
     abortEarly: false,
     stripUnknown: true,

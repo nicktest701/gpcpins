@@ -522,7 +522,7 @@ export const prepaidMeterValidationSchema = object().shape({
 
       // Definition of allowed formats
       const is11DigitNumber = /^\d{11}$/.test(stringValue);
-      const isAlphanumericP10Digit = /^P\d{10}$/.test(stringValue);
+      const isAlphanumericP10Digit = /^[a-zA-Z]\d{9}$/.test(stringValue);
       const is13DigitNumber = /^\d{13}$/.test(stringValue);
 
       // Return true if it matches any of the three formats
@@ -801,40 +801,38 @@ export const organizationMessageValidationSchema = () => {
       .max(200, "Description too long! Maximum of 200 characters is required."),
   });
 };
-export const agentRegistrationValidationSchema = () => {
-  return object().shape({
-    firstname: string().trim().required("Required*"),
-    lastname: string().trim().required("Required*"),
-    // dob: date().required("Required*"),
-    nid: string()
-      .optional()
-      .test(
-        "is-valid-id",
-        "Enter a valid Voter ID (digits only) or National ID (GHA-XXXXXXXXX-X)",
-        function (value) {
-          if (!value) return true; // optional when empty
+export const agentRegistrationValidationSchema = object().shape({
+  firstname: string().trim().required("Required*"),
+  lastname: string().trim().required("Required*"),
+  // dob: date().required("Required*"),
+  nid: string()
+    .optional()
+    .test(
+      "is-valid-id",
+      "Enter a valid Voter ID (digits only) or National ID (GHA-XXXXXXXXX-X)",
+      function (value) {
+        if (!value) return true; // optional when empty
 
-          const isVoterId = /^\d{10}$/.test(value); // adjust the digit length if needed
-          const isNationalId = /^GHA-\d{9}-\d$/.test(value);
+        const isVoterId = /^\d{10}$/.test(value); // adjust the digit length if needed
+        const isNationalId = /^GHA-\d{9}-\d$/.test(value);
 
-          return isVoterId || isNationalId;
-        },
-      ),
-    residence: string().trim().required("Required*"),
-    email: string().trim().required("Required*").email("Invalid email address"),
-    phonenumber: string()
-      .trim()
-      .required("Required*")
-      .matches(/^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/, "Invalid Phone number"),
-    business_name: string().trim().required("Required*"),
-    business_location: string().trim().required("Required*"),
-    business_description: string().trim().required("Required*"),
-    business_email: string().email("Invalid email address").optional(),
-    business_phonenumber: string()
-      .matches(/^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/, "Invalid Phone number")
-      .optional(),
-  });
-};
+        return isVoterId || isNationalId;
+      },
+    ),
+  residence: string().trim().required("Required*"),
+  email: string().trim().required("Required*").email("Invalid email address"),
+  phonenumber: string()
+    .trim()
+    .required("Required*")
+    .matches(/^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/, "Invalid Phone number"),
+  business_name: string().trim().required("Required*"),
+  business_location: string().trim().required("Required*"),
+  business_description: string().trim().required("Required*"),
+  business_email: string().email("Invalid email address").optional(),
+  business_phonenumber: string()
+    .matches(/^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/, "Invalid Phone number")
+    .optional(),
+});
 
 export const loginValidationSchema = () => {
   return object().shape({

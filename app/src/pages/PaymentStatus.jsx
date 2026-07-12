@@ -32,10 +32,6 @@ const gentleBob = keyframes`
   0%, 100% { transform: translateY(0px); }
   50%       { transform: translateY(-6px); }
 `;
-const blink = keyframes`
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.2; }
-`;
 const spin = keyframes`
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
@@ -57,8 +53,9 @@ function PaymentStatus() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { pathname, state } = useLocation();
-  const { customDispatch, paymentStatus } = useCustomContext();
+  const { state } = useLocation();
+  const { customDispatch, paymentStatus, resetPaymentStatus } =
+    useCustomContext();
 
   const [status, setStatus] = useState("pending");
 
@@ -98,6 +95,8 @@ function PaymentStatus() {
               path: state?.path,
             },
           });
+
+          resetPaymentStatus();
         }, 3000);
       }
       queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
@@ -114,12 +113,13 @@ function PaymentStatus() {
       //   globalAlertType("error", error?.reason || "Transaction failed"),
       // );
       queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
-      // setTimeout(() => {
-      //   navigate("/payment/failed", {
-      //     replace: true,
-      //     state: { path: state?.path },
-      //   });
-      // }, 3000);
+      setTimeout(() => {
+        navigate("/payment/failed", {
+          replace: true,
+          state: { path: state?.path },
+        });
+        resetPaymentStatus();
+      }, 3000);
     },
     [queryClient, user?.id],
   );
@@ -213,10 +213,6 @@ function PaymentStatus() {
   const isPolling =
     // status === "pending"||
     (isLoading || paymentStatus === null) && !isSuccess && !isCancelled;
-
-  // console.log("isPolling", isPolling);
-  // console.log("isSuccess", isSuccess);
-  // console.log("isError", paymentStatus);
 
   const statusType = isCancelled ? "error" : isSuccess ? "success" : "waiting";
 

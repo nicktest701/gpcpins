@@ -101,9 +101,9 @@ function SecurityService() {
                       <Typography
                         width="100%"
                         paragraph
-                        color="#fff"
-                        bgcolor="primary.lighter"
-                        p={1}
+                  color="secondary"
+                  bgcolor="whitesmoke"
+                        p={1.2}
                       >
                         Select Form Type
                       </Typography>

@@ -242,7 +242,7 @@ function Sidebar() {
                     ) && (
                       <NavLinkItem
                         to="electricity/transactions"
-                        title="Process Transactions"
+                        title=" Transactions"
                         icon={<CardMembership />}
                       />
                     )}

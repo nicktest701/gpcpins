@@ -104,9 +104,9 @@ export const verifyUserOTP = async (data) => {
 export const verifyUserIdentity = async (data) => {
   try {
     const res = await api({
-      method: "GET",
+      method: "POST",
       url: `/users/verify-identity`,
-      params: {
+      data: {
         ...data,
       },
     });

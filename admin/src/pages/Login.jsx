@@ -143,17 +143,10 @@ const Login = () => {
             alignItems: "center",
 
             p: 4,
-            // backgroundColor:
-            // clipPath: "polygon(0 0, 0% 100%, 100% 100%)",
-            // bgcolor:'primary.main'
+          
           }}
         >
-          {/* <IconButton onClick={goHome}>
-              <Avatar
-                src={IMAGES.logo}
-                sx={{ width: 100, height: 100 }}
-              />
-            </IconButton> */}
+       
           <Formik
             initialValues={initValues}
             validationSchema={loginValidationSchema}
@@ -221,7 +214,7 @@ const Login = () => {
                     variant="contained"
                     fullWidth
                     onClick={handleSubmit}
-                    sx={{ borderRadius: "0", py: 2 }}
+                    sx={{  py: 2 }}
                     size="large"
                   >
                     Sign In

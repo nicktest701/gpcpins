@@ -19,8 +19,8 @@ import { useFormContext, useWatch } from "react-hook-form";
 import MobilePartner from "../MobilePartner";
 import { useAuth } from "../../context/providers/AuthProvider";
 import { getMobilePartner } from "../../constants/PhoneCode";
-import MobileMoney from "@/assets/icons/MobileMoney";
 import { MOBILE_PROVIDER } from "../../mocks/columns";
+import { IMAGES } from "../../constants";
 function MobileMoneyOption() {
   const { user } = useAuth();
 
@@ -28,7 +28,6 @@ function MobileMoneyOption() {
     control,
     register,
     setValue,
-    watch,
     formState: { errors },
   } = useFormContext();
 
@@ -113,7 +112,14 @@ function MobileMoneyOption() {
             >
               <Stack alignItems="center" direction="row">
                 <div style={{ marginLeft: 12 }}>
-                  <MobileMoney width={36} height={36} />
+                  <img
+                    src={IMAGES.momo}
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      objectFit: "contain",
+                    }}
+                  />
                 </div>
                 <div>
                   <Typography variant="body2" ml={1.5}>
@@ -145,7 +151,6 @@ function MobileMoneyOption() {
               <TextField
                 size="small"
                 value={user?.phonenumber || ""}
-                defaultValue={user?.phonenumber || ""}
                 InputLabelProps={{
                   shrink: true,
                 }}

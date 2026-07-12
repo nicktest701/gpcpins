@@ -1,10 +1,12 @@
 const jwt = require("jsonwebtoken");
 const redisClient = require("./redisClient");
 const { randomUUID } = require("crypto");
+const {
+  getExpiryTimeByRole,
+  getExpiryTimeByRoleMs,
+} = require("../utils/helper");
 
-
-const tid = randomUUID()
-
+const tid = randomUUID();
 
 function signRefreshToken(data) {
   const token = jwt.sign(data, process.env.TOKEN_REFRESH, {
@@ -13,24 +15,29 @@ function signRefreshToken(data) {
   return token;
 }
 
-
-async function signMainToken(data, expires) {
+async function signMainToken(data, userData) {
+  // 1. Generate JWT token
   const token = jwt.sign(data, process.env.TOKEN, {
-    expiresIn: expires,
-    jwtid: tid
+    expiresIn: getExpiryTimeByRole(data?.role).accessTime,
+    jwtid: tid,
   });
+
+  // 3. Save to Redis cache
   await redisClient.set(`user:${tid}`, token, {
-    EX: 60 * 60 * 24 * 180 // 180 days in seconds
+    EX: getExpiryTimeByRoleMs(data.role)?.accessTimeMs,
   });
 
+  //4. Save user details to redis cache
+  await redisClient.set(`user:profile:${tid}`, JSON.stringify(userData), {
+    EX: getExpiryTimeByRoleMs(data.role)?.accessTimeMs,
+  });
 
-  return token;
+  return token; // Added: Return token for outer scope usage
 }
-function signMainRefreshToken(data, expires) {
+
+function signMainRefreshToken(data) {
   const token = jwt.sign(data, process.env.TOKEN_REFRESH, {
-    expiresIn: "1000d",
-
-
+    expiresIn: getExpiryTimeByRole(data?.role).refreshTime,
   });
   return token;
 }

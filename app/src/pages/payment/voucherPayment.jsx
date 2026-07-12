@@ -252,19 +252,7 @@ function VoucherPayment() {
           >
             {/* Payment Form */}
             <Stack>
-              {/* <Stack
-                direction="row"
-                alignItems="center"
-                justifyContent="space-between"
-              >
-                <Typography variant="h6" fontWeight="bold">
-                  Payment Information
-                </Typography>
-                <IconButton onClick={handleGoBack} size="small">
-                  <CloseIcon />
-                </IconButton>
-              </Stack>
-              <Divider /> */}
+         
 
               <PaymentOption
                 showMomo

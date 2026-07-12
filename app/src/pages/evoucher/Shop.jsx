@@ -1,4 +1,4 @@
-import { Container, Alert, Typography, Divider } from "@mui/material";
+import { Container, Alert, Divider } from "@mui/material";
 import ShopCard from "@/components/ShopCard";
 import { shopRows } from "@/mocks/columns";
 import AnimatedContainer from "@/components/animations/AnimatedContainer";
@@ -11,10 +11,10 @@ function Shop() {
   let delay = 5;
   return (
     <>
-        {/* Hero Banner */}
-         <PageHero
-        title="Vouchers & Tickets"
-        subtitle=" Buy electricity units for your IMES meter instantly."
+      {/* Hero Banner */}
+      <PageHero
+        title="Checkers,Vouchers & Tickets"
+        subtitle="Buy checkers,vouchers and tickets with ease."
         bgImage={IMAGES.ges}
       />
       <Alert
@@ -24,10 +24,7 @@ function Shop() {
       >
         Lost Vouchers or Tickets? Retrieve from <a href="#lost">here 👈🏾</a>
       </Alert>
-      <Container
-
-      >
-  
+      <Container>
         <Divider />
         <Container
           sx={{

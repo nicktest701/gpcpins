@@ -2,6 +2,7 @@ import earth from '../assets/images/earth.png';
 import empty_ticket from '../assets/images/empty.svg';
 import mtn_money from '../assets/images/mtn4.png';
 import mtn from '../assets/images/mtn.jpg';
+import momo from '../assets/images/momo.png';
 import vodafone_cash from '../assets/images/telecelcash.webp';
 import vodafone from '../assets/images/telecel.png';
 import airtel_money from '../assets/images/airteltigo-money.png';
@@ -101,6 +102,7 @@ export const IMAGES = {
   airtime_low,
   football_low,
   main_low,
+  momo
 };
 
 export const BUS_IMAGES = [];

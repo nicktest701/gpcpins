@@ -103,8 +103,8 @@ function UniversityForms() {
                     <Stack spacing={3}>
                       <Typography
                         paragraph
-                        color="#fff"
-                        bgcolor="primary.lighter"
+                  color="secondary"
+                  bgcolor="whitesmoke"
                         p={1}
                         // borderRadius={1}
                       >
@@ -115,7 +115,7 @@ function UniversityForms() {
                         options={categories}
                         loading={loading}
                         loadingText="Loading Forms.Please Wait.."
-                        size="small"
+                        // size="small"
                         disableClearable
                         clearText=" "
                         value={categoryType}
@@ -141,7 +141,7 @@ function UniversityForms() {
                               <TextField
                                 {...params}
                                 label="Select University,Nursing,Polytechnic.."
-                                size="small"
+                                // size="small"
                                 error={Boolean(
                                   touched?.categoryType?.name &&
                                   errors?.categoryType?.name,
@@ -157,7 +157,7 @@ function UniversityForms() {
                       />
 
                       <TextField
-                        size="small"
+                        // size="small"
                         type="number"
                         inputMode="numeric"
                         label="Quantity"
@@ -169,7 +169,7 @@ function UniversityForms() {
                         helperText={touched.quantity && errors.quantity}
                       />
                       <TextField
-                        size="small"
+                        // size="small"
                         placeholder="Total Amount"
                         label="Total Amount"
                         required
@@ -201,7 +201,7 @@ function UniversityForms() {
                       </Typography>
 
                       <TextField
-                        size="small"
+                        // size="small"
                         placeholder="Enter your Name"
                         label="Full Name"
                         required
@@ -213,7 +213,7 @@ function UniversityForms() {
                       />
 
                       <TextField
-                        size="small"
+                        // size="small"
                         type="email"
                          fullWidth
                         label="Email Address(optional)"

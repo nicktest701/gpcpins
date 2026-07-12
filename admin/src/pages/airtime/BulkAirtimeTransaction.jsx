@@ -8,7 +8,6 @@ import {
   TextField,
 } from "@mui/material";
 import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
-import CustomDateRangePicker from "../../components/pickers/CustomDateRangePicker";
 import { PaymentsRounded } from "@mui/icons-material";
 import _ from "lodash";
 import { useQuery } from "@tanstack/react-query";
@@ -23,8 +22,8 @@ import { AuthContext } from "../../context/providers/AuthProvider";
 import { bulkAirtimeTransactionsColumns } from "../../mocks/columns";
 import { currencyFormatter } from "../../constants";
 import AirtimePrompt from "./AirtimePrompt";
-import CustomRangePicker from "../../components/pickers/CustomRangePicker";
 import CustomTotal from "../../components/custom/CustomTotal";
+import DateRangePicker from "@/components/pickers/DateRangePicker";
 
 const ProcessAirtimeTransaction = lazy(
   () => import("./ProcessAirtimeTransaction"),
@@ -34,7 +33,6 @@ function BulkAirtimeTransaction() {
   const { user } = useContext(AuthContext);
   const { customDispatch } = useContext(CustomContext);
   const [showAlert, setShowAlert] = useState(true);
-  const [openPicker, setOpenPicker] = useState(false);
   const [type, setType] = useState("all");
 
   const [date, setDate] = useState([
@@ -46,7 +44,7 @@ function BulkAirtimeTransaction() {
   ]);
 
   const transactions = useQuery({
-    queryKey: ["bulk-airtime-transactions", date],
+    queryKey: ["bulk-airtime-transactions", date[0]],
     queryFn: () => getAllBulkAirtimePayment(date[0]),
     enabled: !!date,
     initialData: [],
@@ -68,6 +66,8 @@ function BulkAirtimeTransaction() {
   }, [transactions?.data, type]);
 
   const updateECGPayment = (e, rowData) => {
+
+    console.log(rowData)
     customDispatch({
       type: "viewEcgTransactionInfoEdit",
       payload: {
@@ -123,11 +123,14 @@ function BulkAirtimeTransaction() {
               width="100%"
               py={2}
             >
-              <CustomRangePicker
+              <DateRangePicker
                 date={date}
                 setDate={setDate}
-                setOpen={setOpenPicker}
-                refetch={transactions.refetch}
+                onReset={transactions.refetch}
+                placeholder="Pick a date range"
+                dateFormat="ll"
+                maxDate={new Date()}
+                minDate={new Date("2024-01-01")}
               />
 
               <TextField
@@ -136,7 +139,7 @@ function BulkAirtimeTransaction() {
                 size="small"
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                sx={{ width: 200, my: 2 }}
+                sx={{ width: { xs: "100%", sm: 260 }, my: 2 }}
               >
                 <MenuItem value="all">All</MenuItem>
                 <MenuItem value="processed">Processed</MenuItem>
@@ -160,13 +163,6 @@ function BulkAirtimeTransaction() {
           }}
         />
       </>
-      <CustomDateRangePicker
-        open={openPicker}
-        setOpen={setOpenPicker}
-        date={date}
-        setDate={setDate}
-        refetchData={transactions.refetch}
-      />
 
       <ProcessAirtimeTransaction />
       <AirtimePrompt />

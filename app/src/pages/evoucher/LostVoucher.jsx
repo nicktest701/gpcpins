@@ -41,7 +41,7 @@ const LostVoucher = () => {
     },
   });
 
-  console.log(transaction.data);
+
 
   const isVoucher = ["waec", "university", "security"].includes(
     transaction?.data?.categoryType?.toLowerCase(),

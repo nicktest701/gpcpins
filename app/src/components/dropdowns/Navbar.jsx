@@ -12,7 +12,8 @@ const DropdownWrapper = ({ label, to, dropdownComponent: DropdownComponent }) =>
     color: isActive ? theme.palette.secondary.main : "#333",
     fontWeight: isActive ? "700" : "normal",
     textDecoration: "none",
-    fontSize: "0.9rem",
+    fontSize: "1rem",
+    textTransform:'uppercase',
     padding: "8px 12px",
     transition: "color 0.2s",
     "&:hover": { color: theme.palette.secondary.main },
@@ -72,7 +73,7 @@ const Navbar = () => {
       }}
     >
       <NavLink to="/" style={homeLinkStyle} className="nav-item">
-        Home
+        HOME
       </NavLink>
 
       <DropdownWrapper

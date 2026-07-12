@@ -315,8 +315,7 @@ export const userValidationSchema = () => {
   });
 };
 
-export const processPrepaidValidationSchema = () => {
-  return object().shape({
+export const processPrepaidValidationSchema =  object().shape({
     receipt: string().required(
       "A copy of the transaction receipt is required*"
     ),
@@ -331,7 +330,7 @@ export const processPrepaidValidationSchema = () => {
       .required("Required*")
       .oneOf([ref("paymentId"), null], "Order IDs do not match"),
   });
-};
+
 
 // Add Category
 export const refundValidationSchema = () => {

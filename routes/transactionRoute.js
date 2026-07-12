@@ -1730,8 +1730,8 @@ router.get(
 router.get(
   "/status",
   // limit,
-  // verifyToken,
-  // verifyAdmin,
+  verifyToken,
+  verifyAdmin,
   asyncHandler(async (req, res) => {
     const { clientReference, type } = req.query;
 
@@ -1739,43 +1739,13 @@ router.get(
       return res.status(400).json("Invalid Reference ID");
     }
 
-    let transaction = {};
-
     try {
-      if (type === "Voucher" || type === "Ticket") {
-        transaction = await knex("voucher_transactions")
-          .select("reference")
-          .where("reference", clientReference)
-          .limit(1)
-          .first();
-      }
-
-      if (type === "Prepaid") {
-        transaction = await knex("prepaid_transactions")
-          .select("reference")
-          .where("reference", clientReference)
-          .limit(1)
-          .first();
-      }
-
-      //if creating new transaction fails
-      if (_.isEmpty(transaction)) {
-        return res
-          .status(403)
-          .json("We could not find a transaction which match your ID!");
-      }
-      try {
-        const response = await moneyStatus(clientReference);
-        return res.status(200).json(response.data);
-      } catch (error) {
-        return res
-          .status(500)
-          .json("Could not check transaction status.Try again later");
-      }
+      const response = await moneyStatus(clientReference);
+      return res.status(200).json(response.data);
     } catch (error) {
       return res
         .status(500)
-        .json("An unknown error has occurred.Try again later.");
+        .json("Could not check transaction status.Try again later");
     }
   }),
 );
@@ -3268,8 +3238,8 @@ router.get(
     const roleCode =
       role === "users" ? process.env.USER_ID : process.env.AGENT_ID;
 
-    // const sDate = moment(startDate).format("YYYY-MM-DD");
-    // const eDate = moment(endDate).format("YYYY-MM-DD");
+    const sDate = moment(startDate).format("YYYY-MM-DD");
+    const eDate = moment(endDate).format("YYYY-MM-DD");
 
     const transactions = await knex("vw_user_wallet_transactions_view")
       .join("users", "vw_user_wallet_transactions_view.issuer", "=", "users.id")
@@ -3300,8 +3270,8 @@ router.get(
 
       const data = {
         person: {
-          startDate: sDate,
-          endDate: eDate,
+          startDate: startDate,
+          endDate: endDate,
           type: role === "users" ? "Users" : "Agents",
         },
         transactions: transactions,

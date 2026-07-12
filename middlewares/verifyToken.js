@@ -1,7 +1,12 @@
 const jwt = require("jsonwebtoken");
 const knex = require("../db/knex");
 const redisClient = require("../config/redisClient");
-const { signMainRefreshToken } = require("../config/token");
+const { signMainRefreshToken, signMainToken } = require("../config/token");
+const { safeJSON } = require("../config/helpers");
+const { getExpiryTimeByRoleMs } = require("../utils/helper");
+
+const adminRoles = [process?.env.ADMIN_ID, process?.env.EMPLOYEE_ID];
+const isProduction = process.env.NODE_ENV === "production";
 
 const verifyToken = (req, res, next) => {
   req.user = null;
@@ -31,9 +36,51 @@ const verifyToken = (req, res, next) => {
     if (!tokenInRedis) {
       return res.status(403).json("Session has expired");
     }
+    console.log("Access Role is", user?.role);
 
-    req.user = user;
+    const userId = user.sub; // Extracted from verified JWT
+    const cacheKey = `user:profile:${jti}`;
 
+    // 1. Try fetching from Redis
+    const cachedUser = await redisClient.get(cacheKey);
+    // console.log("Cache data is", cachedUser);
+    if (cachedUser) {
+      req.user = safeJSON(cachedUser);
+      return next();
+    }
+
+    // 2. Fallback to Database on Cache Miss
+    const authUser = await knex("vw_users_with_roles")
+      .select("*")
+      .where("id", userId)
+      .first();
+
+    if (!authUser) return res.status(403).json("User not found");
+
+    let newUser = {
+      id: authUser?.id,
+      lastname: authUser?.lastname,
+      firstname: authUser?.firstname,
+      name: authUser?.name,
+      profile: authUser?.profile,
+      email: authUser?.email,
+      phonenumber: authUser?.phonenumber,
+      nid: authUser?.nid,
+      dob: authUser?.dob,
+      role: user?.role,
+      active: authUser?.active,
+      createdAt: authUser?.created_at,
+    };
+
+    if (user?.role !== process.env.USER_ID) {
+      newUser.permissions = safeJSON(authUser?.permissions, []);
+    }
+
+    // 3. Populate Cache for next time (e.g., expires in 1 hour)
+    await redisClient.set(cacheKey, JSON.stringify(newUser), {
+      EX: getExpiryTimeByRoleMs(user?.role).accessTimeMs,
+    });
+    req.user = newUser;
     next();
   });
 };
@@ -64,12 +111,15 @@ const verifyRefreshToken = async (req, res, next) => {
     }
     let authUser = await knex("vw_users_with_roles")
       .select("*")
-      .where("id", user?.id)
+      .where("id", user?.sub)
       .first();
 
     if (Boolean(authUser?.is_enabled) === false) {
       return res.status(403).json("Session has expired.");
     }
+
+    const currentRole =
+      user?.role === process.env.USER_ID ? process.env.USER_ID : user?.role;
 
     let newUser = {
       id: authUser?.id,
@@ -81,50 +131,64 @@ const verifyRefreshToken = async (req, res, next) => {
       phonenumber: authUser?.phonenumber,
       nid: authUser?.nid,
       dob: authUser?.dob,
-      role: authUser?.role,
-      active: authUser?.active,
+      role: currentRole,
+      active: Boolean(authUser?.active),
       createdAt: authUser?.created_at,
-      permissions: JSON.parse(authUser?.permissions || "[]"),
+      permissions: safeJSON(authUser?.permissions, []),
     };
 
-    const updatedUser = {
-      id: user?.id,
-      role: user?.role,
-      active: Boolean(user?.active),
-      createdAt: user?.created_at,
-    };
+    if (user?.role !== process.env.USER_ID) {
+      newUser.permissions = safeJSON(authUser?.permissions, []);
+    }
 
     if (
-      user?.role === process.env.ADMIN_ID ||
-      user?.role === Number(process.env.SCANNER_ID)
+      currentRole === process.env.ADMIN_ID ||
+      currentRole === Number(process.env.SCANNER_ID)
     ) {
       newUser.isAdmin = true;
     }
 
-    const newRefreshToken = signMainRefreshToken(updatedUser, "365d");
+    const updatedUser = {
+      sub: user?.sub,
+      role: currentRole,
+    };
+
+    const newRefreshToken = signMainRefreshToken(updatedUser);
+    const accessToken = await signMainToken(updatedUser, newUser);
 
     await knex("user_tokens")
       .where({ id: stored.id })
       .update({ is_revoked: true });
 
-    const expires = new Date();
-    expires.setDate(expires.getDate() + 7);
+    const expires = getExpiryTimeByRoleMs(user?.role).refreshTimeMs;
 
     await knex("user_tokens").insert({
-      user_id: user.id,
+      user_id: user.sub,
       session_id: stored.session_id,
       refresh_token: newRefreshToken,
-      expiresAt: expires,
+      expiresAt: new Date(expires * 1000),
     });
+
+    const path =
+      user?.role === process.env.USER_ID
+        ? "user"
+        : adminRoles.includes(user?.role)
+          ? "admin"
+          : "verifier";
+
+    console.log("Path is", path);
+    console.log("Refresh Role is", user?.role);
 
     res.cookie("refreshToken", newRefreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: "Strict",
-      path: "/users/auth/token",
+      secure: isProduction,
+      sameSite: isProduction ? "strict" : "lax",
+      path: `/api/gabs/v1/${path}/auth/token`,
+      maxAge: expires,
     });
 
     req.user = newUser;
+    req.accessToken = accessToken;
     req.walletCount = 3;
 
     next();
@@ -163,8 +227,45 @@ const verifyOptionalToken = (req, res, next) => {
       return res.status(403).json("Session has expired");
     }
 
-    req.user = user;
+    const userId = user.sub; // Extracted from verified JWT
+    const cacheKey = `user:profile:${jti}`;
 
+    // 1. Try fetching from Redis
+    const cachedUser = await redisClient.get(cacheKey);
+    if (cachedUser) {
+      req.user = safeJSON(cachedUser);
+      return next();
+    }
+
+    // 2. Fallback to Database on Cache Miss
+    const authUser = await knex("vw_users_with_roles")
+      .select("*")
+      .where("id", userId)
+      .first();
+
+    if (!authUser) return res.status(403).json("User not found");
+
+    let newUser = {
+      id: authUser?.id,
+      lastname: authUser?.lastname,
+      firstname: authUser?.firstname,
+      name: authUser?.name,
+      profile: authUser?.profile,
+      email: authUser?.email,
+      phonenumber: authUser?.phonenumber,
+      nid: authUser?.nid,
+      dob: authUser?.dob,
+      role: user?.role,
+      active: authUser?.active,
+      createdAt: authUser?.created_at,
+      permissions: safeJSON(authUser?.permissions, "[]"),
+    };
+
+    // 3. Populate Cache for next time (e.g., expires in 1 hour)
+    await redisClient.set(cacheKey, JSON.stringify(newUser), {
+      EX: getExpiryTimeByRoleMs(user?.role).accessTimeMs,
+    });
+    req.user = newUser;
     next();
   });
 };

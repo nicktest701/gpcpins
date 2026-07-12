@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&display=swap");
+
 :root {
   --primary: #f78e2a;
   /* --secondary: #008000; */
@@ -22,7 +22,7 @@ html {
 }
 
 body {
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: "Geomini", system-ui, sans-serif;
   /* font-family: 'Open Sans', system-ui, sans-serif; */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

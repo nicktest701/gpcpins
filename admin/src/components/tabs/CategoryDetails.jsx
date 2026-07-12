@@ -3,6 +3,11 @@ import {
   ArrowDropDown,
   CheckCircle,
   Cancel,
+  Category,
+  Receipt,
+  BarChart,
+  TrendingUp,
+  TrendingDown,
 } from "@mui/icons-material";
 import {
   Button,
@@ -19,14 +24,22 @@ import {
   Skeleton,
   Chip,
   Box,
+  alpha,
+  useTheme,
+  Card,
+  CardContent,
+  Avatar,
 } from "@mui/material";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import { getCategory } from "../../api/categoryAPI";
 import { getVoucherDetails } from "../../api/voucherAPI";
 import { currencyFormatter } from "../../constants";
+import AnimatedContainer from "../../components/animations/AnimatedContainer";
+import CustomTitle from "../../components/custom/CustomTitle";
 
 function CategoryDetails() {
+  const theme = useTheme();
   const { category, id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -39,6 +52,7 @@ function CategoryDetails() {
     isLoading: categoryLoading,
     isError: categoryError,
     error: categoryErrorObj,
+    refetch: refetchCategory,
   } = useQuery({
     queryKey: ["category", id],
     queryFn: () => getCategory(id),
@@ -53,46 +67,96 @@ function CategoryDetails() {
     data: voucherStats,
     isLoading: statsLoading,
     isError: statsError,
+    refetch: refetchStats,
   } = useQuery({
     queryKey: ["voucher", category, id],
     queryFn: () => getVoucherDetails(id),
     enabled: !!category && !!id,
   });
 
-  const handleBack = () => navigate(-1);
+  const isLoading = categoryLoading || statsLoading;
+  const isError = categoryError || statsError;
 
-  // Loading state with skeleton
-  if (categoryLoading) {
+  // Helper to get category icon
+  const getCategoryIcon = () => {
+    const icons = {
+      cinema: "🎬",
+      stadium: "⚽",
+      bus: "🚌",
+      university: "🎓",
+      waec: "📚",
+    };
+    return icons[category] || "📦";
+  };
+
+  // Helper to get category color
+  const getCategoryColor = () => {
+    const colors = {
+      cinema: theme.palette.error.main,
+      stadium: theme.palette.success.main,
+      bus: theme.palette.info.main,
+      university: theme.palette.warning.main,
+      waec: theme.palette.secondary.main,
+    };
+    return colors[category] || theme.palette.primary.main;
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <CustomTitle title="Category Details" showBack />
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 3 }} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 3 }} />
+          </Grid>
+          <Grid item xs={12}>
+            <Skeleton variant="rectangular" height={300} sx={{ borderRadius: 3 }} />
+          </Grid>
+        </Grid>
+      </Container>
+    );
+  }
+
+  // Error state
+  if (isError || !categoryData) {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
-        <Box sx={{ display: "flex", alignItems: "center", mb: 4 }}>
-          <IconButton onClick={handleBack} sx={{ mr: 2 }}>
-            <ArrowBack />
-          </IconButton>
-          <Skeleton variant="text" width={200} height={40} />
-        </Box>
-        <Paper elevation={0} sx={{ p: 3, mb: 4 }}>
-          <Skeleton variant="rectangular" height={200} />
+        <Paper
+          sx={{
+            p: 4,
+            textAlign: "center",
+            borderRadius: 3,
+            border: `1px solid ${theme.palette.error.main}`,
+          }}
+        >
+          <Typography variant="h6" color="error" gutterBottom>
+            Oops! Something went wrong.
+          </Typography>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            {categoryErrorObj?.message || "Failed to load category details."}
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => {
+              refetchCategory();
+              refetchStats();
+            }}
+            sx={{ mr: 2 }}
+          >
+            Retry
+          </Button>
+          <Button variant="outlined" onClick={() => navigate(-1)}>
+            Go Back
+          </Button>
         </Paper>
-        <Skeleton variant="rectangular" height={150} />
       </Container>
     );
   }
 
-  if (categoryError) {
-    return (
-      <Container maxWidth="md" sx={{ py: 4, textAlign: "center" }}>
-        <Typography color="error">
-          Error loading category: {categoryErrorObj?.message}
-        </Typography>
-        <Button variant="contained" onClick={() => navigate(-1)} sx={{ mt: 2 }}>
-          Go Back
-        </Button>
-      </Container>
-    );
-  }
-
-  // Destructure data
   const {
     name: voucherType,
     price,
@@ -103,7 +167,6 @@ function CategoryDetails() {
   const pricing = details?.pricing || [];
   const formType = details?.formType;
 
-  // Stats
   const {
     new: newVouchers = 0,
     sold = 0,
@@ -113,163 +176,320 @@ function CategoryDetails() {
     total = 0,
   } = voucherStats || {};
 
-  return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* Header with back button and title */}
-      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 4 }}>
-        <IconButton onClick={handleBack} aria-label="go back">
-          <ArrowBack />
-        </IconButton>
-        <Typography variant="h4" component="h1" fontWeight="bold">
-          {voucherType || "Category Details"}
-        </Typography>
-        <Box sx={{ flexGrow: 1 }} />
-        <Chip
-          label={active ? "Active" : "Inactive"}
-          color={active ? "success" : "error"}
-          variant="outlined"
-          icon={active ? <CheckCircle /> : <Cancel />}
-        />
-      </Stack>
+  const categoryColor = getCategoryColor();
+  const categoryIcon = getCategoryIcon();
 
-      <Grid container spacing={4}>
-        {/* Main Info Card */}
-        <Grid item xs={12} md={6}>
-          <Paper
-            elevation={3}
-            sx={{
-              p: 3,
-              height: "100%",
-              borderRadius: 3,
-              background: "linear-gradient(135deg, #f5f7fa 0%, #fff 100%)",
-            }}
-          >
-            <Stack spacing={2}>
-              <Typography
-                variant="h3"
-                component="div"
-                fontWeight="bold"
-                color="primary"
-              >
-                {voucherType}
-              </Typography>
-              {category === "university" && formType && (
-                <Typography variant="body1" color="text.secondary">
-                  {formType}
-                </Typography>
-              )}
-              {!["cinema", "stadium"].includes(category) && price && (
-                <Typography variant="h4" color="secondary.main">
-                  {currencyFormatter(price)}
-                </Typography>
-              )}
-              {year && (
-                <Typography variant="body2" color="text.secondary">
-                  Year: {year}
-                </Typography>
-              )}
-            </Stack>
-          </Paper>
+  return (
+    <AnimatedContainer>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        {/* Header */}
+        <CustomTitle
+          title={voucherType || "Category Details"}
+          subtitle={`Manage ${category} vouchers and tickets`}
+          showBack
+        />
+
+        {/* Stats Overview */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={6} sm={3}>
+            <StatsCard
+              label="Total"
+              value={total}
+              icon={<Category />}
+              color={theme.palette.primary.main}
+            />
+          </Grid>
+          <Grid item xs={6} sm={3}>
+            <StatsCard
+              label="Available"
+              value={newVouchers}
+              icon={<TrendingUp />}
+              color={theme.palette.success.main}
+            />
+          </Grid>
+          <Grid item xs={6} sm={3}>
+            <StatsCard
+              label="Sold"
+              value={sold}
+              icon={<Receipt />}
+              color={theme.palette.warning.main}
+            />
+          </Grid>
+          <Grid item xs={6} sm={3}>
+            <StatsCard
+              label="Reserved"
+              value={reserved}
+              icon={<TrendingDown />}
+              color={theme.palette.error.main}
+            />
+          </Grid>
         </Grid>
 
-        {/* Pricing Dropdown (if applicable) */}
-        {["cinema", "waec", "stadium"].includes(category) &&
-          pricing.length > 0 && (
-            <Grid item xs={12} md={6}>
-              <Paper
-                elevation={3}
-                sx={{ p: 3, borderRadius: 3, height: "100%" }}
-              >
-                <Typography variant="h6" gutterBottom>
-                  Pricing Options
-                </Typography>
-                View Pricing Details
-                <List
+        <Grid container spacing={4}>
+          {/* Main Info Card */}
+          <Grid item xs={12} md={6}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                height: "100%",
+                borderRadius: 3,
+                border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+                background: `linear-gradient(135deg, ${alpha(categoryColor, 0.04)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
+                position: "relative",
+                overflow: "hidden",
+                "&::before": {
+                  content: '""',
+                  position: "absolute",
+                  top: -50,
+                  right: -50,
+                  width: 200,
+                  height: 200,
+                  borderRadius: "50%",
+                  background: alpha(categoryColor, 0.05),
+                  pointerEvents: "none",
+                },
+              }}
+            >
+              <Stack spacing={2.5}>
+                <Stack direction="row" alignItems="center" spacing={2}>
+                  <Avatar
+                    sx={{
+                      width: 56,
+                      height: 56,
+                      bgcolor: alpha(categoryColor, 0.1),
+                      fontSize: "2rem",
+                    }}
+                  >
+                    {categoryIcon}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" gutterBottom>
+                      Category
+                    </Typography>
+                    <Typography variant="h5" fontWeight="bold">
+                      {voucherType || "N/A"}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ flexGrow: 1 }} />
+                  <Chip
+                    label={active ? "Active" : "Inactive"}
+                    color={active ? "success" : "error"}
+                    size="small"
+                    sx={{ fontWeight: 600 }}
+                  />
+                </Stack>
+
+                <Divider />
+
+                <Grid container spacing={2}>
+                  {category === "university" && formType && (
+                    <Grid item xs={12}>
+                      <InfoRow label="Form Type" value={formType} />
+                    </Grid>
+                  )}
+                  {!["cinema", "stadium"].includes(category) && price && (
+                    <Grid item xs={12}>
+                      <InfoRow
+                        label="Price"
+                        value={currencyFormatter(price)}
+                        valueColor="primary"
+                      />
+                    </Grid>
+                  )}
+                  {year && (
+                    <Grid item xs={12}>
+                      <InfoRow label="Year" value={year} />
+                    </Grid>
+                  )}
+                  <Grid item xs={12}>
+                    <InfoRow
+                      label="Status"
+                      value={active ? "Available" : "Unavailable"}
+                      valueColor={active ? "success" : "error"}
+                    />
+                  </Grid>
+                </Grid>
+              </Stack>
+            </Paper>
+          </Grid>
+
+          {/* Pricing Options */}
+          {["cinema", "waec", "stadium"].includes(category) &&
+            pricing.length > 0 && (
+              <Grid item xs={12} md={6}>
+                <Paper
+                  elevation={0}
                   sx={{
-                    minWidth: 220,
-                    maxHeight: 300,
-                    overflow: "auto",
-                    p: 0,
+                    p: 3,
+                    borderRadius: 3,
+                    height: "100%",
+                    border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
                   }}
                 >
-                  {pricing.map((item) => (
-                    <ListItem key={item.id} divider>
-                      <ListItemText
-                        primary={`${item.type} ${category === "waec" ? "Checker" : "Ticket"}`}
-                        primaryTypographyProps={{ fontWeight: "bold" }}
-                        secondary={currencyFormatter(item.price)}
-                        secondaryTypographyProps={{ color: "primary.main" }}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
+                  <Typography variant="h6" fontWeight="bold" gutterBottom>
+                    Pricing Options
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Available {category === "waec" ? "checker" : "ticket"} types
+                  </Typography>
+                  <List sx={{ p: 0 }}>
+                    {pricing.map((item, index) => (
+                      <ListItem
+                        key={item.id}
+                        divider={index < pricing.length - 1}
+                        sx={{
+                          px: 1,
+                          py: 1.5,
+                          borderRadius: 2,
+                          transition: "background 0.2s",
+                          "&:hover": {
+                            bgcolor: alpha(theme.palette.primary.main, 0.04),
+                          },
+                        }}
+                      >
+                        <ListItemText
+                          primary={
+                            <Typography fontWeight="600" variant="body2">
+                              {item.type}
+                              {category === "waec" && " Checker"}
+                              {category !== "waec" && " Ticket"}
+                            </Typography>
+                          }
+                          secondary={
+                            <Typography variant="caption" color="text.secondary">
+                              {category === "cinema" && "Standard seating"}
+                            </Typography>
+                          }
+                        />
+                        <Typography variant="body1" fontWeight="bold" color="primary">
+                          {currencyFormatter(item.price)}
+                        </Typography>
+                      </ListItem>
+                    ))}
+                  </List>
+                </Paper>
+              </Grid>
+            )}
+
+          {/* Additional Stats */}
+          {isTicket && (
+            <Grid item xs={12}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  borderRadius: 3,
+                  border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+                }}
+              >
+                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                  Ticket Usage
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={6} sm={3}>
+                    <StatMiniCard
+                      label="Used"
+                      value={used}
+                      color={theme.palette.success.main}
+                    />
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <StatMiniCard
+                      label="Expired"
+                      value={expired}
+                      color={theme.palette.error.main}
+                    />
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <StatMiniCard
+                      label="Remaining"
+                      value={total - sold - reserved - used}
+                      color={theme.palette.info.main}
+                    />
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <StatMiniCard
+                      label="Utilization"
+                      value={`${total > 0 ? Math.round((sold / total) * 100) : 0}%`}
+                      color={theme.palette.secondary.main}
+                    />
+                  </Grid>
+                </Grid>
               </Paper>
             </Grid>
           )}
-
-        {/* Voucher Statistics */}
-        <Grid item xs={12}>
-          <Paper elevation={2} sx={{ p: 3, borderRadius: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Voucher / Ticket Statistics
-            </Typography>
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={6} sm={3}>
-                <StatCard label="New" value={newVouchers} color="info" />
-              </Grid>
-              <Grid item xs={6} sm={3}>
-                <StatCard label="Sold" value={sold} color="warning" />
-              </Grid>
-              <Grid item xs={6} sm={3}>
-                <StatCard label="Reserved" value={reserved} color="error" />
-              </Grid>
-              {isTicket && (
-                <>
-                  <Grid item xs={6} sm={3}>
-                    <StatCard label="Used" value={used} color="success" />
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
-                    <StatCard label="Expired" value={expired} color="error" />
-                  </Grid>
-                </>
-              )}
-            </Grid>
-            <Divider sx={{ my: 2 }} />
-            <Stack
-              direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-            >
-              <Typography variant="h6" fontWeight="bold">
-                TOTAL
-              </Typography>
-              <Typography variant="h5" fontWeight="bold" color="primary">
-                {total}
-              </Typography>
-            </Stack>
-          </Paper>
         </Grid>
-      </Grid>
-    </Container>
+      </Container>
+    </AnimatedContainer>
   );
 }
 
-// Helper component for statistics cards
-const StatCard = ({ label, value, color }) => (
+// Helper components
+const InfoRow = ({ label, value, valueColor = "text.primary" }) => (
+  <Stack direction="row" justifyContent="space-between" alignItems="center">
+    <Typography variant="body2" color="text.secondary">
+      {label}
+    </Typography>
+    <Typography variant="body2" fontWeight="500" color={valueColor}>
+      {value || "N/A"}
+    </Typography>
+  </Stack>
+);
+
+const StatsCard = ({ label, value, icon, color }) => (
+  <Paper
+    elevation={0}
+    sx={{
+      p: 2,
+      borderRadius: 3,
+      border: `1px solid ${alpha(color, 0.2)}`,
+      bgcolor: alpha(color, 0.04),
+      transition: "all 0.2s ease",
+      "&:hover": {
+        transform: "translateY(-2px)",
+        boxShadow: `0 4px 12px ${alpha(color, 0.15)}`,
+      },
+    }}
+  >
+    <Stack direction="row" alignItems="center" spacing={1}>
+      <Box
+        sx={{
+          p: 0.75,
+          borderRadius: "50%",
+          bgcolor: alpha(color, 0.12),
+          color: color,
+        }}
+      >
+        {icon}
+      </Box>
+      <Box>
+        <Typography variant="h5" fontWeight="bold" color={color}>
+          {value}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {label}
+        </Typography>
+      </Box>
+    </Stack>
+  </Paper>
+);
+
+const StatMiniCard = ({ label, value, color }) => (
   <Paper
     elevation={0}
     sx={{
       p: 2,
       textAlign: "center",
-      bgcolor: `${color}.50`,
       borderRadius: 2,
-      border: `1px solid ${color}.200`,
+      border: `1px solid ${alpha(color, 0.15)}`,
+      bgcolor: alpha(color, 0.04),
     }}
   >
-    <Typography variant="h4" fontWeight="bold" color={`${color}.main`}>
+    <Typography variant="h4" fontWeight="bold" color={color}>
       {value}
     </Typography>
-    <Typography variant="body2" color="text.secondary">
+    <Typography variant="caption" color="text.secondary">
       {label}
     </Typography>
   </Paper>

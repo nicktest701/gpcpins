@@ -46,7 +46,7 @@ router.get(
         "name",
         "number",
         "type",
-        "spn",
+        "provider_name as providerName",
         "address",
         "district",
         "active",

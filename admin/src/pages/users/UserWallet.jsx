@@ -53,7 +53,7 @@ function UserWallet() {
                 gap: 4,
               }}
             >
-              {user?.permissions?.includes("Topup user wallet amount") && (
+              {/* {user?.permissions?.includes("Topup user wallet amount") && (
                 <Button
                   variant="contained"
                   startIcon={<Add />}
@@ -62,7 +62,7 @@ function UserWallet() {
                 >
                   Add Money to Wallet
                 </Button>
-              )}
+              )} */}
 
               <CustomTotal
                 title="TOTAL AMOUNT"

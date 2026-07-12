@@ -58,6 +58,6 @@ export const downloadReceipts = async (id) => {
     window.URL.revokeObjectURL(url);
     return true;
   } catch (error) {
-    console.log(error);
+    throw new Error(error);
   }
 };

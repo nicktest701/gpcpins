@@ -118,6 +118,8 @@ function ChangePin() {
       payload.dob = new Date(dob);
     }
 
+    console.log(payload)
+
     verifyMutateAsync(payload, {
       onSuccess: (data) => {
         setErr("");
@@ -132,7 +134,7 @@ function ChangePin() {
   };
 
   //Change pin number
-  const { mutateAsync: pinMutateAsync, isLoading: pinIsLoading } = useMutation({
+  const { mutateAsync: pinMutateAsync, isPending: pinIsLoading } = useMutation({
     mutationFn: updateWalletPin,
   });
 

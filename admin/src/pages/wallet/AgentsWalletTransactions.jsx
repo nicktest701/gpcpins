@@ -1,22 +1,9 @@
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import LoadingButton from "@mui/lab/LoadingButton";
-import {
-  IconButton,
-  Stack,
-  TextField,
-  Box,
-  ListItemText,
-  Alert,
-} from "@mui/material";
-import {
-  ArrowBackRounded,
-  NoteAlt,
-  NoteRounded,
-  RefreshRounded,
-} from "@mui/icons-material";
-import { AuthContext } from "../../context/providers/AuthProvider";
-import moment from "moment";
+import { IconButton, Box, ListItemText, Alert } from "@mui/material";
+import { ArrowBackRounded, NoteAlt, NoteRounded } from "@mui/icons-material";
+import { useAuth } from "../../context/providers/AuthProvider";
 import _ from "lodash";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { generateRandomCode } from "../../config/generateRandomCode";
@@ -27,12 +14,11 @@ import {
   generateWalletTransactionReport,
 } from "../../api/transactionAPI";
 import { currencyFormatter } from "../../constants";
-import CustomDateRangePicker from "../../components/pickers/CustomDateRangePicker";
 import { WALLET_TRANSACTIONS } from "../../mocks/columns";
+import DateRangePicker from "@/components/pickers/DateRangePicker";
 
 function AgentsWalletTransactions() {
-  const { user } = useContext(AuthContext);
-  const [openPicker, setOpenPicker] = useState(false);
+  const { user } = useAuth();
   const [date, setDate] = useState([
     {
       startDate: new Date("2024-01-01"),
@@ -43,20 +29,11 @@ function AgentsWalletTransactions() {
 
   //Get all transactions by meter id
   const transactions = useQuery({
-    queryKey: ["agents-wallet-transactions"],
+    queryKey: ["agents-wallet-transactions", date[0]],
     queryFn: () => geAllAgentWalletTransactions(date[0]),
     enabled: !!user?.id,
     initialData: [],
   });
-
-  const resetDateRange = () =>
-    setDate([
-      {
-        startDate: new Date("2024-01-01"),
-        endDate: new Date(),
-        key: "selection",
-      },
-    ]);
 
   const { mutateAsync, isLoading, isSuccess, isError, data } = useMutation({
     mutationFn: generateWalletTransactionReport,
@@ -123,30 +100,15 @@ function AgentsWalletTransactions() {
                 flexWrap: "wrap",
               }}
             >
-              <Stack direction="row" sx={{ position: "relative" }}>
-                <TextField
-                  label="Select Date Range"
-                  size="small"
-                  sx={{
-                    borderRadius: 0,
-                    width: 250,
-                  }}
-                  onClick={() => setOpenPicker(true)}
-                  value={`${moment(date[0].startDate).format("ll")} -${moment(
-                    date[0].endDate
-                  ).format("ll")}`}
-                  InputProps={{
-                    readOnly: true,
-                  }}
-                  inputProps={{
-                    style: { cursor: "pointer" },
-                  }}
-                />
-                <RefreshRounded
-                  onClick={resetDateRange}
-                  sx={{ position: "absolute", right: 8, top: 8 }}
-                />
-              </Stack>
+              <DateRangePicker
+                date={date}
+                setDate={setDate}
+                onReset={transactions.refetch}
+                placeholder="Pick a date range"
+                dateFormat="ll"
+                maxDate={new Date()}
+                minDate={new Date("2024-01-01")}
+              />
               <LoadingButton
                 variant="contained"
                 endIcon={<NoteRounded />}
@@ -160,7 +122,7 @@ function AgentsWalletTransactions() {
 
               <ListItemText
                 primary={currencyFormatter(
-                  _.sumBy(transactions.data, (item) => Number(item?.amount))
+                  _.sumBy(transactions.data, (item) => Number(item?.amount)),
                 )}
                 primaryTypographyProps={{
                   fontSize: "1.5rem",
@@ -179,16 +141,9 @@ function AgentsWalletTransactions() {
           options={{
             exportAllData: true,
             exportButton: user?.permissions?.includes(
-              "Export agent wallet Transaction"
+              "Export agent wallet Transaction",
             ),
           }}
-        />
-        <CustomDateRangePicker
-          open={openPicker}
-          setOpen={setOpenPicker}
-          date={date}
-          setDate={setDate}
-          refetchData={transactions.refetch}
         />
       </>
     </div>

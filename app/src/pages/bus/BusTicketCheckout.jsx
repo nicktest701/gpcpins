@@ -116,7 +116,6 @@ function BusTicketCheckout() {
     refetchOnWindowFocus: true,
   });
 
-  // console.log(bus)
 
   /*
    |--------------------------------------------------------------------------
@@ -280,9 +279,7 @@ function BusTicketCheckout() {
       }
     }
 
-
-    paymentMutation.muPendingnc(payload);
-
+    paymentMutation.mutateAsync(payload);
   };
 
   if (busLoading || seatsLoading) {

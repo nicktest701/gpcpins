@@ -18,7 +18,7 @@ const PaymentListener = ({ txRef, onSuccess, onFailed }) => {
     */
 
     const handleSuccess = (data) => {
-      console.log("Payment Success:", data);
+      // console.log("Payment Success:", data);
 
       onSuccess?.(data);
     };
@@ -28,7 +28,7 @@ const PaymentListener = ({ txRef, onSuccess, onFailed }) => {
     */
 
     const handleFailed = (data) => {
-      console.log("Payment Failed:", data);
+      // console.log("Payment Failed:", data);
 
       onFailed?.(data);
     };

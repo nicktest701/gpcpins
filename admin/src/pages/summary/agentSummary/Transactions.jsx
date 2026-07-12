@@ -13,28 +13,24 @@ import { airtimeTransactionsByColumns } from "@/mocks/columns";
 import LoadingButton from "@mui/lab/LoadingButton";
 import _ from "lodash";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import {
-  getTransactionReport,
-  getTransactions,
-} from "@/api/agentAPI";
+import { getTransactionReport, getTransactions } from "@/api/agentAPI";
 import { useEffect, useMemo, useState } from "react";
-import CustomRangePicker from "@/components/pickers/CustomRangePicker";
-import CustomDateRangePicker from "@/components/pickers/CustomDateRangePicker";
 import { NoteRounded } from "@mui/icons-material";
-
 import { currencyFormatter } from "@/constants";
-
 import TransactionStatus from "@/components/modals/TransactionStatus";
-import { CustomContext } from "@/context/providers/CustomProvider";
-import { useContext } from "react";
+import {
+
+  useCustomContext,
+} from "@/context/providers/CustomProvider";
+
 import { globalAlertType } from "@/components/alert/alertType";
 import CustomTotal from "@/components/custom/CustomTotal";
+import DateRangePicker from "@/components/pickers/DateRangePicker";
 
 function Transactions() {
-  const { customDispatch } = useContext(CustomContext);
+  const { customDispatch } = useCustomContext();
 
   const [showRange, setShowRange] = useState(false);
-  const [openPicker, setOpenPicker] = useState(false);
   const [sortValue, setSortValue] = useState("all");
   const [type, setType] = useState("All");
   const [date, setDate] = useState([
@@ -60,7 +56,7 @@ function Transactions() {
   }, [showRange]);
 
   const transactions = useQuery({
-    queryKey: ["products-transactions", sortValue, date],
+    queryKey: ["products-transactions", sortValue, date[0]],
     queryFn: () => getTransactions({ date: date[0], sort: sortValue }),
     enabled: !!sortValue,
     initialData: [],
@@ -120,8 +116,8 @@ function Transactions() {
             reportMutate.isLoading
               ? "info"
               : reportMutate.isError
-              ? "error"
-              : "success"
+                ? "error"
+                : "success"
           }
         >
           {reportMutate.isLoading ? (
@@ -180,11 +176,14 @@ function Transactions() {
                   py={2}
                 >
                   {showRange ? (
-                    <CustomRangePicker
+                    <DateRangePicker
                       date={date}
                       setDate={setDate}
-                      setOpen={setOpenPicker}
-                      refetch={transactions.refetch}
+                      onReset={transactions.refetch}
+                      placeholder="Pick a date range"
+                      dateFormat="ll"
+                      maxDate={new Date()}
+                      minDate={new Date("2024-01-01")}
                     />
                   ) : (
                     <TextField
@@ -232,8 +231,8 @@ function Transactions() {
                     title="Total"
                     total={currencyFormatter(
                       _.sumBy(sortedTransactions, (item) =>
-                        Number(item?.amount)
-                      )
+                        Number(item?.amount),
+                      ),
                     )}
                   />
                 </Stack>
@@ -273,13 +272,6 @@ function Transactions() {
         />
       </>
       <TransactionStatus />
-      <CustomDateRangePicker
-        open={openPicker}
-        date={date}
-        setDate={setDate}
-        setOpen={setOpenPicker}
-        refetchData={transactions.refetch}
-      />
     </>
   );
 }

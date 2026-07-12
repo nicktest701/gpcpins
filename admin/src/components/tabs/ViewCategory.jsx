@@ -2,8 +2,8 @@ import { useContext, useState } from "react";
 import _ from "lodash";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import MaterialTable from '@material-table/core';
- import { MTableToolbar } from '@material-table/core';
+import MaterialTable from "@material-table/core";
+import { MTableToolbar } from "@material-table/core";
 import Swal from "sweetalert2";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { tableIcons } from "../../config/tableIcons";
@@ -26,11 +26,11 @@ import { Navigate, useNavigate, useParams } from "react-router-dom";
 import ActionMenu from "../menu/ActionMenu";
 import { Card, MenuItem } from "@mui/material";
 import Active from "../Active";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import { useAuth } from "../../context/providers/AuthProvider";
 
 const ViewCategory = ({ categories, pageInfo, refetch }) => {
   const { category } = useParams();
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const queryClient = useQueryClient();
@@ -66,8 +66,6 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
   //     }
   //   });
   // }
-
-
 
   const { mutateAsync: deleteMoreAsync } = useMutation({
     mutationFn: deleteMoreCategory,
@@ -145,24 +143,23 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
             onError: (error) => {
               customDispatch(globalAlertType("error", error));
             },
-          }
+          },
         );
       }
     });
   };
 
- 
   const IS_NEW_AVAILABLE = user?.permissions?.includes(
-    getCreatePermission(category)
+    getCreatePermission(category),
   );
   const IS_EDIT_AVAILABLE = user?.permissions?.includes(
-    getEditPermission(category)
+    getEditPermission(category),
   );
   const IS_DELETE_AVAILABLE = user?.permissions?.includes(
-    getDeletePermission(category)
+    getDeletePermission(category),
   );
   const IS_EXPORT_AVAILABLE = user?.permissions?.includes(
-    getExportPermission(category)
+    getExportPermission(category),
   );
 
   const modifiedColumns = [
@@ -225,8 +222,9 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
       sx={{
         maxWidth: "85svw",
         marginInline: "auto",
-        borderRadius: 0,
+        // borderRadius: 0,
         bgcolor: "#fff",
+        borderRadius: 3,
         // overflowX:'hidden'
       }}
     >

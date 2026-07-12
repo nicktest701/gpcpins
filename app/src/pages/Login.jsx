@@ -100,7 +100,7 @@ function Login() {
     },
     onError: (error) => {
       console.log(error);
-      setErr("Error. Authentication Failed");
+      setErr("Error. Authentication Failed!");
     },
   });
 

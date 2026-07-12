@@ -1,39 +1,5 @@
 import api from "./customAxios";
 
-export const makeMomoTransaction = async (paymentInfo) => {
-  try {
-    const res = await api({
-      method: "POST",
-      url: `/payment/momo`,
-      data: paymentInfo,
-    });
-
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
-
-export const makePayment = async ({ id, type }) => {
-  const isVoucher = ["waec", "university", "security"].includes(type)
-    ? "vouchers"
-    : "tickets";
-
-  try {
-    const res = await api({
-      method: "GET",
-      url: `/payment/${isVoucher}`,
-      params: {
-        id,
-      },
-    });
-
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
-
 export const getPayment = async () => {
   try {
     const res = await api({
@@ -50,9 +16,11 @@ export const getPayment = async () => {
 export const resendVoucherORReceipt = async (data) => {
   try {
     const response = await api({
-      url: `/payment/resend`,
-      method: "POST",
-      data,
+      url: `/payment/${data?.service}s`,
+      method: "GET",
+      params: {
+        id: data?.id,
+      },
     });
     return response.data;
   } catch (error) {
@@ -137,8 +105,6 @@ export const getTopUpBalance = async () => {
   }
 };
 
-
-
 export const getAllBulkAirtimePayment = async ({ startDate, endDate }) => {
   try {
     const res = await api({
@@ -156,44 +122,15 @@ export const getAllBulkAirtimePayment = async ({ startDate, endDate }) => {
   }
 };
 // airtime
-export const completeBulkAirtimePayment = async ({ id, orderId }) => {
+export const completeBulkAirtimePayment = async ({ id, status }) => {
   try {
     const res = await api({
       method: "PUT",
       url: `/payment/airtime`,
-      params: {
+      data: {
         id,
-        orderId
+        status
       },
-    });
-
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
-
-export const getAllElectricityPayment = async ({ startDate, endDate }) => {
-  try {
-    const res = await api({
-      method: "GET",
-      url: `/payment/electricity`,
-      params: {
-        startDate,
-        endDate,
-      },
-    });
-
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
-export const getElectricity = async (id) => {
-  try {
-    const res = await api({
-      method: "GET",
-      url: `/payment/electricity/${id}`,
     });
 
     return res.data;
@@ -207,34 +144,6 @@ export const getAllElectricityPaymentByUserId = async (userId) => {
     const res = await api({
       method: "GET",
       url: `/payment/electricity/user/${userId}`,
-    });
-
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
-export const makeElectricityPayment = async (paymentInfo) => {
-  try {
-    const res = await api({
-      method: "POST",
-      url: `/payment/electricity`,
-      data: paymentInfo,
-    });
-
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
-
-export const updateElectricityPayment = async (paymentInfo) => {
-  try {
-    const res = await api({
-      method: "PUT",
-      url: `/payment/electricity`,
-      data: paymentInfo
-    
     });
 
     return res.data;

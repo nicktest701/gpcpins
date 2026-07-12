@@ -13,8 +13,9 @@ const PageHero = ({ title, subtitle, bgImage }) => {
         background: `linear-gradient(to top right,rgba(0,0,0,0.8),rgba(0,0,0,0.7)),url(${bgImage})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
-        height: { xs: "45svh", md: "35svh" },
+        height: { xs: "45svh", md: "40svh" },
         mx: "auto",
+        px:4
       }}
     >
       <Typography variant="h3" className="hero-title" paragraph>

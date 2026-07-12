@@ -43,6 +43,9 @@ export const makePayment = async ({ id, type }) => {
     const res = await api({
       method: "GET",
       url: `/payment/${isVoucher}`,
+      headers: {
+        "Idempotency-Key": uuid(),
+      },
       params: {
         id,
       },

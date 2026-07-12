@@ -14,7 +14,7 @@ function CustomStepper({ logs }) {
   
       <Stepper orientation="vertical">
         {logs?.map((log) => (
-          <Step key={log?._id}>
+          <Step key={log?.id}>
             <StepLabel>
               <Typography variant="body2">{log?.title}</Typography>
               <small style={{ color: "var(--secondary)" }}>

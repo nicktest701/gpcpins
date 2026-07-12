@@ -15,23 +15,24 @@ import { PaymentsRounded } from "@mui/icons-material";
 import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
 import { Navigate, useSearchParams } from "react-router-dom";
 import TopUpRequest from "./TopUpRequest";
-import { AuthContext, useAuth } from "../../context/providers/AuthProvider";
-import { useContext } from "react";
+import { useAuth } from "../../context/providers/AuthProvider";
+
 import { currencyFormatter } from "../../constants";
 import { WALLET_TOPUP_TRANSACTIONS } from "../../mocks/columns";
-import CustomDateRangePicker from "../../components/pickers/CustomDateRangePicker";
-import CustomRangePicker from "../../components/pickers/CustomRangePicker";
+// import CustomDateRangePicker from "../../components/pickers/CustomDateRangePicker";
+// import CustomRangePicker from "../../components/pickers/CustomRangePicker";
 import CustomTotal from "../../components/custom/CustomTotal";
 import ChangePin from "./ChangePin";
 import { getWalletBalance, getWalletTransaction } from "../../api/walletAPI";
 // Add this import at the top
 import { useMediaQuery, useTheme } from "@mui/material";
 import WalletTransactionList from "./WalletTransactionList";
+import DateRangePicker from "../../components/pickers/DateRangePicker";
 
 function Wallet() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [openPicker, setOpenPicker] = useState(false);
+  // const [openPicker, setOpenPicker] = useState(false);
   // Inside Wallet component, before return:
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md")); // or "sm"
@@ -142,12 +143,21 @@ function Wallet() {
                   flexWrap: "wrap",
                 }}
               >
-                <CustomRangePicker
+                <DateRangePicker
+                  date={date}
+                  setDate={setDate}
+                  onReset={transactions.refetch}
+                  placeholder="Pick a date range"
+                  dateFormat="ll"
+                  maxDate={new Date()}
+                  minDate={new Date("2024-01-01")}
+                />
+                {/* <CustomRangePicker
                   date={date}
                   setDate={setDate}
                   setOpen={setOpenPicker}
                   refetch={transactions.refetch}
-                />
+                /> */}
                 <CustomTotal
                   title="Total "
                   total={currencyFormatter(
@@ -160,13 +170,13 @@ function Wallet() {
         )}
       </Container>
       <TopUpRequest />
-      <CustomDateRangePicker
+      {/* <CustomDateRangePicker
         open={openPicker}
         setOpen={setOpenPicker}
         date={date}
         setDate={setDate}
         refetchData={transactions.refetch}
-      />
+      /> */}
       <ChangePin />
     </>
   );

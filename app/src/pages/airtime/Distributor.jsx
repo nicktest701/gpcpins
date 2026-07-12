@@ -7,7 +7,6 @@ import {
   Divider,
   Box,
   Grid,
-  Alert,
   Link as MuiLink,
 } from "@mui/material";
 import { LoadingButton } from "@mui/lab";
@@ -32,7 +31,7 @@ function Distributor() {
     reset,
     formState: { errors, isSubmitting },
   } = useForm({
-    resolver: yupResolver(agentRegistrationValidationSchema()),
+    resolver: yupResolver(agentRegistrationValidationSchema),
     defaultValues: {
       firstname: "",
       lastname: "",
