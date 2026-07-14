@@ -7,6 +7,8 @@ const moment = require("moment");
 const { rateLimit } = require("express-rate-limit");
 const asyncHandler = require("express-async-handler");
 const bcrypt = require("bcryptjs");
+const { v4: uuidv4 } = require("uuid");
+
 //functons
 const {
   sendMoney,
@@ -65,6 +67,7 @@ const logger = require("../utils/logger");
 const { ticketQueue, voucherQueue } = require("../queues/queues");
 const { formatDate, formatTime } = require("../config/dateConfigs");
 const { brassicaPost } = require("../services/brassicaClient");
+const { getMeter } = require("../services/brassica/token.manager");
 
 // ===============================
 // 1. Configuration & Constants
@@ -953,142 +956,107 @@ router.post(
   verifyOptionalToken,
   idempotencyMiddleware,
   paymentLockMiddleware,
-  billerPaymentSchema,
   validateECG,
-  // validatePayment(prepaidSchema),
+  validatePayment(prepaidSchema),
   asyncHandler(async (req, res) => {
-    const { id: userID } = req.user;
+    // Safely extract user fields (handling unauthenticated optional token states)
+    const userID = req.user?.id || "";
+    const userName = req.user?.name || "GPC";
+    const { meter, info, amount } = req.body;
+    const userPhone =
+      getInternationalMobileFormat(info?.phonenumber, false) ||
+      process.env.BRASSICA_CLIENT_PHONENUMBER;
 
-    // const { meter, info, charges, topup, amount, isWallet, token } = req.body;
+    // 1. Fetch or Lookup Meter Details BEFORE opening DB transactions
+    let prepaidMeterPayload = await getMeter(meter);
+
+    if (!prepaidMeterPayload) {
+      logger.info(`[ECGLookup] meter=${meter} category=PREPAID`);
+      const externalTransactionId = uuidv4();
+
+      const lookupResponse = await brassicaPost("/billerAccountLookUp", {
+        transactionId: externalTransactionId,
+        accountNumber: meter,
+        phoneNumber: userPhone,
+        accountCategory: "PREPAID",
+        billerType: "ECG",
+      });
+
+      if (
+        lookupResponse?.status !== "Success" ||
+        lookupResponse?.statusCode !== "200"
+      ) {
+        return res.status(400).json({ message: "Meter not found" });
+      }
+
+      prepaidMeterPayload = {
+        ...lookupResponse?.accountDetails,
+        accountLookUpId: lookupResponse?.accountLookUpId,
+      };
+    }
+
     const {
-      accountNumber,
-      phoneNumber,
-      accountCategory,
-      amount,
-      paymentBy,
-      accountLookUpId,
-      serviceDistrictId,
-      serviceRegionId,
-      serviceProviderName,
       accountName,
       accountReferenceId,
-      transactionId,
+      serviceDistrictId,
+      serviceRegionId,
+      accountType,
+      serviceProviderName,
       altAccountNumber,
-    } = req.body;
+      accountLookUpId,
+    } = prepaidMeterPayload;
 
-    // logger.info(req.body)
+    // 2. Prepare Identifiers & Payload
+    const externalTransactionId = uuidv4();
+    const paymentId = generateId();
+    const transaction_id = generateId(6);
+    const transaction_reference = randomBytes(24).toString("hex");
+    const orderNo = randomBytes(20).toString("hex");
+
+    const paymentPayload = {
+      billRequest: {
+        transactionId: externalTransactionId,
+        billerType: "ECG",
+        accountNumber: meter,
+        accountCategory: accountType,
+        phoneNumber: userPhone,
+      },
+      paymentDetails: {
+        amount,
+        accountLookUpId,
+        serviceDistrictId,
+        serviceRegionId,
+        serviceProviderName,
+        accountName,
+        accountReferenceId,
+        paymentNaration: "Electricity Purchase",
+        altAccountNumber,
+        paymentBy: userName,
+      },
+    };
+
+    // 3. Database Write (Keep this transaction as short as possible)
     const transx = await knex.transaction();
-    let meterId = meter;
-
     try {
-      // Call the API to create a transaction
-      const paymentId = generateId();
-      const transaction_id = generateId(6);
-      const transaction_reference = randomBytes(24).toString("hex");
-      const orderNo = randomBytes(20).toString("hex");
-
-      // ---------------- CREATE PAYMENT ----------------
-      let paymentStatus = "pending";
-      let partnerResponse = null;
-
-      // if (isWallet) {
-      //   // ---- WALLET VALIDATION ----
-      //   const wallet = await transx("wallets")
-      //     .where({ user_id: userID })
-      //     .first()
-      //     .forUpdate();
-
-      //   if (!wallet) {
-      //     await transx.rollback();
-      //     return res.status(401).json("Wallet not found");
-      //   }
-
-      //   const isPinValid = await bcrypt.compare(token, wallet.user_key);
-      //   if (!isPinValid) {
-      //     await transx.rollback();
-      //     return res.status(401).json("Invalid PIN!");
-      //   }
-
-      //   if (Number(wallet.amount) < Number(amount)) {
-      //     await transx.rollback();
-      //     return res.status(400).json("Insufficient funds");
-      //   }
-
-      //   // ---- DEDUCT WALLET ----
-      //   await transx("wallets")
-      //     .where({ user_id: userID })
-      //     .decrement("amount", amount);
-
-      //   await transx("wallet_transactions").insert({
-      //     id: generateId(),
-      //     user_id: userID,
-      //     wallet_id: wallet.id,
-      //     wallet_amount: wallet.amount,
-      //     issuer: userID,
-      //     type: "debit",
-      //     comment: `Prepaid purchase of ${topup} for meter ${meterId}`,
-      //     amount: amount,
-      //     status: "completed",
-      //     reference: transaction_reference,
-      //   });
-
-      //   paymentStatus = "completed";
-      //   partnerResponse = {
-      //     Data: {
-      //       code: "WALLET_SUCCESS",
-      //       phonenumber: info?.phone,
-      //       email: info?.email,
-      //     },
-      //   };
-      // } else {
-      //   const payment = {
-      //     name: info?.name || "GPC Customer",
-      //     phonenumber: info?.phonenumber,
-      //     email: info?.email,
-      //     amount: Number(info?.amount).toFixed(2),
-      //     provider: info?.provider,
-      //     transaction_reference,
-      //   };
-
-      //   const partnerResponse = await sendMoney(payment, "p");
-
-      //   // Save the Transaction to DB and Send Email
-
-      //   paymentStatus =
-      //     partnerResponse?.ResponseCode === "0000"
-      //       ? "completed"
-      //       : partnerResponse?.ResponseCode === "0001"
-      //         ? "pending"
-      //         : "failed";
-      // }
-
-      // ---------------- INSERT PAYMENT ----------------
-
       await transx("payments").insert({
         id: paymentId,
-        user_id: userID || "",
+        user_id: userID,
         reference: transaction_reference,
         service: "prepaid",
-        amount: amount,
+        amount,
         charges: 0,
         provider: "brasicca",
         mode: "Mobile Money",
         year: moment().year(),
         status: "pending",
-        externalTransactionId: transactionId,
-        partner: JSON.stringify(req.body),
+        partner: JSON.stringify(paymentPayload),
+        externalTransactionId,
       });
 
-      const transaction = await transx("electricity_transactions").insert({
+      await transx("electricity_transactions").insert({
         id: transaction_id,
         payment_id: paymentId,
-        meter_id: meterId,
-        info: JSON.stringify({
-          // ...info,
-          domain: "Prepaid",
-          orderNo,
-          ...req?.body,
-        }),
+        meter_id: meter,
         charges: 0,
         topup: amount,
         email: info?.email,
@@ -1097,61 +1065,249 @@ router.post(
 
       await transx.commit();
 
+      res.status(201).json({
+        success: true,
+        message: "Payment received and is being processed.",
+        paymentId: paymentId,
+      });
+    } catch (dbError) {
+      await transx.rollback();
+      logger.error("[ECGPay DB Error]:", dbError);
+      return res
+        .status(500)
+        .json({ message: "Database initialization failed" });
+    }
+
+    setImmediate(async () => {
+      // 4. Execute External Network Call (Safe from DB locks)
       logger.info(
-        `[ECGPay] meter=${accountNumber} category=${accountCategory} amount=${amount} by=${paymentBy}`,
+        `[ECGPay] meter=${meter} category=${accountType} amount=${amount} by=${userName}`,
       );
 
-      const data = await brassicaPost("/billerPayment", {
-        billRequest: {
-          transactionId,
-          billerType: "ECG",
-          accountNumber,
-          accountCategory,
-          phoneNumber,
-        },
-        paymentDetails: {
-          amount,
-          accountLookUpId,
-          serviceDistrictId,
-          serviceRegionId,
-          serviceProviderName,
-          accountName,
-          accountReferenceId,
-          paymentNaration: "Electricity Purchase",
-          altAccountNumber,
-          paymentBy,
-        },
-      });
+      try {
+        const paymentResponse = await brassicaPost(
+          "/billerPayment",
+          paymentPayload,
+        );
 
-      res.status(201).json({ success: true, data });
+        if (
+          paymentResponse?.status !== "Success" ||
+          paymentResponse?.statusCode !== "200"
+        ) {
+          await knex("payments")
+            .update({
+              status: "failed",
+              is_processed: true,
+              partner: JSON.stringify(paymentResponse),
+            })
+            .where("id", paymentId);
 
-      // if (isWallet && !_.isEmpty(transaction)) {
-      //   setImmediate(async () => {
-      //     await emitPaymentSuccess({
-      //       userId: userID,
-      //       txRef: transaction_reference || info?.phonenumber,
-      //       amount: amount,
-      //       transaction: {
-      //         id: transaction_id || paymentId,
-      //         paymentReference: transaction_reference,
-      //         status: paymentStatus,
-      //         userName: info?.name || "Customer",
-      //         email: info?.email,
-      //         phonenumber: info?.phonenumber,
-      //         paymentMode: "Wallet",
-      //         amount: amount,
-      //         createdAt: new Date().toISOString(),
-      //       },
-      //     });
-      //   });
-      // }
-    } catch (error) {
-      logger.error(error);
-      await transx.rollback();
-      return res.status(500).json("Transaction Failed!");
-    }
+          return;
+
+          // return res
+          //   .status(422)
+          //   .json({ message: "Provider transaction failed" });
+        }
+
+        // 5. Finalize Local Status on Success
+        const responseDetails = paymentResponse?.paymentResponseDetails || {};
+
+        await knex("electricity_transactions")
+          .update({
+            info: JSON.stringify({
+              domain: "Prepaid",
+              orderNo,
+              ...responseDetails,
+            }),
+          })
+          .where("id", transaction_id);
+
+        await knex("payments")
+          .update({
+            is_processed: 1,
+            status: "completed",
+          })
+          .where("id", paymentId);
+      } catch (apiError) {
+        logger.error("[ECGPay API Error]:", apiError);
+        // console.log("error.is");
+
+        // Update status to failed so the transaction doesn't hang in pending forever
+        await knex("payments")
+          .update({ status: "failed", is_processed: true })
+          .where("id", paymentId);
+
+        // return res
+        //   .status(502)
+        //   .json({ message: "External network gateway timeout" });
+      }
+    });
   }),
 );
+// /api/gabs/v1/electricity/payment/status/GPC5AC3089C913810951
+
+// router.post(
+//   "/electricity",
+//   paymentLimiter,
+//   verifyOptionalToken,
+//   idempotencyMiddleware,
+//   paymentLockMiddleware,
+//   validateECG,
+//   validatePayment(prepaidSchema),
+//   asyncHandler(async (req, res) => {
+//     const { id: userID, name } = req.user;
+
+//     const { meter, info, amount } = req.body;
+
+//     // logger.info(req.body)
+//     const transx = await knex.transaction();
+
+//     try {
+//       // Call the API to create a transaction
+//       const externalTransactionId = uuidv4();
+//       const paymentId = generateId();
+//       const transaction_id = generateId(6);
+//       const transaction_reference = randomBytes(24).toString("hex");
+//       const orderNo = randomBytes(20).toString("hex");
+
+//       let prepaidMeterPayload = null;
+//       const meterDetails = await getMeter(meter);
+
+//       if (meterDetails) {
+//         prepaidMeterPayload = meterDetails;
+//       } else {
+//         logger.info(`[ECGLookup] meter=${meter} category=PREPAID`);
+
+//         const response = await brassicaPost("/billerAccountLookUp", {
+//           transactionId: externalTransactionId,
+//           accountNumber: meter,
+//           phoneNumber:
+//             info?.phonenumber || process.env.BRASSICA_CLIENT_PHONENUMBER,
+//           accountCategory: "PREPAID",
+//           billerType: "ECG",
+//         });
+
+//         if (response?.status !== "Success" || response?.statusCode !== "200") {
+//           return res.status(401).json("Meter not found");
+//         }
+//         console.log(response);
+//         prepaidMeterPayload = {
+//           ...response?.accountDetails,
+//           accountLookUpId: response?.accountLookUpId,
+//         };
+//       }
+
+//       const {
+//         accountName,
+//         accountReferenceId,
+//         serviceDistrictId,
+//         serviceRegionId,
+//         accountType,
+//         serviceProviderName,
+//         altAccountNumber,
+//         accountLookUpId,
+//       } = prepaidMeterPayload;
+
+//       // ---------------- CREATE PAYMENT ----------------
+//       let paymentStatus = "pending";
+//       let partnerResponse = null;
+
+//       // ---------------- INSERT PAYMENT ----------------
+
+//       const paymentPayload = {
+//         billRequest: {
+//           transactionId: externalTransactionId,
+//           billerType: "ECG",
+//           accountNumber: meter,
+//           accountCategory: accountType,
+//           phoneNumber:
+//             info?.phonenumber || process.env.BRASSICA_CLIENT_PHONENUMBER,
+//         },
+//         paymentDetails: {
+//           amount: amount,
+//           accountLookUpId,
+//           serviceDistrictId,
+//           serviceRegionId,
+//           serviceProviderName,
+//           accountName,
+//           accountReferenceId,
+//           paymentNaration: "Electricity Purchase",
+//           altAccountNumber,
+//           paymentBy: name || "GPC",
+//         },
+//       };
+
+//       await transx("payments").insert({
+//         id: paymentId,
+//         user_id: userID || "",
+//         reference: transaction_reference,
+//         service: "prepaid",
+//         amount: amount,
+//         charges: 0,
+//         provider: "brasicca",
+//         mode: "Mobile Money",
+//         year: moment().year(),
+//         status: "pending",
+//         partner: JSON.stringify(paymentPayload),
+//         externalTransactionId: externalTransactionId,
+//       });
+
+//       await transx("electricity_transactions").insert({
+//         id: transaction_id,
+//         payment_id: paymentId,
+//         meter_id: meter,
+//         charges: 0,
+//         topup: amount,
+//         email: info?.email,
+//         phonenumber: info?.phonenumber,
+//       });
+
+//       await transx.commit();
+
+//       logger.info(
+//         `[ECGPay] meter=${meter} category=${accountType} amount=${amount} by=${name || "GPC"}`,
+//       );
+
+//       const paymentResponse = await brassicaPost(
+//         "/billerPayment",
+//         paymentPayload,
+//       );
+
+//       if (
+//         paymentResponse?.status !== "Success" ||
+//         paymentResponse?.statusCode !== "200"
+//       ) {
+//         await transx("payments").update({
+//           partner,
+//         });
+//         return res.status(401).json("Transaction Failed!");
+//       }
+
+//       await knex("electricity_transactions")
+//         .update({
+//           info: JSON.stringify({
+//             domain: "Prepaid",
+//             orderNo,
+//             ...data?.paymentResponseDetails,
+//           }),
+//         })
+//         .where("id", transaction_id);
+
+//       await knex("payments")
+//         .update({
+//           is_processed: 1,
+//           status: "completed",
+//         })
+//         .where("id", paymentId);
+
+//       res.status(201).json({ success: true, data });
+//     } catch (error) {
+//       logger.error(error);
+//       await transx.rollback();
+//       return res.status(500).json("Transaction Failed!");
+//     }
+//   }),
+// );
 
 router.post(
   "/wallet-topup",
@@ -2171,14 +2327,14 @@ router.put(
     const { id: userId, name } = req.user;
     const { id, status } = req.body;
 
-    console.log(req.body)
+    // console.log(req.body);
 
     if (_.isEmpty(id) || !isValidUUID2(id)) {
       return res.status(401).json("Error Processing your request!");
     }
 
     const transaction = await knex("airtime_transactions")
-      .select("id",'payment_id', "phonenumber")
+      .select("id", "payment_id", "phonenumber")
       .where("payment_id", id)
       .first();
 
@@ -3133,3 +3289,26 @@ async function handlePostPaymentEvents(payment, status, payload) {
 //     res.sendStatus(500);
 //   }
 // };
+
+// ecg wallet option
+
+// if (isWallet && !_.isEmpty(transaction)) {
+//   setImmediate(async () => {
+//     await emitPaymentSuccess({
+//       userId: userID,
+//       txRef: transaction_reference || info?.phonenumber,
+//       amount: amount,
+//       transaction: {
+//         id: transaction_id || paymentId,
+//         paymentReference: transaction_reference,
+//         status: paymentStatus,
+//         userName: info?.name || "Customer",
+//         email: info?.email,
+//         phonenumber: info?.phonenumber,
+//         paymentMode: "Wallet",
+//         amount: amount,
+//         createdAt: new Date().toISOString(),
+//       },
+//     });
+//   });
+// }

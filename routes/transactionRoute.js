@@ -1590,8 +1590,6 @@ router.get(
       return res.status(400).json({ message: "Invalid date format" });
     }
 
-    const STATUS_FILTER = ["completed", "pending", "refunded"];
-
     // ---------------- FETCH IN PARALLEL ----------------
     const [voucherRows, prepaidRows, airtimeRows, bundleRows, categories] =
       await Promise.all([
@@ -1666,22 +1664,23 @@ router.get(
     // PREPAID
     const prepaid = prepaidRows.map((t) => {
       const info = safeJSON(t.info);
+      const service = _.capitalize(t?.service);
 
       return {
         id: t?.id,
-        type: `${info?.domain} Units`,
-        domain: _.capitalize(t?.service),
+        type: `${service} Units`,
+        domain: service,
         meter: t?.number,
         amount: t?.amount,
         charges: t?.charges,
         topup: t?.topup,
         phonenumber: t?.phonenumber,
         email: t?.email,
-        downloadLink: info?.downloadLink || "",
+        downloadLink: info?.receiptUrl || "",
         createdAt: t?.createdAt,
         updatedAt: t?.updatedAt,
         isProcessed: Boolean(t?.isProcessed),
-        status: Boolean(t?.isProcessed) ? t?.status : "pending",
+        status:  t?.status 
       };
     });
 
@@ -2503,14 +2502,14 @@ router.post(
       // Rollback transaction on error
       await trx.rollback();
 
-      console.error("Payment callback error:", {
-        id,
-        category,
-        uid,
-        ResponseCode,
-        error: error.message,
-        stack: error.stack,
-      });
+      // console.error("Payment callback error:", {
+      //   id,
+      //   category,
+      //   uid,
+      //   ResponseCode,
+      //   error: error.message,
+      //   stack: error.stack,
+      // });
 
       // Return 500 Internal Server Error
       res.status(500).json("An internal error occurred");

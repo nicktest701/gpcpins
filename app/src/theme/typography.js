@@ -27,7 +27,7 @@ export function responsiveFontSizes({ sm, md, lg }) {
 
 // ----------------------------------------------------------------------
 
-const FONT_PRIMARY = '"Geomini", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+const FONT_PRIMARY = '"Figtree","Geomini", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 // const FONT_SECONDARY = 'CircularStd, sans-serif'; // (optional)
 
 const typography = {

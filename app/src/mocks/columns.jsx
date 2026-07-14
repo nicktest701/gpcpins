@@ -1308,12 +1308,14 @@ export const transactionsColumns = (type) => [
   {
     title: "Status",
     field: "status",
-    render: ({ status, isProcessed ,domain}) => {
-      const isPending =
-        (status === "completed" && !isProcessed) || status === "pending";
-      const isCompleted = status === "completed" && isProcessed;
+    render: ({ status, }) => {
+      const isPending = status === "pending";
+      const isCompleted = status === "completed";
       const isRefunded = status === "refunded";
-
+      // const isPending =
+      //   (status === "completed" && !isProcessed) || status === "pending";
+      // const isCompleted = status === "completed" && isProcessed;
+      // const isRefunded = status === "refunded";
 
       return (
         <Button
@@ -1368,7 +1370,7 @@ export const transactionsColumns = (type) => [
   type === "Prepaid"
     ? {
         title: "Meter",
-        field: "voucherType",
+        field: "meter",
         render: (row) => row?.meter,
       }
     : type === "Bundle"

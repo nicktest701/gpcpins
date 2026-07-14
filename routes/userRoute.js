@@ -45,6 +45,8 @@ const {
 } = require("../utils/validationSchema");
 const { validate } = require("../middlewares/validators");
 const logger = require("../utils/logger");
+const { getExpiryTimeByRole } = require("../utils/helper");
+const { parseTimeToMs } = require("../utils/time");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -64,7 +66,6 @@ const isProduction = process.env.NODE_ENV === "production";
 cron.schedule("0 0 * * *", async () => {
   await sendBirthdayWishes();
 });
-
 
 router.get(
   "/",
@@ -550,7 +551,6 @@ router.post(
       res,
       knex,
       authUser: user,
-      isRegistering: register,
     });
   }),
 );
@@ -559,7 +559,7 @@ router.post(
   "/logout",
   verifyToken,
   asyncHandler(async (req, res) => {
-    const { id, jti, role } = req.user;
+    const { sub: id, jti, role } = req.authUser;
 
     await knex("users")
       .where("id", id)
@@ -580,6 +580,10 @@ router.post(
     });
 
     await redisClient.del(`user:${jti}`);
+
+    const cacheKey = `user:profile:${jti}`;
+    await redisClient.del(cacheKey);
+
     req.user = null;
     delete req.user;
 

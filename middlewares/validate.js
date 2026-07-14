@@ -20,7 +20,14 @@ function validate(req, res, next) {
       err.stack = errors[0];
     }
 
-    return next(err);
+    const error =
+      err?.message === "accountNumber must be a valid ECG meter number."
+        ? "ECG Meter not found.Please verify the meter number and try again."
+        : err?.message;
+
+    // console.log("message is",err.message);
+
+    return res.status(400).json(error);
   }
   next();
 }

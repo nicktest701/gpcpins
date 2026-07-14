@@ -266,7 +266,7 @@ router.get(
   "/verifier",
   verifyToken,
   asyncHandler(async (req, res) => {
-    console.log(req.user);
+   
     const { id: userId, createdAt: userCreatedAt } = req.user;
 
     // ---------- VALIDATION ----------
@@ -338,7 +338,7 @@ router.get(
     });
 
     const notifications = results.map(normalize);
-    console.log(notifications);
+    // console.log(notifications);
 
     // ---------- RESPONSE ----------
     res.status(200).json(notifications);

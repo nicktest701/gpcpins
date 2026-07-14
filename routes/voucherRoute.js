@@ -162,7 +162,7 @@ router.get(
       .where({ categoryId: id })
       .orderBy("createdAt", "desc");
 
-    console.log(assignedVerifiers);
+    // console.log(assignedVerifiers);
 
     const modifiedVerifiers = assignedVerifiers.map((verifier) => {
       return {

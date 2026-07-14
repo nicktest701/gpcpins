@@ -503,7 +503,7 @@ export const prepaidValidationSchema = () => {
 export const prepaidPaymentValidationSchema = object().shape({
   amount: number()
     .required("Required")
-    .min(10, "Minimum amount you can buy is GHS 10."),
+    .min(1, "Minimum amount you can buy is GHS 1."),
 });
 
 export const prepaidMeterValidationSchema = object().shape({
@@ -514,7 +514,7 @@ export const prepaidMeterValidationSchema = object().shape({
   //   .matches(/^[a-zA-Z]\d{9}$/, "Invalid Meter Number"),
   number: mixed()
     .required("Meter ID is required")
-    .test("is-valid-meter-id", "Invalid meter ID format", (value) => {
+    .test("is-valid-meter-id", "Invalid meter Number!", (value) => {
       if (value === undefined || value === null) return false;
 
       // Convert to string to handle both numbers and strings uniformly

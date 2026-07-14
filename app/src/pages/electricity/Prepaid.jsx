@@ -47,8 +47,8 @@ function Prepaid() {
   const {
     data: meter,
     isLoading: meterLoading,
-    isError: meterError,
-    error: meterErrorObj,
+    // isError: meterError,
+    error: meterError,
     refetch: refetchMeter,
   } = useQuery({
     queryKey: ["meter-by-id", submittedNumber],
@@ -129,7 +129,7 @@ function Prepaid() {
             </Alert> */}
 
             <form onSubmit={handleSubmit(onVerify)} noValidate>
-              <Stack spacing={2} maxWidth="sm" mx="auto">
+              <Stack spacing={2} maxWidth="sm" py={2} mx="auto">
                 <Controller
                   name="number"
                   control={control}
@@ -208,130 +208,3 @@ function Prepaid() {
 
 export default Prepaid;
 
-
-    // <Dialog
-    //       open={modalOpen}
-    //       onClose={handleCloseModal}
-    //       maxWidth="sm"
-    //       fullWidth
-    //       PaperProps={{
-    //         sx: { borderRadius: 3 },
-    //       }}
-    //     >
-    //       {/* Custom Dialog Title */}
-    //       <DialogTitle sx={{ p: 3, pb: 0 }}>
-    //         <Stack
-    //           direction="row"
-    //           alignItems="center"
-    //           justifyContent="space-between"
-    //         >
-    //           <Typography variant="h6" fontWeight="bold">
-    //             Meter Details
-    //           </Typography>
-    //           <IconButton
-    //             onClick={handleCloseModal}
-    //             size="small"
-    //             sx={{ color: "text.secondary" }}
-    //           >
-    //             <CloseIcon fontSize="small" />
-    //           </IconButton>
-    //         </Stack>
-    //       </DialogTitle>
-
-    //       <DialogContent sx={{ p: 3 }}>
-    //         {meterLoading ? (
-    //           <Stack spacing={2}>
-    //             <Skeleton variant="rounded" height={56} />
-    //             <Skeleton variant="rounded" height={56} />
-    //             <Skeleton variant="rounded" height={56} />
-    //           </Stack>
-    //         ) : meterError ? (
-    //           <Alert
-    //             severity="error"
-    //             action={
-    //               <Button
-    //                 color="inherit"
-    //                 size="small"
-    //                 onClick={() => refetchMeter()}
-    //               >
-    //                 Retry
-    //               </Button>
-    //             }
-    //             sx={{ borderRadius: 2 }}
-    //           >
-    //             {meterErrorObj?.message ||
-    //               "Failed to fetch meter details. Please check the meter number."}
-    //           </Alert>
-    //         ) : meter ? (
-    //           <Paper
-    //             variant="outlined"
-    //             sx={{ p: 2, bgcolor: "background.default", borderRadius: 2 }}
-    //           >
-    //             <Stack spacing={1.5}>
-    //               <DetailRow
-    //                 // icon={<GridOnIcon fontSize="small" />}
-    //                 label="Meter Number"
-    //                 value={submittedNumber}
-    //               />
-    //               <Divider />
-    //               <DetailRow
-    //                 // icon={<PersonIcon fontSize="small" />}
-    //                 label="Meter Name"
-    //                 value={meter.name || "N/A"}
-    //               />
-    //               <Divider />
-
-    //               <DetailRow
-    //                 // icon={<ElectricBoltIcon fontSize="small" />}
-    //                 label="Type"
-    //                 value={meter.type === "prepaid" ? "Prepaid" : meter.type}
-    //               />
-
-    //               <DetailRow
-    //                 // icon={<HomeIcon fontSize="small" />}
-    //                 label="Meter Provider/System"
-    //                 value={meter.provider_name || "N/A"}
-    //               />
-    //               <DetailRow
-    //                 // icon={<HomeIcon fontSize="small" />}
-    //                 label="Address"
-    //                 value={meter.address || "N/A"}
-    //               />
-    //               <DetailRow
-    //                 // icon={<HomeIcon fontSize="small" />}
-    //                 label="Account Number"
-    //                 value={meter.account_number || "N/A"}
-    //               />
-    //             </Stack>
-    //           </Paper>
-    //         ) : (
-    //           <Stack spacing={1} alignItems="center" py={4}>
-    //             <SearchOffIcon sx={{ fontSize: 56, color: "text.disabled" }} />
-    //             <Typography variant="body1" color="text.secondary">
-    //               Meter not found.
-    //             </Typography>
-    //             <Typography variant="body2" color="text.secondary">
-    //               Please verify the meter number and try again.
-    //             </Typography>
-    //           </Stack>
-    //         )}
-    //       </DialogContent>
-
-    //       <DialogActions sx={{ p: 3, pt: 0 }}>
-    //         <Button
-    //           onClick={handleCloseModal}
-    //           variant="outlined"
-    //           color="inherit"
-    //         >
-    //           Cancel
-    //         </Button>
-    //         <LoadingButton
-    //           variant="contained"
-    //           onClick={handleProceedToVerify}
-    //           disabled={!meter || meterError}
-    //           loading={meterLoading}
-    //         >
-    //           Proceed to Buy
-    //         </LoadingButton>
-    //       </DialogActions>
-    //     </Dialog>

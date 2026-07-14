@@ -355,8 +355,8 @@ router.post(
 
 
       setImmediate(async () => {
-        console.log('email', newVerifier?.email);
-        console.log('passwrod', password);
+        // console.log('email', newVerifier?.email);
+        // console.log('passwrod', password);
         const message = `<div>
       <h1 style='text-transform:uppercase;'>Welcome to GAB POWERFUL CONSULT.</h1><br/>
       <div style='text-align:left;'>
@@ -415,7 +415,7 @@ router.post(
       ) {
         return res.status(401).json("Unauthorized Access!!");
       }
-      console.log(user);
+      // console.log(user);
 
       if (_.isEmpty(user)) {
         return res.status(400).json("Invalid Email or Password!!");
@@ -508,7 +508,7 @@ router.post(
       token: code,
     });
 
-    console.log(code);
+    // console.log(code);
 
     if (type === "phone") {
       sendOTPSMS(`Your verification code is ${code}.`, verifier?.phonenumber);
@@ -543,7 +543,7 @@ router.post(
   limit,
   asyncHandler(async (req, res) => {
     const { id, email, token } = req.body;
-    console.log(req.body);
+    // console.log(req.body);
     if (!email || !token) {
       return res.status(400).json("Invalid Code");
     }

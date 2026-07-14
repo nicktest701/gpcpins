@@ -268,98 +268,12 @@ export const voucherCategoryColumns = [
     },
   },
 ];
-export const waecCategoryColumns = [
-  {
-    title: "#",
-    field: "id",
-    hidden: true,
-  },
-  {
-    title: "Logo",
-    field: "logo",
-    render: ({ logo }) => {
-      return (
-        <img
-          src={logo}
-          width="100px"
-          height="100px"
-          style={{
-            maxWidth: "100%",
-            objectFit: "contain",
-            aspectRatio: "1/1",
-          }}
-        />
-      );
-    },
-  },
-  {
-    title: "Voucher",
-    field: "voucherType",
-  },
 
-  {
-    title: "Category",
-    field: "category",
-    hidden: true,
-  },
-  {
-    title: "Selling Price",
-    field: "price",
-    type: "currency",
-    currencySetting: {
-      currencyCode: "GHS",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    },
-    cellStyle: {
-      color: "green",
-    },
-  },
-  {
-    field: "pricing",
-    title: "Pricing",
-    textAlign: "center",
-    render: ({ pricing }) => (
-      <Button
-        variant="outlined"
-        className="dropdown-trigger"
-        sx={{
-          position: "relative",
-        }}
-        endIcon={<ArrowDropDown />}
-      >
-        Pricing
-        {pricing?.length > 0 && (
-          <MainDropdown>
-            <List sx={{ minWidth: 200, maxHeight: 200, overflow: "auto" }}>
-              {pricing?.length !== 0
-                ? pricing?.map((item) => (
-                    <ListItem key={item.id}>
-                      <ListItemText
-                        primary={`${
-                          item.type
-                        } checker(s) for ${currencyFormatter(item?.price)}`}
-                        primaryTypographyProps={{
-                          fontSize: 10,
-                          color: "primary.main",
-                          fontWeight: "bolder",
-                        }}
-                      />
-                    </ListItem>
-                  ))
-                : null}
-            </List>
-          </MainDropdown>
-        )}
-      </Button>
-    ),
-  },
-];
 
 export const VOUCHER_COLUMNS = [
   {
     title: "#",
-    field: "_id",
+    field: "id",
     hidden: true,
   },
   {
@@ -396,7 +310,7 @@ export const VOUCHER_COLUMNS = [
 export const TICKETS_COLUMNS = [
   {
     title: "#",
-    field: "_id",
+    field: "id",
     hidden: true,
   },
   {
@@ -441,6 +355,94 @@ export const TICKETS_COLUMNS = [
     },
   },
 ];
+export const waecCategoryColumns = [
+  {
+    title: "#",
+    field: "id",
+    hidden: true,
+  },
+  {
+    title: "Logo",
+    field: "logo",
+    render: ({ logo }) => {
+      return (
+        <img
+          src={logo}
+          width="48px"
+          height="48px"
+          style={{
+            maxWidth: "100%",
+            objectFit: "contain",
+            aspectRatio: "1/1",
+          }}
+        />
+      );
+    },
+  },
+  {
+    title: "Voucher",
+    field: "voucherType",
+  },
+
+  {
+    title: "Category",
+    field: "category",
+    hidden: true,
+  },
+  {
+    title: "Selling Price",
+    field: "price",
+    type: "currency",
+    currencySetting: {
+      currencyCode: "GHS",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    },
+    cellStyle: {
+      color: "green",
+    },
+  },
+  {
+    field: "pricing",
+    title: "Pricing",
+    textAlign: "center",
+    render: ({ pricing }) => (
+      <Button
+        variant="outlined"
+        className="dropdown-trigger"
+        sx={{
+          position: "relative",
+          borderRadius:1.2
+        }}
+        endIcon={<ArrowDropDown />}
+      >
+        Pricing
+        {pricing?.length > 0 && (
+          <MainDropdown>
+            <List sx={{ minWidth: 200, maxHeight: 200, overflow: "auto" }}>
+              {pricing?.length !== 0
+                ? pricing?.map((item) => (
+                    <ListItem key={item.id}>
+                      <ListItemText
+                        primary={`${
+                          item.type
+                        } checker(s) for ${currencyFormatter(item?.price)}`}
+                        primaryTypographyProps={{
+                          fontSize: 10,
+                          color: "primary.main",
+                          fontWeight: "bolder",
+                        }}
+                      />
+                    </ListItem>
+                  ))
+                : null}
+            </List>
+          </MainDropdown>
+        )}
+      </Button>
+    ),
+  },
+];
 
 export const universityCategoryColumns = [
   {
@@ -455,8 +457,8 @@ export const universityCategoryColumns = [
       return (
         <img
           src={logo || null}
-          width="100px"
-          height="100px"
+          width="48px"
+          height="48px"
           style={{
             maxWidth: "80%",
             objectFit: "contain",
@@ -511,8 +513,8 @@ export const busTicketColumns = [
       return (
         <img
           src={logo || null}
-          width="100px"
-          height="100px"
+          width="48px"
+          height="48px"
           style={{
             maxWidth: "80%",
             objectFit: "contain",
@@ -607,7 +609,7 @@ export const cinemaTicketColumns = [
           <Avatar
             variant="square"
             src={rowData?.details?.cinema}
-            sx={{ width: { xs: 48, md: 120 }, height: { xs: 48, md: 120 } }}
+            sx={{ width: 48, height: 48}}
           />
           <Typography
             sx={{
@@ -717,14 +719,14 @@ export const stadiumTicketColumns = [
             alignItems="center"
             justifyContent="center"
             px={4}
-            gap={3}
+            // gap={3}
           >
             <img
               src={rowData?.details?.homeImage}
-              width="100px"
-              height="100px"
+              width="48px"
+              height="48px"
               style={{
-                maxWidth: "100%",
+                // maxWidth: "100%",
                 objectFit: "contain",
                 aspectRatio: "1/1",
               }}
@@ -732,10 +734,10 @@ export const stadiumTicketColumns = [
             <Typography>VS</Typography>
             <img
               src={rowData?.details?.awayImage}
-              width="100px"
-              height="100px"
+              width="48px"
+              height="48px"
               style={{
-                maxWidth: "80%",
+                // maxWidth: "80%",
                 objectFit: "contain",
                 aspectRatio: "1/1",
               }}

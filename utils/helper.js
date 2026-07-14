@@ -21,8 +21,8 @@ function getExpiryTimeByRole(userRole) {
   }
 
   // 3. Fallback to standard user lifespan
-  const accessTime = process.env.ACCESS_TOKEN_EXPIRY || "15";
-  const refreshTime = process.env.REFRESH_TOKEN_EXPIRY || "60";
+  const accessTime = process.env.ACCESS_TOKEN_EXPIRY || "15m";
+  const refreshTime = process.env.REFRESH_TOKEN_EXPIRY || "60d";
   return {
     accessTime,
     refreshTime,
@@ -44,8 +44,8 @@ function getExpiryTimeByRoleMs(userRole) {
   }
 
   // 3. Fallback to standard user lifespan
-  const accessTime = process.env.ACCESS_TOKEN_EXPIRY || "15";
-  const refreshTime = process.env.REFRESH_TOKEN_EXPIRY || "60";
+  const accessTime = process.env.ACCESS_TOKEN_EXPIRY || "15m";
+  const refreshTime = process.env.REFRESH_TOKEN_EXPIRY || "60d";
   return {
     accessTimeMs: parseTimeToMs(accessTime),
     refreshTimeMs: parseTimeToMs(refreshTime),

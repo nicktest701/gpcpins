@@ -46,6 +46,7 @@ const verifyToken = (req, res, next) => {
     // console.log("Cache data is", cachedUser);
     if (cachedUser) {
       req.user = safeJSON(cachedUser);
+      req.authUser = user;
       return next();
     }
 
@@ -81,6 +82,7 @@ const verifyToken = (req, res, next) => {
       EX: getExpiryTimeByRoleMs(user?.role).accessTimeMs,
     });
     req.user = newUser;
+    req.authUser = user;
     next();
   });
 };
@@ -158,7 +160,7 @@ const verifyRefreshToken = async (req, res, next) => {
 
     await knex("user_tokens")
       .where({ id: stored.id })
-      .update({ is_revoked: true });
+      .update({ is_revoked: false });
 
     const expires = getExpiryTimeByRoleMs(user?.role).refreshTimeMs;
 
@@ -188,6 +190,7 @@ const verifyRefreshToken = async (req, res, next) => {
     });
 
     req.user = newUser;
+    req.authUser = user;
     req.accessToken = accessToken;
     req.walletCount = 3;
 

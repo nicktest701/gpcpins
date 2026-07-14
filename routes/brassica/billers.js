@@ -182,7 +182,7 @@ router.post(
         return res.status(401).json("Meter not found");
       }
 
-      const { accountDetails: data } = response;
+      const { accountDetails: data, accountLookUpId } = response;
 
       const meterDetails = {
         name: data?.accountName,
@@ -191,12 +191,14 @@ router.post(
         account_number: data?.altAccountNumber,
         provider_name: data?.serviceProviderName,
       };
-      const key = `meter:${accountNumber}`;
 
-      await saveMeter(key, data);
-      // console.log(response)
+      await saveMeter(accountNumber, {
+        ...data,
+        accountLookUpId,
+      });
+      // console.log(response);
 
-      return res.status(200).json(response);
+      return res.status(200).json(meterDetails);
     } catch (err) {
       // next(err);
       console.log(err);
@@ -229,8 +231,6 @@ router.post(
         altAccountNumber,
       } = req.body;
 
-
-
       const transactionId = req.body.transactionId || uuidv4();
 
       logger.info(
@@ -258,7 +258,7 @@ router.post(
           paymentBy,
         },
       });
-      console.log(data);
+      logger.info(data);
 
       return res.status(200).json({ success: true, data });
     } catch (err) {

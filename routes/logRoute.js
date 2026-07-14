@@ -81,7 +81,7 @@ router.put(
   asyncHandler(async (req, res) => {
     const { isAdmin } = req.user;
     const { logs } = req.body;
-    console.log(logs);
+  
 
     if (isAdmin) {
       await knex("activity_logs").where("id", "IN", logs).del();

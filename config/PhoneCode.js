@@ -1,14 +1,14 @@
 function getPhoneNumberInfo(phonenumber) {
   const code = getInternationalMobileFormat(phonenumber);
 
-  let providerName = 'Unknown';
+  let providerName = "Unknown";
   if (code?.startsWith("+")) {
     if (["+23320", "+23350", "+23330"]?.includes(code?.slice(0, 6))) {
       providerName = "Vodafone";
     }
     if (
       ["+23324", "+23354", "+23355", "+23359", "+23325", "+23353"]?.includes(
-        code?.slice(0, 6)
+        code?.slice(0, 6),
       )
     ) {
       providerName = "MTN";
@@ -16,7 +16,7 @@ function getPhoneNumberInfo(phonenumber) {
 
     if (
       ["+23327", "+23357", "+23326", "+23356", "+23323"]?.includes(
-        code?.slice(0, 6)
+        code?.slice(0, 6),
       )
     ) {
       providerName = "AirtelTigo";
@@ -64,18 +64,43 @@ function getPhoneNumberInfo(phonenumber) {
       };
   }
 }
+function getInternationalMobileFormat(mobileNumber, includePlus = true) {
+  if (!mobileNumber) return "";
 
-function getInternationalMobileFormat(mobileNumber) {
-  if (mobileNumber?.startsWith("0")) {
-    return "+233" + mobileNumber?.slice(1);
+  // Remove all non-numeric characters (spaces, hyphens, existing plus signs)
+  const cleanNumber = mobileNumber.toString().replace(/\D/g, "");
+  const prefix = includePlus ? "+" : "";
+
+  // Handle local format (e.g., 0244123456 -> 233244123456)
+  if (cleanNumber.startsWith("0")) {
+    return prefix + "233" + cleanNumber.slice(1);
   }
 
-  if (mobileNumber?.startsWith("233")) {
-    return "+" + mobileNumber;
+  // Handle already international format (e.g., 233244123456)
+  if (cleanNumber.startsWith("233")) {
+    return prefix + cleanNumber;
   }
 
-  return mobileNumber;
+  // Handle short local format missing the leading zero (e.g., 244123456)
+  if (cleanNumber.length === 9) {
+    return prefix + "233" + cleanNumber;
+  }
+
+  // Return cleaned number if it doesn't match standard Ghanaian patterns
+  return prefix + cleanNumber;
 }
+
+// function getInternationalMobileFormat(mobileNumber) {
+//   if (mobileNumber?.startsWith("0")) {
+//     return "+233" + mobileNumber?.slice(1);
+//   }
+
+//   if (mobileNumber?.startsWith("233")) {
+//     return "+" + mobileNumber;
+//   }
+
+//   return mobileNumber;
+// }
 
 function isValidPartner(provider, mobileNumber) {
   if (!/^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/.test(mobileNumber)) {
@@ -87,7 +112,7 @@ function isValidPartner(provider, mobileNumber) {
   switch (provider) {
     case "MTN":
       return ["+23324", "+23354", "+23355", "+23359", "+23325"]?.includes(
-        phonenumber
+        phonenumber,
       );
     case "Vodafone":
       return ["+23320", "+23350"]?.includes(phonenumber);

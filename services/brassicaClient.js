@@ -50,7 +50,7 @@ async function brassicaPost(endpoint, body = {}, retry = true) {
       },
     });
 
-      console.log("response is", response);
+      // console.log("response is", response);
   } catch (err) {
     console.log("err is", err);
 

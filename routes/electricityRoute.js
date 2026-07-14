@@ -54,8 +54,6 @@ router.get(
     const transactions = await query;
     // console.log(transactions)
 
-   
-
     // 3. Map the database results into your desired JSON structure
     const sortedPayments = transactions.map((transaction) => {
       // Safe JSON parsing helper
@@ -97,6 +95,84 @@ router.get(
     });
 
     res.status(200).json(sortedPayments);
+  }),
+);
+
+router.get(
+  "/payment/status/:id",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    // 1. Strict Validation Check
+    if (!id || !isValidUUID2(id)) {
+      return res
+        .status(400)
+        .json({ message: "Invalid payment identifier format." });
+    }
+
+    // 2. Fetch payment record
+    const payment = await knex("payments")
+      .select("status")
+      .where("id", id)
+      .first();
+
+    // 3. Proper Existence Validation (Fixed the double 404 bug)
+    if (!payment) {
+      return res
+        .status(404)
+        .json({ message: "Payment transaction record not found." });
+    }
+
+    // 4. If transaction is still processing, return early to save database load
+    if (payment.status === "pending") {
+      return res.status(200).json({
+        statusCode: "200",
+        status: "pending",
+        message: "Payment transaction is still processing.",
+      });
+    }
+
+    // 5. If transaction failed, return early with status details
+    if (payment.status === "failed") {
+      return res.status(200).json({
+        statusCode: "200",
+        status: "failed",
+        message: "Payment transaction processing failed.",
+      });
+    }
+
+    // 6. If completed, fetch token & receipt metadata from the related table
+    const transactionDetails = await knex("electricity_transactions")
+      .select("info", "topup")
+      .where("payment_id", id)
+      .first();
+
+    // Safely parse the uncommitted metadata column fields
+    let vendorPayload = {};
+    try {
+      vendorPayload =
+        typeof transactionDetails?.info === "string"
+          ? JSON.parse(transactionDetails.info)
+          : transactionDetails?.info || {};
+    } catch (parseError) {
+      logger.error(`[Status Parse Error] ID=${id}:`, parseError);
+    }
+
+    // 7. Standardized Payload Structure mapping to frontend expectations
+    return res.status(200).json({
+      statusCode: "200",
+      status: "success", // Maps directly to your component status keys
+      message: "Bill Payment processed successfully.",
+      paymentResponseDetails: {
+        rechargeToken: vendorPayload.rechargeToken || "N/A",
+        reciept: vendorPayload.reciept || vendorPayload.receiptNumber || "N/A",
+        amount: Number(transactionDetails?.topup || 0),
+        openingBalance: Number(vendorPayload.openingBalance || 0),
+        closingBalance: Number(vendorPayload.closingBalance || 0),
+        receiptUrl: vendorPayload.receiptUrl || "",
+      },
+    });
   }),
 );
 

@@ -1,13 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import {
   Container,
-  Divider,
   InputAdornment,
   Stack,
   TextField,
   Typography,
   Paper,
-  Alert,
   Button,
   Dialog,
   DialogTitle,
@@ -34,15 +32,15 @@ import { currencyFormatter } from "@/constants";
 import { prepaidPaymentValidationSchema } from "@/config/validationSchema";
 import { globalAlertType } from "@/components/alert/alertType";
 import { makeElectricityPayment } from "@/api/paymentAPI";
-import { isBetween50And99 } from "@/config/validation";
 import { useAuth } from "@/context/providers/AuthProvider";
 import { useCustomContext } from "@/context/providers/CustomProvider";
 import PaymentOption from "@/components/PaymentOption";
 import AnimatedContainer from "@/components/animations/AnimatedContainer";
 import CheckOutItem from "@/components/items/CheckOutItem";
+import PaymentPolling from "../payment/PaymentPolling";
 
 function BuyPrepaid() {
-  const { pathname, state } = useLocation();
+  const {  state } = useLocation();
   const navigate = useNavigate();
   const { meterNo } = useParams();
   const queryClient = useQueryClient();
@@ -50,7 +48,7 @@ function BuyPrepaid() {
   const { customDispatch } = useCustomContext();
   const [prepaidPayload, setPrepaidPayload] = useState(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
-  const [failureCount, setFailCount] = useState(3);
+  const [activePaymentId, setActivePaymentId] = useState(null);
 
   // Meter details from previous page state
   const meterDetails = state?.meterDetails || {
@@ -85,19 +83,6 @@ function BuyPrepaid() {
 
   const amount = watch("amount");
 
-  // Calculate charges and total
-  // const calculated = useMemo(() => {
-  //   const amt = Number(amount);
-  //   if (!amt || amt < 50) return { topup: 0, charges: 0, total: 0 };
-  //   if (isBetween50And99(amt)) {
-  //     const charges = 2;
-  //     return { topup: amt, charges, total: amt + charges };
-  //   } else {
-  //     const charges = 0.02 * amt;
-  //     return { topup: amt, charges, total: amt + charges };
-  //   }
-  // }, [amount]);
-
   // Wallet balance check
   const walletBalance = user?.id
     ? queryClient.getQueryData(["wallet-balance", user?.id])
@@ -125,12 +110,10 @@ function BuyPrepaid() {
       },
       topup: amount,
       charges: 0,
-      amount: 0,
-      isWallet: prepaidPayload?.paymentMethod === "wallet",
+      amount: amount,
+      isWallet:false
     };
-    if (prepaidPayload?.paymentMethod === "wallet") {
-      payload.token = prepaidPayload?.token;
-    }
+   
 
     Swal.fire({
       title: "Confirm Payment",
@@ -144,31 +127,12 @@ function BuyPrepaid() {
             handleCloseSummary();
           },
           onSuccess: (data) => {
-            navigate("/confirm", {
-              replace: true,
-              state: {
-                id: data.id,
-                categoryType: "prepaid",
-                path: pathname,
-                isWallet: payload.isWallet,
-              },
-            });
+            if (data?.paymentId) {
+              setActivePaymentId(data.paymentId);
+            }
           },
           onError: (error) => {
-            if (error === "Invalid PIN!") {
-              const newCount = failureCount - 1;
-              setFailCount(newCount);
-              customDispatch(
-                globalAlertType(
-                  "error",
-                  newCount > 0
-                    ? `Invalid PIN! ${newCount} attempt(s) left.`
-                    : "Wallet disabled due to multiple failed attempts.",
-                ),
-              );
-            } else {
-              customDispatch(globalAlertType("error", error));
-            }
+            customDispatch(globalAlertType("error", error));
           },
         });
       }
@@ -189,11 +153,7 @@ function BuyPrepaid() {
         >
           <ArrowBackIosNewIcon />
         </IconButton>
-        {/* 
-             <Alert severity="info" sx={{ mb: 2 }}>
-              <strong>Fee structure:</strong> GHS 2.00 for GHS 50–99, 2% for GHS
-              100+. Minimum amount: GHS 50.
-            </Alert> */}
+
         <Grid container spacing={4}>
           {/* Left column: Meter details */}
           <Grid item xs={12} md={6}>
@@ -254,12 +214,6 @@ function BuyPrepaid() {
                       meterDetails?.address ? `${meterDetails.address}` : "N/A"
                     }
                   />
-
-                  {/* <CheckOutItem
-                    color="secondary.contrastText"
-                    title="Email "
-                    value={meterDetails?.email || user?.email || "N/A"}
-                  /> */}
                   <CheckOutItem
                     color="secondary.contrastText"
                     title="Mobile No."
@@ -306,40 +260,6 @@ function BuyPrepaid() {
                   />
                 )}
               />
-              {/* {amount > 0 && (
-                <Paper
-                  variant="outlined"
-                  sx={{ p: 2, bgcolor: "action.hover" }}
-                >
-                  <Stack spacing={1}>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="body2">Top-up:</Typography>
-                      <Typography variant="body2">
-                        {currencyFormatter(amount)}
-                      </Typography>
-                    </Stack>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="body2">Charges:</Typography>
-                      <Typography variant="body2" color="error.main">
-                        {currencyFormatter(0)}
-                      </Typography>
-                    </Stack>
-                    <Divider />
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="subtitle2" fontWeight="bold">
-                        Total:
-                      </Typography>
-                      <Typography
-                        variant="subtitle2"
-                        fontWeight="bold"
-                        color="primary.main"
-                      >
-                        {currencyFormatter(amount)}
-                      </Typography>
-                    </Stack>
-                  </Stack>
-                </Paper>
-              )} */}
 
               <PaymentOption
                 showMomo
@@ -450,8 +370,6 @@ function BuyPrepaid() {
                   title="Meter Type"
                   value={meterDetails.type || "N/A"}
                 />
-                {/* <CheckOutItem title="Meter Provider" value={meterDetails.provider_name || "N/A"} /> */}
-                {/* <CheckOutItem title="Address" value={meterDetails.address || "N/A"} /> */}
               </Stack>
             </Paper>
             {/* Ticket Summary */}
@@ -485,17 +403,9 @@ function BuyPrepaid() {
                       title="Mobile Number"
                       value={prepaidPayload?.phonenumber}
                     />
-                    {/* <CheckOutItem
-                      title="Provider"
-                      value={prepaidPayload?.mobilePartner}
-                    /> */}
                   </>
                 )}
-                {/* <CheckOutItem
-                  title="Top-up Amount"
-                  value={currencyFormatter(amount)}
-                />
-                <CheckOutItem title="Charges" value={currencyFormatter(0)} /> */}
+
                 <CheckOutItem
                   title="Total"
                   value={currencyFormatter(amount)}
@@ -529,6 +439,13 @@ function BuyPrepaid() {
           </LoadingButton>
         </DialogActions>
       </Dialog>
+
+      {activePaymentId && (
+        <PaymentPolling
+          paymentId={activePaymentId}
+          onClose={() => setActivePaymentId(null)}
+        />
+      )}
     </Container>
   );
 }

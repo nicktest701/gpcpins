@@ -128,7 +128,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const accessToken = req.accessToken;
 
-    console.log(accessToken);
+
 
     res.status(200).json({
       accessToken,
@@ -383,7 +383,7 @@ router.post(
   "/logout",
   verifyToken,
   asyncHandler(async (req, res) => {
-    const { id, jti, role } = req.user;
+    const { sub:id, jti } = req.authUser;
 
     res.clearCookie("refreshToken");
 
@@ -398,6 +398,10 @@ router.post(
     });
 
     await redisClient.del(`user:${jti}`);
+
+    const cacheKey = `user:profile:${jti}`;
+    await redisClient.del(cacheKey);
+
     req.user = null;
     delete req.user;
 

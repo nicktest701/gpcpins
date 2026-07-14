@@ -97,6 +97,8 @@ const MeterDetailsDialog = ({
   refetchMeter,
   handleProceedToVerify,
 }) => {
+
+  // console.log(meterError)
   const theme = useTheme();
 
   return (
@@ -206,7 +208,7 @@ const MeterDetailsDialog = ({
             }
           >
             <Typography variant="body2" fontWeight={500}>
-              {meterError?.message ||
+              {meterError ||
                 "Failed to fetch meter details. Please check the meter number."}
             </Typography>
           </Alert>
@@ -291,7 +293,6 @@ const MeterDetailsDialog = ({
       <DialogActions
         sx={{
           p: 3,
-          pt: 0,
           gap: 1.5,
           borderTop: `1px solid ${theme.palette.divider}`,
           bgcolor: alpha(theme.palette.background.default, 0.4),

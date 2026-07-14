@@ -8,7 +8,10 @@ import Swal from "sweetalert2";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { tableIcons } from "../../config/tableIcons";
 import { Add, DeleteRounded, Refresh } from "@mui/icons-material";
-import { CustomContext } from "../../context/providers/CustomProvider";
+import {
+  CustomContext,
+  useCustomContext,
+} from "../../context/providers/CustomProvider";
 import {
   getColumns,
   getCreatePermission,
@@ -34,7 +37,7 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
   const navigate = useNavigate();
 
   const queryClient = useQueryClient();
-  const { customDispatch } = useContext(CustomContext);
+  const { customDispatch } = useCustomContext();
   const [selectedItems, setSelectedItems] = useState([]);
 
   const handleSelectionChange = (data) => {
@@ -235,7 +238,6 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
           Toolbar: (params) => {
             return (
               <>
-                <MTableToolbar {...params} />
                 <Box
                   display="flex"
                   flexDirection={{ xs: "column", sm: "row" }}
@@ -249,20 +251,23 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
                       variant="contained"
                       startIcon={<Add />}
                       onClick={handleOpenCategory}
-                      sx={{ textTransform: "uppercase", py: 1.5 }}
+                      sx={{ textTransform: "uppercase", py: 1.5 ,borderRadius:1.2}}
                     >
                       New {pageInfo.category}
                     </Button>
                   )}
                 </Box>
+                <MTableToolbar {...params} />
               </>
             );
           },
         }}
+      
         // isLoading={categories.isLoading}
         columns={columns}
         data={categories.data}
         options={{
+        
           paginationType: "stepped",
           searchFieldVariant: "outlined",
           searchFieldStyle: {
@@ -303,6 +308,7 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
           },
         ]}
         onSelectionChange={handleSelectionChange}
+        
       />
     </Card>
   );

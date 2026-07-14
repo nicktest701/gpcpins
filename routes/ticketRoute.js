@@ -625,7 +625,7 @@ router.get(
     const scannedTickets = scannedTicketsByCategory?.filter(
       (ticket) => ticket?.verifierId === scanner,
     );
-    console.log(scannedTickets);
+    // console.log(scannedTickets);
 
     const totalUnscannedVouchers =
       vouchers?.length - scannedTicketsByCategory?.length;

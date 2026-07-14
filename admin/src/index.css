@@ -77,6 +77,23 @@ svg {
   /* width: 0; */
 }
 
+.hide-scrollbar {
+  /* Establish scrolling capability */
+  overflow: auto; 
+  
+  /* Hide scrollbar for standard Firefox and modern engines */
+  scrollbar-width: none; 
+  
+  /* Hide scrollbar for Internet Explorer and legacy Edge */
+  -ms-overflow-style: none; 
+}
+
+/* Hide scrollbar for Chrome, Safari, Opera, and WebKit-based Edge */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+
 #root {
   height: 100svh;
   overflow-x: hidden;

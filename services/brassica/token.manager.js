@@ -85,23 +85,23 @@ async function getBrassicaToken() {
  */
 async function saveMeter(key, value) {
   try {
-    // 5 minutes = 300 seconds
-    const EXPIRE_IN_SECONDS = 300;
+    // 60 minutes = 3600 seconds
+    const EXPIRE_IN_SECONDS = 3600;
 
     // Always stringify objects/arrays before saving to Redis
     const stringValue =
       typeof value === "object" ? JSON.stringify(value) : String(value);
 
     // Use the 'EX' option to set expiration in seconds
-    await redisClient.set(key, stringValue, {
+    await redisClient.set(`$meter:${key}`, stringValue, {
       EX: EXPIRE_IN_SECONDS,
     });
 
     if (process.env.NODE_ENV !== "production") {
-      logger.info(`Successfully cached key "${key}" for 5 minutes.`);
+      logger.info(`Successfully cached key "${key}" for 60 minutes.`);
     }
   } catch (error) {
-    console.log(error)
+    console.log(error);
     // Log the error but don't throw it, keeping your server alive
     logger.error(`Failed to set Redis key "${key}":`, error);
   }
@@ -114,7 +114,7 @@ async function saveMeter(key, value) {
  */
 async function getMeter(key) {
   try {
-    const data = await redisClient.get(key);
+    const data = await redisClient.get(`meter:${key}`);
 
     // If the key has expired or doesn't exist, Redis returns null
     if (!data) {

@@ -5,7 +5,7 @@ import {
   TextField,
   Typography,
   Divider,
-  Box,
+  Container,
   Grid,
   Link as MuiLink,
 } from "@mui/material";
@@ -66,7 +66,7 @@ function Distributor() {
   };
 
   return (
-    <Box sx={{ maxWidth: 800, mx: "auto", px: { xs: 2, sm: 3 } }}>
+    <Container sx={{ maxWidth: 800, mx: "auto", px: { xs: 2, sm: 3 } }}>
       {/* Header with login link */}
       <Typography variant="body2" textAlign="right" sx={{ mb: 2 }}>
         Already have an account?{" "}
@@ -329,7 +329,7 @@ function Distributor() {
           </Stack>
         </form>
       </Paper>
-    </Box>
+    </Container>
   );
 }
 

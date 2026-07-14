@@ -38,6 +38,19 @@ export const getAllElectricityPaymentByMeterId = async (meterId) => {
   }
 };
 
+export const getPrepaidStatus = async (id) => {
+  try {
+    const res = await api({
+      method: "GET",
+      url: `/electricity/payment/status/${id}`,
+    });
+
+    return res.data;
+  } catch (error) {
+    throw error.response.data;
+  }
+};
+
 export const downloadReceipts = async (id) => {
   try {
     const response = await api({

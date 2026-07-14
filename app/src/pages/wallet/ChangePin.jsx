@@ -118,7 +118,7 @@ function ChangePin() {
       payload.dob = new Date(dob);
     }
 
-    console.log(payload)
+    // console.log(payload)
 
     verifyMutateAsync(payload, {
       onSuccess: (data) => {
