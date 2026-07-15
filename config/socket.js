@@ -4,6 +4,7 @@ const logger = require("../utils/logger");
 const { createAdapter } = require("@socket.io/redis-adapter");
 
 let io = null;
+let pubClient = null;
 
 // CORS configuration
 const allowedList = process.env.WHITELIST?.split(",") || [];
@@ -11,7 +12,7 @@ const whitelist = [...allowedList, process.env.CLIENT_URL];
 
 const initSocketServer = async (server) => {
   io = new Server(server, {
-    transports: ["polling", "websocket"],
+    transports: ["websocket"],
     cors: {
       origin: whitelist,
       methods: ["GET", "POST"],
@@ -29,7 +30,7 @@ const initSocketServer = async (server) => {
 |
 */
 
-  const pubClient = createClient({
+  pubClient = createClient({
     url: process.env.REDIS_HOST_EXT,
     socket: {
       reconnectStrategy: (retries) => Math.min(retries * 50, 2000),
@@ -65,7 +66,10 @@ const initSocketServer = async (server) => {
 |--------------------------------------------------------------------------
 */
 
-  return io;
+  return {
+    io,
+    pubClient,
+  };
 };
 
 const getIO = () => {
@@ -75,7 +79,14 @@ const getIO = () => {
   return io;
 };
 
+// New getter function for the Redis Pub Client
+const getPubClient = () => {
+  if (!pubClient) throw new Error("Redis Pub Client not initialized yet");
+  return pubClient;
+};
+
 module.exports = {
   initSocketServer,
   getIO,
+  getPubClient,
 };

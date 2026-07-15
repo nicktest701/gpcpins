@@ -49,7 +49,7 @@ export const SocketProvider = ({ children }) => {
     if (socketRef.current) return;
 
     const socket = io(import.meta.env.VITE_API_URL, {
-      transports: ["polling", "websocket"],
+      transports: ["websocket"],
       withCredentials: true,
       autoConnect: true,
       reconnection: true,

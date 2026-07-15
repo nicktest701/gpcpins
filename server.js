@@ -43,7 +43,7 @@ const { verifyToken } = require("./middlewares/verifyToken");
 const sendEMail = require("./config/sendEmail");
 const knex = require("./db/knex");
 const socketAuth = require("./middlewares/socketAuth");
-const { initSocketServer, getIO } = require("./config/socket");
+const { initSocketServer, getIO, getPubClient } = require("./config/socket");
 const { initializeSchedulers } = require("./queues/schedulers.js");
 const logger = require("./utils/logger.js");
 
@@ -331,7 +331,8 @@ app.use((err, req, res, next) => {
 
 async function bootstrap() {
   try {
-    const io = await initSocketServer(server);
+    const { io, pubClient } = await initSocketServer(server);
+  
 
     /*
     |--------------------------------------------------------------------------
@@ -346,72 +347,164 @@ async function bootstrap() {
     | SOCKET CONNECTION
     |--------------------------------------------------------------------------
     */
+   io.on("connection", async (socket) => {
+  const isDev = NODE_ENV === "development";
+  const userId = socket.user?.sub;
 
-    io.on("connection", async (socket) => {
-      if (NODE_ENV === "development") {
-        logger.info(`Socket Connected:${socket.id}`);
+  if (isDev) {
+    logger.info(`Socket Connected: ${socket.id}`);
+  }
+
+  // 1. Setup default user channels concurrently
+  if (userId) {
+    const userRoom = `user:${userId}`;
+    const paymentRoom = `payment:${userId}`;
+
+    try {
+      await Promise.all([
+        socket.join(userRoom),
+        socket.join(paymentRoom),
+        pubClient.set(`socket:${userId}`, socket.id, { EX: 86400 }) // 24 hours
+      ]);
+
+      if (isDev) {
+        logger.info(`User ${userId} automatically joined rooms: [${userRoom}, ${paymentRoom}]`);
       }
+    } catch (err) {
+      logger.error(`Error initializing session for user ${userId}:`, err);
+    }
+  }
 
-      if (socket.user?.sub) {
-        const userRoom = `user:${socket.user.sub}`;
-        const paymentRoom = `payment:${socket.user.sub}`;
+  // 2. Dynamic Room Event Listeners
+  socket.on("join-user-room", async (id) => {
+    if (!id || typeof id !== "string") return;
+    const userRoom = `user:${id}`;
+    
+    try {
+      await socket.join(userRoom);
+      socket.emit("user-room-joined", { room: userRoom });
+    } catch (err) {
+      logger.error(`Error joining user room: ${err.message}`);
+    }
+  });
 
-        await socket.join(userRoom);
-        await socket.join(paymentRoom);
+  socket.on("join-payment-room", async (txRef) => {
+    if (!txRef || typeof txRef !== "string") return;
+    const paymentRoom = `payment:${txRef}`;
 
-        if (NODE_ENV === "development") {
-          logger.info(`User joined room: ${userRoom}`);
-          logger.info(`User joined payment room: ${paymentRoom}`);
-        }
-
-        await pubClient.set(`socket:${socket?.user?.sub}`, socket.id, {
-          EX: 60 * 60 * 24,
-        });
+    try {
+      await socket.join(paymentRoom);
+      
+      if (isDev) {
+        logger.info(`User joined unique transaction room: ${paymentRoom}`);
       }
+      
+      socket.emit("payment-room-joined", { room: paymentRoom });
+    } catch (err) {
+      logger.error(`Error joining payment room: ${err.message}`);
+    }
+  });
 
-      socket.on("join-user-room", async (userId) => {
-        if (!userId || typeof userId !== "string") return;
-        const userRoom = `user:${userId}`;
-        await socket.join(userRoom);
+  socket.on("leave-user-room", async (id) => {
+    if (!id || typeof id !== "string") return;
+    try {
+      await socket.leave(`user:${id}`);
+    } catch (err) {
+      logger.error(`Error leaving user room: ${err.message}`);
+    }
+  });
 
-        socket.emit("user-room-joined", {
-          room: userRoom,
-        });
-      });
+  socket.on("leave-payment-room", async (txRef) => {
+    if (!txRef || typeof txRef !== "string") return;
+    try {
+      await socket.leave(`payment:${txRef}`);
+    } catch (err) {
+      logger.error(`Error leaving payment room: ${err.message}`);
+    }
+  });
 
-      socket.on("join-payment-room", async (txRef) => {
-        logger.info(txRef);
+  // 3. Optimized Disconnect Cleanup
+  socket.on("disconnect", async (reason) => {
+    if (isDev) {
+      logger.info(`Socket Disconnected: ${socket.id} (Reason: ${reason})`);
+    }
+    
+    if (userId) {
+      try {
+        await pubClient.del(`socket:${userId}`);
+      } catch (err) {
+        logger.error(`Failed to clear Redis token mapping for ${userId}:`, err);
+      }
+    }
+  });
+});
 
-        if (!txRef || typeof txRef !== "string") return;
-        const paymentRoom = `payment:${txRef}`;
 
-        await socket.join(paymentRoom);
+    // io.on("connection", async (socket) => {
+    //   if (NODE_ENV === "development") {
+    //     logger.info(`Socket Connected:${socket.id}`);
+    //   }
 
-        logger.info(`User payment room: ${paymentRoom}`);
+    //   if (socket.user?.sub) {
+    //     const userRoom = `user:${socket.user.sub}`;
+    //     const paymentRoom = `payment:${socket.user.sub}`;
 
-        socket.emit("payment-room-joined", {
-          room: paymentRoom,
-        });
-      });
+    //     await socket.join(userRoom);
+    //     await socket.join(paymentRoom);
 
-      socket.on("leave-user-room", async (userId) => {
-        const userRoom = `user:${userId}`;
+    //     if (NODE_ENV === "development") {
+    //       logger.info(`User joined room: ${userRoom}`);
+    //       logger.info(`User joined payment room: ${paymentRoom}`);
+    //     }
 
-        await socket.leave(userRoom);
-      });
+    //     await pubClient.set(`socket:${socket?.user?.sub}`, socket.id, {
+    //       EX: 60 * 60 * 24,
+    //     });
+    //   }
 
-      socket.on("leave-payment-room", async (txRef) => {
-        const paymentRoom = `payment:${txRef}`;
+    //   socket.on("join-user-room", async (userId) => {
+    //     if (!userId || typeof userId !== "string") return;
+    //     const userRoom = `user:${userId}`;
+    //     await socket.join(userRoom);
 
-        await socket.leave(paymentRoom);
-      });
+    //     socket.emit("user-room-joined", {
+    //       room: userRoom,
+    //     });
+    //   });
 
-      socket.on("disconnect", async () => {
-        if (socket.user?.sub) {
-          await pubClient.del(`socket:${socket.user.sub}`);
-        }
-      });
-    });
+    //   socket.on("join-payment-room", async (txRef) => {
+    //     logger.info(txRef);
+
+    //     if (!txRef || typeof txRef !== "string") return;
+    //     const paymentRoom = `payment:${txRef}`;
+
+    //     await socket.join(paymentRoom);
+
+    //     logger.info(`User payment room: ${paymentRoom}`);
+
+    //     socket.emit("payment-room-joined", {
+    //       room: paymentRoom,
+    //     });
+    //   });
+
+    //   socket.on("leave-user-room", async (userId) => {
+    //     const userRoom = `user:${userId}`;
+
+    //     await socket.leave(userRoom);
+    //   });
+
+    //   socket.on("leave-payment-room", async (txRef) => {
+    //     const paymentRoom = `payment:${txRef}`;
+
+    //     await socket.leave(paymentRoom);
+    //   });
+
+    //   socket.on("disconnect", async () => {
+    //     if (socket.user?.sub) {
+    //       await pubClient.del(`socket:${socket.user.sub}`);
+    //     }
+    //   });
+    // });
 
     //initialise queues
     await initializeSchedulers();
@@ -477,5 +570,5 @@ module.exports = {
   // This evaluates dynamically when called
   get io() {
     return getIO();
-  }
+  },
 };
