@@ -43,7 +43,7 @@ const { verifyToken } = require("./middlewares/verifyToken");
 const sendEMail = require("./config/sendEmail");
 const knex = require("./db/knex");
 const socketAuth = require("./middlewares/socketAuth");
-const { initSocketServer } = require("./config/socket");
+const { initSocketServer, getIO } = require("./config/socket");
 const { initializeSchedulers } = require("./queues/schedulers.js");
 const logger = require("./utils/logger.js");
 
@@ -69,32 +69,7 @@ const server = http.createServer(app);
 |--------------------------------------------------------------------------
 */
 
-const io = initSocketServer(server);
-
-/*
-|--------------------------------------------------------------------------
-| REDIS CLIENTS
-|--------------------------------------------------------------------------
-|
-| pubClient  -> publish socket events
-| subClient  -> subscribe socket events
-|
-*/
-
-const pubClient = createClient({
-  url: process.env.REDIS_HOST_EXT,
-  socket: {
-    reconnectStrategy: (retries) => Math.min(retries * 50, 2000),
-  },
-});
-
-const subClient = pubClient.duplicate();
-
-/*
-|--------------------------------------------------------------------------
-| SOCKET INIT FUNCTION (FIX FOR COMMONJS)
-|--------------------------------------------------------------------------
-*/
+// const io = initSocketServer(server);
 
 /*
 |--------------------------------------------------------------------------
@@ -356,26 +331,7 @@ app.use((err, req, res, next) => {
 
 async function bootstrap() {
   try {
-    await pubClient.connect();
-    await subClient.connect();
-
-    logger.info("Redis connected");
-
-    pubClient.on("error", (err) => {
-      logger.error("Redis Pub Error:", err);
-    });
-
-    subClient.on("error", (err) => {
-      logger.error("Redis Sub Error:", err);
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | SOCKET REDIS ADAPTER
-    |--------------------------------------------------------------------------
-    */
-
-    io.adapter(createAdapter(pubClient, subClient));
+    const io = await initSocketServer(server);
 
     /*
     |--------------------------------------------------------------------------
@@ -518,5 +474,8 @@ async function bootstrap() {
 }
 
 module.exports = {
-  io,
+  // This evaluates dynamically when called
+  get io() {
+    return getIO();
+  }
 };

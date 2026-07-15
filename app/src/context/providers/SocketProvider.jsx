@@ -49,7 +49,7 @@ export const SocketProvider = ({ children }) => {
     if (socketRef.current) return;
 
     const socket = io(import.meta.env.VITE_API_URL, {
-      transports: ["websocket"],
+      transports: ["polling", "websocket"],
       withCredentials: true,
       autoConnect: true,
       reconnection: true,
@@ -126,7 +126,7 @@ export const SocketProvider = ({ children }) => {
       setConnected(false);
       setSocketId(null);
     };
-  }, [user?.id,accessToken]); // Only re-run if the specific user ID updates
+  }, [user?.id, accessToken]); // Only re-run if the specific user ID updates
 
   /*
   |--------------------------------------------------------------------------
