@@ -88,7 +88,7 @@ function AddMessage({ open, setOpen }) {
 
     payload = trimObject(values);
 
-    console.log(payload);
+    // console.log(payload);
 
     mutateAsync(payload, {
       onSettled: () => {

@@ -18,7 +18,7 @@ const PageHero = ({ title, subtitle, bgImage }) => {
         px:4
       }}
     >
-      <Typography variant="h3" className="hero-title" paragraph>
+      <Typography variant="h1" textAlign='center' textTransform='uppercase' letterSpacing={1.6}  paragraph>
         {title}
       </Typography>
       {subtitle && <Typography textAlign="center">{subtitle}</Typography>}

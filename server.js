@@ -396,9 +396,9 @@ async function bootstrap() {
         logger.info(`Socket Connected:${socket.id}`);
       }
 
-      if (socket.user?.id) {
-        const userRoom = `user:${socket.user.id}`;
-        const paymentRoom = `payment:${socket.user.id}`;
+      if (socket.user?.sub) {
+        const userRoom = `user:${socket.user.sub}`;
+        const paymentRoom = `payment:${socket.user.sub}`;
 
         await socket.join(userRoom);
         await socket.join(paymentRoom);
@@ -408,7 +408,7 @@ async function bootstrap() {
           logger.info(`User joined payment room: ${paymentRoom}`);
         }
 
-        await pubClient.set(`socket:${socket.user.id}`, socket.id, {
+        await pubClient.set(`socket:${socket?.user?.sub}`, socket.id, {
           EX: 60 * 60 * 24,
         });
       }
@@ -451,8 +451,8 @@ async function bootstrap() {
       });
 
       socket.on("disconnect", async () => {
-        if (socket.user?.id) {
-          await pubClient.del(`socket:${socket.user.id}`);
+        if (socket.user?.sub) {
+          await pubClient.del(`socket:${socket.user.sub}`);
         }
       });
     });

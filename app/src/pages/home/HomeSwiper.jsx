@@ -38,10 +38,10 @@ const HOME_CONTENT = [
   },
   {
     id: 3,
-    title: "Evoucher & Tickets",
+    title: "Checkers,Vouchers & Tickets",
     content:
-      "All sorts of application vouchers and tickets ranginging from waec exams vouchers,shs placement,bus tickets,etc",
-    bgImage: IMAGES.bgImage1,
+      "All sorts of application vouchers and tickets ranginging from waec exams checkers,shs placement,bus tickets,etc",
+    bgImage: IMAGES.checker2,
     low: IMAGES.bgImage1_low,
     path: "/evoucher",
     btnText: "Buy Now",
@@ -86,7 +86,9 @@ function HomeSwiper() {
               <AnimatedContainer>
                 <h1 className="hero-title">{title}</h1>
                 <Typography
-                  className="content-text subtitle"
+                  // className="content-text subtitle"
+                  variant='h5'
+                  textAlign='center'
                   paragraph
                   color={color}
                 >

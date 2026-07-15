@@ -36,9 +36,9 @@ const verifyToken = (req, res, next) => {
     if (!tokenInRedis) {
       return res.status(403).json("Session has expired");
     }
-    console.log("Access Role is", user?.role);
+    // console.log("Access Role is", user?.role);
 
-    const userId = user.sub; // Extracted from verified JWT
+    const userId = user?.sub; // Extracted from verified JWT
     const cacheKey = `user:profile:${jti}`;
 
     // 1. Try fetching from Redis
@@ -89,7 +89,7 @@ const verifyToken = (req, res, next) => {
 
 const verifyRefreshToken = async (req, res, next) => {
   const cookieToken = req.cookies.refreshToken;
-  console.log(cookieToken);
+  // console.log(cookieToken);
 
   if (!cookieToken) {
     return res.status(401).json("Unauthorized Access");
@@ -178,8 +178,8 @@ const verifyRefreshToken = async (req, res, next) => {
           ? "admin"
           : "verifier";
 
-    console.log("Path is", path);
-    console.log("Refresh Role is", user?.role);
+    // console.log("Path is", path);
+    // console.log("Refresh Role is", user?.role);
 
     res.cookie("refreshToken", newRefreshToken, {
       httpOnly: true,

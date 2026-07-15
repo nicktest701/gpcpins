@@ -145,7 +145,7 @@ function Prepaid() {
                     />
                   )}
                 />
-                <Controller
+                {/* <Controller
                   name="name"
                   control={control}
                   render={({ field }) => (
@@ -159,7 +159,7 @@ function Prepaid() {
                       inputProps={{ style: { textTransform: "uppercase" } }}
                     />
                   )}
-                />
+                /> */}
                 {/* <Controller
                   name="confirmNumber"
                   control={control}

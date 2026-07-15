@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, IconButton, Box, Button,useTheme,useMediaQuery } from "@mui/material";
+import { Dialog, DialogContent, IconButton, Box, Button,useTheme,useMediaQuery, DialogActions } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import Service from "./Service";
 import HomeSwiper from "./HomeSwiper";
@@ -119,9 +119,7 @@ function Home() {
         onClose={handleCloseAdModal}
         sx={modalStyles}
         disableEscapeKeyDown={false} // allow ESC to close
-        BackdropProps={{
-          style: { backgroundColor: "rgba(0, 0, 0, 0.6)" },
-        }}
+   
       >
         {/* Custom close button inside the dialog */}
         <IconButton
@@ -141,15 +139,15 @@ function Home() {
 
         <DialogContent dividers={false}>
           {advertisementContent}
-          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 3 }}>
+          <DialogActions sx={{ display: "flex", justifyContent: "flex-end", mt: 3 }}>
             <Button
               variant="contained"
               onClick={handleCloseAdModal}
-              sx={{ textTransform: "none" }}
+              sx={{ borderRadius:1.2 }}
             >
               Close
             </Button>
-          </Box>
+          </DialogActions>
         </DialogContent>
       </Dialog>
     </>

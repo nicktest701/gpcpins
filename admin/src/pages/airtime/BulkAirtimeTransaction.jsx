@@ -67,7 +67,7 @@ function BulkAirtimeTransaction() {
 
   const updateECGPayment = (e, rowData) => {
 
-    console.log(rowData)
+    // console.log(rowData)
     customDispatch({
       type: "viewEcgTransactionInfoEdit",
       payload: {

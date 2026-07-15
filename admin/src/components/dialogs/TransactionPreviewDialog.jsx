@@ -148,7 +148,7 @@ const TransactionPreviewDialog = ({
   } else {
     recipientDisplay = voucherType || recipient;
   }
-  console.log(service);
+  // console.log(service);
 
   return (
     <Dialog

@@ -8,20 +8,20 @@ import Switch from "@mui/material/Switch";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import { useSearchParams } from "react-router-dom";
 import ToggleModule from "./ToggleModule";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getModuleStatus, postModuleStatus } from "../../api/categoryAPI";
 import Swal from "sweetalert2";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CustomContext } from "../../context/providers/CustomProvider";
+import { useCustomContext } from "../../context/providers/CustomProvider";
 import { globalAlertType } from "../../components/alert/alertType";
 import GlobalSpinner from "../../components/spinners/GlobalSpinner";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import { useAuth } from "../../context/providers/AuthProvider";
 
 function Module() {
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { customDispatch } = useContext(CustomContext);
+  const { customDispatch } = useCustomContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const [checked, setChecked] = useState({
     voucher: true,
@@ -50,10 +50,10 @@ function Module() {
       mode === "v"
         ? "Vouchers & Tickets"
         : mode === "p"
-        ? "Prepaid Units"
-        : mode === "a"
-        ? "Airtime & Data Bundle"
-        : "";
+          ? "Prepaid Units"
+          : mode === "a"
+            ? "Airtime & Data Bundle"
+            : "";
 
     if (e.target.checked === true) {
       const data = {

@@ -37,7 +37,7 @@ function ForgotPassword() {
 
     mutateAsync(user, {
       onSuccess: (data) => {
-        console.log(data);
+        // console.log(data);
         
         navigate("/auth/link", {
           state: {

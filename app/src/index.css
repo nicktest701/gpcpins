@@ -332,7 +332,7 @@ footer {
   background: linear-gradient(
     to top left,
     rgba(3, 21, 35, 0.8),
-    rgba(0, 0, 0, 0.8) /* rgba(8, 61, 119, 0.7), */
+    rgba(0, 0, 0, 0.5) /* rgba(8, 61, 119, 0.4), */
   );
   /* pointer-events: none; */
   color: #fff;
