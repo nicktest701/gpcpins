@@ -1,13 +1,13 @@
 import { FindInPageRounded } from "@mui/icons-material";
 import { LoadingButton } from "@mui/lab";
 import { Box, Dialog, DialogContent, TextField } from "@mui/material";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CustomContext } from "../../context/providers/CustomProvider";
+import { useCustomContext } from "../../context/providers/CustomProvider";
 import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
 
 const RetrieveVoucherSmall = ({ general }) => {
-  const { customState, customDispatch } = useContext(CustomContext);
+  const { customState, customDispatch } = useCustomContext()
   const navigate = useNavigate();
   const [transactionId, setTransactionId] = useState("");
   const [mobileNo, setMobileNo] = useState("");

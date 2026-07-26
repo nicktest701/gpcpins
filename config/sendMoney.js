@@ -18,7 +18,7 @@ async function sendMoney(info, type) {
           CustomerEmail: info?.email,
           Channel: info?.provider,
           Amount: ["+233543772591", "0543772591"].includes(info?.phonenumber)
-            ? 0.1
+            ? 0.01
             : Number(info?.amount),
           // Amount: info?.amount,
           PrimaryCallbackUrl: `${process.env.CALLBACK_URL}/${type}/${randomUUID()}`,

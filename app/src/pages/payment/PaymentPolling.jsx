@@ -3,7 +3,6 @@ import {
   Box,
   Paper,
   Typography,
-  CircularProgress,
   Button,
   Stack,
   LinearProgress,
@@ -17,7 +16,6 @@ import {
 import {
   CheckCircle,
   Cancel,
-  HourglassEmpty,
   Refresh,
   ArrowForward,
   ContentCopy,
@@ -30,26 +28,36 @@ import { useCustomContext } from "../../context/providers/CustomProvider";
 import { getPrepaidStatus } from "../../api/electricityAPI";
 import { usePaymentPolling } from "../../hooks/usePaymentPolling";
 import MomoGuide from "../../components/momo-guide";
+import { useNavigate } from "react-router-dom";
 
 const statusConfig = {
   idle: {
     icon: <PhoneAndroid sx={{ fontSize: 56, color: "text.disabled" }} />,
     color: "text.disabled",
-    label: "  A prompt has been sent to your mobile phone. Enter your Mobile Money PIN to complete the payment.",
+    label:
+      "  A prompt has been sent to your mobile phone. Enter your Mobile Money PIN to complete the payment.",
     // label: "Initializing request...",
     progressColor: "primary",
   },
   pending: {
-    icon: <HourglassEmpty sx={{ fontSize: 56, color: "warning.main" }} />,
+    icon: <PhoneAndroid sx={{ fontSize: 56, color: "warning.main" }} />,
     color: "warning.main",
-    label: "Processing your payment...",
-    progressColor: "warning",
+    label:
+      "  A prompt has been sent to your mobile phone. Enter your Mobile Money PIN to complete the payment.",
+    // label: "Initializing request...",
+    progressColor: "primary",
+    // label: "Processing your payment...",
+    // progressColor: "warning",
   },
   processing: {
-    icon: <CircularProgress size={56} thickness={4} color="info" />,
+    icon: <PhoneAndroid size={56} thickness={4} color="info" />,
     color: "info.main",
-    label: "Waiting for vendor confirmation...",
-    progressColor: "info",
+    label:
+      "  A prompt has been sent to your mobile phone. Enter your Mobile Money PIN to complete the payment.",
+    // label: "Initializing request...",
+    progressColor: "primary",
+    // label: "Waiting for vendor confirmation...",
+    // progressColor: "info",
   },
   success: {
     icon: <CheckCircle sx={{ fontSize: 56, color: "success.main" }} />,
@@ -73,11 +81,14 @@ const statusConfig = {
 
 const PaymentPolling = ({
   paymentId,
+  transactionId,
   onClose,
   interval = 3000,
   maxAttempts = 15,
+  isWallet = false,
 }) => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const { customDispatch } = useCustomContext();
   const [copied, setCopied] = React.useState(false);
 
@@ -109,6 +120,7 @@ const PaymentPolling = ({
   const { status, attempts, error, elapsed, retry, rawData } =
     usePaymentPolling({
       paymentId,
+      transactionId,
       checkStatusFn: getPrepaidStatus,
       interval,
       maxAttempts,
@@ -157,12 +169,11 @@ const PaymentPolling = ({
         <Paper
           elevation={0}
           sx={{
-            p: { xs: 3, sm: 4 },
+            p: 2.5,
             width: "100%",
-            maxWidth: 480,
-            borderRadius: 5,
+            maxWidth: 380,
+            borderRadius: 1.2,
             textAlign: "center",
-            border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
             background: theme.palette.background.paper,
             boxShadow: `0 24px 64px ${alpha(theme.palette.common.black, 0.12)}`,
             maxHeight: "92vh",
@@ -220,12 +231,12 @@ const PaymentPolling = ({
                 {token && (
                   <Box
                     sx={{
-                      p: 2.5,
+                      p: 1,
                       bgcolor: alpha(theme.palette.success.main, 0.06),
-                      borderRadius: 3,
+                      borderRadius: 1.2,
                       border: `1px dashed ${theme.palette.success.main}`,
                       textAlign: "center",
-                      mb: 3,
+                      mb: 2,
                     }}
                   >
                     <Typography
@@ -245,7 +256,7 @@ const PaymentPolling = ({
                       sx={{ mt: 1 }}
                     >
                       <Typography
-                        variant="h5"
+                        variant="body2"
                         fontWeight="800"
                         color="success.dark"
                         sx={{
@@ -285,17 +296,18 @@ const PaymentPolling = ({
                 <Paper
                   variant="outlined"
                   sx={{
-                    p: 2,
-                    borderRadius: 3,
+                    p: 1,
+                    borderRadius: 1.2,
                     bgcolor: alpha(theme.palette.background.default, 0.4),
                     mb: 3,
                   }}
                 >
-                  <Stack spacing={1.5}>
+                  <Stack spacing={1}>
                     <Stack
                       direction="row"
                       justifyContent="between"
                       alignItems="center"
+                      spacing={3}
                     >
                       <Typography variant="body2" color="text.secondary">
                         Receipt Number
@@ -315,6 +327,7 @@ const PaymentPolling = ({
                       direction="row"
                       justifyContent="between"
                       alignItems="center"
+                      spacing={5.5}
                     >
                       <Typography variant="body2" color="text.secondary">
                         Paid Amount
@@ -331,7 +344,7 @@ const PaymentPolling = ({
                       </Typography>
                     </Stack>
 
-                    {(receiptDetails.openingBalance > 0 ||
+                    {/* {(receiptDetails.openingBalance > 0 ||
                       receiptDetails.closingBalance > 0) && (
                       <>
                         <Divider sx={{ borderStyle: "dashed" }} />
@@ -353,7 +366,7 @@ const PaymentPolling = ({
                           </Typography>
                         </Stack>
                       </>
-                    )}
+                    )} */}
                   </Stack>
                 </Paper>
 
@@ -368,11 +381,10 @@ const PaymentPolling = ({
                     target="_blank"
                     rel="noopener noreferrer"
                     sx={{
-                      mb: 1.5,
-                      py: 1.2,
-                      borderRadius: 2.5,
+                      borderRadius: 1.2,
                       textTransform: "none",
                       fontWeight: 600,
+                      mb: 2,
                     }}
                   >
                     Download Receipt
@@ -440,7 +452,7 @@ const PaymentPolling = ({
                   Money PIN to complete the payment.
                 </Typography>
               </Box>
-              <MomoGuide mobilePartner={'mtn-gh'} />
+              <MomoGuide mobilePartner={"mtn-gh"} />
             </>
             // <Stack
             //   direction="row"
@@ -474,11 +486,10 @@ const PaymentPolling = ({
               onClick={retry}
               fullWidth
               sx={{
-                py: 1.5,
-                borderRadius: 3,
+                borderRadius: 1.2,
                 textTransform: "none",
                 fontWeight: 600,
-                fontSize: "1rem",
+                mb: 2,
               }}
             >
               Retry Check
@@ -488,17 +499,20 @@ const PaymentPolling = ({
           {status === "success" && (
             <Button
               variant="contained"
-              color="success"
+              color="primary"
               endIcon={<ArrowForward />}
               fullWidth
               sx={{
-                py: 1.5,
-                borderRadius: 3,
+                borderRadius: 1.2,
                 textTransform: "none",
                 fontWeight: 600,
-                fontSize: "1rem",
+                mb: 2,
+                color: "#fff",
               }}
-              onClick={() => onClose?.()}
+              onClick={() => {
+                onClose?.();
+                navigate("/electricity");
+              }}
             >
               Dismiss Window
             </Button>

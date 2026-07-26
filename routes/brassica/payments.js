@@ -148,6 +148,10 @@ router.post(
         transactionId,
       });
 
+      if (data?.statusCode !== "202" || data?.status !== "ACCEPTED") {
+      throw new Error("Error processing payment");
+    }
+
       return res.status(202).json({ success: true, transactionId, data });
     } catch (err) {
       next(err);

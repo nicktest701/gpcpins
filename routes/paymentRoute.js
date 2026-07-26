@@ -67,7 +67,8 @@ const logger = require("../utils/logger");
 const { ticketQueue, voucherQueue } = require("../queues/queues");
 const { formatDate, formatTime } = require("../config/dateConfigs");
 const { brassicaPost } = require("../services/brassicaClient");
-const { getMeter } = require("../services/brassica/token.manager");
+const { getMeter, saveMeter } = require("../services/brassica/token.manager");
+const { sendBrassicaMoney } = require("./brassica/brasiccaMoney");
 
 // ===============================
 // 1. Configuration & Constants
@@ -962,10 +963,18 @@ router.post(
     // Safely extract user fields (handling unauthenticated optional token states)
     const userID = req.user?.id || "";
     const userName = req.user?.name || "GPC";
-    const { meter, info, amount } = req.body;
+
+    const { info, meter, amount, isWallet, token } = req.body;
+
+    //     console.log(req.body)
+    // return res.status(400).json( "Meter not found");
     const userPhone =
       getInternationalMobileFormat(info?.phonenumber, false) ||
       process.env.BRASSICA_CLIENT_PHONENUMBER;
+
+    // ---------------- CREATE PAYMENT ----------------
+    let paymentStatus = "pending";
+    let providerResponse = null;
 
     // 1. Fetch or Lookup Meter Details BEFORE opening DB transactions
     let prepaidMeterPayload = await getMeter(meter);
@@ -986,13 +995,15 @@ router.post(
         lookupResponse?.status !== "Success" ||
         lookupResponse?.statusCode !== "200"
       ) {
-        return res.status(400).json({ message: "Meter not found" });
+        return res.status(400).json("Meter not found");
       }
 
       prepaidMeterPayload = {
         ...lookupResponse?.accountDetails,
         accountLookUpId: lookupResponse?.accountLookUpId,
       };
+
+      await saveMeter(meter, prepaidMeterPayload);
     }
 
     const {
@@ -1007,22 +1018,87 @@ router.post(
     } = prepaidMeterPayload;
 
     // 2. Prepare Identifiers & Payload
-    const externalTransactionId = uuidv4();
+
     const paymentId = generateId();
     const transaction_id = generateId(6);
     const transaction_reference = randomBytes(24).toString("hex");
-    const orderNo = randomBytes(20).toString("hex");
+    // const orderNo = randomBytes(20).toString("hex");
 
-    const paymentPayload = {
+    const transx = await knex.transaction();
+    if (isWallet) {
+      // ---- WALLET VALIDATION ----
+      const wallet = await transx("wallets").where({ user_id: userID }).first();
+      // .forUpdate();
+
+      if (!wallet) {
+        await transx.rollback();
+        return res.status(401).json("Wallet not found");
+      }
+
+      const isPinValid = await bcrypt.compare(token, wallet.user_key);
+      if (!isPinValid) {
+        await transx.rollback();
+        return res.status(401).json("Invalid PIN!");
+      }
+
+      if (Number(wallet.amount) < Number(amount)) {
+        await transx.rollback();
+        return res.status(400).json("Insufficient funds");
+      }
+
+      // ---- DEDUCT WALLET ----
+      await transx("wallets")
+        .where({ user_id: userID })
+        .decrement("amount", amount);
+
+      await transx("wallet_transactions").insert({
+        id: generateId(),
+        user_id: userID,
+        wallet_id: wallet.id,
+        wallet_amount: wallet.amount,
+        issuer: userName,
+        type: "debit",
+        comment: `Prepaid purchase`,
+        amount: amount,
+        status: "completed",
+        reference: transaction_reference,
+      });
+
+      paymentStatus = "completed";
+      providerResponse = { code: "WALLET_SUCCESS" };
+    } else {
+      // ---- MOBILE MONEY ----
+      const momoPayload = {
+        institutionCode: info?.provider,
+        accountNumber: userPhone,
+        accountName: info?.name || userName || "GPC Customer",
+        amount: Number(amount).toFixed(2),
+        transaction_Id: transaction_id,
+      };
+
+      try {
+        await sendBrassicaMoney(momoPayload);
+      } catch (error) {
+        return res
+          .status(400)
+          .json("Error processing transaction.Please try again later!");
+      }
+
+      // providerResponse = response.data;
+
+      paymentStatus = "pending";
+    }
+
+    providerResponse = {
       billRequest: {
-        transactionId: externalTransactionId,
+        transactionId: transaction_id,
         billerType: "ECG",
         accountNumber: meter,
         accountCategory: accountType,
         phoneNumber: userPhone,
       },
       paymentDetails: {
-        amount,
+        amount: amount,
         accountLookUpId,
         serviceDistrictId,
         serviceRegionId,
@@ -1035,8 +1111,10 @@ router.post(
       },
     };
 
+    // ---------------- INSERT PAYMENT ----------------
+
     // 3. Database Write (Keep this transaction as short as possible)
-    const transx = await knex.transaction();
+
     try {
       await transx("payments").insert({
         id: paymentId,
@@ -1045,12 +1123,13 @@ router.post(
         service: "prepaid",
         amount,
         charges: 0,
-        provider: "brasicca",
-        mode: "Mobile Money",
+        provider: isWallet ? "wallet" : info?.provider,
+        mode: isWallet ? "Wallet" : "Mobile Money",
         year: moment().year(),
-        status: "pending",
-        partner: JSON.stringify(paymentPayload),
-        externalTransactionId,
+        status: paymentStatus,
+        externalTransactionId: null,
+        partner: JSON.stringify(providerResponse),
+        is_processed: false,
       });
 
       await transx("electricity_transactions").insert({
@@ -1069,6 +1148,7 @@ router.post(
         success: true,
         message: "Payment received and is being processed.",
         paymentId: paymentId,
+        transactionId: transaction_id,
       });
     } catch (dbError) {
       await transx.rollback();
@@ -1078,70 +1158,70 @@ router.post(
         .json({ message: "Database initialization failed" });
     }
 
-    setImmediate(async () => {
-      // 4. Execute External Network Call (Safe from DB locks)
-      logger.info(
-        `[ECGPay] meter=${meter} category=${accountType} amount=${amount} by=${userName}`,
-      );
+    // setImmediate(async () => {
+    //   // 4. Execute External Network Call (Safe from DB locks)
+    //   logger.info(
+    //     `[ECGPay] meter=${meter} category=${accountType} amount=${amount} by=${userName}`,
+    //   );
 
-      try {
-        const paymentResponse = await brassicaPost(
-          "/billerPayment",
-          paymentPayload,
-        );
+    //   try {
+    //     const paymentResponse = await brassicaPost(
+    //       "/billerPayment",
+    //       providerResponse,
+    //     );
 
-        if (
-          paymentResponse?.status !== "Success" ||
-          paymentResponse?.statusCode !== "200"
-        ) {
-          await knex("payments")
-            .update({
-              status: "failed",
-              is_processed: true,
-              partner: JSON.stringify(paymentResponse),
-            })
-            .where("id", paymentId);
+    //     if (
+    //       paymentResponse?.status !== "Success" ||
+    //       paymentResponse?.statusCode !== "200"
+    //     ) {
+    //       await knex("payments")
+    //         .update({
+    //           status: "failed",
+    //           is_processed: true,
+    //           partner: JSON.stringify(paymentResponse),
+    //         })
+    //         .where("id", paymentId);
 
-          return;
+    //       return;
 
-          // return res
-          //   .status(422)
-          //   .json({ message: "Provider transaction failed" });
-        }
+    //       // return res
+    //       //   .status(422)
+    //       //   .json({ message: "Provider transaction failed" });
+    //     }
 
-        // 5. Finalize Local Status on Success
-        const responseDetails = paymentResponse?.paymentResponseDetails || {};
+    //     // 5. Finalize Local Status on Success
+    //     const responseDetails = paymentResponse?.paymentResponseDetails || {};
 
-        await knex("electricity_transactions")
-          .update({
-            info: JSON.stringify({
-              domain: "Prepaid",
-              orderNo,
-              ...responseDetails,
-            }),
-          })
-          .where("id", transaction_id);
+    //     await knex("electricity_transactions")
+    //       .update({
+    //         info: JSON.stringify({
+    //           domain: "Prepaid",
+    //           orderNo,
+    //           ...responseDetails,
+    //         }),
+    //       })
+    //       .where("id", transaction_id);
 
-        await knex("payments")
-          .update({
-            is_processed: 1,
-            status: "completed",
-          })
-          .where("id", paymentId);
-      } catch (apiError) {
-        logger.error("[ECGPay API Error]:", apiError);
-        // console.log("error.is");
+    //     await knex("payments")
+    //       .update({
+    //         is_processed: 1,
+    //         status: "completed",
+    //       })
+    //       .where("id", paymentId);
+    //   } catch (apiError) {
+    //     logger.error("[ECGPay API Error]:", apiError);
+    //     // console.log("error.is");
 
-        // Update status to failed so the transaction doesn't hang in pending forever
-        await knex("payments")
-          .update({ status: "failed", is_processed: true })
-          .where("id", paymentId);
+    //     // Update status to failed so the transaction doesn't hang in pending forever
+    //     await knex("payments")
+    //       .update({ status: "failed", is_processed: true })
+    //       .where("id", paymentId);
 
-        // return res
-        //   .status(502)
-        //   .json({ message: "External network gateway timeout" });
-      }
-    });
+    //     // return res
+    //     //   .status(502)
+    //     //   .json({ message: "External network gateway timeout" });
+    //   }
+    // });
   }),
 );
 // /api/gabs/v1/electricity/payment/status/GPC5AC3089C913810951
@@ -2095,6 +2175,20 @@ router.post(
   asyncHandler(async (req, res) => {
     const payload = req.body;
 
+    if (!payload?.transactionId) return res.sendStatus(204);
+
+    const doneKey = `payment:processed:${payload?.transactionId}`;
+    const lockKey = `payment:lock:${payload?.transactionId}`;
+
+    // 1. Already processed?
+    if (await redisClient.get(doneKey)) {
+      return res.sendStatus(200);
+    }
+
+    // 2. Acquire lock
+    const lock = await redisClient.set(lockKey, "1", "NX", "EX", 60);
+    if (!lock) return res.sendStatus(200);
+
     // Acknowledge immediately — Brassica expects this JSON back
     res.status(200).json({
       status: "OK",
@@ -2102,7 +2196,9 @@ router.post(
     });
 
     // ── Process asynchronously (after ack) ────────────────────────────────────
-    setImmediate(() => {
+    setImmediate(async () => {
+      let trx;
+
       try {
         const {
           statusCode,
@@ -2117,6 +2213,16 @@ router.post(
             `status=${status}(${statusCode}) approvalCode=${institutionApprovalCode}`,
         );
 
+        // 2|gpc_test  | {
+        // 2|gpc_test  |   statusCode: '200',
+        // 2|gpc_test  |   status: 'SUCCESSFUL',
+        // 2|gpc_test  |   message: 'Request processed successfully.',
+        // 2|gpc_test  |   institutionApprovalCode: '85969217060',
+        // 2|gpc_test  |   transactionId: 'GPC5365tet055520509',
+        // 2|gpc_test  |   extralTransactionId: 'd3b428b3-c35d-470e-8711-235fd3b1cf5f',
+        // 2|gpc_test  |   reason: null
+        // 2|gpc_test  | }
+
         // ── TODO: Replace with your business logic ─────────────────────────────
         // Examples:
         //   await db.transactions.updateOne({ transactionId }, { status, statusCode, institutionApprovalCode });
@@ -2124,23 +2230,78 @@ router.post(
         //   await publishToQueue("transaction.completed", payload);
         // ──────────────────────────────────────────────────────────────────────
 
+        trx = await knex.transaction();
+
+        const payment = await trx("vw_meter_payment_prepaid_transaction_view")
+          .where({ id: transactionId })
+          .first();
+
+        if (!payment) {
+          throw new Error("Transaction does not exist!");
+        }
+
+        // idempotency DB guard
+        if (payment.status === "completed") {
+          throw new Error("Transaction already completed!");
+          // return res.sendStatus(200);
+        }
+
+        const newStatus =
+          status === "SUCCESSFUL" && statusCode === "200"
+            ? "completed"
+            : (status === "ACCEPTED" && statusCode === "202") ||
+                (status === "PENDING" && statusCode === "491")
+              ? "pending"
+              : "failed";
+
+        await trx("payments")
+          .where({ id: transactionId })
+          .andWhereNot({ status: "completed" })
+          .update({
+            status: newStatus,
+            externalTransactionId: extralTransactionId,
+            updated_at: knex.fn.now(),
+          });
+
+        await trx.commit();
+
+        // mark processed
+        await redisClient.set(doneKey, "1", "EX", 86400);
+        await redisClient.del(lockKey);
+
         if (status === "SUCCESSFUL" || statusCode === "200") {
           // Handle success
           logger.info(`[Webhook] Transaction ${transactionId} SUCCEEDED.`);
-        } else if (
-          status === "FAILED" ||
-          ["424", "412", "300"].includes(String(statusCode))
-        ) {
-          // Handle failure — do NOT retry 424; it is terminal
-          logger.warn(
-            `[Webhook] Transaction ${transactionId} FAILED (code=${statusCode}).`,
-          );
-        } else {
-          logger.info(
-            `[Webhook] Transaction ${transactionId} status=${status} — no action taken.`,
-          );
         }
+
+        // async events
+        queueMicrotask(() =>
+          handlePostPaymentEvents(payment, newStatus, payload),
+        );
+
+        // if (status === "SUCCESSFUL" || statusCode === "200") {
+        //   // Handle success
+        //   logger.info(`[Webhook] Transaction ${transactionId} SUCCEEDED.`);
+        // } else if (
+        //   status === "FAILED" ||
+        //   ["424", "412", "300"].includes(String(statusCode))
+        // ) {
+        //   // Handle failure — do NOT retry 424; it is terminal
+        //   logger.warn(
+        //     `[Webhook] Transaction ${transactionId} FAILED (code=${statusCode}).`,
+        //   );
+        // } else {
+        //   logger.info(
+        //     `[Webhook] Transaction ${transactionId} status=${status} — no action taken.`,
+        //   );
+        // }
       } catch (err) {
+        if (trx) await trx.rollback();
+        await redisClient.del(lockKey);
+        // logger.error(err);
+        console.error(err);
+        res.sendStatus(500);
+
         logger.error("[Webhook] Error processing callback payload:", err);
       }
     });
@@ -3094,10 +3255,12 @@ async function handlePostPaymentEvents(payment, status, payload) {
 
     const externalId =
       payload?.Data?.ExternalTransactionId ||
-      payload.data.externalTransactionId;
+      payload.data.externalTransactionId ||
+      payload?.extralTransactionId;
 
     // ---------------- MESSAGE TEMPLATE ----------------
     const isSuccess = status === "completed";
+    // const isPending = status === "pending";
 
     const message = isSuccess
       ? `Your payment of GHS ${amount} for ${service} service was successful. Thank you for your trust.Transaction ID:${payment?.id}`
@@ -3124,6 +3287,8 @@ async function handlePostPaymentEvents(payment, status, payload) {
     queueMicrotask(async () => {
       try {
         if (isSuccess) {
+          logger.info(`[Webhook] Transaction ${payment?.id} SUCCEEDED.`);
+
           switch (service) {
             case "voucher":
             case "ticket":
@@ -3180,6 +3345,9 @@ async function handlePostPaymentEvents(payment, status, payload) {
             txRef: payment.phonenumber || info?.user?.phonenumber || reference,
             reason: "Payment failed",
           });
+          logger.warn(
+            `[Webhook] Transaction ${payment?.id} FAILED (code=${payload?.statusCode}).`,
+          );
         }
       } catch (err) {
         logger.error("Socket emit failed:", err);
@@ -3213,7 +3381,7 @@ async function handlePostPaymentEvents(payment, status, payload) {
     });
   } catch (error) {
     // NEVER throw (this runs post-response)
-    logger.error("handlePostPaymentEvents error:", error);
+    logger.error("[Webhook] Error processing callback payload:", error);
   }
 }
 

@@ -20,8 +20,6 @@ import { getMeterByNumber } from "@/api/meterAPI"; // assuming this API exists
 import PageHero from "../../components/custom/PageHero";
 import MeterDetailsDialog from "./MeterDetailsDialog";
 
-
-
 function Prepaid() {
   const navigate = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
@@ -129,7 +127,13 @@ function Prepaid() {
             </Alert> */}
 
             <form onSubmit={handleSubmit(onVerify)} noValidate>
-              <Stack spacing={2} maxWidth="sm" py={2} mx="auto">
+              <Stack
+                spacing={2}
+                maxWidth="sm"
+                alignItems="center"
+                py={2}
+                mx="auto"
+              >
                 <Controller
                   name="number"
                   control={control}
@@ -142,6 +146,11 @@ function Prepaid() {
                       error={!!errors.number}
                       helperText={errors.number?.message}
                       inputProps={{ style: { textTransform: "uppercase" } }}
+                      sx={{
+                        width: "100%",
+                        mx: "auto",
+                        maxWidth: 380,
+                      }}
                     />
                   )}
                 />
@@ -181,7 +190,13 @@ function Prepaid() {
                   variant="contained"
                   loading={isSubmitting}
                   size="large"
-                  sx={{ py: 1.5, mt: 1 }}
+                  sx={{
+                    py: 1.5,
+                    mt: 1,
+                    width: "100%",
+                    mx: "auto",
+                    maxWidth: 380,
+                  }}
                 >
                   Verify Meter
                 </LoadingButton>
@@ -200,11 +215,9 @@ function Prepaid() {
           handleProceedToVerify={handleProceedToVerify}
         />
         {/* Meter Details Modal */}
-    
       </Container>
     </>
   );
 }
 
 export default Prepaid;
-

@@ -38,11 +38,11 @@ export const getAllElectricityPaymentByMeterId = async (meterId) => {
   }
 };
 
-export const getPrepaidStatus = async (id) => {
+export const getPrepaidStatus = async (paymentId, transactionId) => {
   try {
     const res = await api({
       method: "GET",
-      url: `/electricity/payment/status/${id}`,
+      url: `/electricity/payment/status/${paymentId}?id=${transactionId}`,
     });
 
     return res.data;

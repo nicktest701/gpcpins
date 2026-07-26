@@ -6,20 +6,30 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
 import { Link, Navigate, useLocation, useSearchParams } from "react-router-dom";
-import { CheckRounded, ContentCopy, FileDownloadRounded } from "@mui/icons-material";
+import {
+  CheckRounded,
+  ContentCopy,
+  FileDownloadRounded,
+} from "@mui/icons-material";
 import CheckOutItem from "../components/items/CheckOutItem";
 import { useCustomContext } from "../context/providers/CustomProvider";
 import moment from "moment";
 import { IMAGES, currencyFormatter } from "../constants";
 import { downloadVouchers, makePayment } from "../api/paymentAPI";
-import { Alert, IconButton, InputAdornment, TextField, Tooltip } from "@mui/material";
+import {
+  Alert,
+  IconButton,
+  InputAdornment,
+  TextField,
+  Tooltip,
+} from "@mui/material";
 import { LoadingButton } from "@mui/lab";
 import { Spinner } from "./PaymentStatus";
 import { useSocket } from "../context/providers/SocketProvider";
 
 function Checkout() {
   const [searchParams, setSearchParams] = useSearchParams();
-    const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { state } = useLocation();
   const [downloadLink, setDownloadLink] = useState(null);
   const path = state?.payload;
@@ -85,8 +95,7 @@ function Checkout() {
 
   const handleDownloadVouchers = () => downloadVouchers(transaction?.id);
 
-
-   // Copy handler function using standard web API
+  // Copy handler function using standard web API
   const handleCopyTransactionId = async () => {
     if (!transaction?.id) return;
     try {
@@ -218,7 +227,7 @@ function Checkout() {
             </Stack>
             {/* ------------------------------------- */}
 
-            {generatedVouchers?.isLoading ? (
+            {generatedVouchers?.isLoading || !downloadLink ? (
               <Stack
                 direction="row"
                 alignItems="center"

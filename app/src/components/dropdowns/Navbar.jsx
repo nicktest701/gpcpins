@@ -66,8 +66,10 @@ const Navbar = () => {
       direction="row"
       spacing={4}
       sx={{
+        flex:1,
         display: { xs: "none", lg: "flex" },
         alignItems: "center",
+        justifyContent:'center',
         bgcolor: "background.paper",
         py: 1,
       }}

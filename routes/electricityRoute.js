@@ -4,11 +4,16 @@ const _ = require("lodash");
 const moment = require("moment");
 const { rateLimit } = require("express-rate-limit");
 const multer = require("multer");
-const { verifyToken } = require("../middlewares/verifyToken");
+const {
+  verifyToken,
+  verifyOptionalToken,
+} = require("../middlewares/verifyToken");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const knex = require("../db/knex");
 const { safeJSON } = require("../config/helpers");
 const { isValidUUID2 } = require("../config/validation");
+const logger = require("../utils/logger");
+const { brassicaPost } = require("../services/brassicaClient");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
@@ -100,22 +105,22 @@ router.get(
 
 router.get(
   "/payment/status/:id",
-  verifyToken,
+  verifyOptionalToken,
   asyncHandler(async (req, res) => {
+    const { id: transactionId } = req.query;
     const { id } = req.params;
 
     // 1. Strict Validation Check
-    if (!id || !isValidUUID2(id)) {
+    if (!id || !transactionId) {
       return res
         .status(400)
         .json({ message: "Invalid payment identifier format." });
     }
 
     // 2. Fetch payment record
-    const payment = await knex("payments")
-      .select("status")
-      .where("id", id)
-      .first();
+    const payment = await knex("payments").select("*").where("id", id).first();
+
+    // console.log("payment is", payment);
 
     // 3. Proper Existence Validation (Fixed the double 404 bug)
     if (!payment) {
@@ -142,37 +147,101 @@ router.get(
       });
     }
 
-    // 6. If completed, fetch token & receipt metadata from the related table
-    const transactionDetails = await knex("electricity_transactions")
-      .select("info", "topup")
-      .where("payment_id", id)
-      .first();
+    if (Boolean(payment.is_processed)) {
+      // 6. If completed, fetch token & receipt metadata from the related table
+      const transactionDetails = await knex("electricity_transactions")
+        .select("info", "topup")
+        .where("payment_id", id)
+        .first();
 
-    // Safely parse the uncommitted metadata column fields
-    let vendorPayload = {};
-    try {
-      vendorPayload =
-        typeof transactionDetails?.info === "string"
-          ? JSON.parse(transactionDetails.info)
-          : transactionDetails?.info || {};
-    } catch (parseError) {
-      logger.error(`[Status Parse Error] ID=${id}:`, parseError);
+      const responseDetails = safeJSON(transactionDetails.info);
+
+      return res.status(200).json({
+        statusCode: "200",
+        status: "success", // Maps directly to your component status keys
+        message: "Bill Payment processed successfully.",
+        paymentResponseDetails: {
+          rechargeToken: responseDetails.rechargeToken || "N/A",
+          reciept:
+            responseDetails.reciept || responseDetails.receiptNumber || "N/A",
+          amount: Number(responseDetails?.amount || 0),
+          openingBalance: Number(responseDetails.openingBalance || 0),
+          closingBalance: Number(responseDetails.closingBalance || 0),
+          receiptUrl: responseDetails.receiptUrl || "",
+        },
+      });
     }
 
-    // 7. Standardized Payload Structure mapping to frontend expectations
-    return res.status(200).json({
-      statusCode: "200",
-      status: "success", // Maps directly to your component status keys
-      message: "Bill Payment processed successfully.",
-      paymentResponseDetails: {
-        rechargeToken: vendorPayload.rechargeToken || "N/A",
-        reciept: vendorPayload.reciept || vendorPayload.receiptNumber || "N/A",
-        amount: Number(transactionDetails?.topup || 0),
-        openingBalance: Number(vendorPayload.openingBalance || 0),
-        closingBalance: Number(vendorPayload.closingBalance || 0),
-        receiptUrl: vendorPayload.receiptUrl || "",
-      },
-    });
+    const paymentPayload = safeJSON(payment?.partner);
+
+    // 4. Execute External Network Call (Safe from DB locks)
+    logger.info(
+      `[ECGPay] meter=${paymentPayload?.billRequest?.accountNumber} category=PREPAID amount=${paymentPayload?.paymentDetails?.amount} by=${paymentPayload?.paymentDetails?.accountName}`,
+    );
+
+    // console.log(paymentPayload);
+
+    // return res.status(200).json({
+    //   statusCode: "200",
+    //   status: "pending",
+    //   message: "Payment transaction is still processing.",
+    // });
+
+    try {
+      // const paymentResponse = await brassicaPost(
+      //   "/billerPayment",
+      //   paymentPayload,
+      // );
+
+      // if (
+      //   paymentResponse?.status !== "Success" ||
+      //   paymentResponse?.statusCode !== "200"
+      // ) {
+      //   return res.status(422).json({ message: "Provider transaction failed" });
+      // }
+
+      // console.log(paymentResponse);
+
+      // 5. Finalize Local Status on Success
+      // const responseDetails = paymentResponse?.paymentResponseDetails || {};
+      const responseDetails = {};
+
+      await knex("payments")
+        .update({
+          is_processed: true,
+        })
+        .where("id", id);
+
+      await knex("electricity_transactions")
+        .update({
+          info: JSON.stringify({
+            domain: "Prepaid",
+            downloadLink: responseDetails?.receiptUrl,
+            // orderNo,
+            ...responseDetails,
+          }),
+        })
+        .where("id", transactionId);
+
+      // 7. Standardized Payload Structure mapping to frontend expectations
+      res.status(200).json({
+        statusCode: "200",
+        status: "success", // Maps directly to your component status keys
+        message: "Bill Payment processed successfully.",
+        paymentResponseDetails: {
+          rechargeToken: responseDetails?.rechargeToken || "N/A",
+          reciept:
+            responseDetails?.reciept || responseDetails?.receiptNumber || "N/A",
+          amount: Number(responseDetails?.amount || 0),
+          openingBalance: Number(responseDetails?.openingBalance || 0),
+          closingBalance: Number(responseDetails?.closingBalance || 0),
+          receiptUrl: responseDetails?.receiptUrl || "",
+        },
+      });
+    } catch (apiError) {
+      logger.error("[ECGPay API Error]:", apiError);
+      return res.status(422).json({ message: "Provider transaction failed" });
+    }
   }),
 );
 

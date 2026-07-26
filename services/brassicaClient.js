@@ -114,7 +114,7 @@ async function brassicaPost(endpoint, body = {}, retry = true) {
     "414",
     "415",
     "416",
-    "419",
+    "491",
     "420",
     "422",
     "424",
@@ -163,7 +163,7 @@ function mapBrassicaCodeToHttp(bCode) {
     413: 502,
     414: 400,
     415: 403,
-    419: 202,
+    491: 202,
   };
   return map[bCode] || 500;
 }

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
  */
 export const usePaymentPolling = ({
   paymentId,
+  transactionId,
   checkStatusFn,
   interval = 3000, // Base polling frequency (3 seconds)
   maxAttempts = 15, // Maximum allowed polling requests
@@ -42,15 +43,13 @@ export const usePaymentPolling = ({
     queryKey,
     queryFn: async () => {
       attemptCounterRef.current += 1;
-      return await checkStatusFn(paymentId);
+      return await checkStatusFn(paymentId, transactionId);
     },
     // Only execute network calls if a payment ID is validly passed
     enabled: !!paymentId,
 
     // Core polling logic executed after every API resolution
     refetchInterval: (query) => {
-
-
       const result = query?.state?.data;
 
       // Stop polling if the terminal state matches API expectations

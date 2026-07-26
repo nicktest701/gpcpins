@@ -12,38 +12,27 @@ import {
   Button,
   Tooltip,
   Alert,
-  CircularProgress,
   alpha,
   Fade,
-  Typography,
 } from "@mui/material";
 import {
-  FacebookRounded,
-  Instagram,
-  Mail,
   NotificationsSharp,
-  PhoneCallback,
-  Twitter,
-  WhatsApp,
   WalletRounded,
   SearchRounded,
   Close,
-  MapOutlined,
   Menu as MenuIcon,
-  MyLocation as MyLocationIcon,
 } from "@mui/icons-material";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Swal from "sweetalert2";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { IMAGES, currencyFormatter } from "@/constants";
+import { currencyFormatter } from "@/constants";
 import { getInitials } from "@/config/validation";
 import NotificationDropdown from "@/components/dropdowns/NotificationDropdown";
-import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCustomContext } from "../../context/providers/CustomProvider";
 import { useAuth } from "../../context/providers/AuthProvider";
 import Navbar from "../../components/dropdowns/Navbar";
-import { getWalletBalance } from "../../api/walletAPI";
 
 function Header() {
   const queryClient = useQueryClient();
@@ -52,12 +41,12 @@ function Header() {
     const closed = sessionStorage.getItem("announcementClosed") === "true";
     return !closed;
   });
-  const isFetching = useIsFetching();
+
   const { pathname } = useLocation();
   const {
     customState: { openSidebar, globalAlert },
     customDispatch,
-    walletBalance
+    walletBalance,
   } = useCustomContext();
 
   const theme = useTheme();
@@ -129,8 +118,6 @@ function Header() {
       type: "openSidebar",
       payload: !openSidebar,
     });
-
-  const goHome = () => navigate("/", { replace: true });
 
   const toggleNotification = () => {
     setShowNotificationDropdown(!showNotificationDropdown);
@@ -418,6 +405,7 @@ function Header() {
                 alignItems: "center",
                 gap: 1,
                 width: { xs: "100%", md: "auto" },
+                flexGrow:{sm:1,lg:0}
               }}
             >
               <Box sx={{ flexGrow: 1, flex: 1 }}>
@@ -439,7 +427,7 @@ function Header() {
                     gap: 1,
                   }}
                 >
-                  <Tooltip title="Search">
+                  {/* <Tooltip title="Search">
                     <IconButton
                       size="small"
                       onClick={handleOpenSearch}
@@ -451,7 +439,7 @@ function Header() {
                     >
                       <SearchRounded fontSize="small" />
                     </IconButton>
-                  </Tooltip>
+                  </Tooltip> */}
                   <Tooltip title="Wallet Balance">
                     <Button
                       component={Link}
@@ -472,32 +460,31 @@ function Header() {
             </Box>
 
             <Navbar />
-
+           <Tooltip title="Search transactions">
+              <IconButton
+                onClick={handleOpenSearch}
+                sx={{
+                  bgcolor: alpha(theme.palette.grey[500], 0.1),
+                  transition: theme.transitions.create([
+                    "background-color",
+                    "transform",
+                  ]),
+                  "&:hover": {
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    transform: "scale(1.1)",
+                  },
+                }}
+              >
+                <SearchRounded />
+              </IconButton>
+            </Tooltip>
             <Stack
               direction="row"
               spacing={2}
               alignItems="center"
               sx={{ display: { xs: "none", md: "flex" } }}
             >
-              <Tooltip title="Search transactions">
-                <IconButton
-                  onClick={handleOpenSearch}
-                  sx={{
-                    bgcolor: alpha(theme.palette.grey[500], 0.1),
-                    transition: theme.transitions.create([
-                      "background-color",
-                      "transform",
-                    ]),
-                    "&:hover": {
-                      bgcolor: alpha(theme.palette.primary.main, 0.1),
-                      transform: "scale(1.1)",
-                    },
-                  }}
-                >
-                  <SearchRounded />
-                </IconButton>
-              </Tooltip>
-
+              
               {user?.id ? (
                 <>
                   <Tooltip title="Wallet Balance">
@@ -512,7 +499,7 @@ function Header() {
                         borderRadius: 1,
                       }}
                     >
-                      {currencyFormatter(walletBalance||0)}
+                      {currencyFormatter(walletBalance || 0)}
                     </Button>
                   </Tooltip>
 
@@ -594,6 +581,7 @@ function Header() {
                 </>
               )}
             </Stack>
+             
           </Box>
         </Container>
 

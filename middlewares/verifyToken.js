@@ -38,7 +38,7 @@ const verifyToken = (req, res, next) => {
     }
     // console.log("Access Role is", user?.role);
 
-    const userId = user?.sub; // Extracted from verified JWT
+    const userId = user?.sub || ""; // Extracted from verified JWT
     const cacheKey = `user:profile:${jti}`;
 
     // 1. Try fetching from Redis

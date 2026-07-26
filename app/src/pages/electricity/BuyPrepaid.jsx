@@ -40,7 +40,7 @@ import CheckOutItem from "@/components/items/CheckOutItem";
 import PaymentPolling from "../payment/PaymentPolling";
 
 function BuyPrepaid() {
-  const {  state } = useLocation();
+  const { state } = useLocation();
   const navigate = useNavigate();
   const { meterNo } = useParams();
   const queryClient = useQueryClient();
@@ -49,6 +49,7 @@ function BuyPrepaid() {
   const [prepaidPayload, setPrepaidPayload] = useState(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [activePaymentId, setActivePaymentId] = useState(null);
+  const [transactionId, setTransactionId] = useState(null);
 
   // Meter details from previous page state
   const meterDetails = state?.meterDetails || {
@@ -111,9 +112,11 @@ function BuyPrepaid() {
       topup: amount,
       charges: 0,
       amount: amount,
-      isWallet:false
+      isWallet: prepaidPayload?.paymentMethod === "wallet",
     };
-   
+    if (prepaidPayload?.paymentMethod === "wallet") {
+      payload.token = prepaidPayload?.token;
+    }
 
     Swal.fire({
       title: "Confirm Payment",
@@ -122,6 +125,9 @@ function BuyPrepaid() {
       showCancelButton: true,
     }).then(async (result) => {
       if (result.isConfirmed) {
+        // console.log(payload);
+        // return;
+
         paymentMutation.mutate(payload, {
           onSettled: () => {
             handleCloseSummary();
@@ -129,6 +135,7 @@ function BuyPrepaid() {
           onSuccess: (data) => {
             if (data?.paymentId) {
               setActivePaymentId(data.paymentId);
+              setTransactionId(data.transactionId);
             }
           },
           onError: (error) => {
@@ -263,7 +270,7 @@ function BuyPrepaid() {
 
               <PaymentOption
                 showMomo
-                showWallet={false}
+                showWallet={!!user?.id}
                 initialValues={{
                   fullName: user?.name || "",
                   email: user?.email || "",
@@ -443,7 +450,9 @@ function BuyPrepaid() {
       {activePaymentId && (
         <PaymentPolling
           paymentId={activePaymentId}
+          transactionId={transactionId}
           onClose={() => setActivePaymentId(null)}
+          isWallet={prepaidPayload?.paymentMethod === "wallet"}
         />
       )}
     </Container>

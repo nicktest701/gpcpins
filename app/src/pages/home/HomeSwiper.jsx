@@ -12,14 +12,13 @@ import "swiper/css/pagination";
 import { IMAGES } from "../../constants";
 import { Typography } from "@mui/material";
 import { Link } from "react-router-dom";
-import AnimatedContainer from "../../components/animations/AnimatedContainer";
 
 const HOME_CONTENT = [
   {
     id: 1,
     title: "Gab Powerful Consult",
     content:
-      "We provide you the best voucher and electricty services you can get across the globe!",
+      "We provide you the best checkers, airtime and electricty services you can get across the globe!",
     bgImage: IMAGES.main,
     low: IMAGES.main_low,
     path: "/",
@@ -28,19 +27,9 @@ const HOME_CONTENT = [
   },
   {
     id: 2,
-    title: "Prepaid Units",
-    content: "Buy your prepaid units at a faster rate",
-    bgImage: IMAGES.bgImage2,
-    low: IMAGES.bgImage2_low,
-    path: "/electricity",
-    btnText: "Buy Now",
-    color: "primary.contrastText",
-  },
-  {
-    id: 3,
-    title: "Checkers,Vouchers & Tickets",
+    title: "Checkers & Tickets",
     content:
-      "All sorts of application vouchers and tickets ranginging from waec exams checkers,shs placement,bus tickets,etc",
+      "All sorts of application checkers,vouchers and tickets ranginging from waec exams checkers,shs placement,bus tickets,etc",
     bgImage: IMAGES.checker2,
     low: IMAGES.bgImage1_low,
     path: "/evoucher",
@@ -48,10 +37,20 @@ const HOME_CONTENT = [
     color: "primary.contrastText",
   },
   {
+    id: 3,
+    title: "Prepaid Units",
+    content: "Purchase prepaid electricity units quickly and securely for all major meters.",
+    bgImage: IMAGES.bgImage2,
+    low: IMAGES.bgImage2_low,
+    path: "/electricity",
+    btnText: "Top Up Now",
+    color: "primary.contrastText",
+  },
+  {
     id: 4,
     title: "Airtime & Data Transfers",
     content:
-      "All sorts of application vouchers and tickets ranginging from waec exams vouchers,shs placement,bus tickets,etc",
+      "Fast and secure airtime and data transfers to all major networks across the country.",
     bgImage: IMAGES.bgImage5,
     low: IMAGES.bgImage1_low,
     path: "/airtime",
@@ -83,18 +82,19 @@ function HomeSwiper() {
         ({ id, title, content, bgImage, low, path, btnText, color }) => (
           <SwiperSlide key={id} className="swiper-slide">
             <div className="swiper-content">
-              <AnimatedContainer>
-                <h1 className="hero-title">{title}</h1>
+              <div>
+                <Typography variant="h1" className="hero-title">{title}</Typography>
                 <Typography
                   // className="content-text subtitle"
-                  variant='h5'
+                  variant='h2'
                   textAlign='center'
+                  fontWeight='normal'
                   paragraph
                   color={color}
                 >
                   {content}
                 </Typography>
-              </AnimatedContainer>
+              </div>
 
               <Link
                 to={path}
