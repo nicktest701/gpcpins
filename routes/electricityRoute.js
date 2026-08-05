@@ -125,16 +125,14 @@ router.get(
     // 2. Fetch payment record
     const payment = await knex("payments").select("*").where("id", id).first();
 
-    // console.log("payment is", payment);
-
-    // 3. Proper Existence Validation (Fixed the double 404 bug)
+    // 3. Proper Existence Validation
     if (!payment) {
       return res
         .status(404)
         .json({ message: "Payment transaction record not found." });
     }
 
-    // 4. If transaction is still processing, return early to save database load
+    // 4. Return early for non-success statuses to save database and network load
     if (payment.status === "pending") {
       return res.status(200).json({
         statusCode: "200",
@@ -143,7 +141,6 @@ router.get(
       });
     }
 
-    // 5. If transaction failed, return early with status details
     if (payment.status === "failed") {
       return res.status(200).json({
         statusCode: "200",
@@ -152,42 +149,39 @@ router.get(
       });
     }
 
-    // 6. If completed, fetch token & receipt metadata from the related table
-    const transactionDetails = await knex("electricity_transactions")
-      .select("info", "email", "phonenumber", "topup")
-      .where("payment_id", id)
-      .first();
+    // 5. Check if already processed locally to serve instantly
     if (Boolean(payment.is_processed)) {
-      const responseDetails = safeJSON(transactionDetails.info);
+      const transactionDetails = await knex("electricity_transactions")
+        .select("info")
+        .where("payment_id", id)
+        .first();
+
+      const responseDetails = safeJSON(transactionDetails?.info);
 
       return res.status(200).json({
         statusCode: "200",
-        status: "success", // Maps directly to your component status keys
+        status: "success",
         message: "Bill Payment processed successfully.",
         paymentResponseDetails: {
-          rechargeToken: responseDetails.rechargeToken || "N/A",
-          reciept:
-            responseDetails.reciept || responseDetails.receiptNumber || "N/A",
+          rechargeToken: responseDetails?.rechargeToken || "N/A",
+          receipt: responseDetails?.receipt || responseDetails?.receiptNumber || "N/A",
           amount: Number(responseDetails?.amount || 0),
-          openingBalance: Number(responseDetails.openingBalance || 0),
-          closingBalance: Number(responseDetails.closingBalance || 0),
-          receiptUrl: responseDetails.receiptUrl || "",
+          openingBalance: Number(responseDetails?.openingBalance || 0),
+          closingBalance: Number(responseDetails?.closingBalance || 0),
+          receiptUrl: responseDetails?.receiptUrl || "",
         },
       });
     }
 
+    // 6. Execute External Network Call for Unprocessed, non-pending records
     const paymentPayload = safeJSON(payment?.partner);
 
-    // 4. Execute External Network Call (Safe from DB locks)
     logger.info(
       `[ECGPay] meter=${paymentPayload?.billRequest?.accountNumber} category=PREPAID amount=${paymentPayload?.paymentDetails?.amount} by=${paymentPayload?.paymentDetails?.accountName}`,
     );
 
     try {
-      const paymentResponse = await brassicaPost(
-        "/billerPayment",
-        paymentPayload,
-      );
+      const paymentResponse = await brassicaPost("/billerPayment", paymentPayload);
 
       if (
         paymentResponse?.status !== "Success" ||
@@ -196,48 +190,52 @@ router.get(
         return res.status(422).json({ message: "Provider transaction failed" });
       }
 
-      // 5. Finalize Local Status on Success
       const responseDetails = paymentResponse?.paymentResponseDetails || {};
 
-      await knex("payments")
-        .update({
-          is_processed: true,
-        })
-        .where("id", id);
+      // 7. Atomically finalize database status using a transaction block
+      let transactionDetails;
+      await knex.transaction(async (trx) => {
+        await trx("payments")
+          .update({ is_processed: true })
+          .where("id", id);
 
-      await knex("electricity_transactions")
-        .update({
-          info: JSON.stringify({
-            domain: "Prepaid",
-            downloadLink: responseDetails?.receiptUrl,
-            ...responseDetails,
-          }),
-        })
-        .where("id", transactionId);
+        await trx("electricity_transactions")
+          .update({
+            info: JSON.stringify({
+              domain: "Prepaid",
+              downloadLink: responseDetails?.receiptUrl,
+              ...responseDetails,
+            }),
+          })
+          .where("id", transactionId);
 
-      if (payment?.user_id) {
-        await trx("notifications").insert({
-          id: generateId(),
-          user_id: payment?.user_id,
-          type: "prepaid",
-          title: "Prepaid Units",
-          body: `Payment made for prepaid meter: ${paymentPayload?.billRequest?.accountNumber} is completed. Recahrge Token: ${responseDetails?.rechargeToken || "N/A"}. Receipt: ${responseDetails?.receiptUrl || "N/A"}`,
-          link: responseDetails?.receiptUrl,
-          info: JSON.stringify({
-            downloadLink: responseDetails?.receiptUrl,
-          }),
-        });
-      }
+        // Fetch details within transaction context to ensure consistency
+        transactionDetails = await trx("electricity_transactions")
+          .select("email", "phonenumber")
+          .where("payment_id", id)
+          .first();
 
-      // 7. Standardized Payload Structure mapping to frontend expectations
+        if (payment?.user_id) {
+          await trx("notifications").insert({
+            id: generateId(),
+            user_id: payment?.user_id,
+            type: "prepaid",
+            title: "Prepaid Units",
+            body: `Payment made for prepaid meter: ${paymentPayload?.billRequest?.accountNumber} is completed. Recharge Token: ${responseDetails?.rechargeToken || "N/A"}. Receipt: ${responseDetails?.receiptUrl || "N/A"}`,
+            link: responseDetails?.receiptUrl,
+            info: JSON.stringify({ downloadLink: responseDetails?.receiptUrl }),
+          });
+        }
+      });
+
+      // 8. Send Immediate Response
       res.status(200).json({
         statusCode: "200",
-        status: "success", // Maps directly to your component status keys
+        status: "success",
         message: "Bill Payment processed successfully.",
         paymentResponseDetails: {
           rechargeToken: responseDetails?.rechargeToken || "N/A",
-          reciept:
-            responseDetails?.reciept || responseDetails?.receiptNumber || "N/A",
+          receipt: responseDetails?.receipt || responseDetails?.receiptNumber || "N/A",
           amount: Number(responseDetails?.amount || 0),
           openingBalance: Number(responseDetails?.openingBalance || 0),
           closingBalance: Number(responseDetails?.closingBalance || 0),
@@ -245,30 +243,34 @@ router.get(
         },
       });
 
+      // 9. Fire Asynchronous Messaging Tasks
       setImmediate(async () => {
-        const transaction = {
-          transactionId: paymentPayload?.billRequest?.transactionId,
-          number: paymentPayload?.billRequest?.accountNumber,
-          name: paymentPayload?.paymentDetails?.accountName,
-          amount: responseDetails?.amount,
-          token: responseDetails?.rechargeToken,
-          email: transactionDetails?.email,
-          phonenumber:
-            paymentPayload?.billRequest?.phoneNumber ||
-            transactionDetails?.phonenumber,
-          userId: payment?.user_id,
-          status: "completed",
-        };
+        try {
+          const transaction = {
+            transactionId: paymentPayload?.billRequest?.transactionId,
+            number: paymentPayload?.billRequest?.accountNumber,
+            name: paymentPayload?.paymentDetails?.accountName,
+            amount: responseDetails?.amount,
+            token: responseDetails?.rechargeToken,
+            email: transactionDetails?.email,
+            phonenumber: paymentPayload?.billRequest?.phoneNumber || transactionDetails?.phonenumber,
+            userId: payment?.user_id,
+            status: "completed",
+          };
 
-        // 8. Asynchronous Notifications (SMS & Email)
-        await sendElectricityMessage(transaction);
+          await sendElectricityMessage(transaction);
+        } catch (bgError) {
+          logger.error("[ECGPay Background Notification Error]:", bgError);
+        }
       });
+
     } catch (apiError) {
       logger.error("[ECGPay API Error]:", apiError);
       return res.status(422).json({ message: "Provider transaction failed" });
     }
   }),
 );
+
 
 router.get(
   "/:id",
@@ -587,7 +589,7 @@ router.delete(
 
 async function sendElectricityMessage(transaction) {
   if (transaction.status === "completed") {
-    const message = `Thank you for your purchase! ID: ${transaction?.transactionId}. METER NO: '${transaction?.number}' (${transaction?.name}) has successfully purchased PREPAID UNITS at an amount of ${currencyFormatter(transaction?.amount)}. Your TOKEN is: ${transaction?.token}.`;
+    const message = `Thank you for your purchase! ID: ${transaction?.transactionId}. METER NO: ${transaction?.number} (${transaction?.name}) has successfully purchased PREPAID UNITS at an amount of ${currencyFormatter(transaction?.amount)}. Your TOKEN is: ${transaction?.token}.`;
 
     // Send Mail and SMS to the User
     if (transaction?.email) {
