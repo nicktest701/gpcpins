@@ -1,7 +1,6 @@
 const nodemailer = require("nodemailer");
 const { resendMailText } = require("./mailText");
 const { getFileStream } = require("./uploadFile");
-// const { Resend } = require("resend");
 const { thankYouText } = (require = require("./mailText"));
 
 const transportMail = nodemailer.createTransport({
@@ -146,9 +145,51 @@ const sendReportMail = async (
   }
 };
 
+const sendPrepaidEmail = async (transaction) => {
+  const mailOptions = {
+    from: `GPC ${process.env.MAIL_CLIENT_USER}`,
+    sender: process.env.MAIL_CLIENT_USER,
+    to: [transaction.email],
+    subject: "Prepaid Units Confirmation",
+    text: "Prepaid units",
+    html: ecgText(
+      transaction.transactionId,
+      `Thank you for choosing our service! Your transaction is complete, and we appreciate your trust in us. If you have any questions or need further assistance, please don't hesitate to reach out. Wishing you a fantastic day ahead!.
+        Attached to this message,is a copy of your receipt. Please keep it for your records.
+        <div>       
+        Transaction Details:
+        <p>Transaction ID:${transaction.transactionId}</p>
+        <p>Meter No:${transaction.number}</p>
+        <p>Meter Name:${transaction.name}</p>
+        <p>Amount Paid:${transaction.amount}</p>
+        <p>Token:${transaction.token}</p>
+        </div>
+        <p>
+        In case units do not load automatically,Please enter the token on your meter to load your units.Thank you!</p>
+        `,
+    ),
+    attachments: [
+      {
+        filename: `${transaction.transactionId}-receipt.pdf`, // The file name the user will see
+        path: transaction.receiptUrl, // Nodemailer fetches this URL directly
+      },
+    ],
+  };
+
+  try {
+    const mailResult = await transportMail.sendMail(mailOptions);
+
+    return mailResult.data;
+  } catch (error) {
+    console.log(error);
+    //  throw error.message;
+  }
+};
+
 module.exports = {
   sendReportMail,
   sendMail,
   sendTicketMail,
   resendReceiptMail,
+  sendPrepaidEmail,
 };

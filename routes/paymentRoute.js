@@ -2174,6 +2174,7 @@ router.post(
   rlimit,
   asyncHandler(async (req, res) => {
     const payload = req.body;
+    console.log(payload)
 
     if (!payload?.transactionId) return res.sendStatus(204);
 
@@ -2233,7 +2234,7 @@ router.post(
         trx = await knex.transaction();
 
         const payment = await trx("vw_meter_payment_prepaid_transaction_view")
-          .where({ id: transactionId })
+          .where({ id: payment?.paymentId })
           .first();
 
         if (!payment) {
@@ -2300,9 +2301,9 @@ router.post(
         await redisClient.del(lockKey);
         // logger.error(err);
         console.error(err);
+        logger.error("[Webhook] Error processing callback payload:", err);
         res.sendStatus(500);
 
-        logger.error("[Webhook] Error processing callback payload:", err);
       }
     });
   }),

@@ -14,6 +14,10 @@ const { safeJSON } = require("../config/helpers");
 const { isValidUUID2 } = require("../config/validation");
 const logger = require("../utils/logger");
 const { brassicaPost } = require("../services/brassicaClient");
+const generateId = require("../config/generateId");
+const sendElectricityMail = require("../config/ecgMail");
+const { sendSMS } = require("../config/sms");
+const { sendPrepaidEmail } = require("../config/mail");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
@@ -109,6 +113,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id: transactionId } = req.query;
     const { id } = req.params;
+    const { sub: userId } = req.user;
 
     // 1. Strict Validation Check
     if (!id || !transactionId) {
@@ -147,13 +152,12 @@ router.get(
       });
     }
 
+    // 6. If completed, fetch token & receipt metadata from the related table
+    const transactionDetails = await knex("electricity_transactions")
+      .select("info", "email", "topup")
+      .where("payment_id", id)
+      .first();
     if (Boolean(payment.is_processed)) {
-      // 6. If completed, fetch token & receipt metadata from the related table
-      const transactionDetails = await knex("electricity_transactions")
-        .select("info", "topup")
-        .where("payment_id", id)
-        .first();
-
       const responseDetails = safeJSON(transactionDetails.info);
 
       return res.status(200).json({
@@ -179,32 +183,21 @@ router.get(
       `[ECGPay] meter=${paymentPayload?.billRequest?.accountNumber} category=PREPAID amount=${paymentPayload?.paymentDetails?.amount} by=${paymentPayload?.paymentDetails?.accountName}`,
     );
 
-    // console.log(paymentPayload);
-
-    // return res.status(200).json({
-    //   statusCode: "200",
-    //   status: "pending",
-    //   message: "Payment transaction is still processing.",
-    // });
-
     try {
-      // const paymentResponse = await brassicaPost(
-      //   "/billerPayment",
-      //   paymentPayload,
-      // );
+      const paymentResponse = await brassicaPost(
+        "/billerPayment",
+        paymentPayload,
+      );
 
-      // if (
-      //   paymentResponse?.status !== "Success" ||
-      //   paymentResponse?.statusCode !== "200"
-      // ) {
-      //   return res.status(422).json({ message: "Provider transaction failed" });
-      // }
-
-      // console.log(paymentResponse);
+      if (
+        paymentResponse?.status !== "Success" ||
+        paymentResponse?.statusCode !== "200"
+      ) {
+        return res.status(422).json({ message: "Provider transaction failed" });
+      }
 
       // 5. Finalize Local Status on Success
-      // const responseDetails = paymentResponse?.paymentResponseDetails || {};
-      const responseDetails = {};
+      const responseDetails = paymentResponse?.paymentResponseDetails || {};
 
       await knex("payments")
         .update({
@@ -217,11 +210,24 @@ router.get(
           info: JSON.stringify({
             domain: "Prepaid",
             downloadLink: responseDetails?.receiptUrl,
-            // orderNo,
             ...responseDetails,
           }),
         })
         .where("id", transactionId);
+
+      if (payment?.user_id) {
+        await trx("notifications").insert({
+          id: generateId(),
+          user_id: payment?.user_id,
+          type: "prepaid",
+          title: "Prepaid Units",
+          body: `Payment made for prepaid meter: ${paymentPayload?.billRequest?.accountNumber} is completed. Recahrge Token: ${responseDetails?.rechargeToken || "N/A"}. Receipt: ${responseDetails?.receiptUrl || "N/A"}`,
+          link: responseDetails?.receiptUrl,
+          info: JSON.stringify({
+            downloadLink: responseDetails?.receiptUrl,
+          }),
+        });
+      }
 
       // 7. Standardized Payload Structure mapping to frontend expectations
       res.status(200).json({
@@ -237,6 +243,22 @@ router.get(
           closingBalance: Number(responseDetails?.closingBalance || 0),
           receiptUrl: responseDetails?.receiptUrl || "",
         },
+      });
+
+      setImmediate(async () => {
+        const transaction = {
+          transactionId: paymentPayload?.billRequest?.transactionId,
+          number: paymentPayload?.billRequest?.accountNumber,
+          name: paymentPayload?.paymentDetails?.accountName,
+          amount: responseDetails?.amount,
+          token: responseDetails?.rechargeToken,
+          email: transactionDetails?.email,
+          phonenumber: transactionDetails?.phonenumber,
+          userId: payment?.user_id,
+        };
+
+        // 8. Asynchronous Notifications (SMS & Email)
+        await sendElectricityMessage(transaction);
       });
     } catch (apiError) {
       logger.error("[ECGPay API Error]:", apiError);
@@ -559,5 +581,22 @@ router.delete(
     res.status(200).json("Transaction removed!");
   }),
 );
+
+async function sendElectricityMessage(transaction) {
+  if (transaction.status === "completed") {
+    const message = `Thank you for your purchase! ID: ${transaction?.transactionId}. METER NO: '${transaction?.number}' (${transaction?.name}) has successfully purchased PREPAID UNITS at an amount of ${currencyFormatter(transaction?.amount)}. Your TOKEN is: ${transaction?.token}.`;
+
+    // Send Mail and SMS to the User
+    if (transaction?.email) {
+      await sendPrepaidEmail(transaction);
+    }
+
+    if (transaction?.phonenumber) {
+      await sendSMS(message, transaction?.phonenumber);
+    }
+
+    limit(() => Promise.all([agentMail]));
+  }
+}
 
 module.exports = router;
