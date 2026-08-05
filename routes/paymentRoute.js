@@ -2234,7 +2234,7 @@ router.post(
         trx = await knex.transaction();
 
         const payment = await trx("vw_meter_payment_prepaid_transaction_view")
-          .where({ id: payment?.paymentId })
+          .where({ id:transactionId})
           .first();
 
         if (!payment) {
@@ -2256,7 +2256,7 @@ router.post(
               : "failed";
 
         await trx("payments")
-          .where({ id: transactionId })
+          .where({ id:  payment?.paymentId  })
           .andWhereNot({ status: "completed" })
           .update({
             status: newStatus,

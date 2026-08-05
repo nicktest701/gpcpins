@@ -18,6 +18,7 @@ const generateId = require("../config/generateId");
 const sendElectricityMail = require("../config/ecgMail");
 const { sendSMS } = require("../config/sms");
 const { sendPrepaidEmail } = require("../config/mail");
+const currencyFormatter = require("../config/currencyFormatter");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
@@ -113,7 +114,6 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id: transactionId } = req.query;
     const { id } = req.params;
-    const { sub: userId } = req.user;
 
     // 1. Strict Validation Check
     if (!id || !transactionId) {
@@ -154,7 +154,7 @@ router.get(
 
     // 6. If completed, fetch token & receipt metadata from the related table
     const transactionDetails = await knex("electricity_transactions")
-      .select("info", "email", "topup")
+      .select("info", "email", "phonenumber", "topup")
       .where("payment_id", id)
       .first();
     if (Boolean(payment.is_processed)) {
@@ -253,8 +253,11 @@ router.get(
           amount: responseDetails?.amount,
           token: responseDetails?.rechargeToken,
           email: transactionDetails?.email,
-          phonenumber: transactionDetails?.phonenumber,
+          phonenumber:
+            paymentPayload?.billRequest?.phoneNumber ||
+            transactionDetails?.phonenumber,
           userId: payment?.user_id,
+          status: "completed",
         };
 
         // 8. Asynchronous Notifications (SMS & Email)
@@ -594,8 +597,6 @@ async function sendElectricityMessage(transaction) {
     if (transaction?.phonenumber) {
       await sendSMS(message, transaction?.phonenumber);
     }
-
-    limit(() => Promise.all([agentMail]));
   }
 }
 

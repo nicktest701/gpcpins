@@ -280,11 +280,11 @@ function BuyPrepaid() {
                   //validate amount before proceeding
                   if (!isValid) {
                     //validate amount here
-                    if (amount < 10) {
+                    if (amount < 1) {
                       customDispatch(
                         globalAlertType(
                           "error",
-                          "Minimum amount you can buy is GHS 10.",
+                          "Minimum amount you can buy is GHS 1.",
                         ),
                       );
                       setError("amount", {
