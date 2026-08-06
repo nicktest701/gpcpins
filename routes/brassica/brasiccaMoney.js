@@ -10,6 +10,7 @@ async function sendBrassicaMoney(payload) {
       accountName,
       amount,
       transaction_Id,
+      debitNaration='Purchase Prepaid Unit'
     } = payload;
 
     // console.log(payload)
@@ -38,7 +39,7 @@ async function sendBrassicaMoney(payload) {
       amount: ["233543772591", "0543772591"].includes(accountNumber)
         ? '0.01'
         : amount,
-      debitNaration: "Purchase prepaid units",
+      debitNaration,
       transactionId,
     });
 

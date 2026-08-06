@@ -589,9 +589,7 @@ router.delete(
 
 async function sendElectricityMessage(transaction) {
   if (transaction.status === "completed") {
-    const message = `Thank you for your purchase! ID: ${transaction?.transactionId}. METER NO: ${transaction?.number} (${transaction?.name}) has successfully purchased PREPAID UNITS at an amount of ${currencyFormatter(transaction?.amount)}. Your TOKEN is: ${transaction?.token}.`;
-
-// console.log(transaction?.phonenumber, transaction?.email,)
+    const message = `METER NO: ${transaction?.number} (${transaction?.name}) has successfully purchased PREPAID UNITS at an amount of ${currencyFormatter(transaction?.amount)}. Your Recharge Token is: ${transaction?.token}.Trans.ID: ${transaction?.transactionId}.`;
 
     // Send Mail and SMS to the User
     if (transaction?.phonenumber) {

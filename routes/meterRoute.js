@@ -12,6 +12,7 @@ const knex = require("../db/knex");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const { verifyToken } = require("../middlewares/verifyToken");
 const { getMeter } = require("../services/brassica/token.manager");
+const { brassicaPost } = require("../services/brassicaClient");
 
 router.get(
   "/",

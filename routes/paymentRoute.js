@@ -1074,6 +1074,7 @@ router.post(
         accountName: info?.name || userName || "GPC Customer",
         amount: Number(amount).toFixed(2),
         transaction_Id: `prepaid-${transaction_id}`,
+        debitNaration:'Purchase Prepaid Units'
       };
 
       try {
@@ -1412,7 +1413,7 @@ router.post(
 
       // ---------------- GENERATE IDS ----------------
       const paymentId = generateId();
-      const transactionId = generateId();
+      // const transactionId = generateId();
       const reference = randomBytes(24).toString("hex");
 
       // ---------------- CREATE PAYMENT ----------------
@@ -1453,13 +1454,15 @@ router.post(
         accountNumber: userPhone,
         accountName: name || "GPC Customer",
         amount: Number(amount).toFixed(2)?.toString(),
-        transaction_Id: `wallet-${transactionId}`,
+        transaction_Id: `wallet-${paymentId}`,
+        debitNaration:'Top up GPC Wallet Amount'
       };
 
       try {
         await sendBrassicaMoney(momoPayload);
         paymentStatus = "pending";
       } catch (error) {
+        console.log(error)
         return res
           .status(400)
           .json("Error processing transaction.Please try again later!");
@@ -1500,10 +1503,12 @@ router.post(
 
       await trx.commit();
 
+      // console.log("done")
+
       return res.status(200).json({
         paymentId,
         reference: reference,
-        transactionId,
+        transactionId:paymentId,
         status: paymentStatus,
         categoryType: "wallet",
       });
@@ -1552,7 +1557,7 @@ router.post(
         if (balance < 1000) {
           await notifyLowBalance(balance);
         }
-        return res.status(401).json("Service Not Available.Try again later");
+        return res.status(401).json("Service not available.Try again later!");
       }
 
       if (!type || !["Airtime", "Bulk"].includes(type)) {
@@ -1744,7 +1749,7 @@ router.post(
         if (balance < 1000) {
           await notifyLowBalance(balance);
         }
-        return res.status(401).json("Service Not Available.Try again later");
+        return res.status(401).json("Service not available.Try again later!");
       }
 
       if (!type || type !== "Bundle") {
@@ -2240,6 +2245,7 @@ router.post(
         trx = await knex.transaction();
 
         const [service, transaction_id] = transactionId?.split("-");
+     
         let payment;
         if (service === "prepaid") {
           payment = await trx("vw_meter_payment_prepaid_transaction_view")
@@ -2248,7 +2254,7 @@ router.post(
         }
         if (service === "wallet") {
           payment = await trx("vw_payments_wallet_transactions")
-            .where({ walletTransactionId: transaction_id })
+            .where({ paymentId: transaction_id })
             .first();
         }
 

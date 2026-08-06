@@ -1,6 +1,6 @@
 const nodemailer = require("nodemailer");
 const { resendMailText, ecgText } = require("./mailText");
-const { getFileStream } = require("./uploadFile");
+const { getFileStream, getReceiptBuffer } = require("./uploadFile");
 const currencyFormatter = require("./currencyFormatter");
 const { thankYouText } = (require = require("./mailText"));
 
@@ -147,6 +147,8 @@ const sendReportMail = async (
 };
 
 const sendPrepaidEmail = async (transaction) => {
+  const pdfBuffer = await getReceiptBuffer(transaction?.receiptUrl);
+
   const mailOptions = {
     from: `GPC ${process.env.MAIL_CLIENT_USER}`,
     sender: process.env.MAIL_CLIENT_USER,
@@ -171,7 +173,8 @@ const sendPrepaidEmail = async (transaction) => {
     attachments: [
       {
         filename: `${transaction.transactionId}-receipt.pdf`, // The file name the user will see
-        path: transaction.receiptUrl, // Nodemailer fetches this URL directly
+        content: pdfBuffer,
+        contentType: "application/pdf",
       },
     ],
   };

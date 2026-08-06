@@ -200,11 +200,10 @@ function Header() {
             sx={{
               display: "flex",
               alignItems: "center",
-              gap: { xs: 0.5, sm: 1 },
-              flexWrap: "wrap",
+              flexWrap: "nowrap",
             }}
           >
-            <span>Download our free mobile apps here.</span>
+            <span style={{marginRight:'5px'}}>Download our free mobile apps</span>
             <Button
               component={Link}
               to="/downloads"

@@ -113,15 +113,10 @@ function Prepaid() {
 
             <Divider sx={{ my: 3 }} />
 
-          
-
             <Alert severity="warning" variant="outlined" sx={{ mb: 2 }}>
-              <AlertTitle sx={{ fontWeight: "bold" }}>
-                Verification
-              </AlertTitle>
-              You can verify your meter using your{" "}
-              <strong>Meter Number</strong>, <strong>STs Number</strong>, or{" "}
-              <strong>SPN Number</strong>.
+              <AlertTitle sx={{ fontWeight: "bold" }}>Verification</AlertTitle>
+              You can verify your meter using your <strong>Meter Number</strong>
+              , <strong>STs Number</strong>, or <strong>SPN Number</strong>.
             </Alert>
 
             <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -159,36 +154,6 @@ function Prepaid() {
                     />
                   )}
                 />
-                {/* <Controller
-                  name="name"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Meter Name (Optional)"
-                      placeholder="e.g. Jane Doe"
-                      fullWidth
-                      error={!!errors.name}
-                      helperText={errors.name?.message}
-                      inputProps={{ style: { textTransform: "uppercase" } }}
-                    />
-                  )}
-                /> */}
-                {/* <Controller
-                  name="confirmNumber"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Confirm Meter ID"
-                      placeholder="e.g. Q788798766"
-                      fullWidth
-                      error={!!errors.confirmNumber}
-                      helperText={errors.confirmNumber?.message}
-                      inputProps={{ style: { textTransform: "uppercase" } }}
-                    />
-                  )}
-                /> */}
 
                 <LoadingButton
                   type="submit"
@@ -207,6 +172,11 @@ function Prepaid() {
                 </LoadingButton>
               </Stack>
             </form>
+            <Typography variant="body2" fontStyle='italic'>
+              In case of delayed / missing recharge tokens,Please send a message
+              to our support lines ( <a href="tel:0800981981">0800981981</a> or <a href="tel:+233593381045">+233 59 338 1045</a> ) with your transaction
+              ID, phone number, and issue details so our team can attend to you quickly.
+            </Typography>
           </Paper>
         </AnimatedContainer>
         <MeterDetailsDialog

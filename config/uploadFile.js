@@ -280,6 +280,12 @@ function getFileStream(path, transactionId) {
   return fileStream;
 }
 
+async function getReceiptBuffer(url) {
+  const response = await fetch(url);
+  const arrayBuffer = await response.arrayBuffer(); // NOT response.text()
+  return Buffer.from(arrayBuffer);
+}
+
 //
 // -----------------------------------------------------------------------------
 // EXPORTS
@@ -294,4 +300,5 @@ module.exports = {
   deleteFile,
   deleteServerFile,
   getFileStream,
+  getReceiptBuffer
 };
