@@ -1073,7 +1073,7 @@ router.post(
         accountNumber: userPhone,
         accountName: info?.name || userName || "GPC Customer",
         amount: Number(amount).toFixed(2),
-        transaction_Id: transaction_id,
+        transaction_Id: `prepaid-${transaction_id}`,
       };
 
       try {
@@ -1453,11 +1453,11 @@ router.post(
         accountNumber: userPhone,
         accountName: name || "GPC Customer",
         amount: Number(amount).toFixed(2)?.toString(),
-        transaction_Id: transactionId,
+        transaction_Id: `wallet-${transactionId}`,
       };
 
       try {
-        // await sendBrassicaMoney(momoPayload);
+        await sendBrassicaMoney(momoPayload);
         paymentStatus = "pending";
       } catch (error) {
         return res
@@ -1492,14 +1492,13 @@ router.post(
         issuer: name || "GPC Customer",
         type: "credit",
         comment: `wallet top-up`,
+        phonenumber: userPhone,
         amount: amount,
         status: paymentStatus,
         reference,
       });
 
       await trx.commit();
-
-    
 
       return res.status(200).json({
         paymentId,
@@ -2237,28 +2236,21 @@ router.post(
             `status=${status}(${statusCode}) approvalCode=${institutionApprovalCode}`,
         );
 
-        // 2|gpc_test  | {
-        // 2|gpc_test  |   statusCode: '200',
-        // 2|gpc_test  |   status: 'SUCCESSFUL',
-        // 2|gpc_test  |   message: 'Request processed successfully.',
-        // 2|gpc_test  |   institutionApprovalCode: '85969217060',
-        // 2|gpc_test  |   transactionId: 'GPC5365tet055520509',
-        // 2|gpc_test  |   extralTransactionId: 'd3b428b3-c35d-470e-8711-235fd3b1cf5f',
-        // 2|gpc_test  |   reason: null
-        // 2|gpc_test  | }
-
-        // ── TODO: Replace with your business logic ─────────────────────────────
-        // Examples:
-        //   await db.transactions.updateOne({ transactionId }, { status, statusCode, institutionApprovalCode });
-        //   await notifyUser(transactionId, status);
-        //   await publishToQueue("transaction.completed", payload);
-        // ──────────────────────────────────────────────────────────────────────
-
+      
         trx = await knex.transaction();
 
-        const payment = await trx("vw_meter_payment_prepaid_transaction_view")
-          .where({ id: transactionId })
-          .first();
+        const [service, transaction_id] = transactionId?.split("-");
+        let payment;
+        if (service === "prepaid") {
+          payment = await trx("vw_meter_payment_prepaid_transaction_view")
+            .where({ id: transaction_id })
+            .first();
+        }
+        if (service === "wallet") {
+          payment = await trx("vw_payments_wallet_transactions")
+            .where({ walletTransactionId: transaction_id })
+            .first();
+        }
 
         if (!payment) {
           throw new Error("Transaction does not exist!");
@@ -3310,7 +3302,9 @@ async function handlePostPaymentEvents(payment, status, payload) {
     queueMicrotask(async () => {
       try {
         if (isSuccess) {
-          logger.info(`[Webhook] Transaction ${payment?.id} SUCCEEDED.`);
+          logger.info(
+            `[Webhook] Transaction ${payment?.id || payment?.walletTransactionId} SUCCEEDED.`,
+          );
 
           switch (service) {
             case "voucher":
@@ -3348,7 +3342,7 @@ async function handlePostPaymentEvents(payment, status, payload) {
                   payment.phonenumber || info?.user?.phonenumber || reference,
                 amount,
                 transaction: {
-                  id: payment.id,
+                  id: payment.id || payment?.walletTransactionId,
                   paymentReference: reference,
                   service,
                   status: status,
@@ -3369,7 +3363,7 @@ async function handlePostPaymentEvents(payment, status, payload) {
             reason: "Payment failed",
           });
           logger.warn(
-            `[Webhook] Transaction ${payment?.id} FAILED (code=${payload?.statusCode}).`,
+            `[Webhook] Transaction ${payment?.id || payment?.walletTransactionId} FAILED (code=${payload?.statusCode}).`,
           );
         }
       } catch (err) {
