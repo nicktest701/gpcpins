@@ -52,7 +52,7 @@ async function brassicaPost(endpoint, body = {}, retry = true) {
 
       // console.log("response is", response);
   } catch (err) {
-    console.log("err is", err);
+    // console.log("err is", err);
 
     // Network / timeout errors
     if (err.code === "ECONNABORTED") {

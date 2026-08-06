@@ -19,6 +19,7 @@ import {
   useTheme,
   Skeleton,
   Chip,
+  AlertTitle,
 } from "@mui/material";
 import {
   VerifiedRounded,
@@ -203,7 +204,7 @@ function AddMeter() {
     <Dialog
       open={addMeter.open}
       onClose={handleClose}
-      maxWidth="sm"
+      maxWidth="xs"
       fullWidth
       TransitionComponent={Transition}
       PaperProps={{
@@ -220,8 +221,8 @@ function AddMeter() {
       {/* ---------- Header ---------- */}
       <Box
         sx={{
-          p: 3,
-          pb: 1.5,
+          p: 1.5,
+
           background: `linear-gradient(135deg, ${alpha(
             theme.palette.primary.main,
             0.06,
@@ -237,8 +238,8 @@ function AddMeter() {
           <Stack direction="row" alignItems="center" spacing={1.5}>
             <Box
               sx={{
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 borderRadius: "50%",
                 bgcolor: "primary.main",
                 display: "flex",
@@ -271,7 +272,7 @@ function AddMeter() {
         </Stack>
       </Box>
 
-      <DialogContent sx={{ p: 3, pt: 2.5 }}>
+      <DialogContent sx={{ p: 2 }}>
         {/* ---------- Stepper ---------- */}
         <Stepper
           activeStep={currentStep}
@@ -302,76 +303,90 @@ function AddMeter() {
         </Stepper>
 
         {/* ---------- STEP 1: Verification Form ---------- */}
+
         {!verifiedNumber && (
-          <form onSubmit={handleSubmit(onVerify)}>
-            <Stack spacing={3}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Enter the meter ID to verify the account details before saving.
-              </Typography>
+          <>
+            <Alert severity="warning" variant="outlined" sx={{ mb: 3,fontSize:12 }}>
+              <AlertTitle sx={{ fontWeight: "bold" }}>Verification</AlertTitle>
+              You can verify your meter using your <strong>Meter Number</strong>
+              , <strong>STs Number</strong>, or <strong>SPN Number</strong>.
+            </Alert>
 
-              <Controller
-                name="number"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <TextField
-                    {...field}
-                    label="Meter ID"
-                    placeholder="e.g. Q788798766"
-                    fullWidth
-                    autoFocus
-                    error={!!fieldState.error}
-                    helperText={fieldState.error?.message}
-                    onChange={(e) =>
-                      field.onChange(e.target.value.toUpperCase())
-                    }
-                    InputProps={{
-                      startAdornment: (
-                        <ReceiptIcon
-                          fontSize="small"
-                          sx={{ color: "text.secondary", mr: 1 }}
-                        />
-                      ),
-                    }}
-                  />
-                )}
-              />
+            <form onSubmit={handleSubmit(onVerify)}>
+              <Stack spacing={2.5}>
+                {/* <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 1 }}
+                >
+                  Enter the meter ID to verify the account details before
+                  saving.
+                </Typography> */}
 
-              <Controller
-                name="name"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <TextField
-                    {...field}
-                    label="Meter Name (Optional)"
-                    placeholder="e.g. JANE DOE"
-                    fullWidth
-                    error={!!fieldState.error}
-                    helperText={fieldState.error?.message}
-                    onChange={(e) =>
-                      field.onChange(e.target.value.toUpperCase())
-                    }
-                    inputProps={{ style: { textTransform: "uppercase" } }}
-                    InputProps={{
-                      startAdornment: (
-                        <PersonIcon
-                          fontSize="small"
-                          sx={{ color: "text.secondary", mr: 1 }}
-                        />
-                      ),
-                    }}
-                  />
-                )}
-              />
-            </Stack>
-          </form>
+                <Controller
+                  name="number"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <TextField
+                      {...field}
+                      label="Meter Number/STs Number /SPN Number"
+                      placeholder="e.g. Q788798766"
+                      fullWidth
+                      autoFocus
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                      onChange={(e) =>
+                        field.onChange(e.target.value.toUpperCase())
+                      }
+                      InputProps={{
+                        startAdornment: (
+                          <ReceiptIcon
+                            fontSize="small"
+                            sx={{ color: "text.secondary", mr: 1 }}
+                          />
+                        ),
+                      }}
+                    />
+                  )}
+                />
+
+                <Controller
+                  name="name"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <TextField
+                      {...field}
+                      label="Meter Name (Optional)"
+                      placeholder="e.g. JANE DOE"
+                      fullWidth
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                      onChange={(e) =>
+                        field.onChange(e.target.value.toUpperCase())
+                      }
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                      InputProps={{
+                        startAdornment: (
+                          <PersonIcon
+                            fontSize="small"
+                            sx={{ color: "text.secondary", mr: 1 }}
+                          />
+                        ),
+                      }}
+                    />
+                  )}
+                />
+              </Stack>
+            </form>
+          </>
         )}
 
         {/* ---------- STEP 2: Verification Result ---------- */}
         {verifiedNumber && (
-          <Stack spacing={3}>
+          <Stack spacing={2}>
             {/* Loading */}
             {isLoading && (
-              <Stack spacing={2.5} sx={{ mt: 1 }}>
+              <Stack spacing={1.5} sx={{ mt: 1 }}>
                 {[...Array(4)].map((_, i) => (
                   <Stack
                     key={i}
@@ -420,14 +435,14 @@ function AddMeter() {
               <Paper
                 elevation={0}
                 sx={{
-                  p: 3,
+                  p: 2,
                   borderRadius: 3,
                   border: `1px solid ${alpha(theme.palette.success.main, 0.3)}`,
                   bgcolor: alpha(theme.palette.success.light, 0.08),
                   backdropFilter: "blur(2px)",
                 }}
               >
-                <Stack spacing={2}>
+                <Stack spacing={1}>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <VerifiedRounded color="success" />
                     <Typography fontWeight={700} color="success.main">
@@ -487,8 +502,8 @@ function AddMeter() {
       {/* ---------- Actions ---------- */}
       <DialogActions
         sx={{
-          p: 3,
-          pt: 0,
+          p: 2,
+          pt: 1,
           gap: 1.5,
           borderTop: `1px solid ${theme.palette.divider}`,
           bgcolor: alpha(theme.palette.background.default, 0.4),
@@ -503,7 +518,7 @@ function AddMeter() {
             sx={{
               borderRadius: 2,
               textTransform: "none",
-              fontWeight: 700,
+              // fontWeight: 700,
               boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.25)}`,
               "&:hover": {
                 boxShadow: `0 12px 32px ${alpha(theme.palette.primary.main, 0.35)}`,
@@ -519,7 +534,7 @@ function AddMeter() {
               variant="outlined"
               color="inherit"
               onClick={goBack}
-              startIcon={<ArrowBackIcon />}
+              // startIcon={<ArrowBackIcon />}
               sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600 }}
             >
               Back
@@ -534,7 +549,7 @@ function AddMeter() {
               sx={{
                 borderRadius: 2,
                 textTransform: "none",
-                fontWeight: 700,
+                // fontWeight: 700,
                 boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.25)}`,
                 "&:hover": {
                   boxShadow: `0 12px 32px ${alpha(theme.palette.primary.main, 0.35)}`,

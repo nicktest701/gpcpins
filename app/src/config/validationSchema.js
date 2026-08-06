@@ -512,22 +512,34 @@ export const prepaidMeterValidationSchema = object().shape({
   //   .uppercase()
   //   .required("Required*")
   //   .matches(/^[a-zA-Z]\d{9}$/, "Invalid Meter Number"),
-  number: mixed()
-    .required("Meter ID is required")
-    .test("is-valid-meter-id", "Invalid meter Number!", (value) => {
-      if (value === undefined || value === null) return false;
+  // number: mixed()
+  //   .required("Meter ID is required")
+  //   .test("is-valid-meter-id", "Invalid meter Number!", (value) => {
+  //     if (value === undefined || value === null) return false;
 
-      // Convert to string to handle both numbers and strings uniformly
-      const stringValue = String(value).trim();
+  //     // Convert to string to handle both numbers and strings uniformly
+  //     const stringValue = String(value).trim();
 
-      // Definition of allowed formats
-      const is11DigitNumber = /^\d{11}$/.test(stringValue);
-      const isAlphanumericP10Digit = /^[a-zA-Z]\d{9}$/.test(stringValue);
-      const is13DigitNumber = /^\d{13}$/.test(stringValue);
+  //     // Definition of allowed formats
+  //     const is11DigitNumber = /^\d{11}$/.test(stringValue);
+  //     const isAlphanumericP10Digit = /^[a-zA-Z]\d{9}$/.test(stringValue);
+  //     const is13DigitNumber = /^\d{13}$/.test(stringValue);
 
-      // Return true if it matches any of the three formats
-      return is11DigitNumber || isAlphanumericP10Digit || is13DigitNumber;
-    }),
+  //     // Return true if it matches any of the three formats
+  //     return is11DigitNumber || isAlphanumericP10Digit || is13DigitNumber;
+  //   }),
+number:string()
+  .required("Required*")
+  .trim()
+  .matches(
+    /^[a-zA-Z0-9-]{10,20}$/, 
+    "Invalid meter Number! Must be 10-20 characters long and can only contain letters, numbers, or dashes."
+  )
+  .test("has-alphanumeric", "Must contain at least one letter or number", (value) => {
+    // Ensures the input isn't just a string of dashes (e.g., "----------")
+    if (!value) return false;
+    return /[a-zA-Z0-9]/.test(value);
+  }),
 
   name: string().test("isValidName", "", (value) => {
     if (!value?.trim()) {
@@ -981,29 +993,29 @@ export const addBusValidationSchema = () => {
 };
 
 export const paymentValidationSchema = object({
-  // fullName: string().test("isValidName", "", (value) => {
-  //   if (!value?.trim()) {
-  //     return true;
-  //   }
+  fullName: string().test("isValidName", "", (value) => {
+    if (!value?.trim()) {
+      return true;
+    }
 
-  //   if (!isValidName(value)) {
-  //     throw new ValidationError("Invalid name format", value, "fullName");
-  //   }
+    if (!isValidName(value)) {
+      throw new ValidationError("Invalid name format", value, "fullName");
+    }
 
-  //   return true;
-  // }),
+    return true;
+  }),
 
-  // email: string().test("isValidEmail", "", (value) => {
-  //   if (!value?.trim()) {
-  //     return true;
-  //   }
+  email: string().test("isValidEmail", "", (value) => {
+    if (!value?.trim()) {
+      return true;
+    }
 
-  //   if (!isValidEmail(value)) {
-  //     throw new ValidationError("Invalid email format", value, "email");
-  //   }
+    if (!isValidEmail(value)) {
+      throw new ValidationError("Invalid email format", value, "email");
+    }
 
-  //   return true;
-  // }),
+    return true;
+  }),
 
   paymentMethod: string()
     .oneOf(["momo", "wallet"], "Please select a payment method")

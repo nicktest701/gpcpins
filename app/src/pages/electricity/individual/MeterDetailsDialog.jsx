@@ -10,8 +10,6 @@ import {
   Box,
   alpha,
   useTheme,
-  Chip,
-  Divider,
   Button,
   Paper,
 } from "@mui/material";
@@ -84,7 +82,7 @@ const MeterDetailsDialog = ({ open, onClose, meter }) => {
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="sm"
+      maxWidth="xs"
       fullWidth
       PaperProps={{
         elevation: 8,
@@ -115,8 +113,8 @@ const MeterDetailsDialog = ({ open, onClose, meter }) => {
           <Stack direction="row" alignItems="center" spacing={1.5}>
             <Box
               sx={{
-                width: 40,
-                height: 40,
+                width: 28,
+                height: 28,
                 borderRadius: "50%",
                 bgcolor: "primary.main",
                 display: "flex",
@@ -145,11 +143,11 @@ const MeterDetailsDialog = ({ open, onClose, meter }) => {
         </Stack>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3, pt: 2.5, my: 1 }}>
+      <DialogContent sx={{ p: 2, my: 1 }}>
         <Paper
           variant="outlined"
           sx={{
-            p: 2.5,
+            p: 2,
             borderRadius: 3,
             bgcolor: "whitesmoke",
             // borderColor: alpha(theme.palette.divider, 0.6),
@@ -183,8 +181,8 @@ const MeterDetailsDialog = ({ open, onClose, meter }) => {
 
       <DialogActions
         sx={{
-          p: 3,
-          pt: 0,
+          p: 2,
+          pt: 1,
           gap: 1.5,
           borderTop: `1px solid ${theme.palette.divider}`,
           bgcolor: alpha(theme.palette.background.default, 0.4),
@@ -193,6 +191,7 @@ const MeterDetailsDialog = ({ open, onClose, meter }) => {
         <Button
           onClick={onClose}
           variant="outlined"
+           size="large"
           color="inherit"
           fullWidth
           sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600 }}
@@ -202,10 +201,11 @@ const MeterDetailsDialog = ({ open, onClose, meter }) => {
         <Button
           variant="contained"
           fullWidth
+          size="large"
           sx={{
             borderRadius: 2,
             textTransform: "none",
-            fontWeight: 700,
+            // fontWeight: 700,
             boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.25)}`,
           }}
           onClick={handleBuyPrepaid}

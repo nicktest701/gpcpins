@@ -289,7 +289,7 @@ function BuyPrepaid() {
                       );
                       setError("amount", {
                         type: "manual",
-                        message: "Minimum amount you can buy is GHS 10.",
+                        message: "Minimum amount you can buy is GHS 1.",
                       });
                       return;
                     }
@@ -323,7 +323,7 @@ function BuyPrepaid() {
         maxWidth="xs"
         PaperProps={{
           sx: {
-            borderRadius: 3,
+            borderRadius: 4,
             overflow: "hidden",
           },
         }}
@@ -335,7 +335,7 @@ function BuyPrepaid() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            py: 2,
+            py: 1.5,
           }}
         >
           <Stack direction="row" spacing={1} alignItems="center">
@@ -352,8 +352,8 @@ function BuyPrepaid() {
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers sx={{ p: 3, bgcolor: "background.default" }}>
-          <Stack spacing={2}>
+        <DialogContent dividers sx={{ p: 2, bgcolor: "background.default" }}>
+          <Stack spacing={1}>
             <Paper
               elevation={0}
               sx={{
@@ -366,7 +366,7 @@ function BuyPrepaid() {
             >
               <Stack spacing={1}>
                 <Typography variant="subtitle1" fontWeight="bold">
-                  Meter Details
+                  Payment Summary
                 </Typography>
                 <CheckOutItem
                   title="Meter Number"
@@ -377,24 +377,12 @@ function BuyPrepaid() {
                   title="Meter Type"
                   value={meterDetails.type || "N/A"}
                 />
-              </Stack>
-            </Paper>
+           
+           
             {/* Ticket Summary */}
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2,
-                bgcolor: "background.paper",
-                borderRadius: 2,
-                border: "1px solid",
-                borderColor: "divider",
-              }}
-            >
-              <Typography variant="subtitle1" fontWeight="bold" pb={2}>
-                Payment Summary
-              </Typography>
-
-              <Stack spacing={1}>
+          
+           
+            
                 <CheckOutItem
                   title="Payment Method"
                   value={
@@ -431,7 +419,7 @@ function BuyPrepaid() {
             </Typography>
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ p: 3, gap: 1 }}>
+        <DialogActions sx={{ p: 2, gap: 1 }}>
           <Button onClick={handleCloseSummary}>Cancel</Button>
           <LoadingButton
             variant="contained"

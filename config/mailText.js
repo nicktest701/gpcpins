@@ -1477,7 +1477,7 @@ ecgText: (id, message) => `
               </td>
             </tr>
 
-            <!-- Transaction ID (prominent) -->
+            <!-- Recharge Token -->
             <tr>
               <td style="padding:16px 28px 12px;">
                 <table width="100%" style="background:#F0F4F9; border-radius:26px; border:1px solid #E4EAF0;">

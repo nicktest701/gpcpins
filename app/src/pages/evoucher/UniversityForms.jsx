@@ -1,4 +1,4 @@
-import { useMemo, useState, useContext } from "react";
+import { useMemo, useState } from "react";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
@@ -189,41 +189,7 @@ function UniversityForms() {
                       />
                     </Stack>
                   </Grid>
-                  {/* <Grid item xs={12} sm={12}>
-                    <Stack spacing={3}>
-                      <Typography
-                        paragraph
-                        color="#fff"
-                        bgcolor="secondary.main"
-                        p={1}
-                      >
-                        Personal Details
-                      </Typography>
-
-                      <TextField
-                        // size="small"
-                        placeholder="Enter your Name"
-                        label="Full Name"
-                        required
-                        fullWidth
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        error={Boolean(touched.fullName && errors.fullName)}
-                        helperText={touched.fullName && errors.fullName}
-                      />
-
-                      <TextField
-                        // size="small"
-                        type="email"
-                         fullWidth
-                        label="Email Address(optional)"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        error={Boolean(touched.email && errors.email)}
-                        helperText={touched.email && errors.email}
-                      />
-                    </Stack>
-                  </Grid> */}
+             
                 </Grid>
 
                 <div style={{ display: "flex", alignItems: "center" }}>

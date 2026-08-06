@@ -105,7 +105,7 @@ const MeterDetailsDialog = ({
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="sm"
+      maxWidth="xs"
       fullWidth
       PaperProps={{
         elevation: 8,
@@ -123,7 +123,7 @@ const MeterDetailsDialog = ({
       {/* ---------- Enhanced Dialog Title ---------- */}
       <DialogTitle
         sx={{
-          p: 3,
+          p: 2,
           pb: 1.5,
           background: `linear-gradient(135deg, ${alpha(
             theme.palette.primary.main,
@@ -137,11 +137,11 @@ const MeterDetailsDialog = ({
           alignItems="center"
           justifyContent="space-between"
         >
-          <Stack direction="row" alignItems="center" spacing={1.5}>
+          <Stack direction="row" alignItems="center" spacing={1}>
             <Box
               sx={{
-                width: 40,
-                height: 40,
+                width: 28,
+                height: 28,
                 // borderRadius: "50%",
                 bgcolor: "primary.main",
                 display: "flex",
@@ -171,7 +171,7 @@ const MeterDetailsDialog = ({
       </DialogTitle>
 
       {/* ---------- Dialog Content ---------- */}
-      <DialogContent sx={{ p: 3, pt: 2.5,my:2 }}>
+      <DialogContent sx={{ p: 2,my:2 }}>
         {/* --- Loading State with shimmer skeletons --- */}
         {meterLoading && (
           <Stack spacing={2.5} sx={{ mt: 1 }}>
@@ -219,14 +219,14 @@ const MeterDetailsDialog = ({
           <Paper
             variant="outlined"
             sx={{
-              p: 2.5,
+              p: 1.5,
               // borderRadius: 3,
               bgcolor: 'whitesmoke',
               // borderColor: alpha(theme.palette.divider, 0.6),
               backdropFilter: "blur(2px)",
             }}
           >
-            <Stack spacing={0.5}>
+            <Stack spacing={0.3}>
               <DetailRow
                 icon={GridOnIcon}
                 label="Meter Number"
@@ -292,7 +292,7 @@ const MeterDetailsDialog = ({
       {/* ---------- Dialog Actions ---------- */}
       <DialogActions
         sx={{
-          p: 3,
+          p: 1.3,
           gap: 1.5,
           borderTop: `1px solid ${theme.palette.divider}`,
           bgcolor: alpha(theme.palette.background.default, 0.4),

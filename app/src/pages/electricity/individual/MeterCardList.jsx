@@ -200,12 +200,12 @@ const MeterCardList = ({ meters, loading = false, error = null, onRetry = () => 
 
                   <Button
                     variant="contained"
-                    size="small"
+                    size="medium"
                     sx={{
                       flex: 1,
                       borderRadius: 2,
                       textTransform: "none",
-                      fontWeight: 600,
+                      // fontWeight: 600,
                       boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`,
                     }}
                     onClick={(e) => {

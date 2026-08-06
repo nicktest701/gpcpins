@@ -221,7 +221,7 @@ router.get(
             user_id: payment?.user_id,
             type: "prepaid",
             title: "Prepaid Units",
-            body: `Payment made for prepaid meter: ${paymentPayload?.billRequest?.accountNumber} is completed. Recharge Token: ${responseDetails?.rechargeToken || "N/A"}. Receipt: ${responseDetails?.receiptUrl || "N/A"}`,
+            body: `Payment made for prepaid meter: ${paymentPayload?.billRequest?.accountNumber} is completed. Recharge Token: ${responseDetails?.rechargeToken || "N/A"}.`,
             link: responseDetails?.receiptUrl,
             info: JSON.stringify({ downloadLink: responseDetails?.receiptUrl }),
           });
@@ -591,14 +591,17 @@ async function sendElectricityMessage(transaction) {
   if (transaction.status === "completed") {
     const message = `Thank you for your purchase! ID: ${transaction?.transactionId}. METER NO: ${transaction?.number} (${transaction?.name}) has successfully purchased PREPAID UNITS at an amount of ${currencyFormatter(transaction?.amount)}. Your TOKEN is: ${transaction?.token}.`;
 
+// console.log(transaction?.phonenumber, transaction?.email,)
+
     // Send Mail and SMS to the User
+    if (transaction?.phonenumber) {
+      await sendSMS(message, transaction?.phonenumber);
+    }
+
     if (transaction?.email) {
       await sendPrepaidEmail(transaction);
     }
 
-    if (transaction?.phonenumber) {
-      await sendSMS(message, transaction?.phonenumber);
-    }
   }
 }
 

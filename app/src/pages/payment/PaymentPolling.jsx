@@ -115,9 +115,9 @@ const PaymentPolling = ({
   const { status, attempts, error, retry, rawData } = usePaymentPolling({
     paymentId,
     transactionId,
-    checkStatusFn: getPrepaidStatus,
     interval,
     maxAttempts,
+    checkStatusFn: getPrepaidStatus,
     onSuccess: handlePollSuccess,
     onFailure: handlePollFailure,
     onTimeout: handlePollTimeout,
@@ -174,7 +174,7 @@ const PaymentPolling = ({
             p: 2.5,
             width: "100%",
             maxWidth: 380,
-            borderRadius: 1.2,
+            borderRadius: 4,
             textAlign: "center",
             background: theme.palette.background.paper,
             boxShadow: `0 24px 64px ${alpha(theme.palette.common.black, 0.12)}`,
@@ -220,7 +220,7 @@ const PaymentPolling = ({
           {/* Success State: Receipt Display */}
           {status === "success" && receiptDetails && (
             <Fade in timeout={500}>
-              <Box sx={{ mt: 2, textAlign: "left" }}>
+              <Box sx={{ textAlign: "left" }}>
                 {token && (
                   <Box
                     sx={{
@@ -246,7 +246,7 @@ const PaymentPolling = ({
                       alignItems="center"
                       justifyContent="center"
                       spacing={1}
-                      sx={{ mt: 1 }}
+                      // sx={{ mt: 1 }}
                     >
                       <Typography
                         variant="body2"
@@ -278,7 +278,7 @@ const PaymentPolling = ({
                   variant="subtitle2"
                   color="text.secondary"
                   fontWeight="700"
-                  sx={{ mb: 1, px: 0.5 }}
+                  sx={{  px: 0.5 }}
                 >
                   Transaction Overview
                 </Typography>
@@ -289,7 +289,7 @@ const PaymentPolling = ({
                     p: 1,
                     borderRadius: 1.2,
                     bgcolor: alpha(theme.palette.background.default, 0.4),
-                    mb: 3,
+                    mb: 2,
                   }}
                 >
                   <Stack spacing={1}>
@@ -297,12 +297,12 @@ const PaymentPolling = ({
                       direction="row"
                       justifyContent="space-between"
                       alignItems="center"
-                      spacing={3}
+                      spacing={1}
                     >
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="caption" color="text.secondary">
                         Receipt Number
                       </Typography>
-                      <Typography variant="body2" fontWeight="600" color="text.primary">
+                      <Typography variant="caption" fontWeight="600" color="text.primary">
                         {receiptDetails.reciept}
                       </Typography>
                     </Stack>
@@ -315,10 +315,10 @@ const PaymentPolling = ({
                       alignItems="center"
                       spacing={5.5}
                     >
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="caption" color="text.secondary">
                         Paid Amount
                       </Typography>
-                      <Typography variant="body2" fontWeight="700" color="text.primary">
+                      <Typography variant="caption" fontWeight="700" color="text.primary">
                         {new Intl.NumberFormat("en-GH", {
                           style: "currency",
                           currency: "GHS",
@@ -335,10 +335,10 @@ const PaymentPolling = ({
                           alignItems="center"
                           spacing={3}
                         >
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant="caption" color="text.secondary">
                             Paid From
                           </Typography>
-                          <Typography variant="body2" fontWeight="600" color="text.primary">
+                          <Typography variant="caption" fontWeight="600" color="text.primary">
                             Wallet Balance
                           </Typography>
                         </Stack>

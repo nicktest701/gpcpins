@@ -10,6 +10,8 @@ import {
   Typography,
   IconButton,
   Stack,
+  FormLabel,
+  TextField,
 } from "@mui/material";
 import { FormProvider, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -118,12 +120,13 @@ function PaymentOption({
 
         {/* PERSONAL DETAILS */}
 
-        {/* <FormControl fullWidth sx={{ py: 2 }}>
+        <FormControl fullWidth sx={{ py: 2 }}>
           <FormLabel sx={{ pb: 1 }}>Personal Details (optional)</FormLabel>
 
           <Stack spacing={2}>
             <TextField
               size="small"
+              fullWidth
               label="Full Name"
               placeholder="Enter your full name"
               inputMode="text"
@@ -135,6 +138,7 @@ function PaymentOption({
 
             <TextField
               size="small"
+              fullWidth
               type="email"
               label="Email Address"
               inputMode="email"
@@ -144,7 +148,7 @@ function PaymentOption({
               helperText={errors.email?.message}
             />
           </Stack>
-        </FormControl> */}
+        </FormControl>
 
         {/* PAYMENT METHODS */}
 

@@ -14,15 +14,15 @@ function VoucherPlaceHolderItem({ title, value, img }) {
       alignItems="center"
       flex={1}
       sx={{
-        py: 1,
+        py: 0.7,
         borderBottom: `1px solid ${theme.palette.divider}`,
         "&:last-of-type": { borderBottom: "none" },
       }}
     >
-      <Typography variant="body2" fontWeight={500} color="text.secondary">
+      <Typography variant="caption" fontWeight={500} color="text.secondary">
         {title}
       </Typography>
-      <Typography variant="body2" fontWeight={400} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+      <Typography variant="caption" fontWeight={400} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         {img}
         {value}
       </Typography>

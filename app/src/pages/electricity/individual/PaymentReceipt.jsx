@@ -35,11 +35,13 @@ const PaymentReceipt = () => {
     });
   };
 
+  // console.log(ecgTransactionInfo)
+
   const handleDownloadReceipt = () => {
     const link = document.createElement('a');
-    link.href = ecgTransactionInfo?.details?.info?.downloadLink;
+    link.href = ecgTransactionInfo?.details?.info?.receiptUrl;
     link.target = '_blank';
-    link.download = `${ecgTransactionInfo?.details?.id}.pdf`;
+    link.download = `${ecgTransactionInfo?.details?.info?.receiptUrl}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -64,17 +66,17 @@ const PaymentReceipt = () => {
             }}
             sx={{ alignSelf: 'center', marginY: 2 }}
           />
+            <CheckOutItem
+              title='Completed On'
+              value={moment(ecgTransactionInfo?.details?.createdAt).format('LLL')}
+            />
           <CheckOutItem
             title='Transaction No.'
             value={ecgTransactionInfo?.details?.id}
           />
           <CheckOutItem
-            title='Order No.'
-            value={ecgTransactionInfo?.details?.paymentId}
-          />
-          <CheckOutItem
-            title='Date,Time'
-            value={moment(ecgTransactionInfo?.details?.createdAt).format('LLL')}
+            title='Recharge Token'
+            value={ecgTransactionInfo?.details?.info?.rechargeToken}
           />
           <CheckOutItem
             title='Meter No.'

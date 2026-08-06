@@ -295,7 +295,7 @@ function VoucherPayment() {
       <Dialog
         open={summaryOpen}
         onClose={handleCloseSummary}
-        maxWidth="sm"
+        maxWidth="xs"
         PaperProps={{
           sx: {
             borderRadius: 3,

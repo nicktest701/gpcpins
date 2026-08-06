@@ -1084,8 +1084,6 @@ router.post(
           .json("Error processing transaction.Please try again later!");
       }
 
-      // providerResponse = response.data;
-
       paymentStatus = "pending";
     }
 
@@ -1404,6 +1402,7 @@ router.post(
     try {
       const { id: userId, name, email } = req.user;
       const { phoneNumber, mobilePartner, amount } = info;
+      // console.log(info)
 
       // ---------------- VALIDATION ----------------
 
@@ -1427,23 +1426,44 @@ router.post(
       }
 
       // ---- MOBILE MONEY ----
-      const paymentPayload = {
-        name: name || "GPC Customer",
-        phonenumber: phoneNumber,
-        email: email ?? "",
+      // const paymentPayload = {
+      //   name: name || "GPC Customer",
+      //   phonenumber: phoneNumber,
+      //   email: email ?? "",
+      //   amount: Number(amount).toFixed(2),
+      //   provider: mobilePartner,
+      //   transaction_reference: reference,
+      // };
+
+      // const response = await sendMoney(paymentPayload, "w");
+
+      // paymentStatus =
+      //   response?.ResponseCode === "0000"
+      //     ? "completed"
+      //     : response?.ResponseCode === "0001"
+      //       ? "pending"
+      //       : "failed";
+
+      const userPhone =
+        getInternationalMobileFormat(phoneNumber, false) ||
+        process.env.BRASSICA_CLIENT_PHONENUMBER;
+
+      const momoPayload = {
+        institutionCode: mobilePartner,
+        accountNumber: userPhone,
+        accountName: name || "GPC Customer",
         amount: Number(amount).toFixed(2),
-        provider: mobilePartner,
-        transaction_reference: reference,
+        transaction_Id: transactionId,
       };
 
-      const response = await sendMoney(paymentPayload, "w");
-
-      paymentStatus =
-        response?.ResponseCode === "0000"
-          ? "completed"
-          : response?.ResponseCode === "0001"
-            ? "pending"
-            : "failed";
+      try {
+        await sendBrassicaMoney(momoPayload);
+        paymentStatus = "pending";
+      } catch (error) {
+        return res
+          .status(400)
+          .json("Error processing transaction.Please try again later!");
+      }
 
       // ---------------- INSERT PAYMENT ----------------
       await trx("payments").insert({
@@ -1487,7 +1507,7 @@ router.post(
       });
     } catch (error) {
       await trx.rollback();
-      logger.error(error);
+      logger.error("[Wallet Top Up Error]:", error);
       return res.status(500).json("Transaction failed");
     }
   }),
@@ -2174,7 +2194,7 @@ router.post(
   rlimit,
   asyncHandler(async (req, res) => {
     const payload = req.body;
-    console.log(payload)
+    // console.log(payload)
 
     if (!payload?.transactionId) return res.sendStatus(204);
 
@@ -2234,7 +2254,7 @@ router.post(
         trx = await knex.transaction();
 
         const payment = await trx("vw_meter_payment_prepaid_transaction_view")
-          .where({ id:transactionId})
+          .where({ id: transactionId })
           .first();
 
         if (!payment) {
@@ -2256,7 +2276,7 @@ router.post(
               : "failed";
 
         await trx("payments")
-          .where({ id:  payment?.paymentId  })
+          .where({ id: payment?.paymentId })
           .andWhereNot({ status: "completed" })
           .update({
             status: newStatus,
@@ -2303,7 +2323,6 @@ router.post(
         console.error(err);
         logger.error("[Webhook] Error processing callback payload:", err);
         res.sendStatus(500);
-
       }
     });
   }),

@@ -5,22 +5,16 @@ import {
 Divider,
   Chip,
   Box,
-  Typography,
-  IconButton,
-
   Paper,
   Grid,
   Alert,
   CircularProgress,
-
-  alpha,
-  useTheme,
 } from "@mui/material";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, } from "react-router-dom";
 import {
-  ArrowBack,
+
   CheckCircle,
   Cancel,
   Receipt,
@@ -39,7 +33,6 @@ import CustomTitle from "../../components/custom/CustomTitle";
 import AnimatedContainer from "../../components/animations/AnimatedContainer";
 
 const PrepaidTransactionDetails = () => {
-  const theme = useTheme();
   const navigate = useNavigate();
   const params = useParams();
   const queryClient = useQueryClient();
@@ -63,6 +56,7 @@ const PrepaidTransactionDetails = () => {
       ?.find((t) => t.id === transactionId),
   });
 
+  // console.log(transactionData)
 
 
   
@@ -160,7 +154,7 @@ const PrepaidTransactionDetails = () => {
                 <CheckOutItem title="Transaction ID" value={rest.id} />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <CheckOutItem title="Order ID" value={rest.paymentId} />
+                <CheckOutItem title="Recharge Token" value={info?.rechargeToken} />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <CheckOutItem
@@ -218,12 +212,12 @@ const PrepaidTransactionDetails = () => {
                   </Grid>
                 </>
               )}
-              <Grid item xs={12}>
+              {/* <Grid item xs={12}>
                 <CheckOutItem
                   title="Transaction Token"
                   value={info?.orderNo || "N/A"}
                 />
-              </Grid>
+              </Grid> */}
             </Grid>
 
             <Divider>

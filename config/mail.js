@@ -1,6 +1,7 @@
 const nodemailer = require("nodemailer");
-const { resendMailText } = require("./mailText");
+const { resendMailText, ecgText } = require("./mailText");
 const { getFileStream } = require("./uploadFile");
+const currencyFormatter = require("./currencyFormatter");
 const { thankYouText } = (require = require("./mailText"));
 
 const transportMail = nodemailer.createTransport({
@@ -153,18 +154,17 @@ const sendPrepaidEmail = async (transaction) => {
     subject: "Prepaid Units Confirmation",
     text: "Prepaid units",
     html: ecgText(
-      transaction.transactionId,
-      `Thank you for choosing our service! Your transaction is complete, and we appreciate your trust in us. If you have any questions or need further assistance, please don't hesitate to reach out. Wishing you a fantastic day ahead!.
-        Attached to this message,is a copy of your receipt. Please keep it for your records.
-        <div>       
-        Transaction Details:
-        <p>Transaction ID:${transaction.transactionId}</p>
-        <p>Meter No:${transaction.number}</p>
-        <p>Meter Name:${transaction.name}</p>
-        <p>Amount Paid:${transaction.amount}</p>
+      transaction.token,
+      `
+      <div>       
+      <p>Transaction ID:${transaction.transactionId}</p>
+      <p>Meter No:${transaction.number}</p>
+      <p>Meter Name:${transaction.name}</p>
+        <p>Amount Paid:${currencyFormatter(transaction.amount)}</p>
         <p>Token:${transaction.token}</p>
         </div>
         <p>
+        Attached to this message,is a copy of your receipt. Please keep it for your records.
         In case units do not load automatically,Please enter the token on your meter to load your units.Thank you!</p>
         `,
     ),

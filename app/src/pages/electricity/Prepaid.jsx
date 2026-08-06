@@ -6,6 +6,8 @@ import {
   Paper,
   Stack,
   Divider,
+  Alert,
+  AlertTitle,
 } from "@mui/material";
 
 import { LoadingButton } from "@mui/lab";
@@ -89,7 +91,7 @@ function Prepaid() {
       {/* Hero Banner */}
       <PageHero
         title="Prepaid Units"
-        subtitle=" Buy electricity units for your IMES meter instantly."
+        subtitle=" Buy electricity units for all online meters instantly."
         bgImage={IMAGES.ecg}
       />
 
@@ -111,27 +113,29 @@ function Prepaid() {
 
             <Divider sx={{ my: 3 }} />
 
-            {/* <Typography
-              variant="h6"
-              color="error"
-              fontWeight="bold"
-              gutterBottom
-            >
-              Please Note!!!
-            </Typography> */}
-            {/* <Alert severity="warning" sx={{ mb: 3 }}>
-              Our prepaid electricity units are exclusively available to
-              residents with <strong>IMES meter type</strong>. Please ensure
-              your location eligibility before proceeding. Thank you for your
-              cooperation.
-            </Alert> */}
+          
+
+            <Alert severity="warning" variant="outlined" sx={{ mb: 2 }}>
+              <AlertTitle sx={{ fontWeight: "bold" }}>
+                Verification
+              </AlertTitle>
+              You can verify your meter using your{" "}
+              <strong>Meter Number</strong>, <strong>STs Number</strong>, or{" "}
+              <strong>SPN Number</strong>.
+            </Alert>
+
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Before proceeding, please ensure the displayed info matches your{" "}
+              <strong>Meter Name</strong> or <strong>Customer Name</strong>{" "}
+              exactly as it appears on your physical meter or bill.
+            </Typography>
 
             <form onSubmit={handleSubmit(onVerify)} noValidate>
               <Stack
                 spacing={2}
                 maxWidth="sm"
                 alignItems="center"
-                py={2}
+                py={4}
                 mx="auto"
               >
                 <Controller
@@ -140,9 +144,10 @@ function Prepaid() {
                   render={({ field }) => (
                     <TextField
                       {...field}
-                      label="Meter Number"
+                      label="Meter Number/STs Number /SPN Number"
                       placeholder="e.g. 12788798766"
                       fullWidth
+                      required
                       error={!!errors.number}
                       helperText={errors.number?.message}
                       inputProps={{ style: { textTransform: "uppercase" } }}

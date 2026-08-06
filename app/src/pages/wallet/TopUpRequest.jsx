@@ -21,12 +21,13 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import Swal from "sweetalert2";
 import { globalAlertType } from "../../components/alert/alertType";
-import { CustomContext, useCustomContext } from "../../context/providers/CustomProvider";
+import { useCustomContext } from "../../context/providers/CustomProvider";
 import { sendWalletTopUp } from "../../api/walletAPI";
 import MobilePartner from "../../components/MobilePartner";
 import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
 import { topUpSchema } from "../../config/validationSchema";
-import { Close as CloseIcon, Receipt, Phone, AccountBalance, CheckCircle } from "@mui/icons-material";
+import { Close as CloseIcon, Receipt, Phone, AccountBalance } from "@mui/icons-material";
+import { currencyFormatter } from "../../constants";
 
 function TopUpRequest() {
   const theme = useTheme();
@@ -98,7 +99,7 @@ function TopUpRequest() {
       html: `
         <p>You are about to top up your wallet with:</p>
         <p style="font-size: 1.5rem; font-weight: 700; color: ${theme.palette.primary.main};">
-          GH₵ ${previewData.amount}
+        ${currencyFormatter(previewData.amount)}
         </p>
         <p>via <strong>${previewData.mobilePartner}</strong> to <strong>${previewData.phoneNumber}</strong></p>
       `,
@@ -171,8 +172,7 @@ function TopUpRequest() {
                   <TextField
                     {...field}
                     type="tel"
-                    inputMode="tel"
-                    
+                    inputMode="tel"                   
                     variant="outlined"
                     label="Mobile Money Number"
                     fullWidth

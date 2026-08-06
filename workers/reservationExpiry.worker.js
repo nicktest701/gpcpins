@@ -45,7 +45,7 @@ const releaseExpiredReservations = async () => {
       reservation_expires_at: null,
     });
 
-    console.log(`Released ${ids.length} expired vouchers`);
+    // console.log(`Released ${ids.length} expired vouchers`);
   } catch (error) {
     console.error("Reservation expiry error:", error);
   }

@@ -2450,7 +2450,7 @@ export const PROCESSED_TRANSACTIONS = [
   },
   { title: "Transaction ID", field: "id" },
   // { title: "Order ID", field: "paymentId" },
-  { title: "Transaction Token", field: "info.token" },
+  { title: "Transaction Token", field: "info.rechargeToken" },
   { title: "Meter No.", field: "meter.number" },
   { title: "Meter Type.", field: "meter.type", hidden: true },
   { title: "Meter ID", field: "meter.meterId", hidden: true },

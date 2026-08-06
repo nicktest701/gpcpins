@@ -172,6 +172,7 @@ function WalletOption() {
                     inputProps={{
                       style: {
                         textAlign: "center",
+                        fontSize:20
                       },
                     }}
                     sx={{

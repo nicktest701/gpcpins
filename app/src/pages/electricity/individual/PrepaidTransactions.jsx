@@ -69,6 +69,8 @@ const PrepaidTransactions = ({ open, setOpen }) => {
     });
   };
 
+  console.log(transactions.data)
+
   // const { mutateAsync } = useMutation({
   //   mutationFn: deletePrepaidTransaction,
   // });
@@ -102,17 +104,6 @@ const PrepaidTransactions = ({ open, setOpen }) => {
     { title: "Token", field: "paymentId", hidden: true },
     { title: "OrderNo", field: "info.orderNo", hidden: true },
     {
-      title: "ORDER NO/TOKEN",
-      render: ({ paymentId, info }) => (
-        <Stack>
-          <Typography variant="body2" color="primary.main">
-            {paymentId}
-          </Typography>
-          <Typography variant="body2">{info?.orderNo}</Typography>
-        </Stack>
-      ),
-    },
-    {
       title: "Meter No.",
       render: ({ meter }) => (
         <Button
@@ -121,6 +112,17 @@ const PrepaidTransactions = ({ open, setOpen }) => {
         >
           {meter?.number}
         </Button>
+      ),
+    },
+    {
+      title: "RECHARGE TOKEN",
+      render: ({ paymentId, info }) => (
+        <Stack>
+          <Typography variant="body2" color="primary.main">
+            {info?.rechargeToken}
+          </Typography>
+          {/* <Typography variant="body2">{info?.rechargeToken}</Typography> */}
+        </Stack>
       ),
     },
     {
@@ -156,9 +158,11 @@ const PrepaidTransactions = ({ open, setOpen }) => {
       render: ({ isProcessed }) => (
         <Button
           size="small"
+
           sx={{
             color: "#fff",
             bgcolor: isProcessed ? "success.darker" : "warning.darker",
+            borderRadius:1.2
           }}
         >
           {isProcessed ? "Completed" : "Pending"}
