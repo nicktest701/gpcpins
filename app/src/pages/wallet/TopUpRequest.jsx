@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
@@ -26,20 +26,47 @@ import { sendWalletTopUp } from "../../api/walletAPI";
 import MobilePartner from "../../components/MobilePartner";
 import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
 import { topUpSchema } from "../../config/validationSchema";
-import { Close as CloseIcon, Receipt, Phone, AccountBalance } from "@mui/icons-material";
+import {
+  Close as CloseIcon,
+  Receipt,
+  Phone,
+  AccountBalance,
+} from "@mui/icons-material";
 import { currencyFormatter } from "../../constants";
+import { useSocket } from "../../context/providers/SocketProvider";
+import { useAuth } from "../../context/providers/AuthProvider";
 
 function TopUpRequest() {
+  const { user } = useAuth();
   const theme = useTheme();
+
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { customDispatch } = useCustomContext();
+  const { joinPaymentRoom, leavePaymentRoom } = useSocket();
+
   const [searchParams, setSearchParams] = useSearchParams();
   const open = Boolean(searchParams.get("add-money"));
 
   // Preview state
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState(null);
+
+  useEffect(() => {
+    if (user?.id) {
+      joinPaymentRoom(user?.id);
+      return;
+    }
+
+    if (user?.phonenumber) {
+      joinPaymentRoom(user?.phonenumber);
+    }
+
+    return () => {
+      leavePaymentRoom(user?.id);
+      leavePaymentRoom(user?.phonenumber);
+    };
+  }, [user?.id, user?.phonenumber, joinPaymentRoom, leavePaymentRoom]);
 
   // React Hook Form
   const {
@@ -66,19 +93,21 @@ function TopUpRequest() {
     },
     onSuccess: (data) => {
       if (data) {
+      
         navigate(`/confirm`, {
           replace: true,
           state: {
             id: data?.paymentId,
+             transactionReference: data?.reference,
             categoryType: "wallet",
             path: pathname,
-            isWallet: true,
+            isWallet: false,
           },
         });
         // Close preview and reset
-        setPreviewOpen(false);
-        setPreviewData(null);
-        handleClose();
+        // setPreviewOpen(false);
+        // setPreviewData(null);
+        // handleClose();
       }
     },
   });
@@ -172,7 +201,7 @@ function TopUpRequest() {
                   <TextField
                     {...field}
                     type="tel"
-                    inputMode="tel"                   
+                    inputMode="tel"
                     variant="outlined"
                     label="Mobile Money Number"
                     fullWidth
@@ -191,7 +220,11 @@ function TopUpRequest() {
                 )}
               />
 
-              <Typography variant="caption" fontStyle="italic" color="text.secondary">
+              <Typography
+                variant="caption"
+                fontStyle="italic"
+                color="text.secondary"
+              >
                 Enter the amount you want to top up.
               </Typography>
 
@@ -221,7 +254,9 @@ function TopUpRequest() {
                     }}
                     error={!!fieldState.error}
                     helperText={fieldState.error?.message}
-                    onChange={(e) => field.onChange(e.target.valueAsNumber || "")}
+                    onChange={(e) =>
+                      field.onChange(e.target.valueAsNumber || "")
+                    }
                     value={field.value || ""}
                   />
                 )}
@@ -277,7 +312,11 @@ function TopUpRequest() {
             borderBottom: `1px solid ${theme.palette.divider}`,
           }}
         >
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+          >
             <Stack direction="row" alignItems="center" spacing={1.5}>
               <Box
                 sx={{
@@ -323,11 +362,19 @@ function TopUpRequest() {
               }}
             >
               <Stack spacing={2}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
                   <Typography variant="body2" color="text.secondary">
                     Amount
                   </Typography>
-                  <Typography variant="h5" fontWeight="700" color="secondary.main">
+                  <Typography
+                    variant="h5"
+                    fontWeight="700"
+                    color="secondary.main"
+                  >
                     GH₵ {previewData.amount}
                   </Typography>
                 </Stack>
@@ -358,7 +405,8 @@ function TopUpRequest() {
                   }}
                 >
                   <Typography variant="caption" color="text.secondary">
-                    <strong>Note:</strong> Funds will be credited to your wallet after successful payment.
+                    <strong>Note:</strong> Funds will be credited to your wallet
+                    after successful payment.
                   </Typography>
                 </Box>
               </Stack>
@@ -411,7 +459,6 @@ function TopUpRequest() {
 }
 
 export default TopUpRequest;
-
 
 // import { useContext } from "react";
 // import { useForm, Controller } from "react-hook-form";
@@ -469,7 +516,7 @@ export default TopUpRequest;
 //       );
 //     },
 //     onSuccess: (data) => {
- 
+
 //       if (data) {
 //         navigate(`/confirm`, {
 //           replace: true,
@@ -491,7 +538,7 @@ export default TopUpRequest;
 //       mobilePartner: data.mobilePartner,
 //       phoneNumber: data.phoneNumber,
 //     };
-    
+
 //     try {
 //       await mutateAsync(payload);
 //     } catch (error) {

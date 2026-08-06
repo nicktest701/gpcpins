@@ -445,14 +445,14 @@ function PaymentStatus() {
                       </Typography>
                     </Box>
 
-                    <LoadingButton
+                    {/* <LoadingButton
                       variant="contained"
                       onClick={handleReConfirmPayment}
                       loading={isPending}
                       sx={{ my: 2 }}
                     >
                       Click here to confirm if paid
-                    </LoadingButton>
+                    </LoadingButton> */}
                     <MomoGuide mobilePartner={state?.mobilePartner} />
                     {/* <Stack direction="row" alignItems="center" gap="10px">
                       <Spinner size={16} />

@@ -1452,12 +1452,12 @@ router.post(
         institutionCode: mobilePartner,
         accountNumber: userPhone,
         accountName: name || "GPC Customer",
-        amount: Number(amount).toFixed(2),
+        amount: Number(amount).toFixed(2)?.toString(),
         transaction_Id: transactionId,
       };
 
       try {
-        await sendBrassicaMoney(momoPayload);
+        // await sendBrassicaMoney(momoPayload);
         paymentStatus = "pending";
       } catch (error) {
         return res
@@ -1478,7 +1478,7 @@ router.post(
         status: paymentStatus,
         externalTransactionId: null,
         partner: JSON.stringify({
-          ...response,
+          // ...response,
           phonenumber: phoneNumber,
           mobilePartner,
         }),
@@ -1499,8 +1499,11 @@ router.post(
 
       await trx.commit();
 
+    
+
       return res.status(200).json({
         paymentId,
+        reference: reference,
         transactionId,
         status: paymentStatus,
         categoryType: "wallet",
@@ -2181,7 +2184,7 @@ router.post(
       if (trx) await trx.rollback();
       await redisClient.del(lockKey);
       logger.error(err);
-      console.error(err);
+      // console.error(err);
       res.sendStatus(500);
     }
   }),
