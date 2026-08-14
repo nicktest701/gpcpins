@@ -21,6 +21,8 @@ import PayLoading from "../../components/PayLoading";
 import LoadingSpinner from "../../components/spinners/LoadingSpinner";
 import CustomTitle from "../../components/custom/CustomTitle";
 
+const defaultColor = "#0C7E05";
+
 function Airtime() {
   const { palette } = useTheme();
   const summary = useQuery({
@@ -103,7 +105,7 @@ function Airtime() {
                 title="Today"
                 icon={<AllOut color="success" />}
                 value={summary?.data?.today}
-                bg="rgba(12, 126, 5,.2)"
+                color={defaultColor}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3} lg={3}>
@@ -111,7 +113,7 @@ function Airtime() {
                 title="Yesterday"
                 icon={<AllOut color="success" />}
                 value={summary?.data?.yesterday}
-                bg="rgba(12, 126, 5,.2)"
+                color={defaultColor}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3} lg={3}>
@@ -119,7 +121,7 @@ function Airtime() {
                 title="Last 7 days"
                 icon={<NoteAltSharp color="success" />}
                 value={summary?.data?.lastSevenDaysTotal}
-                bg="rgba(12, 126, 5,.2)"
+                color={defaultColor}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3} lg={3}>
@@ -127,7 +129,7 @@ function Airtime() {
                 title="This Month"
                 icon={<AirplaneTicketSharp color="success" />}
                 value={summary?.data?.thisMonth}
-                bg="rgba(12, 126, 5,.2)"
+                color={defaultColor}
               />
             </Grid>
           </Grid>

@@ -53,21 +53,26 @@ export const Spinner = ({ size = 20, color = "#F78E2A" }) => (
 // Statuses during which we're still actively waiting on a result.
 const WORKING_STATUSES = new Set(["idle", "pending", "processing"]);
 
-const SERVICE_TYPES_WITH_DIRECT_SUCCESS = ["airtime", "prepaid", "bundle", "wallet"];
+const SERVICE_TYPES_WITH_DIRECT_SUCCESS = [
+  "airtime",
+  "prepaid",
+  "bundle",
+  "wallet",
+];
 
 function PaymentStatus() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { state } = useLocation();
-  const { customDispatch, paymentStatus, resetPaymentStatus } = useCustomContext();
+  const { customDispatch, paymentStatus, resetPaymentStatus } =
+    useCustomContext();
 
   const redirectTimerRef = useRef(null);
 
-  const paymentId = state?.id;
-  const transactionId = state?.transactionReference;
+  const paymentReference = state?.transactionReference;
   const isWallet = !!state?.isWallet;
-  const txRef = user?.id || state?.phonenumber || transactionId || null;
+  const txRef = user?.id || state?.phonenumber || paymentReference || null;
 
   // Redirect if no state (safety)
   useEffect(() => {
@@ -99,27 +104,26 @@ function PaymentStatus() {
    * `error === "Payment failed!"` string check never matched a thrown
    * Error object, so this path may not have been reachable before either.
    */
-  const checkStatusFn = useCallback(
-    async (id) => {
-      try {
-        const data = await ConfirmPayment({ id, serviceType: state?.categoryType });
-        const resolvedStatus =
-          data?.status === "completed"
-            ? "success"
-            : data?.status === "failed"
-              ? "failed"
-              : "pending";
-        return { ...data, status: resolvedStatus };
-      } catch (err) {
-        const message = err?.response?.data?.message || err?.message || "";
-        if (message === "Payment failed!") {
-          return { status: "failed", message };
-        }
-        return { status: "pending" };
+  const checkStatusFn = useCallback(async (props) => {
+    try {
+      const data = await ConfirmPayment({
+        ...props,
+      });
+      const resolvedStatus =
+        data?.status === "completed"
+          ? "success"
+          : data?.status === "failed"
+            ? "failed"
+            : "pending";
+      return { ...data, status: resolvedStatus };
+    } catch (err) {
+      const message = err?.response?.data?.message || err?.message || "";
+      if (message === "Payment failed!") {
+        return { status: "failed", message };
       }
-    },
-    [state?.categoryType],
-  );
+      return { status: "pending" };
+    }
+  }, []);
 
   /**
    * Adapts the socket provider's two payload shapes —
@@ -139,20 +143,29 @@ function PaymentStatus() {
 
   const handleSuccess = useCallback(
     (data) => {
+
+      console.log(data)
       if (isWallet) {
-        queryClient.invalidateQueries({ queryKey: ["wallet-balance", user?.id] });
+        queryClient.invalidateQueries({
+          queryKey: ["wallet-balance", user?.id],
+        });
       }
       queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
 
       redirectTimerRef.current = setTimeout(() => {
+
+    
         if (SERVICE_TYPES_WITH_DIRECT_SUCCESS.includes(state?.categoryType)) {
-          navigate("/payment/success", { replace: true, state: { path: state?.path } });
+          navigate("/payment/success", {
+            replace: true,
+            state: { path: state?.path, id: data?.id },
+          });
         } else {
           customDispatch({ type: "loadVouchers", payload: data });
           navigate("/checkout", {
             replace: true,
             state: {
-              transactionId: data?.id,
+              id: data?.id,
               categoryType: data?.categoryType,
               path: state?.path,
             },
@@ -161,7 +174,15 @@ function PaymentStatus() {
         resetPaymentStatus?.();
       }, 3000);
     },
-    [state, isWallet, navigate, queryClient, customDispatch, resetPaymentStatus, user?.id],
+    [
+      state,
+      isWallet,
+      navigate,
+      queryClient,
+      customDispatch,
+      resetPaymentStatus,
+      user?.id,
+    ],
   );
 
   const handleFailure = useCallback(
@@ -179,8 +200,12 @@ function PaymentStatus() {
   );
 
   const { status, retry } = usePaymentPolling({
-    paymentId,
-    transactionId,
+    props: {
+      paymentId: state?.id,
+      paymentReference: state?.id,
+      id: state?.id,
+      serviceType: state?.categoryType,
+    },
     checkStatusFn,
     interval: 15000,
     maxAttempts: 20,
@@ -210,7 +235,7 @@ function PaymentStatus() {
 
   const handleResendAndRecheck = async () => {
     await resendPrompt({
-      paymentReference: transactionId,
+      paymentReference: paymentReference,
       type: state?.categoryType,
     });
     retry();
@@ -326,7 +351,11 @@ function PaymentStatus() {
             {state?.amount && (
               <Typography
                 variant="h4"
-                sx={{ color: "#ffffff", fontWeight: 700, letterSpacing: "-0.5px" }}
+                sx={{
+                  color: "#ffffff",
+                  fontWeight: 700,
+                  letterSpacing: "-0.5px",
+                }}
               >
                 {state?.currency ?? "GHS"} {parseFloat(state.amount).toFixed(2)}
               </Typography>
@@ -401,12 +430,22 @@ function PaymentStatus() {
             {/* Working state */}
             {isWorking ? (
               <>
-                <Box sx={{ width: "100%", height: "1px", bgcolor: "#f3f4f6", my: "2px" }} />
+                <Box
+                  sx={{
+                    width: "100%",
+                    height: "1px",
+                    bgcolor: "#f3f4f6",
+                    my: "2px",
+                  }}
+                />
 
                 {isWallet ? (
                   <Stack direction="row" alignItems="center" gap="10px">
                     <Spinner size={16} />
-                    <Typography variant="caption" sx={{ color: "#6b7280", fontWeight: 500 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: "#6b7280", fontWeight: 500 }}
+                    >
                       Processing payment…
                     </Typography>
                   </Stack>
@@ -423,7 +462,11 @@ function PaymentStatus() {
                     >
                       <Typography
                         variant="caption"
-                        sx={{ display: "block", textAlign: "center", fontWeight: 500 }}
+                        sx={{
+                          display: "block",
+                          textAlign: "center",
+                          fontWeight: 500,
+                        }}
                       >
                         A prompt has been sent to your mobile phone. Enter your
                         Mobile Money PIN to complete the payment.
@@ -437,13 +480,21 @@ function PaymentStatus() {
               <>
                 <Typography
                   variant="h6"
-                  sx={{ textAlign: "center", color: "#b91c1c", fontWeight: 700 }}
+                  sx={{
+                    textAlign: "center",
+                    color: "#b91c1c",
+                    fontWeight: 700,
+                  }}
                 >
                   Payment was not completed
                 </Typography>
                 <Typography
                   variant="body2"
-                  sx={{ textAlign: "center", color: "#6b7280", lineHeight: 1.6 }}
+                  sx={{
+                    textAlign: "center",
+                    color: "#6b7280",
+                    lineHeight: 1.6,
+                  }}
                 >
                   This may have been caused by{" "}
                   <Box
@@ -511,17 +562,25 @@ function PaymentStatus() {
               <>
                 <Typography
                   variant="h6"
-                  sx={{ textAlign: "center", color: "#b45309", fontWeight: 700 }}
+                  sx={{
+                    textAlign: "center",
+                    color: "#b45309",
+                    fontWeight: 700,
+                  }}
                 >
                   Still confirming your payment
                 </Typography>
                 <Typography
                   variant="body2"
-                  sx={{ textAlign: "center", color: "#6b7280", lineHeight: 1.6 }}
+                  sx={{
+                    textAlign: "center",
+                    color: "#6b7280",
+                    lineHeight: 1.6,
+                  }}
                 >
                   This is taking longer than usual. You can resend the prompt
-                  and check again, or verify your transaction history in a
-                  few minutes.
+                  and check again, or verify your transaction history in a few
+                  minutes.
                 </Typography>
                 <Stack direction="row" gap="10px" sx={{ width: "100%" }}>
                   <LoadingButton
@@ -529,7 +588,11 @@ function PaymentStatus() {
                     loading={isResending}
                     onClick={handleResendAndRecheck}
                     fullWidth
-                    sx={{ borderRadius: "8px", textTransform: "none", fontWeight: 600 }}
+                    sx={{
+                      borderRadius: "8px",
+                      textTransform: "none",
+                      fontWeight: 600,
+                    }}
                   >
                     Resend & Recheck
                   </LoadingButton>
@@ -538,7 +601,11 @@ function PaymentStatus() {
                     to={state?.path}
                     variant="outlined"
                     fullWidth
-                    sx={{ borderRadius: "8px", textTransform: "none", fontWeight: 600 }}
+                    sx={{
+                      borderRadius: "8px",
+                      textTransform: "none",
+                      fontWeight: 600,
+                    }}
                   >
                     Back
                   </Button>
@@ -549,13 +616,20 @@ function PaymentStatus() {
               <>
                 <Typography
                   variant="h6"
-                  sx={{ textAlign: "center", color: "#15803d", fontWeight: 700 }}
+                  sx={{
+                    textAlign: "center",
+                    color: "#15803d",
+                    fontWeight: 700,
+                  }}
                 >
                   Payment done!
                 </Typography>
                 <Stack direction="row" alignItems="center" gap="10px">
                   <Spinner size={16} />
-                  <Typography variant="caption" sx={{ color: "#6b7280", fontWeight: 500 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "#6b7280", fontWeight: 500 }}
+                  >
                     Redirecting you now…
                   </Typography>
                 </Stack>
@@ -566,7 +640,12 @@ function PaymentStatus() {
       </Box>
       <Box
         component="footer"
-        sx={{ textAlign: "center", p: "16px 20px", fontSize: "12px", color: "#9ca3af" }}
+        sx={{
+          textAlign: "center",
+          p: "16px 20px",
+          fontSize: "12px",
+          color: "#9ca3af",
+        }}
       >
         &copy; {new Date().getFullYear()} Gab Powerful Consult
       </Box>
@@ -575,7 +654,6 @@ function PaymentStatus() {
 }
 
 export default PaymentStatus;
-
 
 // import { useCallback, useEffect, useState } from "react";
 // import { IMAGES } from "../constants";
@@ -669,7 +747,7 @@ export default PaymentStatus;
 //           navigate("/checkout", {
 //             replace: true,
 //             state: {
-//               transactionId: data?.id,
+//               paymentReference: data?.id,
 //               categoryType: data?.categoryType,
 //               path: state?.path,
 //             },

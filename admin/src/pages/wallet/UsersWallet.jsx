@@ -74,38 +74,39 @@ function UsersWallet() {
         showExportButton={true}
         search={true}
         autocompleteComponent={
-          <Box
-            sx={{
-              width: "100%",
-              display: "flex",
-              flexDirection: { xs: "column", sm: "row" },
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 4,
-            }}
-          >
-            {user?.permissions?.includes("View user wallet Transaction") && (
-              <Button
-                variant="contained"
-                startIcon={<ViewAgendaOutlined />}
-                onClick={openUserWalletTransactions}
-                // sx={{ alignSelf: "flex-end" }}
-              >
-                View Wallet Transactions
-              </Button>
-            )}
-
-            <CustomTotal
-              title="NUMBER OF WALLETS"
-              total={transactions?.data?.length}
-            />
+          <>
             <CustomTotal
               title="total Amount"
               total={currencyFormatter(
                 _.sumBy(transactions?.data, (item) => Number(item?.amount)),
               )}
             />
-          </Box>
+            <Box
+              sx={{
+                width: "100%",
+                display: "flex",
+                flexDirection: { xs: "column", sm: "row" },
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              <CustomTotal
+                title="NUMBER OF WALLETS"
+                total={transactions?.data?.length}
+              />
+              {user?.permissions?.includes("View user wallet Transaction") && (
+                <Button
+                  variant="contained"
+                  startIcon={<ViewAgendaOutlined />}
+                  onClick={openUserWalletTransactions}
+                  // sx={{ alignSelf: "flex-end" }}
+                >
+                  View Wallet Transactions
+                </Button>
+              )}
+            </Box>
+          </>
         }
         options={{
           exportAllData: true,

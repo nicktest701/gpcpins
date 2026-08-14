@@ -8,6 +8,15 @@ const { getExpiryTimeByRoleMs } = require("../utils/helper");
 const adminRoles = [process?.env.ADMIN_ID, process?.env.EMPLOYEE_ID];
 const isProduction = process.env.NODE_ENV === "production";
 
+const getPermissions = async (roleId) => {
+  const perms = await knex("role_permissions")
+    .join("permissions", "role_permissions.permission_id", "permissions.id")
+    .where("role_permissions.role_id", roleId)
+    .pluck("permissions.description"); // Extracts values directly into a flat array
+
+  return perms;
+};
+
 const verifyToken = (req, res, next) => {
   req.user = null;
 
@@ -74,18 +83,26 @@ const verifyToken = (req, res, next) => {
     };
 
     if (user?.role !== process.env.USER_ID) {
-      newUser.permissions = safeJSON(authUser?.permissions, []);
+      const permissions = await getPermissions(authUser?.role_id);
+      newUser.permissions = permissions;
     }
 
     // 3. Populate Cache for next time (e.g., expires in 1 hour)
     await redisClient.set(cacheKey, JSON.stringify(newUser), {
       EX: getExpiryTimeByRoleMs(user?.role).accessTimeMs,
     });
+
+
+    console.log(newUser)
+
     req.user = newUser;
     req.authUser = user;
     next();
   });
 };
+
+
+
 
 const verifyRefreshToken = async (req, res, next) => {
   const cookieToken = req.cookies.refreshToken;
@@ -139,8 +156,9 @@ const verifyRefreshToken = async (req, res, next) => {
       permissions: safeJSON(authUser?.permissions, []),
     };
 
-    if (user?.role !== process.env.USER_ID) {
-      newUser.permissions = safeJSON(authUser?.permissions, []);
+    if (currentRole !== process.env.USER_ID) {
+      const permissions = await getPermissions(authUser?.role_id);
+      newUser.permissions = permissions;
     }
 
     if (
@@ -263,6 +281,11 @@ const verifyOptionalToken = (req, res, next) => {
       createdAt: authUser?.created_at,
       permissions: safeJSON(authUser?.permissions, "[]"),
     };
+
+    if (user?.role !== process.env.USER_ID) {
+      const permissions = await getPermissions(authUser?.role_id);
+      newUser.permissions = permissions;
+    }
 
     // 3. Populate Cache for next time (e.g., expires in 1 hour)
     await redisClient.set(cacheKey, JSON.stringify(newUser), {

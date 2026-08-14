@@ -1,15 +1,10 @@
-import { useContext, useState } from "react";
-import { LoadingButton } from "@mui/lab";
-import _ from "lodash";
+import { useContext, useState, useEffect } from "react";
 import {
   Autocomplete,
   Avatar,
   Box,
   Button,
   Container,
-  Dialog,
-  DialogActions,
-  DialogContent,
   IconButton,
   InputAdornment,
   List,
@@ -19,222 +14,247 @@ import {
   Stack,
   TextField,
   Typography,
+  LinearProgress,
 } from "@mui/material";
+import LoadingButton from "@mui/lab/LoadingButton";
+import { Close } from "@mui/icons-material";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { v4 as uuid } from "uuid";
+import _ from "lodash";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Formik } from "formik";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import { editCategory, getCategory } from "../../api/categoryAPI";
+import moment from "moment";
+import Swal from "sweetalert2";
+import DOMPurify from "dompurify";
+
+import DialogContainer from "../../components/dialogs/DialogContainer";
+import Transition from "../../components/Transition";
 import CustomDatePicker from "../../components/inputs/CustomDatePicker";
 import CustomTimePicker from "../../components/inputs/CustomTimePicker";
-import moment from "moment";
-import { v4 as uuid } from "uuid";
 import { MATCH_TYPE, STADIUM_STANDS } from "../../mocks/columns";
 import { currencyFormatter } from "../../constants";
 import { globalAlertType } from "../../components/alert/alertType";
-import { Close } from "@mui/icons-material";
 import { addStadiumValidationSchema } from "../../config/validationSchema";
-import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
-import DOMPurify from "dompurify";
+import { editCategory, getCategory } from "../../api/categoryAPI";
 import { uploadFile } from "@/lib/upload";
+import { useCustomContext } from "../../context/providers/CustomProvider";
+
 const EditStadiumCategory = () => {
-  //context
   const queryClient = useQueryClient();
   const {
     customState: {
       editStadiumCategory: { open, id },
     },
     customDispatch,
-  } = useContext(CustomContext);
+  } = useCustomContext();
 
-  const [logoPreview, setLogoPreview] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
+  // Local state for stands list
+  const [standsList, setStandsList] = useState([]);
+  const [standError, setStandError] = useState("");
+  const [stand, setStand] = useState("");
+  const [quantity, setQuantity] = useState(0);
+  const [price, setPrice] = useState(0);
+
+  // File upload states
   const [homeTeamImage, setHomeTeamImage] = useState(null);
   const [awayTeamImage, setAwayTeamImage] = useState(null);
-  const [matchType, setMatchType] = useState("");
-  const [home, setHome] = useState("");
-  const [away, setAway] = useState("");
-  const [stand, setStand] = useState("");
-  const [standError, setStandError] = useState("");
-  const [standsList, setStandsList] = useState([]);
-  const [venue, setVenue] = useState("");
-  const [time, setTime] = useState(moment());
-  const [date, setDate] = useState(moment());
-  const [price, setPrice] = useState(0);
-  const [quantity, setQuantity] = useState(0);
-  const [message, setMessage] = useState("");
-  const [companyName, setCompanyName] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const initialValues = {
-    category: "stadium",
-    matchType,
-    home,
-    away,
-    venue,
-    date,
-    time,
-    message,
-    companyName,
-  };
+  // React Hook Form
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: yupResolver(addStadiumValidationSchema),
+    defaultValues: {
+      category: "stadium",
+      matchType: "",
+      home: "",
+      away: "",
+      venue: "",
+      date: moment(),
+      time: moment(),
+      message: "",
+      companyName: "",
+    },
+  });
 
-  const stadium = useQuery({
+  // Fetch existing data
+  const { data: stadiumData} = useQuery({
     queryKey: ["category", "client-category", id],
     queryFn: () => getCategory(id),
     initialData: queryClient
       .getQueryData(["all-category"])
       ?.find((item) => item?.id === id),
-    enabled: !!id,
-    refetchOnMount: false,
-    onSuccess: (stadium) => {
-      setMatchType(stadium.details.matchType);
-      setHome(stadium.details.home);
-      setAway(stadium.details.away);
-      setVenue(stadium.details.venue);
-      setPrice(stadium.price);
-      setTime(moment(stadium.details.time));
-      setDate(moment(stadium.details.date));
-      setMessage(stadium.details.message);
-      setStandsList(stadium.details?.pricing);
-      setCompanyName(stadium.details?.companyName);
-      setHomeTeamImage(stadium.details?.homeImage);
-      setAwayTeamImage(stadium.details?.awayImage);
-    },
+    enabled: !!id && open,
   });
 
-  const { mutateAsync } = useMutation({
-    mutationFn: editCategory,
-  });
-  const onSubmit = (values, options) => {
-    setStandError("");
-    if (standsList.length === 0) {
-      setStandError("No stand selected.");
-      options.setSubmitting(false);
-      return;
+  // Populate form when data loads
+  useEffect(() => {
+    if (stadiumData && open) {
+      const details = stadiumData.details || {};
+      setValue("matchType", details.matchType || "");
+      setValue("home", details.home || "");
+      setValue("away", details.away || "");
+      setValue("venue", details.venue || "");
+      setValue("date", details.date ? moment(details.date) : moment());
+      setValue("time", details.time ? moment(details.time) : moment());
+      setValue("message", details.message || "");
+      setValue("companyName", details.companyName || "");
+      setStandsList(details.pricing || []);
+      setHomeTeamImage(details.homeImage || null);
+      setAwayTeamImage(details.awayImage || null);
     }
+  }, [stadiumData, open, setValue]);
 
-    const updatedStadiumTicket = {
-      id: stadium.data?.id,
-      type: values.category,
-      name: DOMPurify.sanitize(
-        `${values.home} Vs ${values.away}(${values.matchType})`,
-      ),
-      details: {
-        homeImage: homeTeamImage || stadium?.data?.details?.homeImage,
-        awayImage: awayTeamImage || stadium?.data?.details?.awayImage,
-        matchType: DOMPurify.sanitize(values.matchType?.toUpperCase()),
-        home: DOMPurify.sanitize(values.home),
-        away: DOMPurify.sanitize(values.away),
-        pricing: standsList,
-        venue: DOMPurify.sanitize(values.venue),
-        quantity: parseInt(_.sumBy(standsList, "quantity")),
-        date: values.date,
-        time: values.time,
-        message: DOMPurify.sanitize(values.message),
-        companyName: DOMPurify.sanitize(values.companyName),
-      },
-    };
-
-    mutateAsync(updatedStadiumTicket, {
-      onSettled: () => {
-        options.setSubmitting(false);
-        queryClient.invalidateQueries(["category"]);
-      },
-      onSuccess: (data) => {
-        customDispatch(globalAlertType("info", data));
-        handleClose();
-        options.resetForm();
-      },
-      onError: (error) => {
-        customDispatch(globalAlertType("error", error));
-      },
-    });
+  // Upload helper with progress
+  const uploadFileWithProgress = async (file) => {
+    setIsUploading(true);
+    setUploadProgress(0);
+    try {
+      const { downloadURL } = await uploadFile({
+        folder: "category",
+        file,
+        onProgress: (progress) => setUploadProgress(progress),
+      });
+      return downloadURL;
+    } catch (error) {
+      customDispatch(
+        globalAlertType("error", "Upload failed. Please try again.")
+      );
+      return null;
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
   };
 
+  const handleHomeTeamFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = await uploadFileWithProgress(file);
+    if (url) setHomeTeamImage(url);
+  };
+
+  const handleAwayTeamFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = await uploadFileWithProgress(file);
+    if (url) setAwayTeamImage(url);
+  };
+
+  // Add stand
   const handleAddStand = () => {
-    if (stand?.trim() === "") {
-      setStandError("No stand selected.");
+    setStandError("");
+    if (!stand.trim()) {
+      setStandError("Please select or enter a stand");
+      return;
+    }
+    if (!quantity || quantity <= 0) {
+      setStandError("Valid quantity is required");
+      return;
+    }
+    if (!price || price <= 0) {
+      setStandError("Valid price is required");
       return;
     }
 
-    const item = {
+    const newItem = {
       id: uuid(),
-      type: stand.toUpperCase(),
-      quantity: parseInt(DOMPurify.sanitize(quantity)),
-      price: DOMPurify.sanitize(price),
+      type: stand.trim().toUpperCase(),
+      quantity: Number(quantity),
+      price: Number(price),
     };
-    setStandsList((prev) => {
-      return _.values(_.merge(_.keyBy([...prev, item], "type")));
-    });
+    setStandsList((prev) =>
+      _.orderBy(
+        _.values(_.merge(_.keyBy([...prev, newItem], "type"))),
+        "type",
+        "asc"
+      )
+    );
     setStand("");
     setQuantity(0);
     setPrice(0);
   };
 
   const handleRemoveStand = (id) => {
-    const filteredStands = standsList.filter((item) => item.id !== id);
-    setStandsList(filteredStands);
+    setStandsList((prev) => prev.filter((item) => item.id !== id));
   };
 
-  ///Close Add Category
+  // Mutation
+  const { mutateAsync, isLoading } = useMutation({
+    mutationFn: editCategory,
+    onSuccess: (data) => {
+      customDispatch(globalAlertType("info", data));
+      handleClose();
+      queryClient.invalidateQueries(["category"]);
+      queryClient.invalidateQueries(["all-category"]);
+    },
+    onError: (error) => {
+      customDispatch(globalAlertType("error", error));
+    },
+  });
+
   const handleClose = () => {
     customDispatch({
       type: "openEditStadiumCategory",
       payload: { open: false, id: "" },
     });
+    reset();
   };
 
-  // Upload logo
-  const handleUploadFile = async (e) => {
-    setLoading(true);
-
-    try {
-      const file = e.target.files[0];
-      if (!file) return;
-      // Create preview
-      const reader = new FileReader();
-      reader.onload = () => setLogoPreview(reader.result);
-      reader.readAsDataURL(file);
-
-      // Actually upload to Firebase
-      const { downloadURL } = await uploadFile({
-        folder: "category",
-        file,
-        onProgress: (progress) => {
-          setProgress(progress);
-        },
-      });
-      return downloadURL; // store final URL
-    } catch (error) {
-      customDispatch(
-        globalAlertType("error", "Something went wrong. Please try again."),
-      );
-    } finally {
-      setLoading(false);
+  const onSubmit = (values) => {
+    if (standsList.length === 0) {
+      setStandError("Please add at least one stand");
+      return;
     }
+
+    Swal.fire({
+      title: "Save Changes?",
+      text: "Are you sure you want to update this match ticket?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, save",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const payload = {
+          id: stadiumData?.id,
+          type: values.category,
+          name: DOMPurify.sanitize(
+            `${values.home} Vs ${values.away} (${values.matchType})`
+          ),
+          details: {
+            homeImage: homeTeamImage || stadiumData?.details?.homeImage,
+            awayImage: awayTeamImage || stadiumData?.details?.awayImage,
+            matchType: DOMPurify.sanitize(values.matchType?.toUpperCase()),
+            home: DOMPurify.sanitize(values.home),
+            away: DOMPurify.sanitize(values.away),
+            pricing: standsList,
+            venue: DOMPurify.sanitize(values.venue),
+            quantity: parseInt(_.sumBy(standsList, "quantity")),
+            date: values.date,
+            time: values.time,
+            message: DOMPurify.sanitize(values.message),
+            companyName: DOMPurify.sanitize(values.companyName),
+          },
+        };
+        mutateAsync(payload);
+      }
+    });
   };
 
-  const handleHomeTeamFile = async (e) => {
-    e.preventDefault();
-    if (e.target.files) {
-      const ImageURL = await handleUploadFile(e);
-      setHomeTeamImage(ImageURL);
-    }
-  };
-
-  const handleAwayTeamFile = async (e) => {
-    e.preventDefault();
-    if (e.target.files) {
-      const ImageURL = await handleUploadFile(e);
-      setAwayTeamImage(ImageURL);
-    }
-  };
-
-  // Preview logo if uploaded
-  const LogoPreview = ({ preview }) => (
-    <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 2 }}>
-      {preview && (
+  // Team logo preview
+  const TeamLogoPreview = ({ image }) => (
+    <Box sx={{ mt: 1 }}>
+      {image && (
         <Avatar
-          src={preview}
+          src={image}
           variant="rounded"
           sx={{ width: 60, height: 60, objectFit: "contain" }}
         />
@@ -243,279 +263,297 @@ const EditStadiumCategory = () => {
   );
 
   return (
-    <Formik
-      initialValues={initialValues}
-      validationSchema={addStadiumValidationSchema}
-      onSubmit={onSubmit}
-      enableReinitialize={true}
+    <DialogContainer
+      open={open}
+      onClose={handleClose}
+      title="Edit Football Ticket"
+      subtitle="Update match ticket details"
+      loading={isSubmitting || isLoading || isUploading}
+      disabled={isUploading}
+      onConfirm={handleSubmit(onSubmit)}
+      confirmText="Save Changes"
+      maxWidth="md"
+      contentSx={{ overflow: "auto" }}
     >
-      {({ errors, touched, isSubmitting, handleSubmit }) => {
-        return (
-          <Dialog maxWidth="md" fullWidth open={open}>
-            <CustomDialogTitle
-              title="Edit Football Ticket"
-              onClose={handleClose}
+      <Stack spacing={3}>
+        {/* Company Name */}
+        <Controller
+          name="companyName"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Company Name"
+              fullWidth
+              error={!!errors.companyName}
+              helperText={errors.companyName?.message}
             />
-            <DialogContent>
-              <Container maxWidth="md">
-                <Stack rowGap={2} paddingY={2}>
-                  <TextField
-                    size="small"
-                    label="Company"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    error={Boolean(touched.companyName && errors.companyName)}
-                    helperText={touched.companyName && errors.companyName}
+          )}
+        />
+
+        {/* Match Type */}
+        <Controller
+          name="matchType"
+          control={control}
+          render={({ field }) => (
+            <Autocomplete
+              freeSolo
+              options={MATCH_TYPE}
+              noOptionsText="No match type available"
+              isOptionEqualToValue={(option, value) => option === value}
+              onInputChange={(_, value) => {
+                setValue("matchType", value);
+              }}
+              value={field.value || null}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Match Type"
+                  required
+                  error={!!errors.matchType}
+                  helperText={errors.matchType?.message || "e.g. Friendly Match, Cup Final"}
+                />
+              )}
+            />
+          )}
+        />
+
+        {/* Home Team Logo */}
+        <Box>
+          <Typography variant="subtitle2" gutterBottom>
+            Home Team Logo
+          </Typography>
+          <Button
+            variant="outlined"
+            component="label"
+            disabled={isUploading}
+          >
+            Upload Image
+            <input
+              type="file"
+              hidden
+              accept=".png,.jpg,.jpeg,.webp"
+              onChange={handleHomeTeamFile}
+            />
+          </Button>
+          <TeamLogoPreview image={homeTeamImage} />
+        </Box>
+
+        {/* Home Team */}
+        <Controller
+          name="home"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Home Team"
+              fullWidth
+              required
+              error={!!errors.home}
+              helperText={errors.home?.message || "e.g. Team A"}
+            />
+          )}
+        />
+
+        {/* Away Team Logo */}
+        <Box>
+          <Typography variant="subtitle2" gutterBottom>
+            Away Team Logo
+          </Typography>
+          <Button
+            variant="outlined"
+            component="label"
+            disabled={isUploading}
+          >
+            Upload Image
+            <input
+              type="file"
+              hidden
+              accept=".png,.jpg,.jpeg,.webp"
+              onChange={handleAwayTeamFile}
+            />
+          </Button>
+          <TeamLogoPreview image={awayTeamImage} />
+        </Box>
+
+        {/* Away Team */}
+        <Controller
+          name="away"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Away Team"
+              fullWidth
+              required
+              error={!!errors.away}
+              helperText={errors.away?.message || "e.g. Team B"}
+            />
+          )}
+        />
+
+        {/* Stand Pricing */}
+        <Box>
+          <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+            Stand Pricing
+          </Typography>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1} mb={2}>
+            <Autocomplete
+              options={STADIUM_STANDS}
+              freeSolo
+              fullWidth
+              value={stand}
+              onInputChange={(_, val) => setStand(val)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Stand"
+                  error={!!standError}
+                  helperText={standError}
+                />
+              )}
+            />
+            <TextField
+              type="number"
+              label="Quantity"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              sx={{ minWidth: 100 }}
+            />
+            <TextField
+              type="number"
+              label="Price (GH¢)"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">GH¢</InputAdornment>
+                ),
+              }}
+              sx={{ minWidth: 120 }}
+            />
+            <Button
+              variant="contained"
+              onClick={handleAddStand}
+              sx={{ whiteSpace: "nowrap" ,borderRadius:1.2}}
+            >
+              Add
+            </Button>
+          </Stack>
+          {standError && (
+            <Typography color="error" variant="caption">
+              {standError}
+            </Typography>
+          )}
+          {standsList.length > 0 && (
+            <List
+              sx={{
+                maxHeight: 200,
+                overflow: "auto",
+                bgcolor: "action.hover",
+                borderRadius: 1,
+                p: 1,
+              }}
+            >
+              {standsList.map((item) => (
+                <ListItem key={item.id} sx={{ py: 0.5 }}>
+                  <ListItemText
+                    primary={`${item.type} (${item.quantity})`}
+                    secondary={currencyFormatter(item.price)}
+                    primaryTypographyProps={{ variant: "body2" }}
+                    secondaryTypographyProps={{ variant: "caption" }}
                   />
-                  <Autocomplete
-                    size="small"
-                    options={MATCH_TYPE}
-                    freeSolo
-                    closeText=""
-                    disableClearable
-                    noOptionsText="No match type available"
-                    value={matchType || null}
-                    onInputChange={(e, value) => setMatchType(value)}
-                    isOptionEqualToValue={(option, value) => option === value}
-                    renderInput={(props) => (
-                      <TextField
-                        {...props}
-                        label="Select match type"
-                        error={Boolean(touched.matchType && errors.matchType)}
-                        helperText={
-                          touched.matchType && errors.matchType
-                            ? errors.matchType
-                            : "eg.Friendly Match,Cup Final,League Match"
-                        }
-                      />
-                    )}
-                  />
-
-                  {loading && (
-                    <Box sx={{ width: "100%", mb: 1 }}>
-                      <Typography variant="caption" color="textSecondary">
-                        Uploading... {Math.round(progress)}%
-                      </Typography>
-                      <Box
-                        sx={{
-                          height: 4,
-                          width: "100%",
-                          bgcolor: "action.hover",
-                          borderRadius: 1,
-                          overflow: "hidden",
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            height: "100%",
-                            width: `${progress}%`,
-                            bgcolor: "primary.main",
-                            transition: "width 0.3s ease",
-                          }}
-                        />
-                      </Box>
-                    </Box>
-                  )}
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                    <Box>
-                      <div>
-                        <label htmlFor="homeTeam">Home Team logo</label>
-                        <input
-                          type="file"
-                          id="homeTeam"
-                          onChange={(e) => handleHomeTeamFile(e)}
-                          accept=".png,.jpg,.jpeg,.webp"
-                        />
-                        <LogoPreview preview={homeTeamImage} />
-                      </div>
-
-                      <TextField
-                        size="small"
-                        label="Home Team"
-                        fullWidth
-                        value={home}
-                        onChange={(e) => setHome(e.target.value)}
-                        error={Boolean(touched.home && errors.home)}
-                        helperText={
-                          touched.home && errors.home
-                            ? errors.home
-                            : "eg. TeamA"
-                        }
-                      />
-                    </Box>
-                    <Box>
-                      <div>
-                        <label htmlFor="awayTeam">Away Team logo</label>
-                        <input
-                          type="file"
-                          id="awayTeam"
-                          onChange={(e) => handleAwayTeamFile(e)}
-                          accept=".png,.jpg,.jpeg,.webp"
-                        />
-                        <LogoPreview preview={homeTeamImage} />
-                      </div>
-
-                      <TextField
-                        size="small"
-                        label="Away Team"
-                        fullWidth
-                        value={away}
-                        onChange={(e) => setAway(e.target.value)}
-                        error={Boolean(touched.away && errors.away)}
-                        helperText={
-                          touched.away && errors.away
-                            ? errors.away
-                            : "eg. TeamB"
-                        }
-                      />
-                    </Box>
-                  </Stack>
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                    <Autocomplete
-                      fullWidth
+                  <ListItemSecondaryAction>
+                    <IconButton
+                      edge="end"
                       size="small"
-                      options={STADIUM_STANDS}
-                      freeSolo
-                      closeText=""
-                      disableClearable
-                      noOptionsText="No stand available"
-                      value={stand || ""}
-                      onInputChange={(e, value) => setStand(value)}
-                      isOptionEqualToValue={(option, value) => option === value}
-                      renderInput={(props) => (
-                        <TextField
-                          {...props}
-                          label="Select a stand"
-                          error={standError.trim() !== ""}
-                          helperText={standError}
-                        />
-                      )}
-                    />
-                    <TextField
-                      size="small"
-                      type="number"
-                      inputMode="numeric"
-                      label="Quantity"
-                      placeholder="Quantity here"
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                      error={Boolean(touched.quantity && errors.quantity)}
-                      helperText={touched.quantity && errors.quantity}
-                    />
-                    <TextField
-                      size="small"
-                      type="number"
-                      inputMode="decimal"
-                      label="Price"
-                      placeholder="Price here"
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Typography>GHS</Typography>
-                          </InputAdornment>
-                        ),
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <Typography>p</Typography>
-                          </InputAdornment>
-                        ),
-                      }}
-                      error={Boolean(touched.price && errors.price)}
-                      helperText={touched.price && errors.price}
-                    />
-                    <Button variant="contained" onClick={handleAddStand}>
-                      Add
-                    </Button>
-                  </Stack>
+                      onClick={() => handleRemoveStand(item.id)}
+                      aria-label="remove"
+                    >
+                      <Close fontSize="small" />
+                    </IconButton>
+                  </ListItemSecondaryAction>
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </Box>
 
-                  <List>
-                    {standsList?.length !== 0
-                      ? standsList?.map((item) => (
-                          <ListItem key={item.id}>
-                            <ListItemText
-                              primary={`${item.type} (${item.quantity})`}
-                              primaryTypographyProps={{
-                                fontSize: 12,
-                                color: "primary.main",
-                                fontWeight: "bolder",
-                              }}
-                              secondary={currencyFormatter(item?.price)}
-                            />
+        {/* Venue */}
+        <Controller
+          name="venue"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Venue"
+              fullWidth
+              required
+              error={!!errors.venue}
+              helperText={errors.venue?.message || "e.g. Kumasi, Ghana"}
+            />
+          )}
+        />
 
-                            <ListItemSecondaryAction>
-                              <IconButton
-                                color="primary"
-                                size="small"
-                                onClick={() => handleRemoveStand(item?.id)}
-                              >
-                                <Close />
-                              </IconButton>
-                            </ListItemSecondaryAction>
-                          </ListItem>
-                        ))
-                      : null}
-                  </List>
+        {/* Date & Time */}
+        <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+          <Controller
+            name="date"
+            control={control}
+            render={({ field }) => (
+              <CustomDatePicker
+                label="Date"
+                value={field.value}
+                setValue={(val) => setValue("date", val)}
+                error={!!errors.date}
+                helperText={errors.date?.message}
+                minDate={moment()}
+              />
+            )}
+          />
+          <Controller
+            name="time"
+            control={control}
+            render={({ field }) => (
+              <CustomTimePicker
+                label="Time"
+                value={field.value}
+                setValue={(val) => setValue("time", val)}
+                error={!!errors.time}
+                helperText={errors.time?.message}
+              />
+            )}
+          />
+        </Stack>
 
-                  <TextField
-                    size="small"
-                    label="Venue"
-                    value={venue}
-                    onChange={(e) => setVenue(e.target.value)}
-                    error={Boolean(touched.venue && errors.venue)}
-                    helperText={
-                      touched.venue && errors.venue
-                        ? errors.venue
-                        : "eg. Kumasi,Ghana"
-                    }
-                  />
-                  <Stack direction="row" spacing={2}>
-                    <CustomDatePicker
-                      label="Date"
-                      value={date}
-                      setValue={setDate}
-                      error={Boolean(touched.date && errors.date)}
-                      helperText={touched.date && errors.date}
-                    />
-                    <CustomTimePicker
-                      label="Time"
-                      value={time}
-                      setValue={setTime}
-                      error={Boolean(touched.time && errors.time)}
-                      helperText={touched.time && errors.time}
-                    />
-                  </Stack>
-                  <TextField
-                    size="small"
-                    label="Message"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    error={Boolean(touched.message && errors.message)}
-                    helperText={touched.message && errors.message}
-                  />
-                </Stack>
-              </Container>
-            </DialogContent>
-            <DialogActions>
-              <Container
-                maxWidth="md"
-                sx={{ display: "flex", justifyContent: "flex-end" }}
-              >
-                <Button onClick={handleClose}>Cancel</Button>
-                <LoadingButton
-                  variant="contained"
-                  loading={isSubmitting}
-                  onClick={handleSubmit}
-                >
-                  Save Changes
-                </LoadingButton>
-              </Container>
-            </DialogActions>
-          </Dialog>
-        );
-      }}
-    </Formik>
+        {/* Message */}
+        <Controller
+          name="message"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Additional Message"
+              multiline
+              rows={2}
+              fullWidth
+              error={!!errors.message}
+              helperText={errors.message?.message}
+            />
+          )}
+        />
+
+        {/* Upload progress indicator */}
+        {isUploading && (
+          <Box sx={{ width: "100%" }}>
+            <LinearProgress variant="determinate" value={uploadProgress} />
+            <Typography variant="caption" color="text.secondary">
+              Uploading... {Math.round(uploadProgress)}%
+            </Typography>
+          </Box>
+        )}
+      </Stack>
+    </DialogContainer>
   );
 };
 

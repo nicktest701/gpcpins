@@ -49,8 +49,8 @@ const sendOTPSMS = async (message, telephoneNumber) => {
   }
 };
 const sendSMS = async (message, telephoneNumber) => {
-  if (process.env.NODE_ENV === "development") return true;
-  if (!telephoneNumber) return true;
+  // if (process.env.NODE_ENV === "development") return true;
+  // if (!telephoneNumber) return true;
   try {
     // SEND SMS
 

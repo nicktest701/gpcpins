@@ -164,7 +164,8 @@ router.get(
         message: "Bill Payment processed successfully.",
         paymentResponseDetails: {
           rechargeToken: responseDetails?.rechargeToken || "N/A",
-          receipt: responseDetails?.receipt || responseDetails?.receiptNumber || "N/A",
+          receipt:
+            responseDetails?.receipt || responseDetails?.receiptNumber || "N/A",
           amount: Number(responseDetails?.amount || 0),
           openingBalance: Number(responseDetails?.openingBalance || 0),
           closingBalance: Number(responseDetails?.closingBalance || 0),
@@ -181,7 +182,10 @@ router.get(
     );
 
     try {
-      const paymentResponse = await brassicaPost("/billerPayment", paymentPayload);
+      const paymentResponse = await brassicaPost(
+        "/billerPayment",
+        paymentPayload,
+      );
 
       if (
         paymentResponse?.status !== "Success" ||
@@ -195,9 +199,7 @@ router.get(
       // 7. Atomically finalize database status using a transaction block
       let transactionDetails;
       await knex.transaction(async (trx) => {
-        await trx("payments")
-          .update({ is_processed: true })
-          .where("id", id);
+        await trx("payments").update({ is_processed: true }).where("id", id);
 
         await trx("electricity_transactions")
           .update({
@@ -235,7 +237,8 @@ router.get(
         message: "Bill Payment processed successfully.",
         paymentResponseDetails: {
           rechargeToken: responseDetails?.rechargeToken || "N/A",
-          receipt: responseDetails?.receipt || responseDetails?.receiptNumber || "N/A",
+          receipt:
+            responseDetails?.receipt || responseDetails?.receiptNumber || "N/A",
           amount: Number(responseDetails?.amount || 0),
           openingBalance: Number(responseDetails?.openingBalance || 0),
           closingBalance: Number(responseDetails?.closingBalance || 0),
@@ -252,8 +255,11 @@ router.get(
             name: paymentPayload?.paymentDetails?.accountName,
             amount: responseDetails?.amount,
             token: responseDetails?.rechargeToken,
+            receiptUrl: responseDetails?.receiptUrl,
             email: transactionDetails?.email,
-            phonenumber: paymentPayload?.billRequest?.phoneNumber || transactionDetails?.phonenumber,
+            phonenumber:
+              paymentPayload?.billRequest?.phoneNumber ||
+              transactionDetails?.phonenumber,
             userId: payment?.user_id,
             status: "completed",
           };
@@ -263,14 +269,12 @@ router.get(
           logger.error("[ECGPay Background Notification Error]:", bgError);
         }
       });
-
     } catch (apiError) {
       logger.error("[ECGPay API Error]:", apiError);
       return res.status(422).json({ message: "Provider transaction failed" });
     }
   }),
 );
-
 
 router.get(
   "/:id",
@@ -599,7 +603,6 @@ async function sendElectricityMessage(transaction) {
     if (transaction?.email) {
       await sendPrepaidEmail(transaction);
     }
-
   }
 }
 

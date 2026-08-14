@@ -14,10 +14,10 @@ import CustomDialogTitle from "../../../components/dialogs/CustomDialogTitle";
 import { Formik } from "formik";
 import { LoadingButton } from "@mui/lab";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import moment from "moment";
 import { useSearchParams, useParams } from "react-router-dom";
-import { CustomContext } from "../../../context/providers/CustomProvider";
+import { useCustomContext } from "../../../context/providers/CustomProvider";
 import { globalAlertType } from "../../../components/alert/alertType";
 import CustomDatePicker from "../../../components/inputs/CustomDatePicker";
 import {
@@ -30,10 +30,9 @@ import { getAgent, putAgent } from "../../../api/agentAPI";
 
 const EditAgent = () => {
   const { id } = useParams();
-  const { customDispatch } = useContext(CustomContext);
+  const { customDispatch } =useCustomContext()
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [profileImage, setProfileImage] = useState(null);
   const [dob, setDob] = useState(moment());
 
   const { data } = useQuery({
@@ -100,9 +99,14 @@ const EditAgent = () => {
     mutationFn: putAgent,
   });
   const onSubmit = (values) => {
-    // console.log(values);
-    values.dob = dob;
-    mutateAsync(values, {
+
+    // return
+    // values.dob = values?.dob.format("YYYY-MM-DD");
+    const payload={
+      ...values,
+      dob:dob.format("YYYY-MM-DD")
+    }
+    mutateAsync(payload, {
       onSettled: () => {
         queryClient.invalidateQueries(["agents"]);
         queryClient.invalidateQueries(["agent", id]);
@@ -159,14 +163,10 @@ const EditAgent = () => {
           errors,
           values,
           touched,
-          setFieldValue,
           handleChange,
           handleSubmit,
         }) => {
-          const handleImageUpload = (e) => {
-            setFieldValue("profile", e.target.files[0]);
-            setProfileImage(URL.createObjectURL(e.target.files[0]));
-          };
+        
 
           return (
             <>
@@ -219,6 +219,7 @@ const EditAgent = () => {
                         onChange={handleChange("username")}
                         error={Boolean(touched.username && errors.username)}
                         helperText={touched.username && errors.username}
+                     disabled
                       />
                       <CustomFormControl>
                         <CustomDatePicker

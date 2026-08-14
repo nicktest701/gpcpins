@@ -19,12 +19,14 @@ import {
 import LoadingSpinner from "../../components/spinners/LoadingSpinner";
 import CustomTitle from "../../components/custom/CustomTitle";
 
+const defaultColor = "#b10508";
+
 function Bundle() {
   const { palette } = useTheme();
   const summary = useQuery({
     queryKey: ["bundle-summary"],
     queryFn: () => getBundleTransaction(),
-      initialData: {
+    initialData: {
       recent: [],
       today: "GHS 0.00",
       yesterday: "GHS 0.00",
@@ -95,9 +97,9 @@ function Bundle() {
             <Grid item xs={12} sm={6} md={3} lg={3}>
               <ItemCard
                 title="Today"
-                icon={<AllOut color="error" />}
+                icon={<AllOut color="error.main" />}
                 value={summary?.data?.today}
-                bg={"rgba(240, 1, 5,.2)"}
+                color={defaultColor}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3} lg={3}>
@@ -105,7 +107,7 @@ function Bundle() {
                 title="Yesterday"
                 icon={<AllOut color="error" />}
                 value={summary?.data?.yesterday}
-                bg={"rgba(240, 1, 5,.2)"}
+                color={defaultColor}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3} lg={3}>
@@ -113,7 +115,7 @@ function Bundle() {
                 title="Last 7 days"
                 icon={<NoteAltSharp color="error" />}
                 value={summary?.data?.lastSevenDaysTotal}
-                bg={"rgba(240, 1, 5,.2)"}
+                color={defaultColor}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3} lg={3}>
@@ -121,7 +123,7 @@ function Bundle() {
                 title="This Month"
                 icon={<AirplaneTicketSharp color="error" />}
                 value={summary?.data?.thisMonth}
-                bg={"rgba(240, 1, 5,.2)"}
+               color={defaultColor}
               />
             </Grid>
           </Grid>

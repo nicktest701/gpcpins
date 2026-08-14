@@ -1,20 +1,18 @@
-import { Container, Button, Box } from "@mui/material";
+import { Container, Box } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
-import { Add } from "@mui/icons-material";
 import _ from "lodash";
 import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
-import { useSearchParams, useParams } from "react-router-dom";
+import {useParams } from "react-router-dom";
 import AddMoney from "./AddMoney";
-import { AuthContext } from "../../context/providers/AuthProvider";
-import { useContext } from "react";
+import {  useAuth } from "../../context/providers/AuthProvider";
+
 import { WALLET_TOPUP_TRANSACTIONS } from "../../mocks/columns";
 import { getUserWalletTransaction } from "../../api/transactionAPI";
 import { currencyFormatter } from "../../constants";
 import CustomTotal from "../../components/custom/CustomTotal";
 
 function UserWallet() {
-  const { user } = useContext(AuthContext);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { user } =useAuth()
   const { id } = useParams();
 
   const transactions = useQuery({
@@ -24,13 +22,7 @@ function UserWallet() {
     initialData: [],
   });
 
-  const openAddMoney = () => {
-    setSearchParams((params) => {
-      // params.set("data", JSON.stringify(data));
-      params.set("add-user-money", "true");
-      return params;
-    });
-  };
+
   return (
     <>
       <Container sx={{ paddingY: 2, bgcolor: "#fff" }}>

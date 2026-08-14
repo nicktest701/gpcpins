@@ -211,21 +211,23 @@ router.post(
       }
     }
 
+    console.log(availableMeter)
+
     const meterDetails = {
       id: generateId(),
       user_id: newMeter?.user_id,
       number: newMeter?.number,
       spn: "",
-      name: availableMeter?.accountName,
-      type: availableMeter?.accountType,
-      district: availableMeter?.serviceDis,
-      address: availableMeter?.accountAddress,
+      name: availableMeter?.accountDetails?.accountName,
+      type: availableMeter?.accountDetails?.accountType,
+      district: availableMeter?.accountDetails?.serviceDistrictId,
+      address: availableMeter?.accountDetails?.accountAddress,
       geo_code: "",
       account_number: newMeter?.number,
-      reference_id: availableMeter?.accountReferenceId,
-      region: availableMeter?.serviceRegionId,
-      provider_name: availableMeter?.serviceProviderName,
-      alt_account_number: availableMeter?.altAccountNumber,
+      reference_id: availableMeter?.accountDetails?.accountReferenceId,
+      region: availableMeter?.accountDetails?.serviceRegionId,
+      provider_name: availableMeter?.accountDetails?.serviceProviderName,
+      alt_account_number: availableMeter?.accountDetails?.altAccountNumber,
       look_up_id: availableMeter?.accountLookUpId,
     };
 

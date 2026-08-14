@@ -1,18 +1,8 @@
 import { useContext, useState } from "react";
 import { Link } from "react-router-dom";
 import LoadingButton from "@mui/lab/LoadingButton";
-import {
-  IconButton,
-  Box,
-  ListItemText,
-  Alert,
-} from "@mui/material";
-import {
-  ArrowBackRounded,
-  NoteAlt,
-  NoteRounded,
-
-} from "@mui/icons-material";
+import { IconButton, Box, ListItemText, Alert } from "@mui/material";
+import { ArrowBackRounded, NoteAlt, NoteRounded } from "@mui/icons-material";
 import { AuthContext } from "../../context/providers/AuthProvider";
 import _ from "lodash";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -26,6 +16,7 @@ import {
 import { currencyFormatter } from "../../constants";
 import { WALLET_TRANSACTIONS } from "../../mocks/columns";
 import DateRangePicker from "@/components/pickers/DateRangePicker";
+import CustomTotal from "@/components/custom/CustomTotal";
 
 function UsersWalletTransactions() {
   const { user } = useContext(AuthContext);
@@ -40,13 +31,11 @@ function UsersWalletTransactions() {
 
   //Get all transactions by meter id
   const transactions = useQuery({
-    queryKey: ["users-wallet-transactions",date[0]],
+    queryKey: ["users-wallet-transactions", date[0]],
     queryFn: () => geAllUserWalletTransaction(date[0]),
     enabled: !!user?.id,
     initialData: [],
   });
-
-
 
   const { mutateAsync, isLoading, isSuccess, isError, data } = useMutation({
     mutationFn: geAllUserWalletTransactionReport,
@@ -109,53 +98,46 @@ function UsersWalletTransactions() {
             ),
           }}
           autocompleteComponent={
-            <Box
-              sx={{
-                width: "100%",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 2,
-                flexWrap: "wrap",
-              }}
-            >
-              <DateRangePicker
-                date={date}
-                setDate={setDate}
-                onReset={transactions.refetch}
-                placeholder="Pick a date range"
-                dateFormat="ll"
-                maxDate={new Date()}
-                minDate={new Date("2024-01-01")}
-              />
-              <LoadingButton
-                variant="contained"
-                endIcon={<NoteRounded />}
-                onClick={generateReport}
-                loading={isLoading}
-              >
-                {isLoading
-                  ? "Generating Report.Please Wait..."
-                  : " Generate Report"}
-              </LoadingButton>
-
-              <ListItemText
-                primary={currencyFormatter(
+            <>
+              <CustomTotal
+              title="Total Amount"
+                total={currencyFormatter(
                   _.sumBy(transactions.data, (item) => Number(item?.amount)),
                 )}
-                primaryTypographyProps={{
-                  fontSize: "1.5rem",
-                  fontWeight: "bold",
-                  // textAlign:'right'
-                }}
-                secondary="Total Amount"
-                secondaryTypographyProps={{ color: "secondary" }}
-                sx={{
-                  flex: 1,
-                  textAlign: "right",
-                }}
               />
-            </Box>
+
+            
+              <Box
+                sx={{
+                  width: "100%",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 2,
+                  flexWrap: "wrap",
+                }}
+              >
+                <DateRangePicker
+                  date={date}
+                  setDate={setDate}
+                  onReset={transactions.refetch}
+                  placeholder="Pick a date range"
+                  dateFormat="ll"
+                  maxDate={new Date()}
+                  minDate={new Date("2024-01-01")}
+                />
+                <LoadingButton
+                  variant="contained"
+                  endIcon={<NoteRounded />}
+                  onClick={generateReport}
+                  loading={isLoading}
+                >
+                  {isLoading
+                    ? "Generating Report.Please Wait..."
+                    : " Generate Report"}
+                </LoadingButton>
+              </Box>
+            </>
           }
         />
       </>

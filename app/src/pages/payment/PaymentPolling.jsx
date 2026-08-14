@@ -113,8 +113,10 @@ const PaymentPolling = ({
   };
 
   const { status, attempts, error, retry, rawData } = usePaymentPolling({
-    paymentId,
-    transactionId,
+      props: {
+      paymentId:paymentId,
+      transactionId,
+    },
     interval,
     maxAttempts,
     checkStatusFn: getPrepaidStatus,

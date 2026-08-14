@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import _ from "lodash";
 import { useParams } from "react-router-dom";
 import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import { AuthContext, useAuth } from "../../context/providers/AuthProvider";
 import { useContext, useMemo, useState } from "react";
 import {
   airtimeTransactionsColumns,
@@ -15,7 +15,7 @@ import CustomTotal from "../../components/custom/CustomTotal";
 import { NoteAlt } from "@mui/icons-material";
 
 function UserTransaction() {
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const { id } = useParams();
   const [type, setType] = useState("All");
   const [status, setStatus] = useState("all");
@@ -33,18 +33,18 @@ function UserTransaction() {
     if (type !== "All") {
       if (type === "airtime") {
         filteredTransaction = transactions?.data?.filter(
-          (item) => item.domain === type && item.kind === airtimeType
+          (item) => item.domain === type && item.kind === airtimeType,
         );
       } else {
         filteredTransaction = transactions?.data?.filter(
-          (item) => item.domain === type
+          (item) => item.domain === type,
         );
       }
     }
 
     if (status !== "all") {
       filteredTransaction = filteredTransaction?.filter(
-        (item) => item.status === status
+        (item) => item.status === status,
       );
     }
 
@@ -74,67 +74,70 @@ function UserTransaction() {
             selection: true,
           }}
           autocompleteComponent={
-            <Box
-              sx={{
-                width: "100%",
-                display: "flex",
-                flexDirection: { xs: "column", md: "row" },
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 2,
-                flexWrap: "wrap",
-              }}
-            >
-              <TextField
-                select
-                label="Select Type"
-                size="small"
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                sx={{ width: 250, my: 2 }}
-              >
-                <MenuItem value="All">All</MenuItem>
-                <MenuItem value="voucher">Vouchers</MenuItem>
-                <MenuItem value="ticket">Tickets</MenuItem>
-                <MenuItem value="prepaid">Prepaid </MenuItem>
-                <MenuItem value="airtime">Airtime Transfer </MenuItem>
-                <MenuItem value="bundle">Data Bundle </MenuItem>
-              </TextField>
-              {type === "airtime" && (
-                <TextField
-                  select
-                  label="Airtime Type"
-                  size="small"
-                  value={airtimeType}
-                  onChange={(e) => setAirtimeType(e.target.value)}
-                  sx={{ width: 200, my: 2 }}
-                >
-                  <MenuItem value="single">Single</MenuItem>
-                  <MenuItem value="bulk">Bulk</MenuItem>
-                </TextField>
-              )}
-
-              <TextField
-                select
-                label="Status"
-                size="small"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                sx={{ width: 250, my: 2 }}
-              >
-                <MenuItem value="all">All</MenuItem>
-                <MenuItem value="completed">Completed</MenuItem>
-                <MenuItem value="pending">Pending</MenuItem>
-                <MenuItem value="refunded">Refunded</MenuItem>
-              </TextField>
-
+            <>
               <CustomTotal
                 title="Total Amount"
                 total={currencyFormatter(
-                  _.sumBy(sortedTransactions, (item) => Number(item?.amount))
+                  _.sumBy(sortedTransactions, (item) => Number(item?.amount)),
                 )}
               />
-            </Box>
+
+              <Box
+                sx={{
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: { xs: "column", md: "row" },
+                  // justifyContent: "sp",
+                  alignItems: "center",
+                  gap: 2,
+                  flexWrap: "wrap",
+                }}
+              >
+                <TextField
+                  select
+                  label="Select Type"
+                  size="small"
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  sx={{ width: 250, my: 2 }}
+                >
+                  <MenuItem value="All">All</MenuItem>
+                  <MenuItem value="voucher">Vouchers</MenuItem>
+                  <MenuItem value="ticket">Tickets</MenuItem>
+                  <MenuItem value="prepaid">Prepaid </MenuItem>
+                  <MenuItem value="airtime">Airtime Transfer </MenuItem>
+                  <MenuItem value="bundle">Data Bundle </MenuItem>
+                </TextField>
+                {type === "airtime" && (
+                  <TextField
+                    select
+                    label="Airtime Type"
+                    size="small"
+                    value={airtimeType}
+                    onChange={(e) => setAirtimeType(e.target.value)}
+                    sx={{ width: 200, my: 2 }}
+                  >
+                    <MenuItem value="single">Single</MenuItem>
+                    <MenuItem value="bulk">Bulk</MenuItem>
+                  </TextField>
+                )}
+
+                <TextField
+                  select
+                  label="Status"
+                  size="small"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  sx={{ width: 250, my: 2 }}
+                >
+                  <MenuItem value="all">All</MenuItem>
+                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="completed">Completed</MenuItem>
+                  <MenuItem value="failed">Failed</MenuItem>
+                  <MenuItem value="refunded">Refunded</MenuItem>
+                </TextField>
+              </Box>
+            </>
           }
         />
       </Container>

@@ -391,6 +391,17 @@ const ViewEmployee = () => {
               <Stack direction="row" spacing={1} alignItems="center">
                 <Badge fontSize="small" color="action" />
                 <Typography variant="body2" color="text.secondary">
+                  Role:
+                </Typography>
+                <Typography variant="body2" fontWeight="medium">
+                  {employee.role}
+                </Typography>
+              </Stack>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Badge fontSize="small" color="action" />
+                <Typography variant="body2" color="text.secondary">
                   Username:
                 </Typography>
                 <Typography variant="body2" fontWeight="medium">

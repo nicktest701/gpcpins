@@ -1,100 +1,338 @@
 import {
   Alert,
-  Box,
   MenuItem,
   Stack,
   TextField,
-  Checkbox,
-  FormControlLabel,
+  Paper,
+  Typography,
+  Divider,
+  Grid,
+  Chip,
+  Skeleton,
+  useTheme,
+  alpha,
+  Collapse,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
+import LoadingButton from "@mui/lab/LoadingButton";
 import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
 import { transactionsColumns } from "../../mocks/columns";
+import ActionMenu from "../../components/menu/ActionMenu";
 import _ from "lodash";
-import { useQuery } from "@tanstack/react-query";
-import { getAllRefundTransactions } from "../../api/transactionAPI";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+  getAllRefundTransactions,
+} from "../../api/transactionAPI";
+import { useContext, useMemo, useState } from "react";
+import { resendVoucherORReceipt } from "../../api/paymentAPI";
+import { globalAlertType } from "../../components/alert/alertType";
+import { CustomContext } from "../../context/providers/CustomProvider";
 import { currencyFormatter } from "../../constants";
 import moment from "moment";
 import { useSearchParams } from "react-router-dom";
-import TransactionStatus from "../../components/modals/TransactionStatus";
 import CustomTotal from "../../components/custom/CustomTotal";
-import CustomRangePicker from "../../components/pickers/CustomRangePicker";
-import CustomDateRangePicker from "../../components/pickers/CustomDateRangePicker";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import {
+  FilterListRounded,
+  CloseRounded,
+  ReplayRounded,
+  ErrorOutlineRounded,
+} from "@mui/icons-material";
 import CustomTitle from "../../components/custom/CustomTitle";
-import { getAllEmployees } from "../../api/employeeAPI";
+import LoadingSpinner from "../../components/spinners/LoadingSpinner";
+import DateRangePicker from "@/components/pickers/DateRangePicker";
+import TransactionPreviewDialog from "@/components/dialogs/TransactionPreviewDialog";
+import Swal from "sweetalert2";
+import TransactionStatus from "@/components/modals/TransactionStatus";
+
+const HISTORY_START = moment("2024-01-01").toDate();
+const TODAY = moment().toDate();
+
+/* ------------------------------------------------------------------ *
+ * Period presets. Each preset computes a concrete date range so the
+ * range picker always reflects the active period — selecting "This
+ * Month" fills in the calendar rather than hiding it. Picking a date
+ * manually in the calendar simply falls through to "custom".
+ * ------------------------------------------------------------------ */
+const PERIOD_PRESETS = [
+  {
+    value: "all",
+    label: "All time",
+    getRange: () => ({ startDate: HISTORY_START, endDate: TODAY }),
+  },
+  {
+    value: "today",
+    label: "Today",
+    getRange: () => ({
+      startDate: moment().startOf("day").toDate(),
+      endDate: moment().endOf("day").toDate(),
+    }),
+  },
+  {
+    value: "yesterday",
+    label: "Yesterday",
+    getRange: () => ({
+      startDate: moment().subtract(1, "day").startOf("day").toDate(),
+      endDate: moment().subtract(1, "day").endOf("day").toDate(),
+    }),
+  },
+  {
+    value: "week",
+    label: "Last 7 days",
+    getRange: () => ({
+      startDate: moment().subtract(6, "days").startOf("day").toDate(),
+      endDate: moment().endOf("day").toDate(),
+    }),
+  },
+  {
+    value: "month",
+    label: "This month",
+    getRange: () => ({
+      startDate: moment().startOf("month").toDate(),
+      endDate: moment().endOf("day").toDate(),
+    }),
+  },
+  {
+    value: "lmonth",
+    label: "Last month",
+    getRange: () => ({
+      startDate: moment().subtract(1, "month").startOf("month").toDate(),
+      endDate: moment().subtract(1, "month").endOf("month").toDate(),
+    }),
+  },
+  {
+    value: "year",
+    label: "This year",
+    getRange: () => ({
+      startDate: moment().startOf("year").toDate(),
+      endDate: moment().endOf("day").toDate(),
+    }),
+  },
+  {
+    value: "lyear",
+    label: "Last year",
+    getRange: () => ({
+      startDate: moment().subtract(1, "year").startOf("year").toDate(),
+      endDate: moment().subtract(1, "year").endOf("year").toDate(),
+    }),
+  },
+  { value: "custom", label: "Custom range", getRange: null },
+];
+
+const TYPE_OPTIONS = [
+  { value: "All", label: "All types" },
+  { value: "voucher", label: "Vouchers" },
+  { value: "ticket", label: "Tickets" },
+  { value: "prepaid", label: "Prepaid Units" },
+  { value: "airtime", label: "Airtime Transfer" },
+  { value: "bundle", label: "Data Bundle" },
+];
+
+
+
+
 
 function RefundDetails() {
-  const { user } = useContext(AuthContext);
-  const [searchParams] = useSearchParams();
+  const theme = useTheme();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { customDispatch } = useContext(CustomContext);
 
-  const [showRange, setShowRange] = useState(false);
-  const [openPicker, setOpenPicker] = useState(false);
-  const [sortValue, setSortValue] = useState("all");
-  const [users, setUsers] = useState("All");
+  const [filterOpen, setFilterOpen] = useState(true);
+  const [period, setPeriod] = useState("all");
+  const [date, setDate] = useState([
+    { startDate: HISTORY_START, endDate: TODAY, key: "selection" },
+  ]);
   const [type, setType] = useState("All");
   const [airtimeType, setAirtimeType] = useState("single");
-  const [date, setDate] = useState([
-    {
-      startDate: new Date("2023-01-01"),
-      endDate: new Date(),
-      key: "selection",
-    },
-  ]);
+  const [status, setStatus] = useState("All");
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
-  useEffect(() => {
-    if (showRange) {
-      setSortValue("none");
-    } else {
-      setDate([
-        {
-          startDate: new Date("2024-01-01"),
-          endDate: new Date(),
-          key: "selection",
-        },
-      ]);
+  // Selecting a preset fills in the calendar to match, so the two
+  // controls always agree instead of fighting for visibility.
+  const handlePeriodChange = (value) => {
+    setPeriod(value);
+    const preset = PERIOD_PRESETS.find((p) => p.value === value);
+    if (preset?.getRange) {
+      const range = preset.getRange();
+      setDate([{ ...range, key: "selection" }]);
     }
-  }, [showRange]);
+  };
 
-  const transactionUsers = useQuery({
-    queryKey: ["employees"],
-    queryFn: () => getAllEmployees("search"),
-  });
+  // Manually adjusting the calendar always wins — it demotes the
+  // preset dropdown to "Custom range" rather than being overridden.
+  const handleDateChange = (newDate) => {
+    setDate(newDate);
+    setPeriod("custom");
+  };
+
+  const handleResetFilters = () => {
+    setPeriod("all");
+    setDate([{ startDate: HISTORY_START, endDate: TODAY, key: "selection" }]);
+    setType("All");
+    setAirtimeType("single");
+    setStatus("All");
+  };
+
+
+  // Fetch transactions
 
   const transactions = useQuery({
-    queryKey: ["refund-transactions", sortValue],
-    queryFn: () => getAllRefundTransactions({ date: date[0], sort: sortValue }),
-    enabled: !!sortValue,
+    queryKey: ["products-transactions", period, date[0]],
+    queryFn: () => getAllRefundTransactions({ date: date[0], sort: period }),
+    initialData: [],
   });
 
-  const sortedTransactions = useMemo(() => {
-    let modifiedTransactions = transactions.data;
-
-    if (!["All", "airtime", "prepaid"].includes(type)) {
-      setUsers("All");
-    } else {
-      if (users !== "All") {
-        modifiedTransactions = transactions?.data?.filter((item) => {
-          return item.issuer === users;
-        });
-      }
-    }
+  // Filter by type first — the status summary cards reflect this
+  // level of filtering, so they stay accurate to "period + type" even
+  // before a status is chosen.
+  const typeFilteredTransactions = useMemo(() => {
+    let modified = transactions.data;
 
     if (type !== "All") {
       if (type === "airtime") {
-        return modifiedTransactions?.filter(
-          (item) => item.service === type && item.kind === airtimeType
+        modified = modified?.filter(
+          (item) => item.service === type && item.kind === airtimeType,
         );
       } else {
-        return modifiedTransactions?.filter((item) => item.service === type);
+        modified = modified?.filter((item) => item.service === type);
       }
     }
-    return modifiedTransactions;
-  }, [transactions?.data, type, airtimeType, users]);
 
+    return modified || [];
+  }, [transactions.data, type, airtimeType]);
+
+  const sortedTransactions = useMemo(() => {
+    if (status === "All") return typeFilteredTransactions;
+    return typeFilteredTransactions.filter((item) => item.status === status);
+  }, [typeFilteredTransactions, status]);
+
+
+
+  const hasActiveFilters =
+    period !== "all" ||
+    type !== "All" ||
+    airtimeType !== "single" ||
+    status !== "All";
+
+  // Actions
+  const handleDownload = async (id, downloadLink) => {
+    if (!downloadLink) return;
+    const link = document.createElement("a");
+    link.href = downloadLink;
+    link.target = "_blank";
+    link.download = `${id}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const {
+    mutateAsync: resendMutate,
+    isLoading: resendLoading,
+    isError: resendError,
+    reset: resetResend,
+  } = useMutation({
+    mutationFn: resendVoucherORReceipt,
+    onSuccess: () => customDispatch(globalAlertType("info", "Done!")),
+    onError: () =>
+      customDispatch(globalAlertType("error", "An error has occurred!")),
+  });
+
+  const handleResend = (data) => {
+    Swal.fire({
+      title: `Resend ${data?.service}?`,
+      text: `Are you sure you want to resend the ${data?.service} to ${data.phonenumber || "the customer"}?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, resend it",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: theme.palette.primary.main,
+      cancelButtonColor: theme.palette.grey[500],
+      reverseButtons: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        resendMutate(data);
+      }
+    });
+  };
+
+  const handleCheckStatus = (refId, service) => {
+    setSearchParams((params) => {
+      params.set("payment_reference", refId);
+      params.set("type", service);
+      params.set("open", true);
+      return params;
+    });
+  };
+
+  const handleViewTransaction = (transaction) => {
+    setSelectedTransaction(transaction);
+    setPreviewOpen(true);
+  };
+
+  const handlePreviewClose = () => {
+    setPreviewOpen(false);
+    setSelectedTransaction(null);
+  };
+
+  const totalAmount = useMemo(
+    () => _.sumBy(sortedTransactions, (item) => Number(item?.amount)),
+    [sortedTransactions],
+  );
+
+  const hasStatusAlerts = resendLoading || resendError;
+
+  // Table columns with actions
   const modifiedColumns = [
-    ...transactionsColumns(type, true),
-   ];
+    ...transactionsColumns(type),
+    {
+      field: "",
+      title: "Action",
+      export: false,
+      render: (data) => (
+        <ActionMenu>
+          <MenuItem
+            sx={{ fontSize: 13 }}
+            onClick={() => handleViewTransaction(data)}
+          >
+            View
+          </MenuItem>
+          {data?.mode === "Mobile Money" && (
+            <MenuItem
+              sx={{ fontSize: 13 }}
+              onClick={() => handleCheckStatus(data?.reference, data?.service)}
+            >
+              Check Status
+            </MenuItem>
+          )}
+          {["voucher", "ticket"].includes(data?.service) &&
+            data?.status === "completed" && (
+              <>
+                <MenuItem
+                  sx={{ fontSize: 13 }}
+                  onClick={() =>
+                    handleResend({
+                      id: data.id,
+                      service: data?.service,
+                      phonenumber: data?.phonenumber,
+                    })
+                  }
+                >
+                  Resend
+                </MenuItem>
+                <MenuItem
+                  sx={{ fontSize: 13 }}
+                  onClick={() => handleDownload(data.id, data.downloadLink)}
+                >
+                  Download
+                </MenuItem>
+              </>
+            )}
+        </ActionMenu>
+      ),
+    },
+  ];
 
   return (
     <>
@@ -103,185 +341,516 @@ function RefundDetails() {
         subtitle="Review and View recent and past transactions and manage your financial records."
       />
 
-      {transactions.isLoading && (
-        <Alert variant="standard" severity="info" sx={{ mb: 1 }}>
-          Loading Transactions.Please wait...
-        </Alert>
-      )}
-      {transactions.isError && (
-        <Alert variant="standard" severity="info" sx={{ mb: 1 }}>
-          {transactions.error}
-        </Alert>
-      )}
-      <>
+      {/* Status alerts — each dismissible, none block the rest of the page */}
+      <Stack spacing={1} sx={{ mb: hasStatusAlerts ? 2 : 0 }}>
+        {resendLoading && (
+          <Alert severity="info">Resending receipt to customer…</Alert>
+        )}
+        {resendError && (
+          <Alert severity="error" onClose={resetResend}>
+            Couldn&apos;t resend that receipt. Please try again.
+          </Alert>
+        )}
+      </Stack>
+
+      {/* Summary card */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2,
+          mb: 3,
+          borderRadius: 1.2,
+          border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+          display: "flex",
+          flexDirection: { xs: "column", md: "row" },
+          justifyContent: "space-between",
+          alignItems: { xs: "stretch", md: "center" },
+          gap: 2,
+        }}
+      >
+        {transactions.isLoading ? (
+          <Stack spacing={0.5}>
+            <Skeleton variant="text" width={140} height={20} />
+            <Skeleton variant="text" width={180} height={36} />
+          </Stack>
+        ) : (
+          <CustomTotal
+            title="Total Transactions"
+            total={currencyFormatter(totalAmount)}
+          />
+        )}
+      </Paper>
+
+      {/* Filter bar */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2,
+          mb: 3,
+          borderRadius: 1.2,
+          border: `1px solid ${alpha(theme.palette.divider, 0.3)}`,
+        }}
+      >
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          flexWrap="wrap"
+          gap={1}
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="subtitle1" fontWeight="600">
+              Filters
+            </Typography>
+            {hasActiveFilters && (
+              <Chip
+                size="small"
+                label="Active"
+                color="primary"
+                variant="outlined"
+                sx={{ height: 22 }}
+              />
+            )}
+          </Stack>
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            {hasActiveFilters && (
+              <Tooltip title="Reset filters">
+                <IconButton size="small" onClick={handleResetFilters}>
+                  <ReplayRounded fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            <IconButton size="small" onClick={() => setFilterOpen(!filterOpen)}>
+              {filterOpen ? (
+                <CloseRounded fontSize="small" />
+              ) : (
+                <FilterListRounded fontSize="small" />
+              )}
+            </IconButton>
+          </Stack>
+        </Stack>
+
+        <Collapse in={filterOpen}>
+          <Divider sx={{ my: 2 }} />
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} sm="auto">
+              <TextField
+                select
+                label="Period"
+                size="small"
+                value={period}
+                onChange={(e) => handlePeriodChange(e.target.value)}
+                sx={{ minWidth: 170, width: "100%" }}
+              >
+                {PERIOD_PRESETS.filter((p) => p.getRange).map((p) => (
+                  <MenuItem key={p.value} value={p.value}>
+                    {p.label}
+                  </MenuItem>
+                ))}
+                {/* Only shown once the calendar has been edited manually */}
+                {period === "custom" && (
+                  <MenuItem value="custom">Custom range</MenuItem>
+                )}
+              </TextField>
+            </Grid>
+
+            <Grid item xs={12} sm="auto">
+              <DateRangePicker
+                date={date}
+                setDate={handleDateChange}
+                onReset={transactions.refetch}
+                placeholder="Pick a date range"
+                dateFormat="ll"
+                maxDate={new Date()}
+                minDate={new Date("2024-01-01")}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm="auto">
+              <TextField
+                select
+                label="Type"
+                size="small"
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                sx={{ minWidth: 160, width: "100%" }}
+              >
+                {TYPE_OPTIONS.map((opt) => (
+                  <MenuItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+
+            {type === "airtime" && (
+              <Grid item xs={12} sm="auto">
+                <TextField
+                  select
+                  label="Airtime Type"
+                  size="small"
+                  value={airtimeType}
+                  onChange={(e) => setAirtimeType(e.target.value)}
+                  sx={{ minWidth: 160, width: "100%" }}
+                >
+                  <MenuItem value="single">Single</MenuItem>
+                  <MenuItem value="bulk">Bulk</MenuItem>
+                </TextField>
+              </Grid>
+            )}
+          </Grid>
+        </Collapse>
+      </Paper>
+
+      {/* Transactions table / error state */}
+      {transactions.isError ? (
+        <Paper
+          elevation={0}
+          sx={{
+            p: 4,
+            borderRadius: 3,
+            border: `1px solid ${alpha(theme.palette.error.main, 0.3)}`,
+            bgcolor: alpha(theme.palette.error.main, 0.04),
+            textAlign: "center",
+          }}
+        >
+          <ErrorOutlineRounded color="error" sx={{ fontSize: 40, mb: 1 }} />
+          <Typography variant="subtitle1" fontWeight="600" gutterBottom>
+            Couldn&apos;t load transactions
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {transactions.error?.message ||
+              "Something went wrong while fetching your transactions."}
+          </Typography>
+          <LoadingButton
+            variant="outlined"
+            color="error"
+            startIcon={<ReplayRounded />}
+            onClick={transactions.refetch}
+            sx={{ borderRadius: 2, textTransform: "none" }}
+          >
+            Try again
+          </LoadingButton>
+        </Paper>
+      ) : (
         <CustomizedMaterialTable
-          title="Transaction"
-          search={true}
+          title=""
+          search
           isLoading={transactions.isLoading}
           columns={modifiedColumns}
           data={sortedTransactions}
-          showExportButton={true}
+          showExportButton
           onRefresh={transactions.refetch}
-          autocompleteComponent={
-            <div
-              style={{
-                display: "block",
-                width: "100%",
-              }}
-            >
-              <CustomTotal
-                title="Total"
-                total={currencyFormatter(
-                  _.sumBy(sortedTransactions, (item) => Number(item?.amount))
-                )}
-              />
-              <Box
-                sx={{
-                  width: "100%",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  // border:'1px solid red'
-                }}
-              >
-                <Stack
-                  direction="row"
-                  spacing={2}
-                  alignItems="center"
-                  flexWrap="wrap"
-                  gap={2}
-                >
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <FormControlLabel
-                      label="Use Range"
-                      control={
-                        <Checkbox
-                          checked={showRange}
-                          onChange={() => setShowRange(!showRange)}
-                        />
-                      }
-                    />
-                    {showRange ? (
-                      <CustomRangePicker
-                        date={date}
-                        setDate={setDate}
-                        setOpen={setOpenPicker}
-                        refetch={transactions.refetch}
-                      />
-                    ) : (
-                      <TextField
-                        select
-                        label="Select Period"
-                        size="small"
-                        value={sortValue}
-                        onChange={(e) => setSortValue(e.target.value)}
-                        sx={{ width: 200, my: 2 }}
-                      >
-                        <MenuItem value="none" disabled></MenuItem>
-                        <MenuItem value="all">All</MenuItem>
-                        <MenuItem value="today">Today</MenuItem>
-                        <MenuItem value="yesterday">Yesterday</MenuItem>
-                        <MenuItem value="week">Last 7 Days</MenuItem>
-                        <MenuItem value="month">
-                          This Month {`(${moment().format("MMMM")})`}
-                        </MenuItem>
-                        <MenuItem value="lmonth">
-                          Last Month{" "}
-                          {`(${moment().subtract(1, "months").format("MMMM")})`}
-                        </MenuItem>
-                        <MenuItem value="year">
-                          This Year {`(${moment().format("YYYY")})`}
-                        </MenuItem>
-                        <MenuItem value="lyear">
-                          Last Year{" "}
-                          {`(${moment().subtract(1, "years").format("YYYY")})`}
-                        </MenuItem>
-                      </TextField>
-                    )}
-                  </Stack>
-                  <TextField
-                    select
-                    label="Select Type"
-                    size="small"
-                    value={type}
-                    onChange={(e) => setType(e.target.value)}
-                    sx={{ width: 200, my: 2 }}
-                  >
-                    <MenuItem value="All">All</MenuItem>
-                    <MenuItem value="voucher">Vouchers</MenuItem>
-                    <MenuItem value="ticket">Tickets</MenuItem>
-                    <MenuItem value="prepaid">Prepaid Units </MenuItem>
-                    <MenuItem value="airtime">Airtime Transfer </MenuItem>
-                    <MenuItem value="bundle">Data Bundle </MenuItem>
-                  </TextField>
-                  {type === "airtime" && (
-                    <TextField
-                      select
-                      label="Airtime Type"
-                      size="small"
-                      value={airtimeType}
-                      onChange={(e) => setAirtimeType(e.target.value)}
-                      sx={{ width: 200, my: 2 }}
-                    >
-                      <MenuItem value="single">Single</MenuItem>
-                      <MenuItem value="bulk">Bulk</MenuItem>
-                    </TextField>
-                  )}
-
-                  {["All", "airtime", "prepaid"].includes(type) && (
-                    <TextField
-                      select
-                      label="Select Issuer"
-                      size="small"
-                      value={users}
-                      onChange={(e) => {
-                        setUsers(e.target.value);
-                      }}
-                      sx={{ width: 250, my: 2 }}
-                    >
-                      <MenuItem value="All">All</MenuItem>
-
-                      {transactionUsers.data?.map((user) => {
-                        return (
-                          <MenuItem key={user?.id} value={user?.id}>
-                            {user?.name}
-                          </MenuItem>
-                        );
-                      })}
-                    </TextField>
-                  )}
-                </Stack>
-              </Box>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "8px",
-                }}
-              >
-      
-              </div>
-            </div>
+          autocompleteComponent={null}
+          emptyMessage={
+            hasActiveFilters
+              ? "No transactions match these filters — try widening your search."
+              : "No transactions found"
           }
           options={{
-            exportAllData: true,
-            exportButton: user?.permissions?.includes("Export Transactions"),
-            searchText: searchParams.get("_search"),
+            pageSize: 10,
+            pageSizeOptions: [5, 10, 25, 50],
           }}
         />
-      </>
-      <TransactionStatus />
+      )}
 
-      <CustomDateRangePicker
-        open={openPicker}
-        date={date}
-        setDate={setDate}
-        setOpen={setOpenPicker}
-        refetchData={transactions.refetch}
+      {resendLoading && <LoadingSpinner value="Resending. Please wait…" />}
+
+      <TransactionPreviewDialog
+        open={previewOpen}
+        onClose={handlePreviewClose}
+        transaction={selectedTransaction}
+        onResend={handleResend}
+        onDownload={handleDownload}
+        onCheckStatus={handleCheckStatus}
       />
+      <TransactionStatus />
     </>
   );
 }
 
 export default RefundDetails;
+
+// import {
+//   Alert,
+//   Box,
+//   MenuItem,
+//   Stack,
+//   TextField,
+//   Checkbox,
+//   FormControlLabel,
+// } from "@mui/material";
+// import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
+// import { transactionsColumns } from "../../mocks/columns";
+// import _ from "lodash";
+// import { useQuery } from "@tanstack/react-query";
+// import { getAllRefundTransactions } from "../../api/transactionAPI";
+// import { useContext, useEffect, useMemo, useState } from "react";
+// import { currencyFormatter } from "../../constants";
+// import moment from "moment";
+// import { useSearchParams } from "react-router-dom";
+// import TransactionStatus from "../../components/modals/TransactionStatus";
+// import CustomTotal from "../../components/custom/CustomTotal";
+// import CustomRangePicker from "../../components/pickers/CustomRangePicker";
+// import CustomDateRangePicker from "../../components/pickers/CustomDateRangePicker";
+// import { useAuth } from "../../context/providers/AuthProvider";
+// import CustomTitle from "../../components/custom/CustomTitle";
+// import { getAllEmployees } from "../../api/employeeAPI";
+
+// function RefundDetails() {
+//   const { user } = useAuth();
+//   const [searchParams] = useSearchParams();
+
+//   const [showRange, setShowRange] = useState(false);
+//   const [openPicker, setOpenPicker] = useState(false);
+//   const [sortValue, setSortValue] = useState("all");
+//   const [users, setUsers] = useState("All");
+//   const [type, setType] = useState("All");
+//   const [airtimeType, setAirtimeType] = useState("single");
+//   const [date, setDate] = useState([
+//     {
+//       startDate: new Date("2024-01-01"),
+//       endDate: new Date(),
+//       key: "selection",
+//     },
+//   ]);
+
+//   useEffect(() => {
+//     if (showRange) {
+//       setSortValue("none");
+//     } else {
+//       setDate([
+//         {
+//           startDate: new Date("2024-01-01"),
+//           endDate: new Date(),
+//           key: "selection",
+//         },
+//       ]);
+//     }
+//   }, [showRange]);
+
+//   // const transactionUsers = useQuery({
+//   //   queryKey: ["employees"],
+//   //   queryFn: () => getAllEmployees("search"),
+//   // });
+
+//   const transactions = useQuery({
+//     queryKey: ["refund-transactions", sortValue],
+//     queryFn: () => getAllRefundTransactions({ date: date[0], sort: sortValue }),
+//     enabled: !!sortValue,
+//   });
+
+//   const sortedTransactions = useMemo(() => {
+//     let modifiedTransactions = transactions.data;
+
+//     if (!["All", "airtime", "prepaid"].includes(type)) {
+//       setUsers("All");
+//     } else {
+//       if (users !== "All") {
+//         modifiedTransactions = transactions?.data?.filter((item) => {
+//           return item.issuer === users;
+//         });
+//       }
+//     }
+
+//     if (type !== "All") {
+//       if (type === "airtime") {
+//         return modifiedTransactions?.filter(
+//           (item) => item.service === type && item.kind === airtimeType,
+//         );
+//       } else {
+//         return modifiedTransactions?.filter((item) => item.service === type);
+//       }
+//     }
+//     return modifiedTransactions;
+//   }, [transactions?.data, type, airtimeType, users]);
+
+//   const modifiedColumns = [...transactionsColumns(type, true)];
+
+//   return (
+//     <>
+//       <CustomTitle
+//         title="Refunded Transactions"
+//         subtitle="Review and View recent and past transactions and manage your financial records."
+//       />
+
+//       {transactions.isLoading && (
+//         <Alert variant="standard" severity="info" sx={{ mb: 1 }}>
+//           Loading Transactions.Please wait...
+//         </Alert>
+//       )}
+//       {transactions.isError && (
+//         <Alert variant="standard" severity="info" sx={{ mb: 1 }}>
+//           {transactions.error}
+//         </Alert>
+//       )}
+//       <>
+//         <CustomizedMaterialTable
+//           title="Transaction"
+//           search={true}
+//           isLoading={transactions.isLoading}
+//           columns={modifiedColumns}
+//           data={sortedTransactions}
+//           showExportButton={true}
+//           onRefresh={transactions.refetch}
+//           autocompleteComponent={
+//             <div
+//               style={{
+//                 display: "block",
+//                 width: "100%",
+//               }}
+//             >
+//               <CustomTotal
+//                 title="Total"
+//                 total={currencyFormatter(
+//                   _.sumBy(sortedTransactions, (item) => Number(item?.amount)),
+//                 )}
+//               />
+//               <Box
+//                 sx={{
+//                   width: "100%",
+//                   display: "flex",
+//                   justifyContent: "space-between",
+//                   alignItems: "center",
+//                   flexWrap: "wrap",
+//                   // border:'1px solid red'
+//                 }}
+//               >
+//                 <Stack
+//                   direction="row"
+//                   spacing={2}
+//                   alignItems="center"
+//                   flexWrap="wrap"
+//                   gap={2}
+//                 >
+//                   <Stack direction="row" spacing={2} alignItems="center">
+//                     <FormControlLabel
+//                       label="Use Range"
+//                       control={
+//                         <Checkbox
+//                           checked={showRange}
+//                           onChange={() => setShowRange(!showRange)}
+//                         />
+//                       }
+//                     />
+//                     {showRange ? (
+//                       <CustomRangePicker
+//                         date={date}
+//                         setDate={setDate}
+//                         setOpen={setOpenPicker}
+//                         refetch={transactions.refetch}
+//                       />
+//                     ) : (
+//                       <TextField
+//                         select
+//                         label="Select Period"
+//                         size="small"
+//                         value={sortValue}
+//                         onChange={(e) => setSortValue(e.target.value)}
+//                         sx={{ width: 200, my: 2 }}
+//                       >
+//                         <MenuItem value="none" disabled></MenuItem>
+//                         <MenuItem value="all">All</MenuItem>
+//                         <MenuItem value="today">Today</MenuItem>
+//                         <MenuItem value="yesterday">Yesterday</MenuItem>
+//                         <MenuItem value="week">Last 7 Days</MenuItem>
+//                         <MenuItem value="month">
+//                           This Month {`(${moment().format("MMMM")})`}
+//                         </MenuItem>
+//                         <MenuItem value="lmonth">
+//                           Last Month{" "}
+//                           {`(${moment().subtract(1, "months").format("MMMM")})`}
+//                         </MenuItem>
+//                         <MenuItem value="year">
+//                           This Year {`(${moment().format("YYYY")})`}
+//                         </MenuItem>
+//                         <MenuItem value="lyear">
+//                           Last Year{" "}
+//                           {`(${moment().subtract(1, "years").format("YYYY")})`}
+//                         </MenuItem>
+//                       </TextField>
+//                     )}
+//                   </Stack>
+//                   <TextField
+//                     select
+//                     label="Select Type"
+//                     size="small"
+//                     value={type}
+//                     onChange={(e) => setType(e.target.value)}
+//                     sx={{ width: 200, my: 2 }}
+//                   >
+//                     <MenuItem value="All">All</MenuItem>
+//                     <MenuItem value="voucher">Vouchers</MenuItem>
+//                     <MenuItem value="ticket">Tickets</MenuItem>
+//                     <MenuItem value="prepaid">Prepaid Units </MenuItem>
+//                     <MenuItem value="airtime">Airtime Transfer </MenuItem>
+//                     <MenuItem value="bundle">Data Bundle </MenuItem>
+//                   </TextField>
+//                   {type === "airtime" && (
+//                     <TextField
+//                       select
+//                       label="Airtime Type"
+//                       size="small"
+//                       value={airtimeType}
+//                       onChange={(e) => setAirtimeType(e.target.value)}
+//                       sx={{ width: 200, my: 2 }}
+//                     >
+//                       <MenuItem value="single">Single</MenuItem>
+//                       <MenuItem value="bulk">Bulk</MenuItem>
+//                     </TextField>
+//                   )}
+// {/*
+//                   {["All", "airtime", "prepaid"].includes(type) && (
+//                     <TextField
+//                       select
+//                       label="Select Issuer"
+//                       size="small"
+//                       value={users}
+//                       onChange={(e) => {
+//                         setUsers(e.target.value);
+//                       }}
+//                       sx={{ width: 250, my: 2 }}
+//                     >
+//                       <MenuItem value="All">All</MenuItem>
+
+//                       {transactionUsers.data?.map((user) => {
+//                         return (
+//                           <MenuItem key={user?.id} value={user?.id}>
+//                             {user?.name}
+//                           </MenuItem>
+//                         );
+//                       })}
+//                     </TextField>
+//                   )} */}
+//                 </Stack>
+//               </Box>
+//               <div
+//                 style={{
+//                   display: "flex",
+//                   justifyContent: "space-between",
+//                   padding: "8px",
+//                 }}
+//               ></div>
+//             </div>
+//           }
+//           options={{
+//             exportAllData: true,
+//             exportButton: user?.permissions?.includes("Export Transactions"),
+//             searchText: searchParams.get("_search"),
+//           }}
+//         />
+//       </>
+//       <TransactionStatus />
+
+//       <CustomDateRangePicker
+//         open={openPicker}
+//         date={date}
+//         setDate={setDate}
+//         setOpen={setOpenPicker}
+//         refetchData={transactions.refetch}
+//       />
+//     </>
+//   );
+// }
+
+// export default RefundDetails;

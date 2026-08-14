@@ -12,6 +12,7 @@ import { useContext, useState } from "react";
 import { LoadingButton } from "@mui/lab";
 import { Formik } from "formik";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import Swal from "sweetalert2";
 import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
 import { postBroadcastMessage } from "../../api/broadcastMessageAPI";
 import { CustomContext } from "../../context/providers/CustomProvider";
@@ -77,6 +78,11 @@ function AddMessage({ open, setOpen }) {
     if (values.recipient === "Group") {
       if (content.length === 0) {
         setGroupErr("Required*");
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "Please select a group",
+        });
         return;
       }
       values = {
@@ -88,20 +94,40 @@ function AddMessage({ open, setOpen }) {
 
     payload = trimObject(values);
 
-    // console.log(payload);
+    Swal.fire({
+      icon: "warning",
+      title: "Confirm message",
+      text: "Are you sure you want to send this message?",
+      showCancelButton: true,
+      confirmButtonText: "Yes, send it",
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
+    }).then((result) => {
+      if (!result.isConfirmed) return;
 
-    mutateAsync(payload, {
-      onSettled: () => {
-        queryClient.invalidateQueries(["broadcast-messages"]);
-        queryClient.invalidateQueries(["notifications"]);
-      },
-      onSuccess: (data) => {
-        customDispatch(globalAlertType("info", data));
-        handleClose();
-      },
-      onError: (error) => {
-        customDispatch(globalAlertType("error", error));
-      },
+      mutateAsync(payload, {
+        onSettled: () => {
+          queryClient.invalidateQueries(["broadcast-messages"]);
+          queryClient.invalidateQueries(["notifications"]);
+        },
+        onSuccess: (data) => {
+          Swal.fire({
+            icon: "success",
+            title: "Success",
+            text: "Message sent successfully",
+          });
+          customDispatch(globalAlertType("info", data));
+          handleClose();
+        },
+        onError: (error) => {
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: error.message || "Failed to send message",
+          });
+          customDispatch(globalAlertType("error", error));
+        },
+      });
     });
   };
 

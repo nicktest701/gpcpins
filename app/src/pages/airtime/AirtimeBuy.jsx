@@ -18,7 +18,7 @@ import {
   Stack,
   TextField,
   Typography,
-  useTheme,
+
 } from "@mui/material";
 
 import LoadingButton from "@mui/lab/LoadingButton";
@@ -75,19 +75,12 @@ const airtimeSchema = object({
 });
 
 function AirtimeBuy() {
-  const theme = useTheme();
-
   const navigate = useNavigate();
-
   const queryClient = useQueryClient();
-
   const { pathname } = useLocation();
-
   const { user } = useAuth();
   const { joinPaymentRoom, leavePaymentRoom } = useSocket();
-
   const { customDispatch } = useCustomContext();
-
   const [searchParams] = useSearchParams();
 
   /**
@@ -95,7 +88,6 @@ function AirtimeBuy() {
    */
 
   const type = searchParams.get("type");
-
   const recipient = searchParams.get("recipient");
 
   /**
@@ -103,18 +95,12 @@ function AirtimeBuy() {
    */
 
   const [failureCount, setFailureCount] = useState(3);
-
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-
   const [paymentData, setPaymentData] = useState(null);
-
   const [selectedBundle, setSelectedBundle] = useState({
     plan_id: searchParams.get("plan_id"),
-
     plan_name: searchParams.get("plan_name"),
-
     volume: searchParams.get("plan_volume"),
-
     price: searchParams.get("plan_price"),
   });
 
@@ -216,7 +202,7 @@ function AirtimeBuy() {
       navigate("/confirm", {
         replace: true,
         state: {
-          id: data?.id,
+          id: data?.transactionId,
           categoryType: type === "Bundle" ? "bundle" : "airtime",
           isWallet: paymentData.paymentMethod === "wallet",
           path: pathname,

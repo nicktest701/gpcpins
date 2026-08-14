@@ -1,495 +1,520 @@
-import { useContext, useRef, useState } from "react";
-import { LoadingButton } from "@mui/lab";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import InputAdornment from "@mui/material/InputAdornment";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Formik } from "formik";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import { editCategory, getCategory } from "../../api/categoryAPI";
-import moment from "moment";
-import { v4 as uuid } from "uuid";
-import _ from "lodash";
-
-import CustomDatePicker from "../../components/inputs/CustomDatePicker";
-import CustomTimePicker from "../../components/inputs/CustomTimePicker";
-import { globalAlertType } from "../../components/alert/alertType";
-
+import { useContext, useRef, useState, useEffect } from "react";
 import {
   Autocomplete,
   Avatar,
   Box,
+  Button,
   Container,
   IconButton,
+  InputAdornment,
   List,
   ListItem,
   ListItemSecondaryAction,
   ListItemText,
+  Stack,
+  TextField,
+  Typography,
+  LinearProgress,
 } from "@mui/material";
-import { currencyFormatter } from "../../constants";
+import LoadingButton from "@mui/lab/LoadingButton";
 import { Close, CloudUpload } from "@mui/icons-material";
-import { CINEMA_TICKET_TYPE } from "../../mocks/columns";
-import { addCinemaValidationSchema } from "../../config/validationSchema";
-import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { v4 as uuid } from "uuid";
+import _ from "lodash";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import moment from "moment";
+import Swal from "sweetalert2";
 import DOMPurify from "dompurify";
-import { uploadFile } from "@/lib/upload";
-const EditCinemaCategory = () => {
-  //context
-  const queryClient = useQueryClient();
 
+import DialogContainer from "../../components/dialogs/DialogContainer";
+import Transition from "../../components/Transition";
+import CustomDatePicker from "../../components/inputs/CustomDatePicker";
+import CustomTimePicker from "../../components/inputs/CustomTimePicker";
+import { CINEMA_TICKET_TYPE } from "../../mocks/columns";
+import { currencyFormatter } from "../../constants";
+import { globalAlertType } from "../../components/alert/alertType";
+import { addCinemaValidationSchema } from "../../config/validationSchema";
+import { editCategory, getCategory } from "../../api/categoryAPI";
+import { uploadFile } from "@/lib/upload";
+import { useCustomContext } from "../../context/providers/CustomProvider";
+
+const EditCinemaCategory = () => {
+  const queryClient = useQueryClient();
   const {
     customState: {
       editCinemaCategory: { open, id },
     },
     customDispatch,
-  } = useContext(CustomContext);
+  } = useCustomContext();
 
-  const [companyName, setCompanyName] = useState("");
-  const [logoPreview, setLogoPreview] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [logo, setLogo] = useState(null);
-  const [voucherType, setVoucherType] = useState("");
-  const [theatre, setTheatre] = useState("");
-  const [location, setLocation] = useState("");
-  const [time, setTime] = useState(moment());
-  const [date, setDate] = useState(moment());
-  const [price, setPrice] = useState(0);
+  // Local state for ticket pricing list
+  const [pricingList, setPricingList] = useState([]);
+  const [pricingError, setPricingError] = useState("");
+  const [pricingType, setPricingType] = useState("");
   const [quantity, setQuantity] = useState(0);
-  const [ticketType, setTicketType] = useState("");
-  const [ticketTypeErr, setTicketTypeErr] = useState("");
-  const [ticketTypeList, setTicketTypeList] = useState([]);
-  const [message, setMessage] = useState("");
-  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState(0);
 
-  // Upload file ref
+  // Logo upload state
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+
   const fileInputRef = useRef(null);
 
-  const initialValues = {
-    category: "cinema",
-    voucherType,
-    theatre,
-    location,
-    date,
-    time,
-    message,
-    description,
-    companyName,
-  };
-  const cinema = useQuery({
+  // React Hook Form
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: yupResolver(addCinemaValidationSchema),
+    defaultValues: {
+      category: "cinema",
+      companyName: "",
+      voucherType: "",
+      theatre: "",
+      location: "",
+      date: moment(),
+      time: moment(),
+      message: "",
+      description: "",
+    },
+  });
+
+  // Fetch existing data
+  const { data: cinemaData, isLoading: isLoadingData } = useQuery({
     queryKey: ["category", id],
     queryFn: () => getCategory(id),
     initialData: queryClient
       .getQueryData(["all-category"])
       ?.find((item) => item?.id === id),
-    enabled: !!id,
-
-    onSuccess: (cinema) => {
-      setVoucherType(cinema?.name);
-      setTheatre(cinema?.details?.theatre);
-      setLocation(cinema?.details?.location);
-      setTicketTypeList(cinema?.details.pricing);
-      setTime(moment(new Date(cinema?.details?.time)));
-      setDate(moment(new Date(cinema?.details?.date)));
-      setMessage(cinema?.details?.message);
-      setCompanyName(cinema?.details?.companyName);
-      setDescription(cinema?.details?.description);
-      setLogoPreview(cinema?.details?.cinema);
-      setLogo(cinema?.details?.cinema);
-    },
+    enabled: !!id && open,
   });
 
-  // Upload logo
+  // Populate form when data loads
+  useEffect(() => {
+    if (cinemaData && open) {
+      const details = cinemaData.details || {};
+      setValue("companyName", details.companyName || "");
+      setValue("voucherType", cinemaData.name || "");
+      setValue("theatre", details.theatre || "");
+      setValue("location", details.location || "");
+      setValue("date", details.date ? moment(details.date) : moment());
+      setValue("time", details.time ? moment(details.time) : moment());
+      setValue("message", details.message || "");
+      setValue("description", details.description || "");
+      setPricingList(details.pricing || []);
+      setLogoPreview(details.cinema);
+      setLogoFile(details.cinema);
+    }
+  }, [cinemaData, open, setValue]);
+
+  // Upload logo with progress
   const handleUploadFile = async (e) => {
-    setLoading(true);
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadProgress(0);
 
     try {
-      const file = e.target.files[0];
-      if (!file) return;
-      setLogo(file);
-      // Create preview
       const reader = new FileReader();
       reader.onload = () => setLogoPreview(reader.result);
       reader.readAsDataURL(file);
 
-      // Actually upload to Firebase
       const { downloadURL } = await uploadFile({
         folder: "category",
         file,
-        onProgress: (progress) => {
-          setProgress(progress);
-        },
+        onProgress: (progress) => setUploadProgress(progress),
       });
-      setLogo(downloadURL); // store final URL
+      setLogoFile(downloadURL);
     } catch (error) {
       customDispatch(
-        globalAlertType("error", "Something went wrong. Please try again."),
+        globalAlertType("error", "Image upload failed. Please try again.")
       );
     } finally {
-      setLoading(false);
+      setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
-  const { mutateAsync, isLoading } = useMutation({
-    mutationFn: editCategory,
-  });
-  const onSubmit = (values, options) => {
-    if (ticketTypeList.length === 0) {
-      setTicketTypeErr("Please add at least one ticket !");
-      options.setSubmitting(false);
-      return;
-    }
-
-    const newCinemaTicket = {
-      id: cinema.data?.id,
-      type: values.category,
-      name: values.voucherType,
-      details: {
-        movie: DOMPurify.sanitize(values.voucherType),
-        theatre: DOMPurify.sanitize(values.theatre),
-        quantity: parseInt(_.sumBy(ticketTypeList, "quantity")),
-        pricing: ticketTypeList,
-        location: DOMPurify.sanitize(values.location),
-        date: values.date,
-        time: values.time,
-        message: DOMPurify.sanitize(values.message),
-        description: DOMPurify.sanitize(values.description),
-        companyName: DOMPurify.sanitize(values.companyName),
-        cinema: logo || cinema?.data?.details?.cinema,
-      },
-    };
-
-    // if (_.isEmpty(cinemaImage) || _.isNull(cinemaImage)) {
-    //   delete newCinemaTicket.details?.cinema;
-    // }
-
-    mutateAsync(newCinemaTicket, {
-      onSettled: () => {
-        options.setSubmitting(false);
-        queryClient.invalidateQueries(["all-category"]);
-
-        queryClient.invalidateQueries(["category"]);
-      },
-      onSuccess: (data) => {
-        customDispatch(globalAlertType("info", data));
-        handleClose();
-        options.resetForm();
-      },
-      onError: (error) => {
-        customDispatch(globalAlertType("error", error));
-      },
-    });
-  };
-
+  // Add ticket pricing
   const handleAddTicketType = () => {
-    setTicketTypeErr("");
-    if (ticketType?.trim() === "") {
-      setTicketTypeErr("Required*");
+    setPricingError("");
+    if (!pricingType.trim()) {
+      setPricingError("Required*");
+      return;
+    }
+    if (!quantity || quantity <= 0) {
+      setPricingError("Valid quantity is required");
+      return;
+    }
+    if (!price || price <= 0) {
+      setPricingError("Valid price is required");
       return;
     }
 
-    const item = {
+    const newItem = {
       id: uuid(),
-      type: ticketType.toUpperCase(),
-      quantity: parseInt(DOMPurify.sanitize(quantity)),
-      price: DOMPurify.sanitize(price),
+      type: pricingType.trim().toUpperCase(),
+      quantity: Number(quantity),
+      price: Number(price),
     };
-    setTicketTypeList((prev) => {
-      return _.values(_.merge(_.keyBy([...prev, item], "type")));
-    });
-
-    setTicketType("");
+    setPricingList((prev) =>
+      _.orderBy(
+        _.values(_.merge(_.keyBy([...prev, newItem], "type"))),
+        "type",
+        "asc"
+      )
+    );
+    setPricingType("");
     setQuantity(0);
     setPrice(0);
   };
 
   const handleRemoveTicketType = (id) => {
-    const filteredTickets = ticketTypeList.filter((item) => item.id !== id);
-    setTicketTypeList(filteredTickets);
+    setPricingList((prev) => prev.filter((item) => item.id !== id));
   };
 
-  ///Close Add Category
+  // Mutation
+  const { mutateAsync, isLoading } = useMutation({
+    mutationFn: editCategory,
+    onSuccess: (data) => {
+      customDispatch(globalAlertType("info", data));
+      handleClose();
+      queryClient.invalidateQueries(["category"]);
+      queryClient.invalidateQueries(["all-category"]);
+    },
+    onError: (error) => {
+      customDispatch(globalAlertType("error", error));
+    },
+  });
+
   const handleClose = () => {
     customDispatch({
       type: "openEditCinemaCategory",
       payload: { open: false, id: "" },
     });
+    reset();
   };
 
-  // Preview logo if uploaded
-  const LogoPreview = () => (
-    <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 2 }}>
-      {logoPreview && (
-        <Avatar
-          src={logoPreview}
-          variant="rounded"
-          sx={{ width: 60, height: 60, objectFit: "contain" }}
+  const onSubmit = (values) => {
+    if (pricingList.length === 0) {
+      setPricingError("Please add at least one ticket type");
+      return;
+    }
+
+    Swal.fire({
+      title: "Save Changes?",
+      text: "Are you sure you want to update this cinema ticket?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, save",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const payload = {
+          id: cinemaData?.id,
+          type: values.category,
+          name: values.voucherType,
+          details: {
+            movie: DOMPurify.sanitize(values.voucherType),
+            theatre: DOMPurify.sanitize(values.theatre),
+            pricing: pricingList,
+            location: DOMPurify.sanitize(values.location),
+            quantity: parseInt(_.sumBy(pricingList, "quantity")),
+            date: values.date,
+            time: values.time,
+            message: DOMPurify.sanitize(values.message),
+            description: DOMPurify.sanitize(values.description),
+            companyName: DOMPurify.sanitize(values.companyName),
+            cinema: logoFile || cinemaData?.details?.cinema,
+          },
+        };
+        mutateAsync(payload);
+      }
+    });
+  };
+
+  // Logo preview component
+  const LogoSection = () => (
+    <Box>
+      <Typography variant="subtitle2" gutterBottom>
+        Cover Image
+      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
+        {logoPreview && (
+          <Avatar
+            src={logoPreview}
+            variant="rounded"
+            sx={{ width: 60, height: 60, objectFit: "contain" }}
+          />
+        )}
+        <Button
+          variant="outlined"
+          startIcon={<CloudUpload />}
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+        >
+          {logoPreview ? "Change Cover Image" : "Upload Cover Image"}
+        </Button>
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: "none" }}
+          accept=".png,.jpg,.jpeg,.webp"
+          onChange={handleUploadFile}
         />
+      </Box>
+      {isUploading && (
+        <Box sx={{ width: "100%", mt: 1 }}>
+          <LinearProgress variant="determinate" value={uploadProgress} />
+          <Typography variant="caption" color="text.secondary">
+            Uploading... {Math.round(uploadProgress)}%
+          </Typography>
+        </Box>
       )}
-      <Button
-        variant="outlined"
-        startIcon={<CloudUpload />}
-        onClick={() => fileInputRef.current?.click()}
-        size="small"
-      >
-        {logoPreview ? "Change Cover Image" : "Upload Cover Image"}
-      </Button>
-      <input
-        type="file"
-        ref={fileInputRef}
-        style={{ display: "none" }}
-        accept=".png,.jpg,.jpeg,.webp"
-        onChange={handleUploadFile}
-      />
     </Box>
   );
 
   return (
-    <Formik
-      initialValues={initialValues}
-      validationSchema={addCinemaValidationSchema}
-      onSubmit={onSubmit}
-      enableReinitialize={true}
+    <DialogContainer
+      open={open}
+      onClose={handleClose}
+      title="Edit Cinema Ticket"
+      subtitle="Update cinema or event ticket details"
+      loading={isSubmitting || isLoading || isUploading}
+      disabled={isUploading}
+      onConfirm={handleSubmit(onSubmit)}
+      confirmText="Save Changes"
+      maxWidth="md"
+      contentSx={{ overflow: "auto" }}
     >
-      {({ values, errors, touched, handleSubmit }) => {
-        return (
-          <Dialog maxWidth="md" fullWidth open={open}>
-            <CustomDialogTitle
-              title="Edit Cinema Ticket"
-              onClose={handleClose}
+      <Stack spacing={3}>
+        {/* Company Name */}
+        <Controller
+          name="companyName"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Company Name"
+              fullWidth
+              error={!!errors.companyName}
+              helperText={errors.companyName?.message}
             />
-            <DialogContent>
-              <Container maxWidth="md">
-                <Stack rowGap={2} paddingY={2}>
-                  <TextField
-                    size="small"
-                    label="Company"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    error={Boolean(touched.companyName && errors.companyName)}
-                    helperText={touched.companyName && errors.companyName}
+          )}
+        />
+
+        {/* Logo Upload */}
+        <LogoSection />
+
+        {/* Movie Name */}
+        <Controller
+          name="voucherType"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Movie Name"
+              fullWidth
+              required
+              error={!!errors.voucherType}
+              helperText={errors.voucherType?.message}
+            />
+          )}
+        />
+
+        {/* Ticket Pricing */}
+        <Box>
+          <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+            Ticket Pricing
+          </Typography>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1} mb={2}>
+            <Autocomplete
+              options={CINEMA_TICKET_TYPE}
+              freeSolo
+              fullWidth
+              value={pricingType}
+              onInputChange={(_, val) => setPricingType(val)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Ticket Type"
+                  error={!!pricingError}
+                  helperText={pricingError}
+                />
+              )}
+            />
+            <TextField
+              type="number"
+              label="Quantity"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              sx={{ minWidth: 100 }}
+            />
+            <TextField
+              type="number"
+              label="Price (GH¢)"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">GH¢</InputAdornment>
+                ),
+              }}
+              sx={{ minWidth: 120 }}
+            />
+            <Button
+              variant="contained"
+              onClick={handleAddTicketType}
+              sx={{ whiteSpace: "nowrap",borderRadius:1.2 }}
+            >
+              Add
+            </Button>
+          </Stack>
+          {pricingError && (
+            <Typography color="error" variant="caption">
+              {pricingError}
+            </Typography>
+          )}
+          {pricingList.length > 0 && (
+            <List
+              sx={{
+                maxHeight: 200,
+                overflow: "auto",
+                bgcolor: "action.hover",
+                borderRadius: 1,
+                p: 1,
+              }}
+            >
+              {pricingList.map((item) => (
+                <ListItem key={item.id} sx={{ py: 0.5 }}>
+                  <ListItemText
+                    primary={`${item.type} (${item.quantity})`}
+                    secondary={currencyFormatter(item.price)}
+                    primaryTypographyProps={{ variant: "body2" }}
+                    secondaryTypographyProps={{ variant: "caption" }}
                   />
-                  {/* Logo Upload */}
-                  <Box>
-                    {loading && (
-                      <Box sx={{ width: "100%", mb: 1 }}>
-                        <Typography variant="caption" color="textSecondary">
-                          Uploading... {Math.round(progress)}%
-                        </Typography>
-                        <Box
-                          sx={{
-                            height: 4,
-                            width: "100%",
-                            bgcolor: "action.hover",
-                            borderRadius: 1,
-                            overflow: "hidden",
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              height: "100%",
-                              width: `${progress}%`,
-                              bgcolor: "primary.main",
-                              transition: "width 0.3s ease",
-                            }}
-                          />
-                        </Box>
-                      </Box>
-                    )}
-
-                    <Typography variant="subtitle2" gutterBottom>
-                      Cinema Album
-                    </Typography>
-                    <LogoPreview />
-                  </Box>
-                  <TextField
-                    size="small"
-                    label="Movie Name"
-                    value={voucherType}
-                    onChange={(e) => setVoucherType(e.target.value)}
-                    error={Boolean(touched.voucherType && errors.voucherType)}
-                    helperText={touched.voucherType && errors.voucherType}
-                  />
-
-                  {/* Ticket type  */}
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                    <Autocomplete
-                      options={CINEMA_TICKET_TYPE}
-                      freeSolo
-                      closeText=""
-                      disableClearable
-                      fullWidth
+                  <ListItemSecondaryAction>
+                    <IconButton
+                      edge="end"
                       size="small"
-                      noOptionsText="No Ticket available"
-                      value={ticketType || null}
-                      onInputChange={(e, value) => setTicketType(value)}
-                      isOptionEqualToValue={(option, value) => option === value}
-                      renderInput={(props) => (
-                        <TextField
-                          {...props}
-                          label="Select a ticket type"
-                          error={ticketTypeErr.trim() !== ""}
-                          helperText={ticketTypeErr}
-                        />
-                      )}
-                    />
-
-                    <TextField
-                      size="small"
-                      type="number"
-                      inputMode="numeric"
-                      label="Quantity"
-                      placeholder="Quantity here"
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                      error={Boolean(touched.quantity && errors.quantity)}
-                      helperText={touched.quantity && errors.quantity}
-                    />
-                    <TextField
-                      size="small"
-                      type="number"
-                      inputMode="decimal"
-                      label="Price"
-                      placeholder="Price here"
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Typography>GHS</Typography>
-                          </InputAdornment>
-                        ),
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <Typography>p</Typography>
-                          </InputAdornment>
-                        ),
-                      }}
-                      error={Boolean(touched.price && errors.price)}
-                      helperText={touched.price && errors.price}
-                    />
-
-                    <Button
-                      variant="contained"
-                      size="small"
-                      onClick={handleAddTicketType}
+                      onClick={() => handleRemoveTicketType(item.id)}
+                      aria-label="remove"
                     >
-                      Add
-                    </Button>
-                  </Stack>
-                  <List>
-                    {ticketTypeList.length !== 0
-                      ? ticketTypeList.map((item) => (
-                          <ListItem key={item.id}>
-                            <ListItemText
-                              primary={`${item.type} (${item.quantity})`}
-                              primaryTypographyProps={{
-                                fontSize: 11,
-                                color: "primary.main",
-                                fontWeight: "bolder",
-                              }}
-                              secondary={currencyFormatter(item?.price)}
-                            />
+                      <Close fontSize="small" />
+                    </IconButton>
+                  </ListItemSecondaryAction>
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </Box>
 
-                            <ListItemSecondaryAction>
-                              <IconButton
-                                color="primary"
-                                size="small"
-                                onClick={() => handleRemoveTicketType(item?.id)}
-                              >
-                                <Close />
-                              </IconButton>
-                            </ListItemSecondaryAction>
-                          </ListItem>
-                        ))
-                      : null}
-                  </List>
+        {/* Theatre & Location */}
+        <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+          <Controller
+            name="theatre"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Cinema / Theatre Name"
+                fullWidth
+                required
+                error={!!errors.theatre}
+                helperText={errors.theatre?.message}
+              />
+            )}
+          />
+          <Controller
+            name="location"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Cinema / Theatre Location"
+                fullWidth
+                required
+                error={!!errors.location}
+                helperText={errors.location?.message}
+              />
+            )}
+          />
+        </Stack>
 
-                  <Stack direction="row" spacing={2}>
-                    <TextField
-                      size="small"
-                      label="Cinema/Theatre Name"
-                      fullWidth
-                      value={theatre}
-                      onChange={(e) => setTheatre(e.target.value)}
-                      error={Boolean(touched.theatre && errors.theatre)}
-                      helperText={touched.theatre && errors.theatre}
-                    />
-                    <TextField
-                      size="small"
-                      label="Cinema/Theatre Location"
-                      fullWidth
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      error={Boolean(touched.location && errors.location)}
-                      helperText={touched.location && errors.location}
-                    />
-                  </Stack>
-                  <Stack direction="row" spacing={2}>
-                    <CustomDatePicker
-                      label="Date"
-                      value={date}
-                      setValue={setDate}
-                      error={Boolean(touched.date && errors.date)}
-                      helperText={touched.date && errors.date}
-                    />
-                    <CustomTimePicker
-                      label="Time"
-                      value={time}
-                      setValue={setTime}
-                      error={Boolean(touched.time && errors.time)}
-                      helperText={touched.time && errors.time}
-                    />
-                  </Stack>
+        {/* Date & Time */}
+        <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+          <Controller
+            name="date"
+            control={control}
+            render={({ field }) => (
+              <CustomDatePicker
+                label="Date"
+                value={field.value}
+                setValue={(val) => setValue("date", val)}
+                error={!!errors.date}
+                helperText={errors.date?.message}
+                minDate={moment()}
+              />
+            )}
+          />
+          <Controller
+            name="time"
+            control={control}
+            render={({ field }) => (
+              <CustomTimePicker
+                label="Time"
+                value={field.value}
+                setValue={(val) => setValue("time", val)}
+                error={!!errors.time}
+                helperText={errors.time?.message}
+              />
+            )}
+          />
+        </Stack>
 
-                  <TextField
-                    size="small"
-                    label="Movie Description"
-                    multiline
-                    rows={3}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    error={Boolean(touched.description && errors.description)}
-                    helperText={touched.description && errors.description}
-                  />
-                  <TextField
-                    size="small"
-                    label="Message"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    error={Boolean(touched.message && errors.message)}
-                    helperText={touched.message && errors.message}
-                  />
-                </Stack>
-              </Container>
-            </DialogContent>
-            <DialogActions sx={{ padding: 1 }}>
-              <Container
-                maxWidth="md"
-                sx={{ display: "flex", justifyContent: "flex-end" }}
-              >
-                <Button onClick={handleClose} disabled={loading}>
-                  Cancel
-                </Button>
-                <LoadingButton
-                  variant="contained"
-                  loading={isLoading}
-                  disabled={loading}
-                  onClick={handleSubmit}
-                >
-                  Save Changes
-                </LoadingButton>
-              </Container>
-            </DialogActions>
-          </Dialog>
-        );
-      }}
-    </Formik>
+        {/* Description */}
+        <Controller
+          name="description"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Movie Description"
+              multiline
+              rows={3}
+              fullWidth
+              error={!!errors.description}
+              helperText={errors.description?.message}
+            />
+          )}
+        />
+
+        {/* Message */}
+        <Controller
+          name="message"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Additional Message"
+              multiline
+              rows={2}
+              fullWidth
+              error={!!errors.message}
+              helperText={errors.message?.message}
+            />
+          )}
+        />
+      </Stack>
+    </DialogContainer>
   );
 };
 

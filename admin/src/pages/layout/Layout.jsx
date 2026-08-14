@@ -1,10 +1,9 @@
 import { useContext } from "react";
 import { Navigate } from "react-router-dom";
-import Main from "./Main";
-import Sidebar from "./Sidebar";
-
 import { Box } from "@mui/material";
+import Main from "./Main";
 import { AuthContext } from "../../context/providers/AuthProvider";
+import MainSidebar from "@/components/sidebar/MainSidebar";
 
 function Layout() {
   const { user } = useContext(AuthContext);
@@ -14,20 +13,22 @@ function Layout() {
   }
 
   return (
-    <>
+    <Box sx={{ display: "flex", alignItems: "stretch", width: "100%", minHeight: "100svh" }}>
+      <MainSidebar />
+
+      {/* flexGrow + minWidth: 0 keeps Main from overflowing next to a flex sibling;
+          the top padding on mobile clears the floating menu trigger. */}
       <Box
+        component="main"
         sx={{
-          display: "flex",
-          aligItems: "start",
-          justifyContent: "flex-start",
-          
+          flexGrow: 1,
+          minWidth: 0,
+          // pt: { xs: 7, md: 0 },
         }}
       >
-        <Sidebar />
-
         <Main />
       </Box>
-    </>
+    </Box>
   );
 }
 

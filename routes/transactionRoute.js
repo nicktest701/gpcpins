@@ -81,100 +81,97 @@ router.get(
       voucher_transactions,
       prepaid_transactions,
     ] = await Promise.all([
-      await knex("vw_payments_bundle_transactions")
-        .select(
-          "id",
-          "paymentId",
-          "externalTransactionId",
-          "kind",
-          "volume",
-          "paymentReference as reference",
-          "recipient",
-          "email",
-          "phonenumber",
-          "amount",
-          "info",
-          "mode",
-          "partner",
-          "amount",
-          "service",
-          "domain as type",
-          "isProcessed",
-          "status",
-          "createdAt",
-          "updatedAt",
-          knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt"),
-        )
-        .where("status", "IN", ["completed", "pending"]),
+      await knex("vw_payments_bundle_transactions").select(
+        "id",
+        "paymentId",
+        "externalTransactionId",
+        "kind",
+        "volume",
+        "paymentReference as reference",
+        "recipient",
+        "email",
+        "phonenumber",
+        "amount",
+        "info",
+        "mode",
+        "partner",
+        "amount",
+        "service",
+        "domain as type",
+        "isProcessed",
+        "status",
+        "createdAt",
+        "updatedAt",
+        knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt"),
+      ),
+      // .where("status", "IN", ["completed", "pending"]),
 
       //Airtime
-      await knex("vw_payments_airtime_transactions")
-        .select(
-          "id",
-          "externalTransactionId",
-          "kind",
-          "paymentReference as reference",
-          "recipient",
-          "email",
-          "phonenumber",
-          "info",
-          "partner",
-          "amount",
-          "mode",
-          "service",
-          "service as type",
-          "isProcessed",
-          "issuerId as issuer",
-          "issuerName",
-          "status",
-          "createdAt",
-          "updatedAt",
-          knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt"),
-        )
-        .where("status", "IN", ["completed", "pending"]),
+      await knex("vw_payments_airtime_transactions").select(
+        "id",
+        "externalTransactionId",
+        "kind",
+        "paymentReference as reference",
+        "recipient",
+        "email",
+        "phonenumber",
+        "info",
+        "partner",
+        "amount",
+        "mode",
+        "service",
+        "service as type",
+        "isProcessed",
+        "issuerId as issuer",
+        "issuerName",
+        "status",
+        "createdAt",
+        "updatedAt",
+        knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt"),
+      ),
+      // .where("status", "IN", ["completed", "pending"]),
       //Vouchers
-      await knex("vw_payments_voucher_transactions")
-        .select(
-          "id",
-          "externalTransactionId",
-          "info",
-          "partner",
-          "mode",
-          "service",
-          "amount",
-          "paymentReference as reference",
-          "email",
-          "phonenumber",
-          "status",
-          "createdAt",
-          "updatedAt",
-          knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt"),
-        )
-        .where("status", "IN", ["completed", "pending"]),
+      await knex("vw_payments_voucher_transactions").select(
+        "id",
+        "externalTransactionId",
+        "info",
+        "partner",
+        "mode",
+        "service",
+        "amount",
+        "paymentReference as reference",
+        "email",
+        "phonenumber",
+        "status",
+        "createdAt",
+        "updatedAt",
+        knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt"),
+      ),
+      // .where("status", "IN", ["completed", "pending"]),
       //Electricity
-      await knex("vw_meter_payment_prepaid_transaction_view")
-        .select(
-          "id",
-          "externalTransactionId",
-          "paymentReference as reference",
-          "info",
-          "partner",
-          "mode",
-          "service",
-          "amount",
-          "email",
-          "phonenumber",
-          "status",
-          "isProcessed",
-          // " issuer",
-          " issuerName",
-          "createdAt",
-          "updatedAt",
-          knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt"),
-          "meterId",
-          "number",
-        )
-        .where("status", "IN", ["completed", "pending"]),
+      await knex("vw_meter_payment_prepaid_transaction_view").select(
+        "id",
+        "externalTransactionId",
+        "paymentReference as reference",
+        "info",
+        "partner",
+        "mode",
+        "service",
+        "amount",
+        "email",
+        "phonenumber",
+        "status",
+        "isProcessed",
+        // " issuer",
+        " issuerName",
+        "createdAt",
+        "updatedAt",
+        knex.raw("DATE_FORMAT(updatedAt,'%D %M,%Y %r') as modifiedAt"),
+        "meterId",
+        "number",
+      ),
+
+      // .where("status", "IN", ["completed", "pending"]),
     ]);
 
     const ecgTransaction = prepaid_transactions.map((transaction) => {
@@ -196,7 +193,8 @@ router.get(
         mode: transaction?.mode,
         partner: safeJSON(transaction?.partner),
         isProcessed: transaction?.isProcessed,
-        status: Boolean(transaction?.isProcessed) ? "completed" : "pending",
+        // status: Boolean(transaction?.isProcessed) ? "completed" : "pending",
+        status: transaction.status,
         createdAt: transaction?.updatedAt,
         modifiedAt: transaction?.modifiedAt,
         updatedAt: transaction?.updatedAt,
@@ -1680,7 +1678,7 @@ router.get(
         createdAt: t?.createdAt,
         updatedAt: t?.updatedAt,
         isProcessed: Boolean(t?.isProcessed),
-        status:  t?.status 
+        status: t?.status,
       };
     });
 
@@ -3093,8 +3091,8 @@ router.get(
           "createdAt as purchaseDate",
           "active",
         )
-        .where({ userId: id, active: 1 })
-        .andWhere("status", "IN", ["completed", "pending", "refunded"]),
+        .where({ userId: id, active: 1 }),
+      // .andWhere("status", "IN", ["completed", "pending", "refunded"]),
 
       //Airtime
       knex("vw_payments_airtime_transactions")
@@ -3114,8 +3112,8 @@ router.get(
           "createdAt as purchaseDate",
           "active",
         )
-        .where({ userId: id, active: 1 })
-        .andWhere("status", "IN", ["completed", "pending", "refunded"]),
+        .where({ userId: id, active: 1 }),
+      // .andWhere("status", "IN", ["completed", "pending", "refunded"]),
       //Vouchers
       knex("vw_payments_voucher_transactions")
         .select(
@@ -3131,12 +3129,12 @@ router.get(
           "status",
           "year",
         )
-        .where({ userId: id, active: 1 })
-        .andWhere("status", "IN", ["completed", "pending", "refunded"]),
+        .where({ userId: id, active: 1 }),
+      // .andWhere("status", "IN", ["completed", "pending", "refunded"]),
       // .andWhereBetween("createdAt", [sDate, eDate]),
       //Electricity
       knex("vw_meter_payment_prepaid_transaction_view")
-        .andWhere("status", "IN", ["completed", "refunded"])
+        // .andWhere("status", "IN", ["completed", "refunded"])
         .select(
           "id",
           "number as meter",
@@ -3153,8 +3151,8 @@ router.get(
           "createdAt",
           "updatedAt",
         )
-        .where({ userId: id, active: 1 })
-        .andWhere("status", "IN", ["completed", "pending", "refunded"]),
+        .where({ userId: id, active: 1 }),
+      // .andWhere("status", "IN", ["completed", "pending", "refunded"]),
       // .andWhereBetween("createdAt", [sDate, eDate]),
     ]);
 
@@ -3197,9 +3195,7 @@ router.get(
       return {
         ...rest,
         downloadLink: info?.downloadLink,
-        status: Boolean(transaction?.isProcessed)
-          ? transaction?.status
-          : "pending",
+        status: transaction?.status,
       };
     });
 

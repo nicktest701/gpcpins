@@ -1,4 +1,5 @@
 const router = require("express").Router();
+const bcrypt = require("bcryptjs");
 const asyncHandler = require("express-async-handler");
 const { randomBytes } = require("crypto");
 const _ = require("lodash");
@@ -18,6 +19,7 @@ const knex = require("../db/knex");
 const { isValidUUID2, isValidEmail } = require("../config/validation");
 const { storeOTP } = require("../services/otp.services");
 const { safeJSON } = require("../config/helpers");
+const { getInternationalMobileFormat } = require("../config/PhoneCode");
 
 const Storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -32,6 +34,15 @@ const Storage = multer.diskStorage({
 
 const Upload = multer({ storage: Storage });
 
+const getPermissions = async (roleId) => {
+  const perms = await knex("role_permissions")
+    .join("permissions", "role_permissions.permission_id", "permissions.id")
+    .where("role_permissions.role_id", roleId)
+    .pluck("permissions.description"); // Extracts values directly into a flat array
+
+  return perms;
+};
+
 router.get(
   "/",
   verifyToken,
@@ -39,8 +50,6 @@ router.get(
   asyncHandler(async (req, res) => {
     const { search } = req.query;
     const { id } = req.user;
-   ;
-
     let employees = [];
     if (!_.isEmpty(search)) {
       employees = await knex("vw_users_with_roles").select("id", "name");
@@ -55,17 +64,17 @@ router.get(
       // console.log(employees)
     }
 
-    const modifiedEmployees = employees.map(
-      ({ role, permissions, ...rest }) => {
-        return {
-          ...rest,
-          permissions: safeJSON(permissions),
-          role: role === process.env.ADMIN_ID ? "Administrator" : "Employee",
-        };
-      },
-    );
+    // const modifiedEmployees = employees.map(
+    //   ({ role_name, permissions, ...rest }) => {
+    //     return {
+    //       ...rest,
+    //       permissions: safeJSON(permissions),
+    //       role: role_name
+    //     };
+    //   },
+    // );
 
-    res.status(200).json(modifiedEmployees);
+    res.status(200).json(employees);
   }),
 );
 
@@ -91,12 +100,13 @@ router.get(
       return res.status(400).json({});
     }
 
-    const { permissions, role, ...rest } = employee;
+    const { role, ...rest } = employee;
+    const permissions = await getPermissions(rest?.role_id);
 
     const modifiedEmployee = {
       ...rest,
-      permissions: JSON.parse(permissions),
-      role: role === process.env.ADMIN_ID ? "Administrator" : "Employee",
+      permissions: permissions,
+      role: employee.role_name,
     };
 
     res.status(200).json(modifiedEmployee);
@@ -109,90 +119,82 @@ router.post(
   verifyAdmin,
   Upload.single("profile"),
   asyncHandler(async (req, res) => {
-    const { id } = req.user;
-    const newEmployee = req.body;
+    const { id: USERID } = req.user;
+    const newEmployee = { ...req.body }; // Shallow clone to prevent mutating req.body directly
+
+    // 1. Parallelize early validation and role lookup
+    const [existingEmail, existingUsername, existingPhoneNumber, role] =
+      await Promise.all([
+        knex("users").select("email").where("email", newEmployee.email).first(),
+        knex("users")
+          .select("username")
+          .where("username", newEmployee.username)
+          .first(),
+        knex("users")
+          .select("phonenumber")
+          .whereIn("phonenumber", [
+            newEmployee.phonenumber,
+            getInternationalMobileFormat(newEmployee.phonenumber),
+            getInternationalMobileFormat(newEmployee.phonenumber, false),
+          ])
+          .first(),
+        knex("roles").select("id").where("name", newEmployee.role).first(),
+      ]);
+
+    if (existingEmail) {
+      return res
+        .status(400)
+        .json("An employee with this account already exists!");
+    }
+    if (existingUsername) {
+      return res
+        .status(400)
+        .json(`Username, '${newEmployee.username}' is not available!`);
+    }
+    if (existingPhoneNumber) {
+      return res
+        .status(400)
+        .json(`Phone number, '${newEmployee.phonenumber}' already exists!`);
+    }
+    if (!role) {
+      return res.status(400).json(`Role '${newEmployee.role}' does not exist!`);
+    }
+
+    // 2. Handle file uploading before starting the database transaction
+    if (req.file) {
+      newEmployee.profile = await uploadPhoto(req.file);
+    }
+
+    // Clean up properties not matching your DB schema columns
+    delete newEmployee.role;
+    const employeeId = generateId();
+
+    const hashedPassword = await bcrypt.hash(newEmployee?.password, 12);
 
     const transx = await knex.transaction();
     try {
-      const doesEmployeeExists = await transx("users")
-        .select("email")
-        .where("email", newEmployee.email)
-        .first();
-
-      if (!_.isEmpty(doesEmployeeExists)) {
-        return res
-          .status(400)
-          .json("An employee with this account already exists!");
-      }
-
-      const doesUserNameExists = await transx("users")
-        .select("username")
-        .where("username", newEmployee?.username)
-        .first();
-
-      if (!_.isEmpty(doesUserNameExists)) {
-        return res
-          .status(400)
-          .json(`Username, '${newEmployee?.username}' is not available!`);
-      }
-
-      const role = await transx("roles")
-        .where("name", req.body?.role)
-        .select("id")
-        .first();
-
-      newEmployee.role_id = role.id;
-
-      newEmployee.profile = req.file?.filename;
-
-      if (req.file) {
-        const url = await uploadPhoto(req.file);
-        newEmployee.profile = url;
-      }
-
-      const id = generateId();
-      const user = await transx("users").insert({
-        id,
-        ...newUser,
+      // 3. Database operations enclosed in transaction
+      await transx("users").insert({
+        id: employeeId,
+        profile: newEmployee.profile || null,
+        firstname: newEmployee.firstname,
+        lastname: newEmployee.lastname,
+        username: newEmployee.username,
+        email: newEmployee.email,
+        dob: newEmployee.dob,
+        residence: newEmployee.residence,
+        nid: newEmployee.nid,
+        phonenumber: newEmployee.phonenumber,
+        role_id: role.id,
+        password: hashedPassword,
         permissions: JSON.stringify([]),
       });
 
-      if (_.isEmpty(user)) {
-        res.status(400).json("Error saving employee information!");
-      }
+      // const token = randomBytes(32).toString("hex");
+      // await storeOTP(employeeId, token); // Ensure storeOTP accepts transx if it writes to DB
 
-      const token = randomBytes(32).toString("hex");
-
-      await storeOTP(_id, token);
-
-      let message_url = `http://localhost:5003/auth/verify?id=${_id}&token=${token}&type=new`;
-      if (process.env.NODE_ENV === "production") {
-        message_url = `https://admin.gpcpins.com/auth/verify?id=${_id}&token=${token}&type=new`;
-      }
-
-      const message = `
-        <div style="width:500px;">
-        <h2 style="display:block;text-align:center;">Verify your email</h2>
-
-        <p style="text-align:center;">Please confirm that you want to use ${newUser?.email} as your Gab Powerful Account
-        email address. Once it's done you would be able to start using your account.</p>
-        <p style="text-align:center;margin-bottom:16px;">Click on the button below to confirm your email address.</p>
-
-        <a href='${message_url}'
-            style="display:block;margin-block:20px;text-decoration: none;text-align:center;background-color: #083d77;color: #fff;padding: 12px 15px; font-size: 18px;">Verify</a>
-      
-      
-            <p>Button is not showing? <a href='${message_url}' style="color: #083d77;font-weight: bold;">Click here</a></p>
-
-            <p>Link expires in 15 minutes</p>
-      
-        <p style="text-align:center;">-- Gab Powerful Team --</p>
-    </div>
-        `;
-
-      //logs
       await transx("activity_logs").insert({
-        user_id: id,
+        user_id: USERID,
         title: "Created new employee account.",
         severity: "info",
       });
@@ -200,13 +202,35 @@ router.post(
       await transx.commit();
       res.status(201).json("Employee saved successfully!!!");
 
-      setImmediate(async () => {
-        await sendMail(newEmployee?.email, mailTextShell(message));
-      });
+      // 4. Offload email generation and delivery asynchronously
+      // setImmediate(async () => {
+      //   try {
+      //     const baseUrl =
+      //       process.env.NODE_ENV === "production"
+      //         ? "https://admin.gpcpins.com"
+      //         : "http://localhost:5003";
+
+      //     const message_url = `${baseUrl}/auth/verify?id=${employeeId}&token=${token}&type=new`;
+
+      //     const message = `
+      //       <div style="width:500px; font-family: sans-serif;">
+      //         <h2 style="text-align:center;">Verify your email</h2>
+      //         <p style="text-align:center;">Please confirm that you want to use ${newEmployee.email} as your Gab Powerful Account email address.</p>
+      //         <a href='${message_url}' style="display:block; margin:20px auto; text-align:center; background-color: #083d77; color: #fff; padding: 12px 15px; text-decoration: none; width: 200px;">Verify</a>
+      //         <p>Link expires in 15 minutes</p>
+      //       </div>`;
+
+      //     await sendMail(newEmployee.email, mailTextShell(message));
+      //   } catch (mailError) {
+      //     console.error("Background email delivery failed:", mailError);
+      //   }
+      // });
     } catch (error) {
       await transx.rollback();
-
-      return res.status(400).json("An error has occurred.Try again later");
+      console.error("Transaction Error:", error); // Essential for debugging
+      return res
+        .status(500)
+        .json({ error: "An error has occurred. Try again later" });
     }
   }),
 );
@@ -217,22 +241,39 @@ router.put(
   verifyAdmin,
   asyncHandler(async (req, res) => {
     const { id: userID } = req.user;
-    const { id, ...rest } = req.body;
 
-    rest.role =
-      req.body?.role === "Employee"
-        ? process.env.EMPLOYEE_ID
-        : process.env.ADMIN_ID;
+    const newEmployee = { ...req.body };
+    const { id, ...rest } = newEmployee;
 
-    const role = await knex("roles")
-      .where("id", rest.role)
-      .select("id")
-      .first();
+    const intNumber = getInternationalMobileFormat(rest?.phonenumber || "");
+    const intWNumber = getInternationalMobileFormat(
+      rest?.phonenumber || "",
+      false,
+    );
+
+    const [doesPhoneExists, role] = await Promise.all([
+      await knex("users")
+        .select("phonenumber")
+        .where("phonenumber", "IN", [rest?.phonenumber, intWNumber, intNumber])
+        .whereNot("id", id),
+
+      await knex("roles").where("name", rest.role).select("id").first(),
+    ]);
+
+    if (!_.isEmpty(doesPhoneExists)) {
+      return res
+        .status(400)
+        .json(`Telephone number '${rest?.phonenumber}' already in use!`);
+    }
+
+    if (!role) {
+      return res.status(400).json(`Role '${newEmployee.role}' does not exist!`);
+    }
+
     const employee = await knex("users").where("id", id).update({
       firstname: rest?.firstname,
       lastname: rest?.lastname,
       username: rest?.username,
-      email: rest?.email,
       dob: rest?.dob,
       nid: rest?.nid,
       phonenumber: rest?.phonenumber,

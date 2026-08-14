@@ -21,6 +21,7 @@ import { prepaidMeterValidationSchema } from "../../config/validationSchema";
 import { getMeterByNumber } from "@/api/meterAPI"; // assuming this API exists
 import PageHero from "../../components/custom/PageHero";
 import MeterDetailsDialog from "./MeterDetailsDialog";
+import ComplaintModal from "../../components/modals/ComplaintModal";
 
 function Prepaid() {
   const navigate = useNavigate();
@@ -172,11 +173,17 @@ function Prepaid() {
                 </LoadingButton>
               </Stack>
             </form>
-            <Typography variant="body2" fontStyle='italic'>
+            <Typography variant="body2" fontStyle="italic">
               In case of delayed / missing recharge tokens,Please send a message
-              to our support lines ( <a href="tel:0800981981">0800981981</a> or <a href="tel:+233593381045">+233 59 338 1045</a> ) with your transaction
-              ID, phone number, and issue details so our team can attend to you quickly.
+              to our support lines ( <a href="tel:0800981981">0800981981</a> or{" "}
+              <a href="tel:+233593381045">+233 59 338 1045</a> ) with your
+              transaction ID, phone number, and issue details so our team can
+              attend to you quickly or you can fill out the complaint form
             </Typography>
+            <ComplaintModal
+              buttonVariant="button"
+              buttonText="Complaint form"
+            />
           </Paper>
         </AnimatedContainer>
         <MeterDetailsDialog

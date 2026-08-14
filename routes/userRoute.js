@@ -8,7 +8,6 @@ const { otpGen, customOtpGen } = require("otp-gen-agent");
 const multer = require("multer");
 const moment = require("moment");
 const { rateLimit } = require("express-rate-limit");
-const cron = require("node-cron");
 const { signMainToken, signMainRefreshToken } = require("../config/token");
 const {
   verifyToken,
@@ -28,7 +27,6 @@ const limit = rateLimit({
 const knex = require("../db/knex");
 const { isValidUUID2, isValidEmail } = require("../config/validation");
 const sendEMail = require("../config/sendEmail");
-const { sendBirthdayWishes } = require("../config/cronMessages");
 const { sendOTPSMS, sendSMS } = require("../config/sms");
 const { mailTextShell } = require("../config/mailText");
 const { getInternationalMobileFormat } = require("../config/PhoneCode");
@@ -63,9 +61,14 @@ const Upload = multer({ storage: Storage });
 
 const isProduction = process.env.NODE_ENV === "production";
 
-cron.schedule("0 0 * * *", async () => {
-  await sendBirthdayWishes();
-});
+const getPermissions = async (roleId) => {
+  const perms = await knex("role_permissions")
+    .join("permissions", "role_permissions.permission_id", "permissions.id")
+    .where("role_permissions.role_id", roleId)
+    .pluck("permissions.description"); // Extracts values directly into a flat array
+
+  return perms;
+};
 
 router.get(
   "/",
@@ -584,8 +587,10 @@ router.post(
     const cacheKey = `user:profile:${jti}`;
     await redisClient.del(cacheKey);
 
+    req.authUser = null;
     req.user = null;
     delete req.user;
+    delete req.authUser;
 
     res.sendStatus(204);
   }),
@@ -759,10 +764,14 @@ router.put(
 
     if (!google && rest?.phonenumber) {
       const intNumber = getInternationalMobileFormat(rest?.phonenumber || "");
+      const intWNumber = getInternationalMobileFormat(
+        rest?.phonenumber || "",
+        false,
+      );
 
       const doesPhoneExists = await knex("users")
         .select("phonenumber")
-        .where("phonenumber", "IN", [rest?.phonenumber, intNumber])
+        .where("phonenumber", "IN", [rest?.phonenumber, intWNumber, intNumber])
         .whereNot("id", id);
 
       if (!_.isEmpty(doesPhoneExists)) {
@@ -787,7 +796,7 @@ router.put(
     if (!user) {
       return res.status(400).json("Error updating user information.");
     }
-
+    const permissions = await getPermissions(user?.role_id);
     // set the user object on the request so it can be accessed in other routes
     const accessData = {
       id: user?.id,
@@ -802,7 +811,7 @@ router.put(
       profile: user?.profile,
       createdAt: user?.created_at,
       active: Boolean(user?.active),
-      permissions: safeJSON(user?.permissions),
+      permissions: permissions,
     };
 
     if (register) {
@@ -975,7 +984,6 @@ async function generateAuthSession({
     profile: authUser?.profile,
     active: Boolean(authUser?.active),
     createdAt: authUser?.created_at,
-    // permissions: safeJSON(authUser?.permissions),
   };
 
   const updatedUser = {

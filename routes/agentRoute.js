@@ -752,6 +752,8 @@ router.put(
     const { id: userId, role } = req.user;
     const { id, agent_id, ...rest } = req.body;
 
+    console.log(req.body)
+
     if (agent_id) {
       await knex("agent_businesses").where("id", rest.business_id).update({
         name: rest?.business_name,
@@ -825,7 +827,7 @@ router.put(
     `;
 
     res.status(201).json({
-      user: accessToken,
+      user: agent,
     });
 
     setImmediate(async () => {

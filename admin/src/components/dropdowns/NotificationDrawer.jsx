@@ -167,7 +167,7 @@ const NotificationDrawer = ({ open, setOpen, notifications = [] }) => {
           ) : (
             filteredNotifications.map((notification) => (
               <NotificationItem
-                key={notification._id}
+                key={notification.id}
                 notification={notification}
                 onClick={goToNotifications}
               />

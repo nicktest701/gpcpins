@@ -1483,7 +1483,7 @@ ecgText: (id, message) => `
                 <table width="100%" style="background:#F0F4F9; border-radius:26px; border:1px solid #E4EAF0;">
                   <tr>
                     <td style="padding:22px 20px; text-align:center;">
-                      <span style="font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:1.2px; color:#5F7F9C;">Transaction ID</span>
+                      <span style="font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:1.2px; color:#5F7F9C;">Recharge Token</span>
                       <div style="font-size:34px; font-weight:800; color:#0F2C3B; margin-top:10px; word-break:break-all; background:#ffffff; padding:10px 20px; border-radius:60px; display:inline-block; font-family: monospace; letter-spacing:-0.2px;">
                         ${id}
                       </div>

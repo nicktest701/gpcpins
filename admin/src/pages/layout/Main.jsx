@@ -1,6 +1,5 @@
 import { Outlet } from "react-router-dom";
 import { Box } from "@mui/material";
-import HideSidebar from "./HideSidebar";
 import Header from "./Header";
 import Footer from "./Footer";
 
@@ -15,7 +14,6 @@ function Main() {
         bgcolor: "whitesmoke",
       }}
     >
-      <HideSidebar />
       <Header />
       <Box
         sx={{

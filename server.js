@@ -7,13 +7,10 @@ const cors = require("cors");
 const morgan = require("morgan");
 const helmet = require("helmet");
 const createError = require("http-errors");
-const cron = require("node-cron");
 const rateLimit = require("express-rate-limit");
 const hpp = require("hpp");
 const toobusy = require("toobusy-js");
 const http = require("http");
-const { createClient } = require("redis");
-const { createAdapter } = require("@socket.io/redis-adapter");
 
 // Route imports
 const logRoute = require("./routes/logRoute");
@@ -31,8 +28,10 @@ const voucherRoute = require("./routes/voucherRoute");
 const paymentRoute = require("./routes/paymentRoute");
 const transactionRoute = require("./routes/transactionRoute");
 const messageRoute = require("./routes/messageRoute");
+const rolesRoute = require("./routes/rolesRoute");
 const broadcastMessageRoute = require("./routes/broadcastMessageRoute");
 const notificationRoute = require("./routes/notificationRoute");
+const complaintRoute = require("./routes/complaintRoute");
 
 //brasicca
 const billerRoute = require("./routes/brassica/billers.js");
@@ -40,14 +39,14 @@ const billerPaymentsRoute = require("./routes/brassica/payments.js");
 
 //
 const { verifyToken } = require("./middlewares/verifyToken");
-const sendEMail = require("./config/sendEmail");
 const knex = require("./db/knex");
 const socketAuth = require("./middlewares/socketAuth");
-const { initSocketServer, getIO, getPubClient } = require("./config/socket");
+const { initSocketServer, getIO } = require("./config/socket");
 const { initializeSchedulers } = require("./queues/schedulers.js");
 const logger = require("./utils/logger.js");
 
-// server.js or app.js
+// server.js
+require("./config/cronMessages.js");
 require("./workers/reservationExpiry.worker");
 require("./workers/ticket.worker");
 require("./workers/voucher.worker");
@@ -55,7 +54,7 @@ require("./workers/voucher.worker");
 // Default server port
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || "development";
-console.log(`Starting server in ${NODE_ENV} mode...`);
+logger.info(`Starting server in ${NODE_ENV} mode...`);
 
 // Initialize express
 const app = express();
@@ -66,14 +65,6 @@ const server = http.createServer(app);
 /*
 |--------------------------------------------------------------------------
 | SOCKET.IO SERVER
-|--------------------------------------------------------------------------
-*/
-
-// const io = initSocketServer(server);
-
-/*
-|--------------------------------------------------------------------------
-| START SYSTEM
 |--------------------------------------------------------------------------
 */
 
@@ -102,17 +93,6 @@ app.use(hpp()); // Protect against HTTP Parameter Pollution attacks
 const allowedList = process.env.WHITELIST?.split(",");
 
 const whitelist = [...allowedList, process.env.CLIENT_URL];
-
-// // In development, allow localhost and local IPs
-// if (NODE_ENV === "development") {
-//   whitelist.push(
-//     "http://localhost:5000",
-//     "http://localhost:5001",
-//     "http://localhost:5002",
-//     "http://localhost:5003",
-//     "http://localhost:5004",
-//   );
-// }
 
 const corsOptions = {
   methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
@@ -246,18 +226,8 @@ app.use(
 );
 app.use("/", express.static(path.join(__dirname, "public"), staticOptions));
 
-// Cron job for server health checks
-if (NODE_ENV === "production") {
-  cron.schedule("0 6,9,12,15,18,21 * * *", () => {
-    sendEMail(
-      "nicktest701@gmail.com",
-      `Server health check at ${new Date().toUTCString()}`,
-      "GPC Server Update",
-    ).catch((err) => console.error("Cron job email error:", err.message));
-  });
-}
-
 // Routes
+app.use("/api/gabs/v1/roles", rolesRoute);
 app.use("/api/gabs/v1/users", userRoute);
 app.use("/api/gabs/v1/wallet", walletRoute);
 app.use("/api/gabs/v1/logs", logRoute);
@@ -273,6 +243,7 @@ app.use("/api/gabs/v1/meters", meterRoute);
 app.use("/api/gabs/v1/payment", paymentRoute);
 app.use("/api/gabs/v1/transaction", transactionRoute);
 app.use("/api/gabs/v1/notifications", notificationRoute);
+app.use("/api/gabs/v1/complaints", complaintRoute);
 app.use("/api/gabs/v1/messages", messageRoute);
 app.use("/api/gabs/v1/broadcast-messages", verifyToken, broadcastMessageRoute);
 app.use("/api/gabs/v1/billers", billerRoute);
@@ -332,7 +303,6 @@ app.use((err, req, res, next) => {
 async function bootstrap() {
   try {
     const { io, pubClient } = await initSocketServer(server);
-  
 
     /*
     |--------------------------------------------------------------------------
@@ -347,98 +317,102 @@ async function bootstrap() {
     | SOCKET CONNECTION
     |--------------------------------------------------------------------------
     */
-   io.on("connection", async (socket) => {
-  const isDev = NODE_ENV === "development";
-  const userId = socket.user?.sub;
-
-  if (isDev) {
-    logger.info(`Socket Connected: ${socket.id}`);
-  }
-
-  // 1. Setup default user channels concurrently
-  if (userId) {
-    const userRoom = `user:${userId}`;
-    const paymentRoom = `payment:${userId}`;
-
-    try {
-      await Promise.all([
-        socket.join(userRoom),
-        socket.join(paymentRoom),
-        pubClient.set(`socket:${userId}`, socket.id, { EX: 86400 }) // 24 hours
-      ]);
+    io.on("connection", async (socket) => {
+      const isDev = NODE_ENV === "development";
+      const userId = socket.user?.sub;
 
       if (isDev) {
-        logger.info(`User ${userId} automatically joined rooms: [${userRoom}, ${paymentRoom}]`);
+        logger.info(`Socket Connected: ${socket.id}`);
       }
-    } catch (err) {
-      logger.error(`Error initializing session for user ${userId}:`, err);
-    }
-  }
 
-  // 2. Dynamic Room Event Listeners
-  socket.on("join-user-room", async (id) => {
-    if (!id || typeof id !== "string") return;
-    const userRoom = `user:${id}`;
-    
-    try {
-      await socket.join(userRoom);
-      socket.emit("user-room-joined", { room: userRoom });
-    } catch (err) {
-      logger.error(`Error joining user room: ${err.message}`);
-    }
-  });
+      // 1. Setup default user channels concurrently
+      if (userId) {
+        const userRoom = `user:${userId}`;
+        const paymentRoom = `payment:${userId}`;
 
-  socket.on("join-payment-room", async (txRef) => {
-    if (!txRef || typeof txRef !== "string") return;
-    const paymentRoom = `payment:${txRef}`;
+        try {
+          await Promise.all([
+            socket.join(userRoom),
+            socket.join(paymentRoom),
+            pubClient.set(`socket:${userId}`, socket.id, { EX: 86400 }), // 24 hours
+          ]);
 
-    try {
-      await socket.join(paymentRoom);
-      
-      if (isDev) {
-        logger.info(`User joined unique transaction room: ${paymentRoom}`);
+          if (isDev) {
+            logger.info(
+              `User ${userId} automatically joined rooms: [${userRoom}, ${paymentRoom}]`,
+            );
+          }
+        } catch (err) {
+          logger.error(`Error initializing session for user ${userId}:`, err);
+        }
       }
-      
-      socket.emit("payment-room-joined", { room: paymentRoom });
-    } catch (err) {
-      logger.error(`Error joining payment room: ${err.message}`);
-    }
-  });
 
-  socket.on("leave-user-room", async (id) => {
-    if (!id || typeof id !== "string") return;
-    try {
-      await socket.leave(`user:${id}`);
-    } catch (err) {
-      logger.error(`Error leaving user room: ${err.message}`);
-    }
-  });
+      // 2. Dynamic Room Event Listeners
+      socket.on("join-user-room", async (id) => {
+        if (!id || typeof id !== "string") return;
+        const userRoom = `user:${id}`;
 
-  socket.on("leave-payment-room", async (txRef) => {
-    if (!txRef || typeof txRef !== "string") return;
-    try {
-      await socket.leave(`payment:${txRef}`);
-    } catch (err) {
-      logger.error(`Error leaving payment room: ${err.message}`);
-    }
-  });
+        try {
+          await socket.join(userRoom);
+          socket.emit("user-room-joined", { room: userRoom });
+        } catch (err) {
+          logger.error(`Error joining user room: ${err.message}`);
+        }
+      });
 
-  // 3. Optimized Disconnect Cleanup
-  socket.on("disconnect", async (reason) => {
-    if (isDev) {
-      logger.info(`Socket Disconnected: ${socket.id} (Reason: ${reason})`);
-    }
-    
-    if (userId) {
-      try {
-        await pubClient.del(`socket:${userId}`);
-      } catch (err) {
-        logger.error(`Failed to clear Redis token mapping for ${userId}:`, err);
-      }
-    }
-  });
-});
+      socket.on("join-payment-room", async (txRef) => {
+        if (!txRef || typeof txRef !== "string") return;
+        const paymentRoom = `payment:${txRef}`;
 
+        try {
+          await socket.join(paymentRoom);
+
+          if (isDev) {
+            logger.info(`User joined unique transaction room: ${paymentRoom}`);
+          }
+
+          socket.emit("payment-room-joined", { room: paymentRoom });
+        } catch (err) {
+          logger.error(`Error joining payment room: ${err.message}`);
+        }
+      });
+
+      socket.on("leave-user-room", async (id) => {
+        if (!id || typeof id !== "string") return;
+        try {
+          await socket.leave(`user:${id}`);
+        } catch (err) {
+          logger.error(`Error leaving user room: ${err.message}`);
+        }
+      });
+
+      socket.on("leave-payment-room", async (txRef) => {
+        if (!txRef || typeof txRef !== "string") return;
+        try {
+          await socket.leave(`payment:${txRef}`);
+        } catch (err) {
+          logger.error(`Error leaving payment room: ${err.message}`);
+        }
+      });
+
+      // 3. Optimized Disconnect Cleanup
+      socket.on("disconnect", async (reason) => {
+        if (isDev) {
+          logger.info(`Socket Disconnected: ${socket.id} (Reason: ${reason})`);
+        }
+
+        if (userId) {
+          try {
+            await pubClient.del(`socket:${userId}`);
+          } catch (err) {
+            logger.error(
+              `Failed to clear Redis token mapping for ${userId}:`,
+              err,
+            );
+          }
+        }
+      });
+    });
 
     // io.on("connection", async (socket) => {
     //   if (NODE_ENV === "development") {

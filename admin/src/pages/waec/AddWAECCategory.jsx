@@ -18,6 +18,9 @@ import {
   FormHelperText,
   Avatar,
   Box,
+  LinearProgress,
+  alpha,
+  Divider,
 } from "@mui/material";
 import LoadingButton from "@mui/lab/LoadingButton";
 import { Close, CloudUpload } from "@mui/icons-material";
@@ -27,6 +30,7 @@ import { v4 as uuid } from "uuid";
 import _ from "lodash";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import moment from "moment";
+import Swal from "sweetalert2";
 
 import { CustomContext } from "../../context/providers/CustomProvider";
 import { postCategory } from "../../api/categoryAPI";
@@ -50,10 +54,9 @@ const AddWAECCategory = () => {
   const [pricingError, setPricingError] = useState("");
   const [pricingType, setPricingType] = useState("");
   const [price, setPrice] = useState(0);
-  const [progress, setProgress] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
-  // Upload file ref
   const fileInputRef = useRef(null);
 
   // React Hook Form setup
@@ -61,30 +64,24 @@ const AddWAECCategory = () => {
     control,
     handleSubmit,
     setValue,
-    watch,
     reset,
     formState: { errors, isSubmitting },
   } = useForm({
-    resolver: yupResolver(addWaecValidationSchema()),
+    resolver: yupResolver(addWaecValidationSchema),
     defaultValues: {
       category: "waec",
       voucherType: "",
-      sellingPrice: 0,
+      sellingPrice: "",
       voucherURL: "",
     },
   });
-  const category = watch("category");
 
   // Mutation for adding category
   const { mutateAsync, isLoading } = useMutation({
     mutationFn: postCategory,
-    onSettled: () => {
-      queryClient.invalidateQueries(["category", category]);
-    },
     onSuccess: (data) => {
       customDispatch(globalAlertType("info", data));
       handleClose();
-      // Reset form and local state
       reset();
       setPricingList([]);
       setLogoFile(null);
@@ -92,6 +89,7 @@ const AddWAECCategory = () => {
       setPricingType("");
       setPrice(0);
       setYear(moment().format("YYYY"));
+      queryClient.invalidateQueries(["category"]);
     },
     onError: (error) => {
       customDispatch(globalAlertType("error", error));
@@ -103,34 +101,32 @@ const AddWAECCategory = () => {
     reset();
   };
 
-  // Upload logo
+  // Upload logo with progress
   const handleUploadFile = async (e) => {
-    setLoading(true);
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadProgress(0);
 
     try {
-      const file = e.target.files[0];
-      if (!file) return;
-      setLogoFile(file);
-      // Create preview
       const reader = new FileReader();
       reader.onload = () => setLogoPreview(reader.result);
       reader.readAsDataURL(file);
 
-      // Actually upload to Firebase
       const { downloadURL } = await uploadFile({
         folder: "category",
         file,
-        onProgress: (progress) => {
-          setProgress(progress);
-        },
+        onProgress: (progress) => setUploadProgress(progress),
       });
-      setLogoFile(downloadURL); // store final URL
+      setLogoFile(downloadURL);
     } catch (error) {
       customDispatch(
-        globalAlertType("error", "Something went wrong. Please try again."),
+        globalAlertType("error", "Logo upload failed. Please try again.")
       );
     } finally {
-      setLoading(false);
+      setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -155,8 +151,8 @@ const AddWAECCategory = () => {
       _.orderBy(
         _.values(_.merge(_.keyBy([...prev, newItem], "type"))),
         "type",
-        "asc",
-      ),
+        "asc"
+      )
     );
     setPricingType("");
     setPrice(0);
@@ -166,57 +162,81 @@ const AddWAECCategory = () => {
     setPricingList((prev) => prev.filter((item) => item.id !== id));
   };
 
-  // Submit handler
+  // Submit handler with SweetAlert
   const onSubmit = (values) => {
     if (pricingList.length === 0) {
       setPricingError("Please add at least one ticket price");
       return;
     }
 
-    const isProtocolPresent = values.voucherURL?.includes("http");
-    const newCategory = {
-      type: values.category,
-      name: values.voucherType,
-      price: values.sellingPrice,
-      details: {
-        price: values.sellingPrice,
-        logo: logoFile, // uploaded URL
-        voucherURL: isProtocolPresent
-          ? values.voucherURL
-          : `https://${values.voucherURL}`,
-        pricing: pricingList,
-      },
-      year,
-    };
-
-    mutateAsync(newCategory);
+    Swal.fire({
+      title: "Add New WAEC Checker?",
+      text: "Are you sure you want to create this new WAEC checker?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, add",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const isProtocolPresent = values.voucherURL?.includes("http");
+        const newCategory = {
+          type: values.category,
+          name: values.voucherType,
+          price: values.sellingPrice,
+          details: {
+            price: values.sellingPrice,
+            logo: logoFile,
+            voucherURL: isProtocolPresent
+              ? values.voucherURL
+              : `https://${values.voucherURL}`,
+            pricing: pricingList,
+          },
+          year,
+        };
+        mutateAsync(newCategory);
+      }
+    });
   };
 
-  // Preview logo if uploaded
-  const LogoPreview = () => (
-    <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 2 }}>
-      {logoPreview && (
-        <Avatar
-          src={logoPreview}
-          variant="rounded"
-          sx={{ width: 60, height: 60, objectFit: "contain" }}
+  // Logo preview component
+  const LogoSection = () => (
+    <Box>
+      <Typography variant="subtitle2" gutterBottom>
+        Category Logo
+      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
+        {logoPreview && (
+          <Avatar
+            src={logoPreview}
+            variant="rounded"
+            sx={{ width: 60, height: 60, objectFit: "contain" }}
+          />
+        )}
+        <Button
+          variant="outlined"
+          startIcon={<CloudUpload />}
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+        >
+          {logoPreview ? "Change Logo" : "Upload Logo"}
+        </Button>
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: "none" }}
+          accept=".png,.jpg,.jpeg,.webp"
+          onChange={handleUploadFile}
         />
+      </Box>
+      {isUploading && (
+        <Box sx={{ width: "100%", mt: 1 }}>
+          <LinearProgress variant="determinate" value={uploadProgress} />
+          <Typography variant="caption" color="text.secondary">
+            Uploading... {Math.round(uploadProgress)}%
+          </Typography>
+        </Box>
       )}
-      <Button
-        variant="outlined"
-        startIcon={<CloudUpload />}
-        onClick={() => fileInputRef.current?.click()}
-        size="small"
-      >
-        {logoPreview ? "Change Logo" : "Upload Logo"}
-      </Button>
-      <input
-        type="file"
-        ref={fileInputRef}
-        style={{ display: "none" }}
-        accept=".png,.jpg,.jpeg,.webp"
-        onChange={handleUploadFile}
-      />
     </Box>
   );
 
@@ -227,11 +247,63 @@ const AddWAECCategory = () => {
       TransitionComponent={Transition}
       open={customState.category.open}
       onClose={handleClose}
+  PaperProps={{
+    elevation: 8,
+    sx: {
+      borderRadius: 3,
+      maxHeight: "90vh",
+      overflow: "hidden", // 1. Keeps the outer container bound to maxheight without a scrollbar
+      bgcolor: "background.paper",
+      boxShadow: (theme) =>
+        `0 20px 60px ${alpha(theme.palette.common.black, 0.15)}`,
+      // 2. Moved inside the sx object to target the Paper element correctly
+      "&::-webkit-scrollbar": {
+        display: "none",
+      },
+      scrollbarWidth: "none", // For Firefox compatibility
+    },
+  }}
     >
-      <DialogTitle>Add New WAEC Checker</DialogTitle>
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
+      <DialogTitle
+        sx={{
+          bgcolor: "primary.main",
+          color: "primary.contrastText",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Typography variant="h6" component="span" fontWeight="bold">
+          Add New  Checker
+        </Typography>
+        <IconButton onClick={handleClose} sx={{ color: "primary.contrastText" }}>
+          <Close />
+        </IconButton>
+      </DialogTitle>
+
+ <form onSubmit={handleSubmit(onSubmit)} noValidate style={{ display: 'contents' }}>
+        <DialogContent
+      dividers
+      sx={{
+        overflow: "auto",
+        p: 3,
+        // Custom scrollbar (WebKit)
+        "&::-webkit-scrollbar": {
+          width: 6,
+        },
+        "&::-webkit-scrollbar-track": {
+          background: "transparent",
+        },
+        "&::-webkit-scrollbar-thumb": {
+          background: (theme) => alpha(theme.palette.primary.main, 0.4),
+          borderRadius: 3,
+          "&:hover": {
+            background: (theme) => alpha(theme.palette.primary.main, 0.6),
+          },
+        },
+      }}
+    >
+          <Stack spacing={3}>
             {/* WAEC Checker Name */}
             <Controller
               name="voucherType"
@@ -249,11 +321,10 @@ const AddWAECCategory = () => {
                   renderInput={(params) => (
                     <TextField
                       {...params}
-                      label="WAEC Checker Name"
+                      label="Checker Name"
                       required
                       error={!!errors.voucherType}
                       helperText={errors.voucherType?.message}
-                      size="small"
                     />
                   )}
                 />
@@ -265,7 +336,6 @@ const AddWAECCategory = () => {
               label="Year"
               year={year}
               setYear={setYear}
-              size="small"
             />
 
             {/* Selling Price */}
@@ -276,34 +346,33 @@ const AddWAECCategory = () => {
                 <TextField
                   {...field}
                   type="number"
-                  label="Selling Price"
+                  label="Selling Price (GH¢)"
                   required
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">GH¢</InputAdornment>
                     ),
-                    endAdornment: (
-                      <InputAdornment position="end">p</InputAdornment>
-                    ),
                   }}
                   error={!!errors.sellingPrice}
                   helperText={errors.sellingPrice?.message}
-                  size="small"
                 />
               )}
             />
 
-            {/* Pricing List Section */}
+            {/* Ticket Pricing */}
             <Box>
-              <Typography variant="subtitle2" gutterBottom>
+              <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
                 Ticket Pricing
               </Typography>
-              <Stack direction={{ xs: "column", md: "row" }} spacing={1} mb={2}>
+              <Stack
+                direction={{ xs: "column", md: "row" }}
+                spacing={1}
+                mb={2}
+              >
                 <Autocomplete
                   options={WAEC_VOUCHER_PRICING}
                   freeSolo
                   fullWidth
-                  size="small"
                   value={pricingType}
                   onInputChange={(_, val) => setPricingType(val)}
                   renderInput={(params) => (
@@ -311,7 +380,7 @@ const AddWAECCategory = () => {
                       {...params}
                       label="Quantity / Type"
                       error={!!pricingError}
-                      helperText={pricingError && " "}
+                      helperText={pricingError}
                     />
                   )}
                 />
@@ -320,7 +389,6 @@ const AddWAECCategory = () => {
                   label="Price (GH¢)"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  size="small"
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">GH¢</InputAdornment>
@@ -331,7 +399,7 @@ const AddWAECCategory = () => {
                 <Button
                   variant="contained"
                   onClick={handleAddTicketType}
-                  sx={{ whiteSpace: "nowrap" }}
+                  sx={{ whiteSpace: "nowrap" ,borderRadius:1.2}}
                 >
                   Add
                 </Button>
@@ -381,63 +449,31 @@ const AddWAECCategory = () => {
               render={({ field }) => (
                 <TextField
                   {...field}
-                  label="WAEC Website URL"
+                  label="Website URL"
                   type="url"
                   placeholder="eg. www.example.com"
                   error={!!errors.voucherURL}
                   helperText={
                     errors.voucherURL?.message || "Include https:// if needed"
                   }
-                  size="small"
                 />
               )}
             />
 
             {/* Logo Upload */}
-            <Box>
-              {loading && (
-                <Box sx={{ width: "100%", mb: 1 }}>
-                  <Typography variant="caption" color="textSecondary">
-                    Uploading... {Math.round(progress)}%
-                  </Typography>
-                  <Box
-                    sx={{
-                      height: 4,
-                      width: "100%",
-                      bgcolor: "action.hover",
-                      borderRadius: 1,
-                      overflow: "hidden",
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        height: "100%",
-                        width: `${progress}%`,
-                        bgcolor: "primary.main",
-                        transition: "width 0.3s ease",
-                      }}
-                    />
-                  </Box>
-                </Box>
-              )}
-
-              <Typography variant="subtitle2" gutterBottom>
-                Category Logo
-              </Typography>
-              <LogoPreview />
-            </Box>
-
-            
+            <LogoSection />
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
+
+        <DialogActions sx={{ p: 2, gap: 1 }}>
           <Button onClick={handleClose}>Cancel</Button>
           <LoadingButton
             type="submit"
             variant="contained"
             loading={isSubmitting || isLoading}
+            disabled={isUploading}
           >
-            Add Voucher
+            Add Checker
           </LoadingButton>
         </DialogActions>
       </form>

@@ -5,17 +5,17 @@ import _ from "lodash";
 import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
 import { useSearchParams, useNavigate } from "react-router-dom";
 // import AddMoney from "./AddMoney";
-import { AuthContext } from "../../context/providers/AuthProvider";
-import { useContext } from "react";
+
 import { USERS_WALLET } from "../../mocks/columns";
 import { AllAgentsWallet } from "../../api/transactionAPI";
 import { currencyFormatter } from "../../constants";
 import { generateRandomCode } from "../../config/generateRandomCode";
 import CustomTitle from "../../components/custom/CustomTitle";
 import CustomTotal from "../../components/custom/CustomTotal";
+import { useCustomContext } from "@/context/providers/CustomProvider";
 
 function AgentsWallet() {
-  const { user } = useContext(AuthContext);
+  const { user } = useCustomContext();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -26,15 +26,7 @@ function AgentsWallet() {
     initialData: [],
   });
 
-  const openAddMoney = ({userId}) => {
-    setSearchParams((params) => {
-      params.set("WujEuJWE", generateRandomCode(200));
-      params.set("rowID", userId);
-      params.set("type", "agent");
-      params.set("top-up-money", "true");
-      return params;
-    });
-  };
+ 
 
   const openAgentWalletTransactions = () => {
     navigate("/wallets/agents/transactions");
@@ -42,19 +34,7 @@ function AgentsWallet() {
 
   const columns = [
     ...USERS_WALLET("agents"),
-    // user?.permissions?.includes("Topup agent wallet amount") && {
-    //   field: null,
-    //   title: "Action",
-    //   render: (rowData) => (
-    //     <Button
-    //       size="small"
-    //       variant="outlined"
-    //       onClick={() => openAddMoney(rowData)}
-    //     >
-    //       Top Up
-    //     </Button>
-    //   ),
-    // },
+  
   ];
 
   return (
@@ -74,6 +54,13 @@ function AgentsWallet() {
         showExportButton={true}
         search={true}
         autocompleteComponent={
+          <>
+                <CustomTotal
+              title="total Amount"
+              total={currencyFormatter(
+                _.sumBy(transactions?.data, (item) => Number(item?.amount))
+              )}
+            />
           <Box
             sx={{
               width: "100%",
@@ -84,6 +71,12 @@ function AgentsWallet() {
               gap: 4,
             }}
           >
+            
+            <CustomTotal
+              title="NUMBER OF WALLETS"
+              total={transactions?.data?.length}
+            />
+      
             {user?.permissions?.includes("View agent wallet Transaction") && (
               <Button
                 variant="contained"
@@ -95,17 +88,8 @@ function AgentsWallet() {
               </Button>
             )}
 
-            <CustomTotal
-              title="NUMBER OF WALLETS"
-              total={transactions?.data?.length}
-            />
-            <CustomTotal
-              title="total Amount"
-              total={currencyFormatter(
-                _.sumBy(transactions?.data, (item) => Number(item?.amount))
-              )}
-            />
           </Box>
+          </>
         }
         options={{
           exportAllData: true,

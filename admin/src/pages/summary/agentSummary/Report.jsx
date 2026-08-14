@@ -4,15 +4,18 @@ import CustomizedMaterialTable from "@/components/tables/CustomizedMaterialTable
 import { airtimeTransactionsByColumns } from "@/mocks/columns";
 import _ from "lodash";
 import { useQuery } from "@tanstack/react-query";
-import {
-  getReportTransaction,
-  getTransactions,
-} from "@/api/agentAPI";
+import { getReportTransaction, getTransactions } from "@/api/agentAPI";
 import { currencyFormatter } from "@/constants";
 import CustomCard from "@/components/custom/CustomCard";
 import LineChart from "@/components/charts/LineChart";
 import moment from "moment";
 import CustomTotal from "@/components/custom/CustomTotal";
+
+const CATEGORY_COLORS = {
+  All:'#001422',
+  Airtime: "#0C7E05",
+  Bundle: "#b10508",
+};
 
 const months = [
   "January",
@@ -54,7 +57,7 @@ function Report() {
     enabled: !!sortValue,
     select: (transactions) => {
       return transactions?.filter(
-        (transaction) => moment(transaction.createdAt).year() == sortValue
+        (transaction) => moment(transaction.createdAt).year() == sortValue,
       );
     },
   });
@@ -62,7 +65,7 @@ function Report() {
   const sortedTransactions = useMemo(() => {
     if (type !== "All") {
       return transactions?.data?.filter(
-        (item) => _.capitalize(item.type) === type
+        (item) => _.capitalize(item.type) === type,
       );
     }
 
@@ -118,7 +121,7 @@ function Report() {
           <CustomTotal
             title="Total"
             total={currencyFormatter(
-              _.sumBy(sortedTransactions, (item) => Number(item?.amount))
+              _.sumBy(sortedTransactions, (item) => Number(item?.amount)),
             )}
           />
         </Stack>
@@ -135,13 +138,13 @@ function Report() {
                       label: "Airtime Tranfers",
                       data: reportTransactions?.data?.airtime ?? [],
                       tension: 0.2,
-                      borderColor: palette.success.main,
+                      borderColor: CATEGORY_COLORS['airtime'],
                     },
                     {
                       label: "Data Bundle",
                       data: reportTransactions?.data?.bundle ?? [],
                       tension: 0.2,
-                      borderColor: palette.warning.main,
+                      borderColor: CATEGORY_COLORS['bundle'],
                     },
                   ]
                 : [
@@ -149,12 +152,7 @@ function Report() {
                       label: type,
                       data: reportTransactions?.data?.report ?? [],
                       tension: 0.2,
-                      borderColor:
-                        type === "bundle"
-                          ? palette.secondary.main
-                          : type === "airtime"
-                          ? palette.success.main
-                          : palette.primary.main,
+                      borderColor: CATEGORY_COLORS[type],
                     },
                   ]
             }

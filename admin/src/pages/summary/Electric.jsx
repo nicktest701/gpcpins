@@ -20,6 +20,7 @@ import {
 } from "../../mocks/columns";
 import CustomTitle from "../../components/custom/CustomTitle";
 
+const defaultColor = "#0288D1";
 function Electric() {
   const { palette } = useTheme();
   const summary = useQuery({
@@ -100,7 +101,7 @@ function Electric() {
                 title="Today"
                 icon={<AllOut color="info" />}
                 value={summary?.data?.today}
-                bg={"info.light"}
+                color={defaultColor}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3} lg={3}>
@@ -108,7 +109,7 @@ function Electric() {
                 title="Yesterday"
                 icon={<AllOut color="info" />}
                 value={summary?.data?.yesterday}
-                bg={"info.light"}
+                color={defaultColor}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3} lg={3}>
@@ -116,7 +117,7 @@ function Electric() {
                 title="Last 7 days"
                 icon={<NoteAltSharp color="info" />}
                 value={summary?.data?.lastSevenDaysTotal}
-                bg={"info.light"}
+                color={defaultColor}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3} lg={3}>
@@ -124,7 +125,7 @@ function Electric() {
                 title="This Month"
                 icon={<AirplaneTicketSharp color="info" />}
                 value={summary?.data?.thisMonth}
-                bg={"info.light"}
+                color={defaultColor}
               />
             </Grid>
           </Grid>
@@ -153,7 +154,7 @@ function Electric() {
                 title="Total"
                 icon={<ElectricMeterIcon color="info" />}
                 value={summary?.data?.meters}
-                bg="info.light"
+                color={defaultColor}
               />
             </CustomCard>
             <CustomCard title=" Transactions Status">

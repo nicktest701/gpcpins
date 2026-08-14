@@ -1,432 +1,441 @@
-import { useContext, useRef, useState } from "react";
+import { useContext, useState, useEffect, useRef } from "react";
+import {
+  Autocomplete,
+  Avatar,
+  Box,
+  Button,
+  Container,
+  InputAdornment,
+  Stack,
+  TextField,
+  Typography,
+  LinearProgress,
+  CircularProgress,
+} from "@mui/material";
 import LoadingButton from "@mui/lab/LoadingButton";
-import Autocomplete from "@mui/material/Autocomplete";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import InputAdornment from "@mui/material/InputAdornment";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Formik } from "formik";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import { editCategory, getCategory } from "../../api/categoryAPI";
-import CustomTimePicker from "../../components/inputs/CustomTimePicker";
-import CustomDatePicker from "../../components/inputs/CustomDatePicker";
-import moment from "moment";
-import { globalAlertType } from "../../components/alert/alertType";
-import { TOWNS } from "../../mocks/towns";
-import CustomDialogTitle from "../../components/dialogs/CustomDialogTitle";
-import { addBusValidationSchema } from "../../config/validationSchema";
-import Compressor from "compressorjs";
-import { Avatar, Box, CircularProgress, Container } from "@mui/material";
-import DOMPurify from "dompurify";
-import { uploadFile } from "@/lib/upload";
 import { CloudUpload } from "@mui/icons-material";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import moment from "moment";
+import Swal from "sweetalert2";
+import DOMPurify from "dompurify";
+
+import DialogContainer from "../../components/dialogs/DialogContainer";
+import Transition from "../../components/Transition";
+import CustomDatePicker from "../../components/inputs/CustomDatePicker";
+import CustomTimePicker from "../../components/inputs/CustomTimePicker";
+import { TOWNS } from "../../mocks/towns";
+import { globalAlertType } from "../../components/alert/alertType";
+import { addBusValidationSchema } from "../../config/validationSchema";
+import { editCategory, getCategory } from "../../api/categoryAPI";
+import { uploadFile } from "@/lib/upload";
+import { useCustomContext } from "../../context/providers/CustomProvider";
+
 const EditBusCategory = () => {
-  //context
   const queryClient = useQueryClient();
   const {
     customState: {
       editBusCategory: { open, id },
     },
     customDispatch,
-  } = useContext(CustomContext);
+  } = useCustomContext();
 
+  // Logo upload state
+  const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [logo, setLogo] = useState(null);
-  const [origin, setOrigin] = useState("");
-  const [destination, setDestination] = useState("");
-  const [price, setPrice] = useState(Number(0));
-  const [report, setReport] = useState(moment());
-  const [time, setTime] = useState(moment());
-  const [date, setDate] = useState(moment());
-  const [vehicleNo, setVehicleNo] = useState("");
-  const [noOfSeats, setNoOfSeats] = useState(0);
-  const [message, setMessage] = useState("");
-  const [companyName, setCompanyName] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
-  // Upload file ref
   const fileInputRef = useRef(null);
 
-  const initialValues = {
-    category: "bus",
-    price,
-    origin,
-    destination,
-    vehicleNo,
-    noOfSeats,
-    date,
-    report,
-    time,
-    message,
-    companyName,
-  };
+  // React Hook Form
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: yupResolver(addBusValidationSchema),
+    defaultValues: {
+      category: "bus",
+      companyName: "",
+      origin: "",
+      destination: "",
+      vehicleNo: "",
+      noOfSeats: "",
+      price: "",
+      date: moment(),
+      report: moment(),
+      time: moment(),
+      message: "",
+    },
+  });
 
-  const bus = useQuery({
+  // Fetch existing data
+  const { data: busData, isLoading: isLoadingData } = useQuery({
     queryKey: ["category", id],
     queryFn: () => getCategory(id),
     initialData: queryClient
       .getQueryData(["all-category"])
       ?.find((item) => item?.id === id),
-    enabled: !!id,
-    onSuccess: (bus) => {
-      setOrigin(bus?.details?.origin);
-      setDestination(bus?.details?.destination);
-      setPrice(bus?.price);
-      setVehicleNo(bus?.details?.vehicleNo);
-      setNoOfSeats(bus?.details?.noOfSeats);
-      setReport(moment(bus?.details?.report));
-      setTime(moment(bus?.details?.time));
-      setDate(moment(bus?.details?.date));
-      setMessage(bus?.details?.message);
-      setCompanyName(bus?.details?.companyName);
-      setLogoPreview(bus?.details?.logo);
-      setLogo(bus?.details?.logo);
-    },
+    enabled: !!id && open,
   });
 
-  // Upload logo
+  // Populate form when data loads
+  useEffect(() => {
+    if (busData && open) {
+      const details = busData.details || {};
+      setValue("companyName", details.companyName || "");
+      setValue("origin", details.origin || "");
+      setValue("destination", details.destination || "");
+      setValue("vehicleNo", details.vehicleNo || "");
+      setValue("noOfSeats", details.noOfSeats || "");
+      setValue("price", busData.price || "");
+      setValue("date", details.date ? moment(details.date) : moment());
+      setValue("report", details.report ? moment(details.report) : moment());
+      setValue("time", details.time ? moment(details.time) : moment());
+      setValue("message", details.message || "");
+      setLogoPreview(details.logo);
+      setLogoFile(details.logo);
+    }
+  }, [busData, open, setValue]);
+
+  // Upload logo with progress
   const handleUploadFile = async (e) => {
-    setLoading(true);
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadProgress(0);
 
     try {
-      const file = e.target.files[0];
-      if (!file) return;
-      setLogo(file);
-      // Create preview
       const reader = new FileReader();
       reader.onload = () => setLogoPreview(reader.result);
       reader.readAsDataURL(file);
 
-      // Actually upload to Firebase
       const { downloadURL } = await uploadFile({
         folder: "category",
         file,
-        onProgress: (progress) => {
-          setProgress(progress);
-        },
+        onProgress: (progress) => setUploadProgress(progress),
       });
-      setLogo(downloadURL); // store final URL
+      setLogoFile(downloadURL);
     } catch (error) {
       customDispatch(
-        globalAlertType("error", "Something went wrong. Please try again."),
+        globalAlertType("error", "Image upload failed. Please try again.")
       );
     } finally {
-      setLoading(false);
+      setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
+  // Mutation
   const { mutateAsync, isLoading } = useMutation({
     mutationFn: editCategory,
+    onSuccess: (data) => {
+      customDispatch(globalAlertType("info", data));
+      handleClose();
+      queryClient.invalidateQueries(["category"]);
+      queryClient.invalidateQueries(["all-category"]);
+    },
+    onError: (error) => {
+      customDispatch(globalAlertType("error", error));
+    },
   });
-  const onSubmit = (values, option) => {
-    const newBusTicket = {
-      id: bus?.data?.id,
-      type: values.category,
-      name: `${values.origin} to ${values.destination}`,
-      price: values.price,
-      details: {
-        origin: DOMPurify.sanitize(values.origin),
-        destination: DOMPurify.sanitize(values.destination),
-        vehicleNo: values.vehicleNo?.toUpperCase(),
-        noOfSeats: DOMPurify.sanitize(values.noOfSeats),
-        date: values.date,
-        time: values.time,
-        report: values.report,
-        message: DOMPurify.sanitize(values.message),
-        companyName: DOMPurify.sanitize(values.companyName),
-        logo: logo || bus?.data?.details?.logo,
-      },
-    };
 
-    // if (_.isEmpty(logo) || _.isNull(logo)) {
-    //   delete newBusTicket.details?.logo;
-    // }
-
-    mutateAsync(newBusTicket, {
-      onSettled: () => {
-        option.setSubmitting(false);
-        queryClient.invalidateQueries(["category"]);
-      },
-      onSuccess: (data) => {
-        customDispatch(globalAlertType("info", data));
-        option.resetForm();
-        handleClose();
-      },
-      onError: (error) => {
-        customDispatch(globalAlertType("error", error));
-      },
-    });
-  };
-
-  ///Close Edit Bus Category
   const handleClose = () => {
     customDispatch({
       type: "openEditBusCategory",
-      payload: {
-        open: false,
-        id: "",
-      },
+      payload: { open: false, id: "" },
+    });
+    reset();
+  };
+
+  const onSubmit = (values) => {
+    Swal.fire({
+      title: "Save Changes?",
+      text: "Are you sure you want to update this bus ticket?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, save",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const payload = {
+          id: busData?.id,
+          type: values.category,
+          name: `${values.origin} to ${values.destination}`,
+          price: values.price,
+          details: {
+            origin: DOMPurify.sanitize(values.origin),
+            destination: DOMPurify.sanitize(values.destination),
+            vehicleNo: values.vehicleNo?.toUpperCase(),
+            noOfSeats: DOMPurify.sanitize(values.noOfSeats),
+            date: values.date,
+            time: values.time,
+            report: values.report,
+            message: DOMPurify.sanitize(values.message),
+            companyName: DOMPurify.sanitize(values.companyName),
+            logo: logoFile || busData?.details?.logo,
+          },
+        };
+        mutateAsync(payload);
+      }
     });
   };
 
-  // Preview logo if uploaded
-  const LogoPreview = () => (
-    <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 2 }}>
-      {logoPreview && (
-        <Avatar
-          src={logoPreview}
-          variant="rounded"
-          sx={{ width: 60, height: 60, objectFit: "contain" }}
+  // Logo preview component
+  const LogoSection = () => (
+    <Box>
+      <Typography variant="subtitle2" gutterBottom>
+        Bus Image
+      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
+        {logoPreview && (
+          <Avatar
+            src={logoPreview}
+            variant="rounded"
+            sx={{ width: 60, height: 60, objectFit: "contain" }}
+          />
+        )}
+        <Button
+          variant="outlined"
+          startIcon={<CloudUpload />}
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+        >
+          {logoPreview ? "Change Cover Image" : "Upload Cover Image"}
+        </Button>
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: "none" }}
+          accept=".png,.jpg,.jpeg,.webp"
+          onChange={handleUploadFile}
         />
+      </Box>
+      {isUploading && (
+        <Box sx={{ width: "100%", mt: 1 }}>
+          <LinearProgress variant="determinate" value={uploadProgress} />
+          <Typography variant="caption" color="text.secondary">
+            Uploading... {Math.round(uploadProgress)}%
+          </Typography>
+        </Box>
       )}
-      <Button
-        variant="outlined"
-        startIcon={<CloudUpload />}
-        onClick={() => fileInputRef.current?.click()}
-        size="small"
-      >
-        {logoPreview ? "Change Cover Image" : "Upload Cover Image"}
-      </Button>
-      <input
-        type="file"
-        ref={fileInputRef}
-        style={{ display: "none" }}
-        accept=".png,.jpg,.jpeg,.webp"
-        onChange={handleUploadFile}
-      />
     </Box>
   );
 
   return (
-    <Formik
-      initialValues={initialValues}
-      validationSchema={addBusValidationSchema}
-      onSubmit={onSubmit}
-      enableReinitialize={true}
+    <DialogContainer
+      open={open}
+      onClose={handleClose}
+      title="Edit Bus Ticket"
+      subtitle="Update bus ticket details"
+      loading={isSubmitting || isLoading || isUploading}
+      disabled={isUploading}
+      onConfirm={handleSubmit(onSubmit)}
+      confirmText="Save Changes"
+      maxWidth="md"
+      contentSx={{ overflow: "auto" }}
     >
-      {({ errors, touched, handleSubmit }) => {
-        return (
-          <Dialog maxWidth="md" fullWidth open={open}>
-            <CustomDialogTitle title="Edit Bus Ticket" onClose={handleClose} />
-            {bus.isLoading ? (
-              <CircularProgress />
-            ) : (
-              <>
-                <DialogContent>
-                  <Container maxWidth="md">
-                    <Stack rowGap={2} paddingY={2}>
-                      <TextField
-                        size="small"
-                        label="Company"
-                        value={companyName}
-                        onChange={(e) => setCompanyName(e.target.value)}
-                        error={Boolean(
-                          touched.companyName && errors.companyName,
-                        )}
-                        helperText={touched.companyName && errors.companyName}
-                      />
-                      {/* Logo Upload */}
-                      <Box>
-                        {loading && (
-                          <Box sx={{ width: "100%", mb: 1 }}>
-                            <Typography variant="caption" color="textSecondary">
-                              Uploading... {Math.round(progress)}%
-                            </Typography>
-                            <Box
-                              sx={{
-                                height: 4,
-                                width: "100%",
-                                bgcolor: "action.hover",
-                                borderRadius: 1,
-                                overflow: "hidden",
-                              }}
-                            >
-                              <Box
-                                sx={{
-                                  height: "100%",
-                                  width: `${progress}%`,
-                                  bgcolor: "primary.main",
-                                  transition: "width 0.3s ease",
-                                }}
-                              />
-                            </Box>
-                          </Box>
-                        )}
-
-                        <Typography variant="subtitle2" gutterBottom>
-                          Bus Image
-                        </Typography>
-                        <LogoPreview />
-                      </Box>
-                      <Autocomplete
-                        options={TOWNS}
-                        freeSolo
-                        closeText=""
-                        disableClearable
-                        fullWidth
-                        loadingText="Please wait..."
-                        isOptionEqualToValue={(option, value) =>
-                          value === undefined ||
-                          value === null ||
-                          value === "" ||
-                          option === value
-                        }
-                        getOptionLabel={(option) => option || ""}
-                        value={origin}
-                        onChange={(e, value) => setOrigin(value)}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            size="small"
-                            label="Origin(From)"
-                            error={Boolean(touched.origin && errors.origin)}
-                            helperText={
-                              touched.origin && errors.origin
-                                ? errors.origin
-                                : "eg. Kumasi"
-                            }
-                          />
-                        )}
-                      />
-
-                      {/* Destination  */}
-                      <Autocomplete
-                        options={TOWNS}
-                        freeSolo
-                        closeText=""
-                        disableClearable
-                        fullWidth
-                        loadingText="Please wait..."
-                        isOptionEqualToValue={(option, value) =>
-                          value === undefined ||
-                          value === null ||
-                          value === "" ||
-                          option === value
-                        }
-                        getOptionLabel={(option) => option || ""}
-                        value={destination}
-                        onChange={(e, value) => setDestination(value)}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            size="small"
-                            label="Destination(To)"
-                            error={Boolean(
-                              touched.destination && errors.destination,
-                            )}
-                            helperText={
-                              touched.destination && errors.destination
-                                ? errors.destination
-                                : "eg. Cape Coast"
-                            }
-                          />
-                        )}
-                      />
-                      <TextField
-                        size="small"
-                        label="Vehicle Registration Number"
-                        value={vehicleNo}
-                        onChange={(e) => setVehicleNo(e.target.value)}
-                        error={Boolean(touched.vehicleNo && errors.vehicleNo)}
-                        helperText={touched.vehicleNo && errors.vehicleNo}
-                      />
-                      <TextField
-                        size="small"
-                        label="Number Of Seats"
-                        value={noOfSeats}
-                        onChange={(e) => setNoOfSeats(e.target.value)}
-                        error={Boolean(touched.noOfSeats && errors.noOfSeats)}
-                        helperText={touched.noOfSeats && errors.noOfSeats}
-                      />
-
-                      <TextField
-                        size="small"
-                        type="number"
-                        inputMode="decimal"
-                        label="Fare"
-                        placeholder="Price here"
-                        value={price || "0"}
-                        onChange={(e) => setPrice(e.target.value)}
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <Typography>GHS</Typography>
-                            </InputAdornment>
-                          ),
-                          endAdornment: (
-                            <InputAdornment position="end">
-                              <Typography>p</Typography>
-                            </InputAdornment>
-                          ),
-                        }}
-                        error={Boolean(touched.price && errors.price)}
-                        helperText={touched.price && errors.price}
-                      />
-
-                      <CustomDatePicker
-                        label="Departure Date"
-                        value={date}
-                        setValue={setDate}
-                        error={Boolean(touched.date && errors.date)}
-                        helperText={touched.date && errors.date}
-                      />
-                      <Stack direction="row" spacing={2}>
-                        <CustomTimePicker
-                          label="Boarding Time"
-                          value={report}
-                          setValue={setReport}
-                          error={Boolean(touched.report && errors.report)}
-                          helperText={touched.report && errors.report}
-                        />
-                        <CustomTimePicker
-                          label="Departure Time"
-                          value={time}
-                          setValue={setTime}
-                          error={Boolean(touched.time && errors.time)}
-                          helperText={touched.time && errors.time}
-                        />
-                      </Stack>
-                      <TextField
-                        size="small"
-                        label="Message"
-                        value={message || ""}
-                        onChange={(e) => setMessage(e.target.value)}
-                        error={Boolean(touched.message && errors.message)}
-                        helperText={touched.message && errors.message}
-                      />
-                    </Stack>
-                  </Container>
-                </DialogContent>
-                <DialogActions sx={{ padding: 1 }}>
-                  <Container
-                    maxWidth="md"
-                    sx={{ display: "flex", justifyContent: "flex-end" }}
-                  >
-                    <Button onClick={handleClose} disabled={loading}>
-                      Cancel
-                    </Button>
-                    <LoadingButton
-                      variant="contained"
-                      loading={isLoading}
-                      disabled={loading}
-                      onClick={handleSubmit}
-                    >
-                      Save Changes
-                    </LoadingButton>
-                  </Container>
-                </DialogActions>
-              </>
+      {isLoadingData ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Stack spacing={3}>
+          {/* Company Name */}
+          <Controller
+            name="companyName"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Company Name"
+                fullWidth
+                error={!!errors.companyName}
+                helperText={errors.companyName?.message}
+              />
             )}
-          </Dialog>
-        );
-      }}
-    </Formik>
+          />
+
+          {/* Logo Upload */}
+          <LogoSection />
+
+          {/* Origin */}
+          <Controller
+            name="origin"
+            control={control}
+            render={({ field }) => (
+              <Autocomplete
+                freeSolo
+                options={TOWNS}
+                noOptionsText="No towns available"
+                isOptionEqualToValue={(option, value) => option === value}
+                onInputChange={(_, value) => {
+                  setValue("origin", value);
+                }}
+                value={field.value || null}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Origin (From)"
+                    required
+                    error={!!errors.origin}
+                    helperText={errors.origin?.message || "e.g. Kumasi"}
+                  />
+                )}
+              />
+            )}
+          />
+
+          {/* Destination */}
+          <Controller
+            name="destination"
+            control={control}
+            render={({ field }) => (
+              <Autocomplete
+                freeSolo
+                options={TOWNS}
+                noOptionsText="No towns available"
+                isOptionEqualToValue={(option, value) => option === value}
+                onInputChange={(_, value) => {
+                  setValue("destination", value);
+                }}
+                value={field.value || null}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Destination (To)"
+                    required
+                    error={!!errors.destination}
+                    helperText={errors.destination?.message || "e.g. Cape Coast"}
+                  />
+                )}
+              />
+            )}
+          />
+
+          {/* Vehicle & Seats */}
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <Controller
+              name="vehicleNo"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Vehicle Registration Number"
+                  fullWidth
+                  error={!!errors.vehicleNo}
+                  helperText={errors.vehicleNo?.message}
+                />
+              )}
+            />
+            <Controller
+              name="noOfSeats"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  type="number"
+                  label="Number of Seats"
+                  fullWidth
+                  error={!!errors.noOfSeats}
+                  helperText={errors.noOfSeats?.message}
+                />
+              )}
+            />
+          </Stack>
+
+          {/* Price */}
+          <Controller
+            name="price"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                type="number"
+                label="Fare (GH¢)"
+                required
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">GH¢</InputAdornment>
+                  ),
+                }}
+                error={!!errors.price}
+                helperText={errors.price?.message}
+              />
+            )}
+          />
+
+          {/* Departure Date */}
+          <Controller
+            name="date"
+            control={control}
+            render={({ field }) => (
+              <CustomDatePicker
+                label="Departure Date"
+                value={field.value}
+                setValue={(val) => setValue("date", val)}
+                error={!!errors.date}
+                helperText={errors.date?.message}
+                minDate={moment()}
+              />
+            )}
+          />
+
+          {/* Times */}
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <Controller
+              name="report"
+              control={control}
+              render={({ field }) => (
+                <CustomTimePicker
+                  label="Boarding Time"
+                  value={field.value}
+                  setValue={(val) => setValue("report", val)}
+                  error={!!errors.report}
+                  helperText={errors.report?.message}
+                />
+              )}
+            />
+            <Controller
+              name="time"
+              control={control}
+              render={({ field }) => (
+                <CustomTimePicker
+                  label="Departure Time"
+                  value={field.value}
+                  setValue={(val) => setValue("time", val)}
+                  error={!!errors.time}
+                  helperText={errors.time?.message}
+                />
+              )}
+            />
+          </Stack>
+
+          {/* Message */}
+          <Controller
+            name="message"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Additional Message"
+                multiline
+                rows={2}
+                fullWidth
+                error={!!errors.message}
+                helperText={errors.message?.message}
+              />
+            )}
+          />
+        </Stack>
+      )}
+    </DialogContainer>
   );
 };
 

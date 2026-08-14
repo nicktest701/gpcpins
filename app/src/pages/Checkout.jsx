@@ -32,7 +32,7 @@ function Checkout() {
   const [copied, setCopied] = useState(false);
   const { state } = useLocation();
   const [downloadLink, setDownloadLink] = useState(null);
-  const path = state?.payload;
+  const path = state?.path;
 
   // const [errCount, setErrCount] = useState(0);
   const {
@@ -85,7 +85,7 @@ function Checkout() {
       searchParams.get("completed") === null,
 
     onSuccess: () => {
-      // queryClient.invalidateQueries(["notifications"]);
+     
       setSearchParams((params) => {
         params.set("completed", "true");
         return params;
@@ -315,184 +315,5 @@ function Checkout() {
     </Container>
   );
 
-  // return (
-  //   <Container
-  //     maxWidth="md"
-  //     sx={{
-  //       minHeight: "100svh",
-  //       display: "flex",
-  //       flexDirection: "column",
-  //       justifyContent: "center",
-  //       alignItems: "center",
-  //       gap: 1,
-  //       // cursor: isLoading ? "wait" : "default",
-  //     }}
-  //   >
-  //     {/* <Back to={state?.path} /> */}
-
-  //     <>
-  //       {transaction?.id && (
-  //         <>
-  //           <Avatar
-  //             alt="success"
-  //             src={IMAGES.success}
-  //             sx={{
-  //               width: 60,
-  //               height: 60,
-  //               display: { xs: "none", md: "block" },
-  //             }}
-  //           />
-  //           <Typography variant="h5">Transaction Complete!</Typography>
-  //           <Typography variant="body2">
-  //             {generatedVouchers.isLoading
-  //               ? "  You will be notify shortly after your request is completed."
-  //               : generatedVouchers.isSuccess
-  //                 ? "        Your request has been processed successfully!"
-  //                 : ""}
-  //           </Typography>
-
-  //           <Stack
-  //             spacing={3}
-  //             width="100%"
-  //             justifyContent="center"
-  //             alignItems="center"
-  //           >
-  //             <Stack spacing={1} width="100%">
-  //               <Divider />
-  //               <CheckOutItem title="Transaction ID" value={transaction?.id} />
-  //               <CheckOutItem
-  //                 title="Date"
-  //                 value={moment(new Date(transaction?.createdAt)).format("LLL")}
-  //               />
-  //               <CheckOutItem
-  //                 title="Payment Method"
-  //                 value={transaction?.paymentMode ?? "N/A"}
-  //               />
-  //               <CheckOutItem
-  //                 title="Amount Paid"
-  //                 value={currencyFormatter(transaction?.amount)}
-  //               />
-  //               <CheckOutItem
-  //                 title="Customer"
-  //                 value={transaction?.userName || "Customer"}
-  //               />
-  //               <CheckOutItem
-  //                 title="Mobile No."
-  //                 value={transaction?.phonenumber}
-  //               />
-  //               {transaction?.email && (
-  //                 <CheckOutItem
-  //                   title="Email Address"
-  //                   value={transaction?.email}
-  //                 />
-  //               )}
-  //               {transaction?.paymentMode === "Mobile Money" && (
-  //                 <CheckOutItem
-  //                   title="External Transaction ID"
-  //                   value={transaction?.externalTransactionId}
-  //                 />
-  //               )}
-  //               <CheckOutItem
-  //                 title="Payment Reference."
-  //                 value={transaction?.paymentReference}
-  //               />
-  //               <Divider flexItem />
-  //             </Stack>
-  //             {/* {generatedVouchers?.isLoading || !downloadLink ? ( */}
-  //             {generatedVouchers?.isLoading ? (
-  //               <Stack
-  //                 direction="row"
-  //                 alignItems="center"
-  //                 justifyContent="center"
-  //                 spacing={1}
-  //               >
-  //                 <Spinner size={16} />
-  //                 <Typography
-  //                   textAlign="center"
-  //                   fontStyle="italic"
-  //                   fontWeight="bold"
-  //                 >
-  //                   Please wait..We are currently generating your{" "}
-  //                   {isVoucher ? "Vouchers" : "Tickets"}
-  //                 </Typography>
-  //               </Stack>
-  //             ) : (
-  //               <>
-  //                 {downloadLink ? (
-  //                   <a
-  //                     href={downloadLink}
-  //                     target="_blank"
-  //                     rel="noreferrer"
-  //                     download={true}
-  //                     style={{
-  //                       // width: "100%",
-  //                       paddingBlock: "8px",
-  //                       paddingInline: "16px",
-  //                       borderRadius: "6px",
-  //                       backgroundColor: "var(--secondary)",
-  //                       color: "#fff",
-  //                     }}
-  //                   >
-  //                     {isVoucher ? " Download Vouchers" : " Download Tickets"}
-  //                   </a>
-  //                 ) : (
-  //                   <>
-  //                     {generatedVouchers?.data?.downloadLink && (
-  //                       <>
-  //                         <LoadingButton
-  //                           disabled={generatedVouchers?.isLoading}
-  //                           loading={generatedVouchers?.isLoading}
-  //                           variant="contained"
-  //                           color="secondary"
-  //                           size="small"
-  //                           onClick={handleDownloadVouchers}
-  //                           sx={{
-  //                             textTransform: "uppercase",
-  //                             "&:hover": {
-  //                               textDecoration: "underline",
-  //                             },
-  //                           }}
-  //                           endIcon={<FileDownloadRounded />}
-  //                         >
-  //                           {isVoucher
-  //                             ? " Download Vouchers"
-  //                             : " Download Tickets"}
-  //                         </LoadingButton>
-  //                       </>
-  //                     )}
-  //                   </>
-  //                 )}
-  //               </>
-  //             )}
-  //             <Stack
-  //               rowGap={2}
-  //               alignItems="center"
-  //               justifyContent="center"
-  //               paddingY={1}
-  //             >
-  //               <>
-  //                 <Link to={path || "/evoucher"} replace>
-  //                   Continue Shopping
-  //                 </Link>
-  //               </>
-  //             </Stack>
-  //           </Stack>
-  //         </>
-  //       )}
-  //     </>
-
-  //     <Alert
-  //       variant="standard"
-  //       severity="info"
-  //       sx={{ borderRadius: 0, py: 1, fontSize: "12px" }}
-  //     >
-  //       You are recommended to keep a copy of your <b>TRANSACTION ID.</b> In
-  //       case you didn&lsquo;t receive or lost your{" "}
-  //       {`${isVoucher ? "Vouchers" : "Tickets"}`}, you can retrieve it from{" "}
-  //       <Link to="/evoucher">here</Link>
-  //     </Alert>
-  //   </Container>
-  // );
 }
-
 export default Checkout;

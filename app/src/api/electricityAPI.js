@@ -38,7 +38,7 @@ export const getAllElectricityPaymentByMeterId = async (meterId) => {
   }
 };
 
-export const getPrepaidStatus = async (paymentId, transactionId) => {
+export const getPrepaidStatus = async ({paymentId, transactionId}) => {
   try {
     const res = await api({
       method: "GET",

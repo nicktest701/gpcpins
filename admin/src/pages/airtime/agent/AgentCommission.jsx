@@ -69,7 +69,7 @@ function AgentCommission() {
         subtitle="Manage and calculate commissions or your dedicated agents "
       />
 
-      <List sx={{ border: "1px solid lightgray" }}>
+      <List sx={{ border: "1px solid lightgray",borderRadius:3 }}>
         <ListItem divider>
           <ListItemText primary="Provider" />
         </ListItem>

@@ -2,7 +2,6 @@ const router = require("express").Router();
 const asyncHandler = require("express-async-handler");
 const _ = require("lodash");
 const crypto = require("crypto");
-const xhub = require("express-x-hub");
 const sendEMail = require("../config/sendEmail");
 const generateId = require("../config/generateId");
 const { mailTextShell } = require("../config/mailText");
@@ -83,7 +82,14 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const message = await knex("verifier_messages")
-      .select("id", "type", "body", "title", "created_at as createdAt", "active")
+      .select(
+        "id",
+        "type",
+        "body",
+        "title",
+        "created_at as createdAt",
+        "active",
+      )
       .where("id", id)
       .first();
 
@@ -348,25 +354,25 @@ router.post(
   }),
 );
 
-router.get(
-  "/whatsapp/callback/471045af9f65250818faa85d8d24912d7501d47114ff1841568267fed07f68dd",
-  asyncHandler(async (req, res) => {
-    if (
-      req.query["hub.mode"] == "subscribe" &&
-      req.query["hub.verify_token"] === process.env.WHATSAPP_TOKEN
-    ) {
-      res.send(req.query["hub.challenge"]);
-    } else {
-      res.sendStatus(400);
-    }
-  }),
-);
+// router.get(
+//   "/whatsapp/callback/471045af9f65250818faa85d8d24912d7501d47114ff1841568267fed07f68dd",
+//   asyncHandler(async (req, res) => {
+//     if (
+//       req.query["hub.mode"] == "subscribe" &&
+//       req.query["hub.verify_token"] === process.env.WHATSAPP_TOKEN
+//     ) {
+//       res.send(req.query["hub.challenge"]);
+//     } else {
+//       res.sendStatus(400);
+//     }
+//   }),
+// );
 
-router.post(
-  "/whatsapp/callback/471045af9f65250818faa85d8d24912d7501d47114ff1841568267fed07f68dd",
-  asyncHandler(async (req, res) => {
-    res.status(200).json("done");
-  }),
-);
+// router.post(
+//   "/whatsapp/callback/471045af9f65250818faa85d8d24912d7501d47114ff1841568267fed07f68dd",
+//   asyncHandler(async (req, res) => {
+//     res.status(200).json("done");
+//   }),
+// );
 
 module.exports = router;

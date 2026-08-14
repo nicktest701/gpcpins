@@ -1,14 +1,11 @@
 import api from "./customAxios";
 
-export const getAllLogs = async ({ startDate, endDate }) => {
+export const getAllLogs = async ({ startDate, endDate, page, limit,search }) => {
   try {
     const res = await api({
       method: "GET",
       url: `/logs`,
-      params: {
-        startDate,
-        endDate,
-      },
+      params: { startDate, endDate, page, limit ,search},
     });
 
     return res.data;
@@ -17,14 +14,12 @@ export const getAllLogs = async ({ startDate, endDate }) => {
   }
 };
 
-
-
 export const removeLogs = async (data) => {
   try {
     const res = await api({
       method: "PUT",
       url: `/logs`,
-      data
+      data,
     });
 
     return res.data;

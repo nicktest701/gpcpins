@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import {  useState } from "react";
 import _ from "lodash";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -9,7 +9,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { tableIcons } from "../../config/tableIcons";
 import { Add, DeleteRounded, Refresh } from "@mui/icons-material";
 import {
-  CustomContext,
+
   useCustomContext,
 } from "../../context/providers/CustomProvider";
 import {
@@ -20,7 +20,6 @@ import {
   getExportPermission,
 } from "../../config/getColumns";
 import {
-  deleteCategory,
   deleteMoreCategory,
   disableCategory,
 } from "../../api/categoryAPI";
@@ -232,7 +231,8 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
       }}
     >
       <MaterialTable
-        title={pageInfo.category}
+        title=''
+        // title={pageInfo.category}
         icons={tableIcons}
         components={{
           Toolbar: (params) => {
@@ -251,7 +251,11 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
                       variant="contained"
                       startIcon={<Add />}
                       onClick={handleOpenCategory}
-                      sx={{ textTransform: "uppercase", py: 1.5 ,borderRadius:1.2}}
+                      sx={{
+                        textTransform: "uppercase",
+                        py: 1.5,
+                        borderRadius: 1.2,
+                      }}
                     >
                       New {pageInfo.category}
                     </Button>
@@ -262,12 +266,10 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
             );
           },
         }}
-      
         // isLoading={categories.isLoading}
         columns={columns}
         data={categories.data}
         options={{
-        
           paginationType: "stepped",
           searchFieldVariant: "outlined",
           searchFieldStyle: {
@@ -276,6 +278,8 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
             marginTop: "10px",
             marginRight: "20px",
             height: "40px",
+            width: "38svw",
+            minWidth: 130,
           },
           exportAllData: true,
           exportButton: IS_EXPORT_AVAILABLE,
@@ -308,7 +312,6 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
           },
         ]}
         onSelectionChange={handleSelectionChange}
-        
       />
     </Card>
   );

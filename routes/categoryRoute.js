@@ -553,9 +553,7 @@ router.put(
     }
     const { id } = req.body;
 
-    const deletedCategories = await knex("categories")
-      .where("_id", "IN", id)
-      .del();
+    const deletedCategories = await knex("categories").whereIn("id", id).del();
 
     if (!deletedCategories) {
       return res.status(404).json("Error Updating Category!");
@@ -563,7 +561,7 @@ router.put(
 
     //logs
     await knex("activity_logs").insert({
-      employee_id: _id,
+      user_id: _id,
       title: `Deleted multiple categories.`,
       severity: "info",
     });
@@ -585,7 +583,7 @@ router.patch(
     }
 
     const updatedCategory = await knex("categories")
-      .where("_id", id)
+      .where("id", id)
       .update({ active });
 
     if (updatedCategory !== 1) {
@@ -594,7 +592,7 @@ router.patch(
 
     //logs
     await knex("activity_logs").insert({
-      employee_id: _id,
+      user_id: _id,
       title: `${
         Boolean(active) === true
           ? "Activated a category!"
@@ -624,7 +622,7 @@ router.delete(
       return res.status(400).json("Invalid ID!");
     }
 
-    const deletedCategory = await knex("categories").where("_id", id).del();
+    const deletedCategory = await knex("categories").where("id", id).del();
 
     if (deletedCategory !== 1) {
       return res.status(404).json("Error Uemoving Category!");
@@ -632,7 +630,7 @@ router.delete(
 
     //logs
     await knex("activity_logs").insert({
-      employee_id: _id,
+      user_id: _id,
       title: "Deleted a category!",
       severity: "error",
     });

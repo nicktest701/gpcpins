@@ -101,6 +101,13 @@ function PrepaidTransactions() {
             columns={columns}
             data={sortedTransactions}
             autocompleteComponent={
+              <>
+                 <CustomTotal
+                  title="Total"
+                  total={currencyFormatter(
+                    _.sumBy(sortedTransactions, (item) => Number(item?.amount)),
+                  )}
+                />
               <Stack
                 direction={{ xs: "column", md: "row" }}
                 justifyContent={{ xs: "center", md: "flex-start" }}
@@ -131,13 +138,9 @@ function PrepaidTransactions() {
                   <MenuItem value="completed">Completed</MenuItem>
                   <MenuItem value="failed">Failed</MenuItem>
                 </TextField>
-                <CustomTotal
-                  title="Total"
-                  total={currencyFormatter(
-                    _.sumBy(sortedTransactions, (item) => Number(item?.amount)),
-                  )}
-                />
+             
               </Stack>
+              </>
             }
             actions={[]}
             // onRowClick={updateECGPayment}

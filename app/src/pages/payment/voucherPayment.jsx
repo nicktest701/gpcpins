@@ -153,6 +153,7 @@ function VoucherPayment() {
             paymentMutation.reset();
           },
           onSuccess: (data) => {
+            // console.log(data)
             if (data?.transactionId) {
               navigate("/confirm", {
                 replace: true,

@@ -559,6 +559,8 @@ router.get(
     try {
       const { id, serviceType } = req.params;
 
+      // console.log(id, serviceType);
+
       if (!isValidUUID2(id)) {
         return res.status(400).json("Invalid request");
       }
@@ -603,6 +605,7 @@ router.get(
       let selectedVouchers = [];
 
       // ---------------- PROCESS SERVICES ----------------
+      // console.log(transaction)
 
       switch (transaction.service) {
         case "voucher":
@@ -631,6 +634,8 @@ router.get(
       // ---------------- ASYNC EXTERNAL CALLS ----------------
 
       triggerAsyncProcessing(transaction, selectedVouchers); // 🔥 non-blocking
+
+      console.log(formatResponse(transaction));
 
       return res.status(200).json(formatResponse(transaction));
     } catch (error) {
@@ -1074,7 +1079,7 @@ router.post(
         accountName: info?.name || userName || "GPC Customer",
         amount: Number(amount).toFixed(2),
         transaction_Id: `prepaid-${transaction_id}`,
-        debitNaration:'Purchase Prepaid Units'
+        debitNaration: "Purchase Prepaid Units",
       };
 
       try {
@@ -1455,14 +1460,14 @@ router.post(
         accountName: name || "GPC Customer",
         amount: Number(amount).toFixed(2)?.toString(),
         transaction_Id: `wallet-${paymentId}`,
-        debitNaration:'Top up GPC Wallet Amount'
+        debitNaration: "Top up GPC Wallet Amount",
       };
 
       try {
         await sendBrassicaMoney(momoPayload);
         paymentStatus = "pending";
       } catch (error) {
-        console.log(error)
+        console.log(error);
         return res
           .status(400)
           .json("Error processing transaction.Please try again later!");
@@ -1508,7 +1513,7 @@ router.post(
       return res.status(200).json({
         paymentId,
         reference: reference,
-        transactionId:paymentId,
+        transactionId: paymentId,
         status: paymentStatus,
         categoryType: "wallet",
       });
@@ -1681,26 +1686,41 @@ router.post(
 
       await trx.commit();
       const completedTransaction = {
-        id: transactionId || paymentId,
-        paymentReference: reference,
+        paymentId,
+        transactionId,
+        reference,
         status: paymentStatus,
-        email,
-        phonenumber,
-        paymentMode: "Wallet",
-        amount: amount,
-        createdAt: new Date().toISOString(),
+        categoryType: service,
       };
 
-      res.status(201).json({ id: transactionId, reference });
+      res.status(200).json(completedTransaction);
 
+      // console.log(transaction);
       if (isWallet && !_.isEmpty(transaction)) {
         setImmediate(async () => {
-          await emitPaymentSuccess({
-            userId: userId,
-            txRef: phonenumber || reference,
-            amount: amount,
-            transaction: completedTransaction,
-          });
+          if (completedTransaction?.status === "completed") {
+            await emitPaymentSuccess({
+              userId: userId,
+              txRef: phonenumber || reference,
+              amount: amount,
+              transaction: {
+                id: transactionId || paymentId,
+                paymentReference: reference,
+                status: paymentStatus,
+                email,
+                phonenumber,
+                paymentMode: "Wallet",
+                amount: amount,
+                createdAt: new Date().toISOString(),
+              },
+            });
+          } else {
+            await emitPaymentFailure({
+              userId,
+              txRef: user.phonenumber || reference,
+              reason: "Payment failed",
+            });
+          }
         });
       }
     } catch (error) {
@@ -1870,26 +1890,40 @@ router.post(
       await trx.commit();
 
       const completedTransaction = {
-        id: transactionId || paymentId,
-        paymentReference: reference,
+        paymentId,
+        transactionId,
+        reference,
         status: paymentStatus,
-        email,
-        phonenumber,
-        paymentMode: "Wallet",
-        amount: amount,
-        createdAt: new Date().toISOString(),
+        categoryType: service,
       };
 
-      res.status(201).json({ id: transactionId, reference });
+      res.status(200).json(completedTransaction);
 
       if (isWallet && !_.isEmpty(transaction)) {
         setImmediate(async () => {
-          await emitPaymentSuccess({
-            userId: userId,
-            txRef: phonenumber || reference,
-            amount: amount,
-            transaction: completedTransaction,
-          });
+          if (completedTransaction?.status === "completed") {
+            await emitPaymentSuccess({
+              userId: userId,
+              txRef: phonenumber || reference,
+              amount: amount,
+              transaction: {
+                id: transactionId || paymentId,
+                paymentReference: reference,
+                status: paymentStatus,
+                email,
+                phonenumber,
+                paymentMode: "Wallet",
+                amount: amount,
+                createdAt: new Date().toISOString(),
+              },
+            });
+          } else {
+            await emitPaymentFailure({
+              userId,
+              txRef: user.phonenumber || reference,
+              reason: "Payment failed",
+            });
+          }
         });
       }
     } catch (error) {
@@ -2241,11 +2275,10 @@ router.post(
             `status=${status}(${statusCode}) approvalCode=${institutionApprovalCode}`,
         );
 
-      
         trx = await knex.transaction();
 
         const [service, transaction_id] = transactionId?.split("-");
-     
+
         let payment;
         if (service === "prepaid") {
           payment = await trx("vw_meter_payment_prepaid_transaction_view")
@@ -2662,6 +2695,7 @@ const selectVouchers = async ({
 const selectVouchersForConfirmation = async (trx, transaction) => {
   const info = safeJSON(transaction?.info);
   const vouchers = safeJSON(transaction?.vouchers);
+
   if (!info || !info.categoryId) {
     throw new Error("Invalid transaction info");
   }
@@ -2682,13 +2716,13 @@ const selectVouchersForConfirmation = async (trx, transaction) => {
       paymentDetails?.tickets.map(async (ticket) => {
         return trx("vouchers as v")
           .join("categories as c", "v.category_id", "c.id")
-          .where({
+          .whereIn("v.id", vouchers)
+          .andWhere({
             "v.category_id": categoryId,
             "v.type": ticket.type,
             "v.status": "sold", // 🔥 IMPORTANT (not "new")
-            "v.active": 1,
+            // "v.active": 1,
           })
-          .whereIn("v.id", vouchers)
           .limit(ticket.quantity)
           .select(
             "v.id",
@@ -2714,7 +2748,7 @@ const selectVouchersForConfirmation = async (trx, transaction) => {
       .andWhere({
         "v.category_id": categoryId,
         "v.status": "sold",
-        "v.active": 1,
+        // "v.active": 1,
       })
       .select(
         "v.id",
@@ -2731,12 +2765,12 @@ const selectVouchersForConfirmation = async (trx, transaction) => {
   else {
     selected = await trx("vouchers as v")
       .join("categories as c", "v.category_id", "c.id")
-      .where({
+      .whereIn("v.id", vouchers)
+      .andWhere({
         "v.category_id": categoryId,
         "v.status": "sold",
-        "v.active": 1,
+        // "v.active": 1,
       })
-      .whereIn("v.id", vouchers)
       .limit(quantity)
       .select(
         "v.id",
@@ -2750,7 +2784,7 @@ const selectVouchersForConfirmation = async (trx, transaction) => {
   }
 
   // ---------------- VALIDATION ----------------
-  if (!selected.length) {
+  if (selected?.length <= 0) {
     throw new Error("No vouchers available");
   }
 
@@ -2765,7 +2799,7 @@ const selectVouchersForConfirmation = async (trx, transaction) => {
 async function processVoucher(trx, transaction) {
   const vouchers = await selectVouchersForConfirmation(trx, transaction);
 
-  if (!vouchers.length) {
+  if (vouchers.length <= 0) {
     throw new Error("No vouchers available");
   }
 

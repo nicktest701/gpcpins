@@ -147,7 +147,9 @@ const sendReportMail = async (
 };
 
 const sendPrepaidEmail = async (transaction) => {
-  const pdfBuffer = await getReceiptBuffer(transaction?.receiptUrl);
+
+  // const pdfBuffer = await getReceiptBuffer(transaction?.receiptUrl);
+
 
   const mailOptions = {
     from: `GPC ${process.env.MAIL_CLIENT_USER}`,
@@ -173,7 +175,8 @@ const sendPrepaidEmail = async (transaction) => {
     attachments: [
       {
         filename: `${transaction.transactionId}-receipt.pdf`, // The file name the user will see
-        content: pdfBuffer,
+        // content: pdfBuffer,
+        path:transaction?.receiptUrl,
         contentType: "application/pdf",
       },
     ],

@@ -93,7 +93,7 @@ const schema = yup
 
 // ─── Component ──────────────────────────────────────────────────────────────
 function PinsGenerator() {
-  const { user } = useAuth();
+
   const [data, setData] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
 

@@ -17,8 +17,7 @@ import { useEffect, useRef, useState } from "react";
  *  - "timeout"    -> max attempts reached without a terminal result
  */
 export const usePaymentPolling = ({
-  paymentId,
-  transactionId,
+  props,
   checkStatusFn,
   interval = 3000, // Base polling frequency (3 seconds)
   maxAttempts = 15, // Maximum allowed polling requests
@@ -30,6 +29,8 @@ export const usePaymentPolling = ({
   const attemptCounterRef = useRef(0);
   const startTimeRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
+
+  const { paymentId } = props;
 
   const queryKey = ["paymentStatus", paymentId];
 
@@ -61,7 +62,7 @@ export const usePaymentPolling = ({
     queryKey,
     queryFn: async () => {
       attemptCounterRef.current += 1;
-      return await checkStatusFn(paymentId, transactionId);
+      return await checkStatusFn({ ...props });
     },
     // Only execute network calls if a payment ID is validly passed
     enabled: !!paymentId,
@@ -106,9 +107,14 @@ export const usePaymentPolling = ({
 
     if (currentStatus === "success") {
       onSuccess?.(data);
+      console.log(data)
     } else if (currentStatus === "failed") {
       onFailure?.(data);
-    } else if (attemptsExhausted && currentStatus !== "success" && currentStatus !== "failed") {
+    } else if (
+      attemptsExhausted &&
+      currentStatus !== "success" &&
+      currentStatus !== "failed"
+    ) {
       onTimeout?.({ message: "Polling limit reached before confirmation." });
     }
   }, [currentStatus, attemptsExhausted, paymentId, data]); // eslint-disable-line react-hooks/exhaustive-deps

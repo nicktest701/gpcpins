@@ -1,20 +1,18 @@
 /* eslint-disable react/display-name */
+
 import React, { useMemo } from "react";
-import {
-  Box,
-  Divider,
-  Stack,
-  Tooltip,
-  Typography,
-  useTheme,
-} from "@mui/material";
-import MaterialTable from "@material-table/core";
-import { MTableToolbar } from "@material-table/core";
-import { DeleteRounded, InfoRounded, Refresh } from "@mui/icons-material";
-import { ExportCsv, ExportPdf } from "@material-table/exporters"; // Import core exporters
-import * as XLSX from "xlsx"; // Import Excel sheet engine
-import { tableIcons } from "../../config/tableIcons";
+import MaterialTable, { MTableToolbar } from "@material-table/core";
+import { Box, Stack, Typography, Tooltip, useTheme } from "@mui/material";
+import { InfoRounded, DeleteRounded, Refresh } from "@mui/icons-material";
+import * as XLSX from "xlsx";
+import { ExportCsv, ExportPdf } from "@material-table/exporters";
 import TableSkeleton from "../skeletons/TableSkeleton";
+import { tableIcons } from "../../config/tableIcons";
+
+// Stable empty-array reference so a missing `actions` prop doesn't create a
+// brand-new [] on every render and blow away the tableActions/tableOptions
+// memoization below.
+const EMPTY_ARRAY = [];
 
 const CustomizedMaterialTable = React.memo(
   ({
@@ -29,7 +27,7 @@ const CustomizedMaterialTable = React.memo(
     icon,
     onRowClick,
     onRefresh,
-    actions = [],
+    actions = EMPTY_ARRAY,
     addButton,
     autocompleteComponent,
     onDeleteAll,
@@ -37,6 +35,14 @@ const CustomizedMaterialTable = React.memo(
     options = {},
     onRowSelected,
     onSelectionChange,
+    onSearchChange,
+    // Server-side pagination contract exposed by this component:
+    // `page` is 1-indexed (page 1 = first page), matching how most REST
+    // APIs expect it. We convert to/from MaterialTable's 0-indexed page
+    // internally so callers never have to think about the off-by-one.
+    page,
+    onPageChange,
+    onRowsPerPageChange,
   }) => {
     const theme = useTheme();
 
@@ -45,7 +51,6 @@ const CustomizedMaterialTable = React.memo(
 
     // Custom helper to safely convert structure data into an Excel workbook
     const exportToExcel = (cols, rawData, fileName) => {
-      // Map and scrub material-table internal tracking properties like tableData
       const cleanData = rawData.map((row) => {
         const copy = { ...row };
         delete copy.tableData;
@@ -58,30 +63,40 @@ const CustomizedMaterialTable = React.memo(
       XLSX.writeFile(workbook, `${fileName || "TableData"}.xlsx`);
     };
 
-    // Memoize options with sensible defaults
+    // Determine pagination requirements dynamically based on options configuration.
+    // `options.totalCount` (server total) always wins over the local data length.
+    const totalCount =
+      options.totalCount !== undefined ? options.totalCount : data.length;
+
+    // Memoize options with sensible defaults.
+    // NOTE: this memo is only as good as the `options` reference the parent
+    // passes in. If the parent inlines `options={{ ... }}` on every render,
+    // this memo never actually skips work. See Logs.jsx for the fix
+    // (useMemo the options object there too).
     const tableOptions = useMemo(
       () => ({
         showTitle: false,
         search: search || false,
         searchFieldVariant: "outlined",
         searchFieldStyle: {
-          borderRadius: "25px",
+          borderRadius: "20px",
           fontSize: "13px",
-          marginTop: "5px",
+          marginTop: "10px",
           marginRight: "20px",
+          height: "40px",
           width: "38svw",
           minWidth: 130,
         },
-        searchFieldAlignment: "left",
+        searchFieldAlignment: "right",
         columnsButton: true,
         columnResizable: true,
-        paging: data?.length !== 0,
-        pageSize: 5,
+        // If a server total count is provided, enable paging even if the
+        // current data batch happens to be empty (e.g. filtered result set).
+        paging: options.totalCount !== undefined ? true : totalCount !== 0,
+        pageSize: 10,
         paginationType: "stepped",
         exportAllData: true,
 
-        // Populates export selection menu with CSV, PDF, and Excel actions
-        // Populates export selection menu with CSV, PDF, and Excel actions
         exportMenu: showExportButton
           ? [
               {
@@ -93,25 +108,21 @@ const CustomizedMaterialTable = React.memo(
                 label: "Export PDF",
                 exportFunc: (cols, datas) =>
                   ExportPdf(cols, datas, title || "TableData", {
-                    // Hook into jspdf autoTable configurations
                     jsPDF: {
-                      orientation: "landscape", // Optional: Gives more room for data columns
+                      orientation: "landscape",
                     },
                     autoTable: {
-                      startY: 35, // Push the table down to create room for your header text
+                      startY: 35,
                       didDrawPage: (data) => {
                         const doc = data.doc;
-
-                        // Add Company Name
                         doc.setFontSize(20);
                         doc.setFont("helvetica", "bold");
-                        doc.setTextColor(40, 40, 40); // Dark grey text
-                        doc.text("GAP POWERFUL CONSULT", 14, 18); // (text, x-axis, y-axis)
+                        doc.setTextColor(40, 40, 40);
+                        doc.text("GAP POWERFUL CONSULT", 14, 18);
 
-                        // Add an optional small subtitle or line under the company name
                         doc.setFontSize(10);
                         doc.setFont("helvetica", "normal");
-                        doc.setTextColor(100, 100, 100); // Light grey text
+                        doc.setTextColor(100, 100, 100);
                         doc.text(`Report: ${title || "Data Export"}`, 14, 25);
                       },
                     },
@@ -134,15 +145,20 @@ const CustomizedMaterialTable = React.memo(
         },
         fixedColumns: false,
         ...options,
+        // `page`/`totalCount` are root-level MaterialTable props, not
+        // `options` keys. Strip them out here even if a caller accidentally
+        // passes them in `options`, so they don't silently no-op AND cause
+        // confusion about which value actually wins.
+        page: undefined,
+        totalCount: undefined,
       }),
-      [search, showExportButton, title, data?.length, options, theme],
+      [search, showExportButton, title, totalCount, options, theme],
     );
 
     // Build actions array only once
     const tableActions = useMemo(() => {
       const baseActions = [];
 
-      // Refresh action (free)
       if (onRefresh) {
         baseActions.push({
           icon: () => (
@@ -156,7 +172,6 @@ const CustomizedMaterialTable = React.memo(
         });
       }
 
-      // Delete selected action (appears when rows selected)
       if (onDeleteAll) {
         baseActions.push({
           icon: () => <DeleteRounded />,
@@ -166,7 +181,6 @@ const CustomizedMaterialTable = React.memo(
         });
       }
 
-      // Custom actions from props
       if (actions.length) {
         baseActions.push(...actions);
       }
@@ -178,29 +192,16 @@ const CustomizedMaterialTable = React.memo(
     const CustomToolbar = useMemo(
       () => (props) => (
         <>
-          <Stack width="100%" px={2} pt={2}>
-            {title && (
-              <Typography variant="h5" fontWeight="bold">
-                {title}
-              </Typography>
-            )}
-            {subtitle && (
-              <Typography variant="body2" color="text.secondary">
-                {subtitle}
-              </Typography>
-            )}
-          </Stack>
+          <Stack width="100%" px={2} pt={2}></Stack>
           {autocompleteComponent && (
             <Box px={2} pt={1} pb={1}>
               {autocompleteComponent}
             </Box>
           )}
-          <Divider />
           <MTableToolbar {...props} />
-          <Divider />
         </>
       ),
-      [title, subtitle, autocompleteComponent],
+      [autocompleteComponent],
     );
 
     // Custom empty state
@@ -224,7 +225,7 @@ const CustomizedMaterialTable = React.memo(
       [icon, isLoading, emptyMessage, addButton],
     );
 
-       if (isLoading) {
+    if (isLoading) {
       return (
         <Box sx={{ width: "100%", mx: "auto", py: 2, ...style }}>
           <TableSkeleton
@@ -270,7 +271,25 @@ const CustomizedMaterialTable = React.memo(
           onRowSelected={onRowSelected}
           onSelectionChange={onSelectionChange}
           actions={tableActions}
-          totalCount={data?.length}
+          // --- Server-side pagination -------------------------------------
+          // The bug: MaterialTable/@material-table/core exposes
+          // `onChangePage` and `onChangeRowsPerPage`, NOT `onPageChange`/
+          // `onRowsPerPageChange`. Passing the wrong names means the library
+          // never receives a handler, so clicking next/prev is a no-op
+          // (rows-per-page happened to still work because that control was
+          // wired separately). We also convert this component's public,
+          // 1-indexed `page` down to MaterialTable's 0-indexed `page`.
+          totalCount={totalCount}
+          page={page != null ? Math.max(page - 1, 0) : undefined}
+         onChangePage={(newPage) => onPageChange?.(newPage + 1)}
+          // onChangeRowsPerPage={(newPageSize) =>
+          //   onRowsPerPageChange?.(newPageSize)
+          // }
+          onPageChange={(newPage) => onPageChange?.(newPage + 1)}
+          onRowsPerPageChange={(newPageSize) =>
+            onRowsPerPageChange?.(newPageSize)
+          }
+          onSearchChange={onSearchChange}
         />
       </Box>
     );
@@ -280,199 +299,3 @@ const CustomizedMaterialTable = React.memo(
 CustomizedMaterialTable.displayName = "CustomizedMaterialTable";
 
 export default CustomizedMaterialTable;
-
-// /* eslint-disable react/display-name */
-// import React, { useMemo } from "react";
-// import { Box, Divider, Stack, Tooltip, Typography, useTheme } from "@mui/material";
-// import MaterialTable from "@material-table/core";
-// import { MTableToolbar } from "@material-table/core";
-// import { DeleteRounded, InfoRounded, Refresh } from "@mui/icons-material";
-// import { tableIcons } from "../../config/tableIcons";
-
-// const CustomizedMaterialTable = React.memo(
-//   ({
-//     isLoading = false,
-//     showExportButton = true,
-//     title = "",
-//     subtitle = "",
-//     data = [],
-//     columns = [],
-//     search = false,
-//     emptyMessage,
-//     icon,
-//     onRowClick,
-//     onRefresh,
-//     actions = [],
-//     addButton,
-//     autocompleteComponent,
-//     onDeleteAll,
-//     style,
-//     options = {},
-//     onRowSelected,
-//     onSelectionChange,
-//   }) => {
-//     const theme = useTheme();
-
-//     // Memoize columns to prevent unnecessary re-renders
-//     const memoizedColumns = useMemo(() => columns, [columns]);
-
-//     // Memoize options with sensible defaults
-//     const tableOptions = useMemo(
-//       () => ({
-//         showTitle: false,
-//         search: search || false,
-//         searchFieldVariant: "outlined",
-//         searchFieldStyle: {
-//           borderRadius: "25px",
-//           fontSize: "13px",
-//           marginTop: "5px",
-//           marginRight: "20px",
-//           width: "38svw",
-//           minWidth: 130,
-//         },
-//         searchFieldAlignment: "left",
-//         columnsButton: true,
-//         columnResizable: true,
-//         paging: data?.length !== 0,
-//         pageSize: 5,
-//         paginationType: "stepped",
-//         exportAllData: true,
-//         exportFileName: title,
-//         exportButton: {
-//           csv: showExportButton,
-//           pdf: false,
-//         },
-//         headerStyle: {
-//           backgroundColor: theme.palette.grey[100],
-//           color: theme.palette.text.primary,
-//           textTransform: "uppercase",
-//           paddingBlock: "12px",
-//           fontWeight: "bold",
-//         },
-//         fixedColumns: false,
-//         ...options,
-//       }),
-//       [search, showExportButton, title, data?.length, options, theme]
-//     );
-
-//     // Build actions array only once
-//     const tableActions = useMemo(() => {
-//       const baseActions = [];
-
-//       // Refresh action (free)
-//       if (onRefresh) {
-//         baseActions.push({
-//           icon: () => (
-//             <Tooltip title="Refresh">
-//               <Refresh />
-//             </Tooltip>
-//           ),
-//           isFreeAction: true,
-//           onClick: onRefresh,
-//           iconProps: { role: "menu" },
-//         });
-//       }
-
-//       // Delete selected action (appears when rows selected)
-//       if (onDeleteAll) {
-//         baseActions.push({
-//           icon: () => <DeleteRounded />,
-//           position: "toolbarOnSelect",
-//           tooltip: "Delete selected",
-//           onClick: onDeleteAll,
-//         });
-//       }
-
-//       // Custom actions from props
-//       if (actions.length) {
-//         baseActions.push(...actions);
-//       }
-
-//       return baseActions;
-//     }, [onRefresh, onDeleteAll, actions]);
-
-//     // Custom toolbar component
-//     const CustomToolbar = useMemo(
-//       () => (props) => (
-//         <>
-//           <Stack width="100%" px={2} pt={2}>
-//             {title && (
-//               <Typography variant="h5" fontWeight="bold">
-//                 {title}
-//               </Typography>
-//             )}
-//             {subtitle && (
-//               <Typography variant="body2" color="text.secondary">
-//                 {subtitle}
-//               </Typography>
-//             )}
-//           </Stack>
-//           {autocompleteComponent && (
-//             <Box px={2} pt={1} pb={1}>
-//               {autocompleteComponent}
-//             </Box>
-//           )}
-//           <Divider />
-//           <MTableToolbar {...props} />
-//           <Divider />
-//         </>
-//       ),
-//       [title, subtitle, autocompleteComponent]
-//     );
-
-//     // Custom empty state
-//     const emptyState = useMemo(
-//       () => (
-//         <Stack alignItems="center" justifyContent="center" minHeight={300} spacing={2}>
-//           {icon || <InfoRounded color="primary" sx={{ width: 80, height: 80 }} />}
-//           <Typography color="text.secondary" align="center">
-//             {isLoading ? "Loading..." : emptyMessage || "No data found"}
-//           </Typography>
-//           {addButton}
-//         </Stack>
-//       ),
-//       [icon, isLoading, emptyMessage, addButton]
-//     );
-
-//     return (
-//       <Box
-//         sx={{
-//           width: { xs: "calc(100vw - 32px)", md: "100%" },
-//           height: "100%",
-//           mx: "auto",
-//           py: 2,
-//           overflowX: "auto",
-//           borderRadius: 3,
-//           ...style,
-//         }}
-//         className="scroll-container"
-//       >
-//         <MaterialTable
-//           isLoading={isLoading}
-//           icons={tableIcons}
-//           columns={memoizedColumns}
-//           data={data}
-//           options={tableOptions}
-//           components={{ Toolbar: CustomToolbar }}
-//           localization={{
-//             body: {
-//               emptyDataSourceMessage: emptyState,
-//             },
-//             toolbar: {
-//               searchPlaceholder: "Search...",
-//             },
-//           }}
-//           onRowClick={onRowClick}
-//           onRowSelected={onRowSelected}
-//           onSelectionChange={onSelectionChange}
-//           actions={tableActions}
-//           totalCount={data?.length}
-//         />
-//       </Box>
-//     );
-//   }
-// );
-
-// CustomizedMaterialTable.displayName = "CustomizedMaterialTable";
-
-// export default CustomizedMaterialTable;

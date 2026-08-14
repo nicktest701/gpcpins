@@ -115,7 +115,7 @@ const DateRangePicker = ({
           cursor: "pointer",
           "& .MuiInputBase-root": {
             borderRadius: 1,
-            py:0.5,
+            py:0.2,
             bgcolor: "background.paper",
             transition: "all 0.2s",
             "&:hover": {

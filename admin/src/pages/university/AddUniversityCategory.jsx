@@ -1,298 +1,378 @@
-import { useContext, useRef, useState } from "react";
+import {  useRef, useState } from "react";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Stack,
+  TextField,
+  Autocomplete,
+  InputAdornment,
+  Typography,
+  Button,
+  IconButton,
+  Avatar,
+  Box,
+  LinearProgress,
+  alpha,
+} from "@mui/material";
 import LoadingButton from "@mui/lab/LoadingButton";
-import Autocomplete from "@mui/material/Autocomplete";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
-import InputAdornment from "@mui/material/InputAdornment";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
+import { Close, CloudUpload } from "@mui/icons-material";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Formik } from "formik";
+import moment from "moment";
+import Swal from "sweetalert2";
+import DOMPurify from "dompurify";
 
-import { CustomContext } from "../../context/providers/CustomProvider";
+import { useCustomContext } from "../../context/providers/CustomProvider";
 import { postCategory } from "../../api/categoryAPI";
 import Transition from "../../components/Transition";
 import { UNIVERSITY_FORM_TYPE } from "../../mocks/columns";
 import { globalAlertType } from "../../components/alert/alertType";
 import { CATEGORY } from "../../constants";
 import CustomYearPicker from "../../components/inputs/CustomYearPicker";
-import moment from "moment";
 import { addUniversityValidationSchema } from "../../config/validationSchema";
-import Compressor from "compressorjs";
-import DOMPurify from "dompurify";
 import { uploadFile } from "@/lib/upload";
-import { Avatar, Box } from "@mui/material";
-import { CloudUpload } from "@mui/icons-material";
 
 const AddUniversityCategory = () => {
-  //context
   const queryClient = useQueryClient();
-  const { customState, customDispatch } = useContext(CustomContext);
+  const { customState, customDispatch } = useCustomContext();
 
-  //state
-  const [logo, setLogo] = useState(null);
+  // Local state
+  const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [voucherType, setVoucherType] = useState("");
-  const [voucherURL, setVoucherURL] = useState("");
-  const [formType, setFormType] = useState("");
-  const [price, setPrice] = useState(Number(0));
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
   const [year, setYear] = useState(moment().format("YYYY"));
 
-  // Upload file ref
   const fileInputRef = useRef(null);
 
-  const initialValues = {
-    category: "university",
-    voucherType,
-    formType,
-    price,
-    voucherURL,
-  };
-  // Upload logo
+  // React Hook Form setup
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: yupResolver(addUniversityValidationSchema),
+    defaultValues: {
+      category: "university",
+      voucherType: "",
+      formType: "",
+      price: "",
+      voucherURL: "",
+    },
+  });
+
+  // Upload logo with progress
   const handleUploadFile = async (e) => {
-    setLoading(true);
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadProgress(0);
 
     try {
-      const file = e.target.files[0];
-      if (!file) return;
-      setLogo(file);
-      // Create preview
       const reader = new FileReader();
       reader.onload = () => setLogoPreview(reader.result);
       reader.readAsDataURL(file);
 
-      // Actually upload to Firebase
       const { downloadURL } = await uploadFile({
         folder: "category",
         file,
-        onProgress: (progress) => {
-          setProgress(progress);
-        },
+        onProgress: (progress) => setUploadProgress(progress),
       });
-      setLogo(downloadURL); // store final URL
+      setLogoFile(downloadURL);
     } catch (error) {
       customDispatch(
-        globalAlertType("error", "Something went wrong. Please try again."),
+        globalAlertType("error", "Logo upload failed. Please try again.")
       );
     } finally {
-      setLoading(false);
+      setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
-  const { mutateAsync, isLoading } = useMutation({ mutationFn: postCategory });
-  //
-  const onSubmit = (values) => {
-    const isProtocolPresent = values.voucherURL?.includes("http");
-    const newUniversityCategory = {
-      type: values.category,
-      name: values.voucherType,
-      price: DOMPurify.sanitize(values.price),
-      details: {
-        formType: DOMPurify.sanitize(values.formType),
-        voucherURL: isProtocolPresent
-          ? values.voucherURL
-          : `https://${values.voucherURL}`,
-        logo,
-      },
-      year,
-    };
+  // Mutation
+  const { mutateAsync, isLoading } = useMutation({
+    mutationFn: postCategory,
+    onSuccess: (data) => {
+      customDispatch(globalAlertType("info", data));
+      handleClose();
+      reset();
+      setLogoFile(null);
+      setLogoPreview(null);
+      setYear(moment().format("YYYY"));
+      queryClient.invalidateQueries(["category"]);
+    },
+    onError: (error) => {
+      customDispatch(globalAlertType("error", error));
+    },
+  });
 
-    mutateAsync(newUniversityCategory, {
-      onSettled: () => {
-        queryClient.invalidateQueries(["category"]);
-      },
-      onSuccess: (data) => {
-        customDispatch(globalAlertType("info", data));
-        handleClose();
-      },
-      onError: (error) => {
-        customDispatch(globalAlertType("error", error));
-      },
-    });
-  };
-
-  ///Close Add Category
   const handleClose = () => {
     customDispatch({
       type: "openAddUniversityCategory",
       payload: { open: false },
     });
+    reset();
   };
 
-  // Preview logo if uploaded
-  const LogoPreview = () => (
-    <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 2 }}>
-      {logoPreview && (
-        <Avatar
-          src={logoPreview}
-          variant="rounded"
-          sx={{ width: 60, height: 60, objectFit: "contain" }}
+  const onSubmit = (values) => {
+    // SweetAlert confirmation
+    Swal.fire({
+      title: "Add New University Category?",
+      text: "Are you sure you want to create this new university category?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, add",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const isProtocolPresent = values.voucherURL?.includes("http");
+        const payload = {
+          type: values.category,
+          name: values.voucherType,
+          price: DOMPurify.sanitize(values.price),
+          details: {
+            formType: DOMPurify.sanitize(values.formType),
+            voucherURL: isProtocolPresent
+              ? values.voucherURL
+              : `https://${values.voucherURL}`,
+            logo: logoFile,
+          },
+          year,
+        };
+        mutateAsync(payload);
+      }
+    });
+  };
+
+  // Logo preview component
+  const LogoSection = () => (
+    <Box>
+      <Typography variant="subtitle2" gutterBottom>
+        Category Logo
+      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
+        {logoPreview && (
+          <Avatar
+            src={logoPreview}
+            variant="rounded"
+            sx={{ width: 60, height: 60, objectFit: "contain" }}
+          />
+        )}
+        <Button
+          variant="outlined"
+          startIcon={<CloudUpload />}
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+        >
+          {logoPreview ? "Change Logo" : "Upload Logo"}
+        </Button>
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: "none" }}
+          accept=".png,.jpg,.jpeg,.webp"
+          onChange={handleUploadFile}
         />
+      </Box>
+      {isUploading && (
+        <Box sx={{ width: "100%", mt: 1 }}>
+          <LinearProgress variant="determinate" value={uploadProgress} />
+          <Typography variant="caption" color="text.secondary">
+            Uploading... {Math.round(uploadProgress)}%
+          </Typography>
+        </Box>
       )}
-      <Button
-        variant="outlined"
-        startIcon={<CloudUpload />}
-        onClick={() => fileInputRef.current?.click()}
-        size="small"
-      >
-        {logoPreview ? "Change Logo" : "Upload Logo"}
-      </Button>
-      <input
-        type="file"
-        ref={fileInputRef}
-        style={{ display: "none" }}
-        accept=".png,.jpg,.jpeg,.webp"
-        onChange={handleUploadFile}
-      />
     </Box>
   );
 
   return (
-    <Formik
-      initialValues={initialValues}
-      validationSchema={addUniversityValidationSchema}
-      onSubmit={onSubmit}
-      enableReinitialize={true}
+
+
+
+
+    
+    <Dialog
+      maxWidth="md"
+      fullWidth
+      TransitionComponent={Transition}
+      open={customState.universityCategory.open}
+      onClose={handleClose}
+      PaperProps={{
+        elevation: 8,
+        sx: {
+          borderRadius: 3,
+          maxHeight: "90vh",
+          overflow: "hidden",
+          bgcolor: "background.paper",
+          boxShadow: (theme) =>
+            `0 20px 60px ${alpha(theme.palette.common.black, 0.15)}`,
+        },
+      }}
     >
-      {({ errors, touched, handleSubmit }) => {
-        return (
-          <Dialog
-            maxWidth="xs"
-            fullWidth
-            TransitionComponent={Transition}
-            open={customState.universityCategory.open}
-            onClose={handleClose}
-          >
-            <DialogTitle>New University</DialogTitle>
-            <DialogContent>
-              <Stack rowGap={2} paddingY={2}>
-                {/* Logo Upload */}
-                <Box>
-                  {loading && (
-                    <Box sx={{ width: "100%", mb: 1 }}>
-                      <Typography variant="caption" color="textSecondary">
-                        Uploading... {Math.round(progress)}%
-                      </Typography>
-                      <Box
-                        sx={{
-                          height: 4,
-                          width: "100%",
-                          bgcolor: "action.hover",
-                          borderRadius: 1,
-                          overflow: "hidden",
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            height: "100%",
-                            width: `${progress}%`,
-                            bgcolor: "primary.main",
-                            transition: "width 0.3s ease",
-                          }}
-                        />
-                      </Box>
-                    </Box>
-                  )}
+      <DialogTitle
+        sx={{
+          bgcolor: "primary.main",
+          color: "primary.contrastText",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Typography variant="h6" component="span" fontWeight="bold">
+          Add University Category
+        </Typography>
+        <IconButton onClick={handleClose} sx={{ color: "primary.contrastText" }}>
+          <Close />
+        </IconButton>
+      </DialogTitle>
 
-                  <Typography variant="subtitle2" gutterBottom>
-                    Category Logo
-                  </Typography>
-                  <LogoPreview />
-                </Box>
+     <form onSubmit={handleSubmit(onSubmit)} noValidate style={{ display: 'contents' }}>
+        <DialogContent
+          dividers
+          sx={{
+            overflow: "auto",
+            p: 3,
+            "&::-webkit-scrollbar": {
+              width: 6,
+            },
+            "&::-webkit-scrollbar-track": {
+              background: "transparent",
+            },
+            "&::-webkit-scrollbar-thumb": {
+              background: (theme) => alpha(theme.palette.primary.main, 0.4),
+              borderRadius: 3,
+              "&:hover": {
+                background: (theme) => alpha(theme.palette.primary.main, 0.6),
+              },
+            },
+          }}
+        >
+          <Stack spacing={3}>
+            {/* Logo Upload */}
+            <LogoSection />
 
+            {/* University Name */}
+            <Controller
+              name="voucherType"
+              control={control}
+              render={({ field }) => (
                 <Autocomplete
+                  freeSolo
                   options={CATEGORY.university}
-                  freeSolo
                   noOptionsText="No form available"
-                  value={voucherType || null}
-                  onInputChange={(e, value) => setVoucherType(value)}
                   isOptionEqualToValue={(option, value) => option === value}
-                  renderInput={(props) => (
+                  onInputChange={(_, value) => {
+                    setValue("voucherType", value);
+                  }}
+                  value={field.value || null}
+                  renderInput={(params) => (
                     <TextField
-                      {...props}
-                      label="University"
-                      error={Boolean(touched.voucherType && errors.voucherType)}
-                      helperText={touched.voucherType && errors.voucherType}
+                      {...params}
+                      label="University Name"
+                      required
+                      error={!!errors.voucherType}
+                      helperText={errors.voucherType?.message}
                     />
                   )}
                 />
+              )}
+            />
+
+            {/* Form Type */}
+            <Controller
+              name="formType"
+              control={control}
+              render={({ field }) => (
                 <Autocomplete
-                  options={UNIVERSITY_FORM_TYPE}
                   freeSolo
+                  options={UNIVERSITY_FORM_TYPE}
                   noOptionsText="No option available"
-                  value={formType || null}
-                  onInputChange={(e, value) => setFormType(value)}
                   isOptionEqualToValue={(option, value) => option === value}
-                  renderInput={(props) => (
+                  onInputChange={(_, value) => {
+                    setValue("formType", value);
+                  }}
+                  value={field.value || null}
+                  renderInput={(params) => (
                     <TextField
-                      {...props}
+                      {...params}
                       label="Form Type"
-                      error={Boolean(touched.formType && errors.formType)}
-                      helperText={touched.formType && errors.formType}
+                      required
+                      error={!!errors.formType}
+                      helperText={errors.formType?.message}
                     />
                   )}
                 />
+              )}
+            />
 
-                <CustomYearPicker label="Year" year={year} setYear={setYear} />
+            {/* Year */}
+            <CustomYearPicker
+              label="Year"
+              year={year}
+              setYear={setYear}
+            />
 
+            {/* Price */}
+            <Controller
+              name="price"
+              control={control}
+              render={({ field }) => (
                 <TextField
+                  {...field}
                   type="number"
-                  inputMode="decimal"
-                  label="Price"
-                  placeholder="Price here"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  error={Boolean(touched.price && errors.price)}
-                  helperText={touched.price && errors.price}
+                  label="Price (GH¢)"
+                  required
                   InputProps={{
                     startAdornment: (
-                      <InputAdornment position="start">
-                        <Typography>GHS</Typography>
-                      </InputAdornment>
-                    ),
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <Typography>p</Typography>
-                      </InputAdornment>
+                      <InputAdornment position="start">GH¢</InputAdornment>
                     ),
                   }}
+                  error={!!errors.price}
+                  helperText={errors.price?.message}
                 />
+              )}
+            />
+
+            {/* Voucher URL */}
+            <Controller
+              name="voucherURL"
+              control={control}
+              render={({ field }) => (
                 <TextField
+                  {...field}
+                  label="University Website URL"
                   type="url"
-                  inputMode="url"
-                  label={`University Website URL`}
-                  value={voucherURL}
-                  onChange={(e) => setVoucherURL(e.target.value)}
-                  error={Boolean(touched.voucherURL && errors.voucherURL)}
+                  placeholder="eg. www.example.com"
+                  error={!!errors.voucherURL}
                   helperText={
-                    errors.voucherURL
-                      ? errors.voucherURL
-                      : "eg. www.example.com"
+                    errors.voucherURL?.message || "Include https:// if needed"
                   }
                 />
-              </Stack>
-            </DialogContent>
-            <DialogActions sx={{ padding: 1 }}>
-              <Button onClick={handleClose}>Cancel</Button>
-              <LoadingButton
-                variant="contained"
-              loading={isLoading||loading}
-              disabled={isLoading||loading}
-                onClick={handleSubmit}
-              >
-                Add Voucher
-              </LoadingButton>
-            </DialogActions>
-          </Dialog>
-        );
-      }}
-    </Formik>
+              )}
+            />
+          </Stack>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button onClick={handleClose}>Cancel</Button>
+          <LoadingButton
+            type="submit"
+            variant="contained"
+            loading={isSubmitting || isLoading}
+            disabled={isUploading}
+          >
+            Add Voucher
+          </LoadingButton>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 };
 

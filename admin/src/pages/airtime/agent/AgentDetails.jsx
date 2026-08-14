@@ -25,14 +25,16 @@ import { getInitials } from "../../../config/validation";
 import AgentSettings from "./AgentSettings";
 import EditAgent from "./EditAgent";
 import { globalAlertType } from "../../../components/alert/alertType";
-import { CustomContext } from "../../../context/providers/CustomProvider";
+import {
+  CustomContext,
+  useCustomContext,
+} from "../../../context/providers/CustomProvider";
 import AgentPhoto from "./AgentPhoto";
 import { currencyFormatter } from "../../../constants";
 import ChangePin from "./ChangePin";
-import { AuthContext } from "../../../context/providers/AuthProvider";
 
 function AgentDetails() {
-  const { user } = useContext(AuthContext);
+  const { user } = useCustomContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState("1");
   // const [hidePin, setHidePin] = useState(true);
@@ -47,7 +49,7 @@ function AgentDetails() {
     initialData: queryClient
       .getQueryData(["agents"])
       ?.find((agent) => agent?.id === id),
-        //  staleTime: 15 * 60 * 1000, // 15 minutes
+    //  staleTime: 15 * 60 * 1000, // 15 minutes
   });
 
   const { mutateAsync: toggleEmployeeAccountMutateAsync } = useMutation({
@@ -76,7 +78,7 @@ function AgentDetails() {
             onError: (error) => {
               customDispatch(globalAlertType("error", error));
             },
-          }
+          },
         );
       }
     });
@@ -91,7 +93,7 @@ function AgentDetails() {
 
   return (
     <Container>
-      <Link to="/airtime/agent">
+      <Link to="/agents">
         <IconButton sx={{ my: 4 }}>
           <ArrowBack />
         </IconButton>
@@ -218,9 +220,9 @@ function AgentDetails() {
           <Tab label="Profile" value="1" />
           <Tab label="Wallet" value="2" />
           <Tab label="Transactions" value="3" />
-          {user?.permissions?.includes("Edit agents") && (
+          {/* {user?.permissions?.includes("Edit agents") && ( */}
             <Tab label="Settings" value="4" />
-          )}
+          {/* )} */}
         </TabList>
         <TabPanel value="1" sx={{ px: 0 }}>
           <AgentProfile values={data} />

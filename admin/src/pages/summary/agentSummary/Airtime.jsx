@@ -26,6 +26,11 @@ import PayLoading from "@/components/PayLoading";
 import { useState } from "react";
 import { currencyFormatter } from "@/constants";
 
+const CATEGORY_COLORS = {
+  airtime: "#0C7E05",
+  bundle: "#b10508",
+};
+
 function Airtime() {
   const { palette } = useTheme();
   const [type, setType] = useState("airtime");
@@ -98,11 +103,7 @@ function Airtime() {
                     <AllOut color={type === "airtime" ? "success" : "error"} />
                   }
                   value={currencyFormatter(summary?.data?.today)}
-                  bg={
-                    type === "airtime"
-                      ? "rgba(12, 126, 5,.2)"
-                      : "rgba(360, 1, 5,.2)"
-                  }
+                  color={CATEGORY_COLORS[type]}
                 />
               </Grid>
               <Grid item xs={12} sm={6} md={3} lg={3}>
@@ -112,11 +113,7 @@ function Airtime() {
                     <AllOut color={type === "airtime" ? "success" : "error"} />
                   }
                   value={currencyFormatter(summary?.data?.yesterday)}
-                  bg={
-                    type === "airtime"
-                      ? "rgba(12, 126, 5,.2)"
-                      : "rgba(360, 1, 5,.2)"
-                  }
+                  color={CATEGORY_COLORS[type]}
                 />
               </Grid>
               <Grid item xs={12} sm={6} md={3} lg={3}>
@@ -128,11 +125,7 @@ function Airtime() {
                     />
                   }
                   value={currencyFormatter(summary?.data?.lastSevenDaysTotal)}
-                  bg={
-                    type === "airtime"
-                      ? "rgba(12, 126, 5,.2)"
-                      : "rgba(360, 1, 5,.2)"
-                  }
+                  color={CATEGORY_COLORS[type]}
                 />
               </Grid>
               <Grid item xs={12} sm={6} md={3} lg={3}>
@@ -144,11 +137,7 @@ function Airtime() {
                     />
                   }
                   value={currencyFormatter(summary?.data?.thisMonth)}
-                  bg={
-                    type === "airtime"
-                      ? "rgba(12, 126, 5,.2)"
-                      : "rgba(360, 1, 5,.2)"
-                  }
+                  color={CATEGORY_COLORS[type]}
                 />
               </Grid>
               <Grid item xs={12} sm={6} md={3} lg={3}>
@@ -160,11 +149,7 @@ function Airtime() {
                     />
                   }
                   value={currencyFormatter(summary?.data?.commission)}
-                  bg={
-                    type === "airtime"
-                      ? "rgba(12, 126, 5,.2)"
-                      : "rgba(360, 1, 5,.2)"
-                  }
+                  color={CATEGORY_COLORS[type]}
                 />
               </Grid>
             </Grid>

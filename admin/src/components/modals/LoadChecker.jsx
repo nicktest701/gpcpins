@@ -246,7 +246,7 @@ const LoadChecker = ({ open, setOpen }) => {
 
   return (
     <Dialog maxWidth="lg" fullWidth fullScreen open={open}>
-      <CustomDialogTitle onClose={handleCancelSubmitPins} />
+      <CustomDialogTitle title='Load Pins & Serials' onClose={handleCancelSubmitPins} />
 
       {newCheckers?.length !== 0 && (
         <DialogActions sx={{ paddingX: 5 }}>
@@ -287,7 +287,7 @@ const LoadChecker = ({ open, setOpen }) => {
                   fullWidth
                   label="Type"
                   id="type"
-                  size="small"
+                  // size="medium"
                   value={
                     `${categoryDetails?.data?.name}-${categoryDetails?.data?.year}` ||
                     "NEW VOUCHER"
@@ -298,11 +298,13 @@ const LoadChecker = ({ open, setOpen }) => {
                     style: {
                       color: "green",
                       fontWeight: "bold",
+                       padding: "12px"
                     },
+                   
+                    
                   }}
-                  InputProps={{
-                    sx: { padding: "6px" },
-                  }}
+                 
+                 
                 />
                 <Stack spacing={2} width="100%">
                   <TextField
@@ -313,8 +315,8 @@ const LoadChecker = ({ open, setOpen }) => {
                     value={searchParams.get("data_path") ?? ""}
                     fullWidth
                     helperText="e.g. *.csv,*.xlsx,*.xls,"
-                    InputProps={{
-                      sx: { padding: "6px" },
+                    inputProps={{
+                      style: { padding: "12px" },
                     }}
                   />
 

@@ -47,6 +47,15 @@ const Storage = multer.diskStorage({
 
 const Upload = multer({ storage: Storage });
 
+const getPermissions = async (roleId) => {
+  const perms = await knex("role_permissions")
+    .join("permissions", "role_permissions.permission_id", "permissions.id")
+    .where("role_permissions.role_id", roleId)
+    .pluck("permissions.description"); // Extracts values directly into a flat array
+
+  return perms;
+};
+
 // Define the route for getting all non-admin users
 router.get(
   "/",
@@ -62,13 +71,14 @@ router.get(
       .whereNot("email", email);
 
     // Map through the users and modify the permissions property
+
     const modifiedusers = users.map(
       ({ role, permissions, password, ...rest }) => {
         // Parse the permissions string to a JSON object
         return {
           ...rest,
-          role: role === process.env.ADMIN_ID ? "Administrator" : "user",
-          permissions: JSON.parse(permissions),
+          role: role === process.env.ADMIN_ID ? "Administrator" : "Employee",
+          // permissions: JSON.parse(permissions),
         };
       },
     );
@@ -94,6 +104,8 @@ router.get(
       .whereNot("email", "customer@gpcpins.com")
       .first();
 
+    const permissions = await getPermissions(user?.role_id);
+
     const userData = {
       id: user.id,
       name: user?.name,
@@ -105,7 +117,7 @@ router.get(
       phonenumber: user?.phonenumber,
       role: user?.role,
       profile: user?.profile,
-      permissions: safeJSON(user.permissions),
+      permissions: permissions,
       active: Boolean(user?.active),
       createdAt: user?.created_at,
     };
@@ -127,8 +139,6 @@ router.get(
   verifyRefreshToken,
   asyncHandler(async (req, res) => {
     const accessToken = req.accessToken;
-
-
 
     res.status(200).json({
       accessToken,
@@ -291,6 +301,9 @@ router.post(
     if (_.isEmpty(user)) {
       return res.status(401).json("Authentication Failed!");
     }
+
+    const permissions = await getPermissions(user?.role_id);
+
     let accessData = {
       id: user.id,
       name: user?.name,
@@ -304,7 +317,7 @@ router.post(
       profile: user?.profile,
       active: Boolean(user?.active),
       createdAt: user?.created_at,
-      permissions: safeJSON(user.permissions),
+      permissions: permissions,
     };
 
     if (user?.role === process.env.ADMIN_ID) {
@@ -383,7 +396,7 @@ router.post(
   "/logout",
   verifyToken,
   asyncHandler(async (req, res) => {
-    const { sub:id, jti } = req.authUser;
+    const { sub: id, jti } = req.authUser;
 
     res.clearCookie("refreshToken");
 
@@ -402,8 +415,10 @@ router.post(
     const cacheKey = `user:profile:${jti}`;
     await redisClient.del(cacheKey);
 
+    req.authUser = null;
     req.user = null;
     delete req.user;
+    delete req.authUser;
 
     res.sendStatus(204);
   }),
@@ -435,6 +450,8 @@ router.put(
       .where("id", _id)
       .first();
 
+    const permissions = await getPermissions(user?.role_id);
+
     const userData = {
       id: user.id,
       name: user?.name,
@@ -446,7 +463,7 @@ router.put(
       phonenumber: user?.phonenumber,
       role: user?.role,
       profile: user?.profile,
-      permissions: safeJSON(user.permissions),
+      permissions: permissions,
       active: Boolean(user?.active),
       createdAt: user?.created_at,
     };

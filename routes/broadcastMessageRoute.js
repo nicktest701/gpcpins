@@ -22,7 +22,7 @@ router.get(
     const { role, createdAt } = req.user;
 
     const broadcastMessages = await knex("broadcast_messages")
-      .select("*",'is_delivered as isDelivered', "created_at as createdAt")
+      .select("*", "is_delivered as isDelivered", "created_at as createdAt")
       .orderBy("created_at", "desc");
 
     if (role === process.env.USER_ID) {
@@ -48,7 +48,7 @@ router.get(
     }
 
     const broadcastMessage = await knex("broadcast_messages")
-    .select("*",'is_delivered as isDelivered', "created_at as createdAt")
+      .select("*", "is_delivered as isDelivered", "created_at as createdAt")
       .where("id", id)
       .first();
 
@@ -61,134 +61,111 @@ router.post(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const { id:userID } = req.user;
+    const { id: userID } = req.user;
     const { phoneNumber, email, group, ...newBroadcastMessage } = req.body;
-  
+    const { recipient, type, title, body: message } = req.body || {};
 
     const transx = await knex.transaction();
     const id = generateId();
+
     try {
-      const broadcastMessage = await knex("broadcast_messages").insert({
+      // 1. Determine recipient data structure safely
+      const isBulkRecipient = ["Customers", "Employees", "Group"].includes(
+        recipient,
+      );
+      const recipientValue = isBulkRecipient
+        ? newBroadcastMessage?.recipient
+        : type === "SMS"
+          ? phoneNumber
+          : email;
+      const groupedValue =
+        recipient === "Group" ? JSON.stringify(group) : JSON.stringify([]);
+
+      // 2. Perform DB operations inside the transaction
+      const insertedMessage = await transx("broadcast_messages").insert({
         id,
         ...newBroadcastMessage,
-        recipient: ["Customers", "Employees", "Group"].includes(
-          req.body?.recipient,
-        )
-          ? newBroadcastMessage?.recipient
-          : newBroadcastMessage?.type === "SMS"
-            ? phoneNumber
-            : email,
-        grouped:
-          newBroadcastMessage?.recipient === "Group"
-            ? JSON.stringify(group)
-            : JSON.stringify([]),
+        recipient: recipientValue,
+        grouped: groupedValue,
       });
 
-      if (_.isEmpty(broadcastMessage)) {
-        return res.status(404).json("Message Failed. An error has occurred.");
+      if (!insertedMessage) {
+        console.error("Transaction failed:", error);
+        await transx.rollback();
+        return res.status(400).json("Message Failed. An error has occurred.");
       }
 
-          //logs
       await transx("activity_logs").insert({
         user_id: userID,
         title: "Broadcasted a message!",
         severity: "info",
       });
 
+      // 3. Commit early to release database locks
       await transx.commit();
 
-      res.status(201).json("Message sent!!!");
-
-      const MAIL_TEXT = `<div>
-    <h2>${newBroadcastMessage?.title}</h2>
-    <div style='text-align:left;'>
-    <div>${newBroadcastMessage.message}</div>
-    
-    </div>
-   
-     </div>`;
-
-      const MESSAGE_TEXT = `${newBroadcastMessage?.message}`;
-
-      let info = [];
-
-      //Individual
-      if (req.body?.recipient === "Individual") {
-        if (req.body?.type === "Email") {
-          await sendEMail(email, mailTextShell(MAIL_TEXT));
-        }
-        if (req.body?.type === "SMS") {
-          await sendSMS(MESSAGE_TEXT, phoneNumber);
-        }
-      }
-
-      //Group
-      if (req.body?.recipient === "Group") {
-        if (req.body?.type === "Email") {
-          await sendEMail(group, mailTextShell(MAIL_TEXT));
-        }
-        if (req.body?.type === "SMS") {
-          await sendBatchSMS(MESSAGE_TEXT, group);
-        }
-      }
-
-      //Customers
-      if (req.body?.recipient === "Customers") {
-
-        const electricityTransactions = await transx(
-          "electricity_transactions",
-        ).select("email", "phonenumber");
-        const transactions = await transx("voucher_transactions").select(
-          "email",
-          "phonenumber",
-        );
-
-        const users = await transx("vw_users_with_roles")
-        .select("email", "phonenumber")
-        .where("role", process.env.USER_ID);
-
-        info = [
-          ...electricityTransactions,
-          ...transactions,
-          ...users,
-        ];
-      }
-
-      if (req.body?.recipient === "Employees") {
-        info =  await transx("vw_users_with_roles")
-        .select("email", "phonenumber")
-        .where("role", process.env.EMPLOYEE_ID);
-      }
-
-      if (["Employees", "Customers"].includes(req.body?.recipient)) {
-        if (req.body?.type === "Email") {
-          const emails = _.uniqWith(_.compact(_.map(info, "email")), _.isEqual);
-          await sendEMail(emails, mailTextShell(MAIL_TEXT));
-        }
-
-        if (req.body?.type === "SMS") {
-          const numbers = _.uniqWith(
-            _.compact(_.map(info, "phonenumber")),
-            _.isEqual,
-          );
-
-          await sendBatchSMS(MESSAGE_TEXT, numbers);
-        }
-      }
-
-  
+      console.log("done");
+      // 4. Respond instantly to the user
+      res.status(201).json("Message processing started!");
     } catch (error) {
       await transx.rollback();
-      console.log(error);
+      console.error("Transaction failed:", error);
+      return res.status(500).json("Message Failed. An error has occurred.");
+    }
 
+    // 5. Fire-and-forget notification block (Runs safely in the background)
+    try {
+      const MAIL_TEXT = `<div><h2>${title}</h2><div style='text-align:left;'><div>${message}</div></div></div>`;
+      const targetColumn = type === "Email" ? "email" : "phonenumber";
+
+      let contacts = [];
+
+      if (recipient === "Individual") {
+        contacts = [type === "Email" ? email : phoneNumber];
+      } else if (recipient === "Group") {
+        contacts = group || [];
+      } else if (recipient === "Customers") {
+        // Query only the specific field required using standard Knex
+        const elec = await knex("electricity_transactions").distinct(
+          targetColumn,
+        );
+        const vouch = await knex("voucher_transactions").distinct(targetColumn);
+        const users = await knex("vw_users_with_roles")
+          .distinct(targetColumn)
+          .where("role", process.env.USER_ID);
+
+        contacts = [
+          ...new Set(
+            [...elec, ...vouch, ...users].map((item) => item[targetColumn]),
+          ),
+        ].filter(Boolean);
+      } else if (recipient === "Employees") {
+        const employees = await knex("vw_users_with_roles")
+          .distinct(targetColumn)
+          .where("role", process.env.EMPLOYEE_ID);
+        contacts = employees.map((item) => item[targetColumn]).filter(Boolean);
+      }
+
+      if (contacts.length === 0) return;
+
+      // 6. Execute external communications
+      if (type === "Email") {
+        // Send individually or pass array depending on your mail client capability
+        await sendEMail(contacts, mailTextShell(MAIL_TEXT));
+      } else if (type === "SMS") {
+        if (recipient === "Individual") {
+          await sendSMS(message, contacts[0]);
+        } else {
+          await sendBatchSMS(message, contacts);
+        }
+      }
+    } catch (bgError) {
+      console.error("Background delivery failed:", bgError);
+      // Soft-update failure without crashing the active client response
       await knex("broadcast_messages")
         .where("id", id)
         .update({ is_delivered: false });
-
-      return res.status(404).json("Message Failed. An error has occurred.");
     }
-
-
   }),
 );
 
