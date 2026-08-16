@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useState } from "react";
 import {
   Paper,
   Stack,
@@ -7,24 +7,67 @@ import {
   Divider,
   Container,
   Grid,
+  Chip,
+  Alert,
+  Box,
   Link as MuiLink,
+  useTheme,
+  alpha,
 } from "@mui/material";
 import { LoadingButton } from "@mui/lab";
+import {
+  PersonRounded,
+  StorefrontRounded,
+  LoginRounded,
+} from "@mui/icons-material";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useMutation } from "@tanstack/react-query";
 import moment from "moment";
-import { CustomContext } from "../../context/providers/CustomProvider";
+import { useCustomContext } from "../../context/providers/CustomProvider";
 import { globalAlertType } from "../../components/alert/alertType";
 import { agentRegistrationValidationSchema } from "../../config/validationSchema";
 import { createNewAgent } from "../../api/userAPI";
 import CustomDatePicker from "../../../../admin/src/components/inputs/CustomDatePicker";
 
-function Distributor() {
-  const { customDispatch } = useContext(CustomContext);
-  const [dob, setDob] = useState(moment());
+// Small section header used by both cards below — keeps icon, title,
+// and description consistent instead of repeating the markup twice.
+function SectionHeader({ icon, title, description }) {
+  const theme = useTheme();
+  return (
+    <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 3 }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 40,
+          height: 40,
+          borderRadius: 2,
+          flexShrink: 0,
+          bgcolor: alpha(theme.palette.primary.main, 0.1),
+          color: theme.palette.primary.main,
+        }}
+      >
+        {icon}
+      </Box>
+      <Box>
+        <Typography variant="subtitle1" fontWeight="700">
+          {title}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {description}
+        </Typography>
+      </Box>
+    </Stack>
+  );
+}
 
-  // React Hook Form setup
+function Distributor() {
+  const theme = useTheme();
+  const { customDispatch } = useCustomContext();
+  const [submitted, setSubmitted] = useState(false);
+
   const {
     control,
     handleSubmit,
@@ -35,6 +78,7 @@ function Distributor() {
     defaultValues: {
       firstname: "",
       lastname: "",
+      dob: null,
       nid: "",
       residence: "",
       email: "",
@@ -51,8 +95,8 @@ function Distributor() {
     mutationFn: createNewAgent,
     onSuccess: (data) => {
       customDispatch(globalAlertType("info", data));
-      reset(); // clear form on success
-      setDob(moment()); // reset date picker
+      setSubmitted(true);
+      reset();
     },
     onError: () => {
       customDispatch(globalAlertType("error", "An error has occurred!"));
@@ -60,275 +104,377 @@ function Distributor() {
   });
 
   const onSubmit = (values) => {
-    // Add date of birth from state
-    const payload = { ...values, dob };
-    mutateAsync(payload);
+    mutateAsync(values);
   };
 
   return (
-    <Container sx={{ maxWidth: 800, mx: "auto", px: { xs: 2, sm: 3 } }}>
-      {/* Header with login link */}
-      <Typography variant="body2" textAlign="right" sx={{ mb: 2 }}>
-        Already have an account?{" "}
+    <Container
+      sx={{
+        maxWidth: 840,
+        mx: "auto",
+        px: { xs: 2, sm: 3 },
+        py: { xs: 3, sm: 5 },
+      }}
+    >
+      {/* Header */}
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        justifyContent="space-between"
+        alignItems={{ xs: "flex-start", sm: "flex-end" }}
+        spacing={2}
+        sx={{ mb: 4 }}
+      >
+        <Box>
+         
+          <Typography variant="h4" component="h1" fontWeight="800" gutterBottom>
+            Register as an Agent
+          </Typography>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ maxWidth: 480 }}
+          >
+            Apply to sell airtime, vouchers, tickets, and other prepaid services
+            through the platform. We&apos;ll review your details and reach out
+            with next steps.
+          </Typography>
+        </Box>
         <MuiLink
           href="https://agent.gpcpins.com"
           target="_blank"
           rel="noopener noreferrer"
-          underline="hover"
+          underline="none"
         >
-          Login here
+          <Stack
+            direction="row"
+            spacing={0.75}
+            alignItems="center"
+            sx={{
+              px: 2,
+              py: 1,
+              borderRadius: 2,
+              border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
+              color: "text.primary",
+              whiteSpace: "nowrap",
+              "&:hover": {
+                borderColor: theme.palette.primary.main,
+                color: "primary.main",
+              },
+            }}
+          >
+            <LoginRounded fontSize="small" />
+            <Typography variant="body2" fontWeight="600">
+              Already registered? Log in
+            </Typography>
+          </Stack>
         </MuiLink>
-      </Typography>
+      </Stack>
 
-      <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
-        Freelance Agent Registration
-      </Typography>
-      <Divider sx={{ mb: 4 }} />
+      {submitted && (
+        <Alert
+          severity="success"
+          onClose={() => setSubmitted(false)}
+          sx={{ mb: 3, borderRadius: 2 }}
+        >
+          Application submitted. We&apos;ll review your details and get in touch
+          soon.
+        </Alert>
+      )}
 
-      <Paper elevation={3} sx={{ p: { xs: 2, sm: 4 }, borderRadius: 2 }}>
-        <form onSubmit={handleSubmit(onSubmit)} noValidate>
-          <Stack spacing={3}>
-            {/* Section header */}
-            <Typography
-              variant="subtitle1"
-              sx={{
-                bgcolor: "primary.main",
-                color: "white",
-                p: 1.5,
-                borderRadius: 1,
-                textAlign: "center",
-              }}
-            >
-              Fill out the form below to register as a Freelance Airtime Agent
-            </Typography>
-
-            {/* Personal Information */}
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <Controller
-                  name="firstname"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      label="First Name"
-                      required
-                      error={!!errors.firstname}
-                      helperText={errors.firstname?.message}
-                    />
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Controller
-                  name="lastname"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      label="Last Name"
-                      required
-                      error={!!errors.lastname}
-                      helperText={errors.lastname?.message}
-                    />
-                  )}
-                />
-              </Grid>
-            </Grid>
-
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <CustomDatePicker
-                  label="Date of Birth"
-                  value={dob}
-                  setValue={setDob}
-                  error={!!errors.dob}
-                  helperText={errors.dob?.message}
-                  minDate={moment("1900-01-01")}
-                  disableFuture
-                  size="medium"
-                  format="Do MMMM YYYY"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Controller
-                  name="phonenumber"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      type="tel"
-                      label="Telephone Number"
-                      required
-                      error={!!errors.phonenumber}
-                      helperText={errors.phonenumber?.message}
-                    />
-                  )}
-                />
-              </Grid>
-            </Grid>
-
-            <Controller
-              name="residence"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  fullWidth
-                  label="Residential Address"
-                  required
-                  multiline
-                  rows={2}
-                  error={!!errors.residence}
-                  helperText={errors.residence?.message}
-                />
-              )}
+      <form onSubmit={handleSubmit(onSubmit)} noValidate>
+        <Stack spacing={3}>
+          {/* Personal information */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 2.5, sm: 3.5 },
+              borderRadius: 3,
+              border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+            }}
+          >
+            <SectionHeader
+              icon={<PersonRounded />}
+              title="Personal Information"
+              description="Tell us who you are and how to reach you."
             />
 
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <Controller
-                  name="email"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      type="email"
-                      label="Email Address"
-                      required
-                      error={!!errors.email}
-                      helperText={errors.email?.message}
-                    />
-                  )}
-                />
+            <Stack >
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="firstname"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        size="small"
+                        label="First Name"
+                        required
+                        error={!!errors.firstname}
+                        helperText={errors.firstname?.message}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="lastname"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        size="small"
+                        label="Last Name"
+                        required
+                        error={!!errors.lastname}
+                        helperText={errors.lastname?.message}
+                      />
+                    )}
+                  />
+                </Grid>
               </Grid>
-              <Grid item xs={12} sm={6}>
-                <Controller
-                  name="nid"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      label="National ID / Voter's ID Number"
-                      required
-                      error={!!errors.nid}
-                      helperText={errors.nid?.message}
-                    />
-                  )}
-                />
-              </Grid>
-            </Grid>
 
-            {/* Business Information */}
-            <Typography variant="h6" sx={{ mt: 2 }}>
-              Business Details
-            </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="dob"
+                    control={control}
+                    render={({ field }) => (
+                      <CustomDatePicker
+                        label="Date of Birth"
+                        value={field.value}
+                        setValue={field.onChange}
+                        error={!!errors.dob}
+                        helperText={errors.dob?.message}
+                        minDate={moment("1900-01-01")}
+                        disableFuture
+                        size="small"
+                        format="Do MMMM YYYY"
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="phonenumber"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        size="small"
+                        type="tel"
+                        label="Telephone Number"
+                        required
+                        error={!!errors.phonenumber}
+                        helperText={errors.phonenumber?.message}
+                      />
+                    )}
+                  />
+                </Grid>
 
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <Controller
-                  name="business_name"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      label="Business Name"
-                      required
-                      error={!!errors.business_name}
-                      helperText={errors.business_name?.message}
-                    />
-                  )}
-                />
+                <Grid item xs={12}>
+                  <Controller
+                    name="residence"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        size="small"
+                        label="Residential Address"
+                        required
+                        multiline
+                        rows={2}
+                        error={!!errors.residence}
+                        helperText={errors.residence?.message}
+                      />
+                    )}
+                  />
+                </Grid>
               </Grid>
-              <Grid item xs={12} sm={6}>
-                <Controller
-                  name="business_location"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      label="Business Location"
-                      required
-                      error={!!errors.business_location}
-                      helperText={errors.business_location?.message}
-                    />
-                  )}
-                />
-              </Grid>
-            </Grid>
 
-            <Controller
-              name="business_description"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  fullWidth
-                  label="Short Description of Your Business"
-                  multiline
-                  rows={4}
-                  error={!!errors.business_description}
-                  helperText={errors.business_description?.message}
-                />
-              )}
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="email"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        size="small"
+                        type="email"
+                        label="Email Address"
+                        required
+                        error={!!errors.email}
+                        helperText={errors.email?.message}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="nid"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        size="small"
+                        label="National ID / Voter's ID Number"
+                        required
+                        error={!!errors.nid}
+                        helperText={errors.nid?.message}
+                      />
+                    )}
+                  />
+                </Grid>
+              </Grid>
+            </Stack>
+          </Paper>
+
+          {/* Business information */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 2.5, sm: 3.5 },
+              borderRadius: 3,
+              border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+            }}
+          >
+            <SectionHeader
+              icon={<StorefrontRounded />}
+              title="Business Details"
+              description="Where and how you'll operate as an agent."
             />
 
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <Controller
-                  name="business_email"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      type="email"
-                      label="Business Email Address"
-                      error={!!errors.business_email}
-                      helperText={errors.business_email?.message}
-                    />
-                  )}
-                />
+            <Stack >
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="business_name"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        size="small"
+                        label="Business Name"
+                        required
+                        error={!!errors.business_name}
+                        helperText={errors.business_name?.message}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="business_location"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        size="small"
+                        label="Business Location"
+                        required
+                        error={!!errors.business_location}
+                        helperText={errors.business_location?.message}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Controller
+                    name="business_description"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        size="small"
+                        label="Short Description of Your Business (Optional)"
+                        multiline
+                        rows={4}
+                        error={!!errors.business_description}
+                        helperText={errors.business_description?.message}
+                      />
+                    )}
+                  />
+                </Grid>
               </Grid>
-              <Grid item xs={12} sm={6}>
-                <Controller
-                  name="business_phonenumber"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      type="tel"
-                      label="Business Telephone Number"
-                      error={!!errors.business_phonenumber}
-                      helperText={errors.business_phonenumber?.message}
-                    />
-                  )}
-                />
-              </Grid>
-            </Grid>
 
-            {/* Submit button */}
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="business_email"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        size="small"
+                        type="email"
+                        label="Business Email Address (Optional)"
+                        error={!!errors.business_email}
+                        helperText={errors.business_email?.message}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="business_phonenumber"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        size="small"
+                        type="tel"
+                        label="Business Telephone Number (Optional)"
+                        error={!!errors.business_phonenumber}
+                        helperText={errors.business_phonenumber?.message}
+                      />
+                    )}
+                  />
+                </Grid>
+              </Grid>
+            </Stack>
+          </Paper>
+
+          {/* Submit */}
+          <Box>
             <LoadingButton
               type="submit"
               variant="contained"
               size="large"
               loading={isSubmitting || isPending}
               fullWidth
-              sx={{ mt: 2 }}
+              sx={{
+                borderRadius: 2,
+                textTransform: "none",
+                py: 1.25,
+                fontWeight: 700,
+              }}
             >
-              Register Account
+              Submit Application
             </LoadingButton>
-          </Stack>
-        </form>
-      </Paper>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              display="block"
+              textAlign="center"
+              sx={{ mt: 1.5 }}
+            >
+              By submitting, you agree to be contacted about your application.
+            </Typography>
+          </Box>
+        </Stack>
+      </form>
     </Container>
   );
 }

@@ -73,7 +73,7 @@ function PaymentSuccess() {
         </Typography>
         
         <Typography variant="body2" color="text.secondary" sx={{ mb: 4, px: 2 }}>
-          Your request has been processed. You will be notified via email shortly after your transaction is settled.
+          Your request has been processed. You will be notified via email/sms shortly after your transaction is settled.
         </Typography>
 
         {/* Copy to Clipboard Field */}
@@ -138,7 +138,7 @@ function PaymentSuccess() {
           disableElevation
           sx={{
             py: 1.5,
-            borderRadius: 2.5,
+            borderRadius: 1.2,
             textTransform: "none",
             fontWeight: 600,
             fontSize: "0.95rem",

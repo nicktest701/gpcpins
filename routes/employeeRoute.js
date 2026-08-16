@@ -48,31 +48,12 @@ router.get(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const { search } = req.query;
     const { id } = req.user;
-    let employees = [];
-    if (!_.isEmpty(search)) {
-      employees = await knex("vw_users_with_roles").select("id", "name");
-      // console.log(employees)
 
-      return res.status(200).json(employees);
-    } else {
-      employees = await knex("vw_users_with_roles")
-        .select("*")
-        .where("role", process.env.EMPLOYEE_ID)
-        .whereNot("id", id);
-      // console.log(employees)
-    }
-
-    // const modifiedEmployees = employees.map(
-    //   ({ role_name, permissions, ...rest }) => {
-    //     return {
-    //       ...rest,
-    //       permissions: safeJSON(permissions),
-    //       role: role_name
-    //     };
-    //   },
-    // );
+    const employees = await knex("vw_users_with_roles")
+      .select("*")
+      .whereIn("role", [process.env.EMPLOYEE_ID, process.env.ADMIN_ID])
+      .whereNot("id", id);
 
     res.status(200).json(employees);
   }),

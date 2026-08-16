@@ -87,6 +87,7 @@ router.get(
     const agent = await knex("vw_user_business_view")
       .select(
         "id",
+        "user_id",
         "firstname",
         "lastname",
         "username",
@@ -102,7 +103,7 @@ router.get(
         "active",
         "createdAt",
       )
-      .where("id", id)
+      .where("user_id", id)
       .first();
 
     if (_.isEmpty(agent) || agent?.active === 0) {
@@ -283,9 +284,9 @@ router.get(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const agent = await knex("vw_user_business_view")
-      .join("wallets", "vw_user_business_view.id", "=", "wallets.user_id")
+      .join("wallets", "vw_user_business_view.user_id", "=", "wallets.user_id")
       .select("vw_user_business_view.*", "wallets.amount")
-      .where("vw_user_business_view.id", id)
+      .where("vw_user_business_view.user_id", id)
       .first();
 
     if (_.isEmpty(agent)) return res.status(200).json({});
@@ -304,6 +305,7 @@ router.get(
     const agent = await knex("vw_user_business_view")
       .select(
         "id",
+        "user_id",
         "firstname",
         "lastname",
         "username",
@@ -318,7 +320,7 @@ router.get(
         "active",
         "createdAt",
       )
-      .where("id", id)
+      .where("user_id", id)
       .first();
 
     if (_.isEmpty(agent) || Boolean(agent?.active) === false) {
@@ -646,6 +648,7 @@ router.post(
     const agentBusiness = await knex("vw_user_business_view")
       .select(
         "id",
+        "user_id",
         "name",
         "firstname",
         "lastname",
@@ -669,7 +672,7 @@ router.post(
     }
 
     const updatedAgent = {
-      id: agentBusiness?.id,
+      id: agentBusiness?.user_id,
       role: agentBusiness?.role,
       active: agentBusiness?.active,
       createdAt: agentBusiness?.createdAt,
@@ -678,7 +681,7 @@ router.post(
     const deviceId = generateDeviceId(req);
 
     const [sessionId] = await knex("user_sessions").insert({
-      user_id: agentBusiness.id,
+      user_id: agentBusiness.user_id,
       device_id: deviceId,
       device_name: req.headers["user-agent"],
       ip_address: req.ip,
@@ -692,7 +695,7 @@ router.post(
     expires.setDate(expires.getDate() + 7);
 
     await knex("user_tokens").insert({
-      user_id: agentBusiness.id,
+      user_id: agentBusiness.user_id,
       session_id: sessionId,
       refresh_token: refreshToken,
       expiresAt: expires,
@@ -700,7 +703,7 @@ router.post(
 
     //logs
     await knex("activity_logs").insert({
-      user_id: agentBusiness?.id,
+      user_id: agentBusiness?.user_id,
       title: "Logged into account.",
       severity: "info",
     });
@@ -780,12 +783,13 @@ router.put(
         severity: "info",
       });
 
-      return res.status(201).json("Changes Saved!");
+       res.status(201).json("Changes Saved!");
     }
 
     const agent = await knex("vw_user_business_view")
       .select(
         "id",
+        "user_id",
         "firstname",
         "lastname",
         "username",
@@ -800,7 +804,7 @@ router.put(
         "active",
         "createdAt",
       )
-      .where("id", id)
+      .where("user_id", agent_id)
       .first();
 
     //logs
@@ -813,7 +817,7 @@ router.put(
     const message = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
     <h2 style="color: #333333;">Important: Profile Update Notification</h2>
-    <p>Dear ${accessData?.name || "Customer"},</p>
+    <p>Dear ${agent?.name || "Customer"},</p>
     <p> Your profile information has been updated.</p>
     <p>For security purposes, we wanted to ensure that you are aware of these changes. If you did not make these adjustments yourself or if you believe your account may have been compromised, please take immediate action by contacting our support team at <a href='mailto:info@gpcpins.com'>info@gpcpins</a>.</p>
     <p>If you have made these changes intentionally, please disregard this message.</p>
@@ -824,13 +828,13 @@ router.put(
 </div>
     `;
 
-    res.status(201).json({
-      user: agent,
-    });
+    // res.status(201).json({
+    //   user: agent,
+    // });
 
     setImmediate(async () => {
       await sendEMail(
-        accessData?.email,
+        agent?.email,
         message,
         "Profile Update Notification",
       );

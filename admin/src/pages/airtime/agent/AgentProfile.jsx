@@ -122,6 +122,8 @@ function AgentProfile({ values }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
 
+  console.log(values)
+
   const handleOpenEdit = (section) => {
     setSearchParams((params) => {
       params.set(section, generateRandomCode(50));

@@ -287,7 +287,7 @@ router.patch(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { status, resolution, assigned_to } = req.body;
-    console.log(req.body);
+    // console.log(req.body);
 
     // Validate status if provided
     if (

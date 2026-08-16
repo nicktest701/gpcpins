@@ -15,17 +15,12 @@ import {
   Tooltip,
   IconButton,
   Chip,
-  Card,
-  CardContent,
   useTheme,
 } from "@mui/material";
 import { LoadingButton } from "@mui/lab";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  getComplaint,
-  updateComplaint,
-} from "@/api/complaintAPI";
+import { getComplaint, updateComplaint } from "@/api/complaintAPI";
 import { useCustomContext } from "@/context/providers/CustomProvider";
 import { globalAlertType } from "@/components/alert/alertType";
 import moment from "moment";
@@ -44,6 +39,7 @@ import {
   Info,
 } from "@mui/icons-material";
 import Swal from "sweetalert2";
+import { useAuth } from "@/context/providers/AuthProvider";
 
 const statusOptions = ["pending", "open", "resolved", "unresolved"];
 const statusConfig = {
@@ -55,8 +51,8 @@ const statusConfig = {
 
 const ComplaintDetail = () => {
   const { id } = useParams();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const theme = useTheme();
   const { customDispatch } = useCustomContext();
   const queryClient = useQueryClient();
 
@@ -79,15 +75,15 @@ const ComplaintDetail = () => {
     if (complaint) {
       setStatus(complaint.status);
       setResolution(complaint.resolution || "");
-      setAssignedTo(complaint.assigned_to || "");
+      setAssignedTo(complaint.assigned_to ||user?.email);
     }
-  }, [complaint]);
+  }, [complaint,user?.email]);
 
   const updateMutation = useMutation({
     mutationFn: ({ id, updates }) => updateComplaint(id, updates),
     onSuccess: (data) => {
       customDispatch(
-        globalAlertType("success", "Complaint updated successfully")
+        globalAlertType("success", "Complaint updated successfully"),
       );
       queryClient.invalidateQueries(["complaint-detail", id]);
       queryClient.invalidateQueries(["admin-complaints"]);
@@ -95,7 +91,7 @@ const ComplaintDetail = () => {
     },
     onError: (error) => {
       customDispatch(
-        globalAlertType("error", error.message || "Update failed")
+        globalAlertType("error", error.message || "Update failed"),
       );
     },
   });
@@ -112,7 +108,7 @@ const ComplaintDetail = () => {
       if (result.isConfirmed) {
         updateMutation.mutate({
           id,
-          updates: { status, resolution, assigned_to: assignedTo },
+          updates: { status, resolution, assigned_to: user?.id },
         });
       }
     });
@@ -203,12 +199,12 @@ const ComplaintDetail = () => {
                 label="Transaction ID"
                 value={complaint.transaction_id}
               />
-                <DetailItem
-                  icon={<Assignment />}
-                  label="Payment Mode"
-                  value={complaint.payment_mode}
-                  // subtext={`Payment: ${complaint.payment_mode}`}
-                />
+              <DetailItem
+                icon={<Assignment />}
+                label="Payment Mode"
+                value={complaint.payment_mode}
+                // subtext={`Payment: ${complaint.payment_mode}`}
+              />
               <DetailItem
                 icon={<Assignment />}
                 label="Service Type"
@@ -249,7 +245,7 @@ const ComplaintDetail = () => {
           </Paper>
 
           {/* Admin Actions Card */}
-          <Paper elevation={2} sx={{ p: 3, borderRadius: 1.2,  }}>
+          <Paper elevation={2} sx={{ p: 3, borderRadius: 1.2 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
               Admin Actions
             </Typography>
