@@ -53,7 +53,7 @@ router.get(
     const employees = await knex("vw_users_with_roles")
       .select("*")
       .whereIn("role", [process.env.EMPLOYEE_ID, process.env.ADMIN_ID])
-      .whereNot("id", id);
+      .whereNot({ id });
 
     res.status(200).json(employees);
   }),
