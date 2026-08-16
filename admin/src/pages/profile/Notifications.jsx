@@ -1,4 +1,4 @@
-import { useContext, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   Box,
   Stack,
@@ -9,28 +9,30 @@ import {
   InputAdornment,
   Tabs,
   Tab,
-  Card,
-  CardContent,
+  Paper,
   Chip,
   Skeleton,
-  Badge,
   alpha,
   useTheme,
 } from "@mui/material";
+import LoadingButton from "@mui/lab/LoadingButton";
 import {
-  Search as SearchIcon,
-  MarkChatRead as MarkChatReadIcon,
-  DeleteSweep as DeleteSweepIcon,
-  NotificationsOff as NotificationsOffIcon,
-  CheckCircle as CheckCircleIcon,
-  RadioButtonUnchecked as UnreadIcon,
+  SearchRounded,
+  ClearRounded,
+  MarkChatReadRounded,
+  DeleteSweepRounded,
+  NotificationsOffRounded,
+  CheckCircleRounded,
+  RadioButtonUncheckedRounded,
+  ErrorOutlineRounded,
+  ReplayRounded,
 } from "@mui/icons-material";
 import DOMPurify from "dompurify";
 import moment from "moment";
 import Swal from "sweetalert2";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CustomContext, useCustomContext } from "../../context/providers/CustomProvider";
-import { AuthContext, useAuth } from "../../context/providers/AuthProvider";
+import { useCustomContext } from "../../context/providers/CustomProvider";
+import { useAuth } from "../../context/providers/AuthProvider";
 import {
   getAllNotifications,
   markAllNotificationsAsRead,
@@ -40,30 +42,34 @@ import AnimatedContainer from "../../components/animations/AnimatedContainer";
 import GlobalSpinner from "../../components/spinners/GlobalSpinner";
 import { globalAlertType } from "../../components/alert/alertType";
 
+const TABS = [
+  { label: "All", filter: () => true },
+  { label: "Unread", filter: (n) => n.active === 1 },
+  { label: "Read", filter: (n) => n.active === 0 },
+];
+
 const Notifications = () => {
   const theme = useTheme();
-  const { user } = useAuth()
-  const { customDispatch } = useCustomContext()
+  const { user } = useAuth();
+  const { customDispatch } = useCustomContext();
   const queryClient = useQueryClient();
 
-  // --- UI state ---
   const [searchTerm, setSearchTerm] = useState("");
   const [tabValue, setTabValue] = useState(0); // 0: All, 1: Unread, 2: Read
 
-  // --- Fetch notifications ---
   const {
     data: notifications = [],
     isLoading,
     isError,
     error,
+    refetch,
   } = useQuery({
     queryKey: ["notifications"],
     queryFn: () => getAllNotifications(),
     enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
-  // --- Mark all as read mutation ---
   const markReadMutation = useMutation({
     mutationFn: markAllNotificationsAsRead,
     onSuccess: () => {
@@ -79,7 +85,6 @@ const Notifications = () => {
     },
   });
 
-  // --- Delete all notifications mutation ---
   const deleteAllMutation = useMutation({
     mutationFn: deleteNotifications,
     onSuccess: () => {
@@ -96,17 +101,13 @@ const Notifications = () => {
     },
   });
 
-  // --- Derived data ---
   const unreadCount = notifications.filter((n) => n.active === 1).length;
+  const readCount = notifications.length - unreadCount;
+  const tabCounts = [notifications.length, unreadCount, readCount];
 
   const filteredNotifications = useMemo(() => {
-    let filtered = notifications;
+    let filtered = notifications.filter(TABS[tabValue].filter);
 
-    // Filter by tab
-    if (tabValue === 1) filtered = filtered.filter((n) => n.active === 1);
-    if (tabValue === 2) filtered = filtered.filter((n) => n.active === 0);
-
-    // Filter by search term (title or message)
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
@@ -119,7 +120,6 @@ const Notifications = () => {
     return filtered;
   }, [notifications, tabValue, searchTerm]);
 
-  // --- Handlers ---
   const handleMarkAllRead = () => {
     if (unreadCount === 0) {
       customDispatch(globalAlertType("success", "No unread notifications"));
@@ -150,13 +150,18 @@ const Notifications = () => {
     });
   };
 
-  // --- Loading skeleton ---
   if (isLoading) {
     return (
       <AnimatedContainer>
-        <Box sx={{ p: 3 }}>
-          <Skeleton variant="rectangular" height={56} sx={{ mb: 2 }} />
-          <Skeleton variant="rectangular" height={400} />
+        <Box sx={{ p: { xs: 2, md: 3 } }}>
+          <Skeleton variant="text" width={220} height={44} />
+          <Skeleton variant="text" width={280} height={24} sx={{ mb: 2 }} />
+          <Skeleton variant="rounded" height={124} sx={{ mb: 3, borderRadius: 3 }} />
+          <Stack spacing={2}>
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} variant="rounded" height={96} sx={{ borderRadius: 3 }} />
+            ))}
+          </Stack>
         </Box>
       </AnimatedContainer>
     );
@@ -165,10 +170,34 @@ const Notifications = () => {
   if (isError) {
     return (
       <AnimatedContainer>
-        <Box sx={{ p: 3, textAlign: "center" }}>
-          <Typography color="error">
-            Failed to load notifications: {error?.message}
-          </Typography>
+        <Box sx={{ p: { xs: 2, md: 3 } }}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 4,
+              borderRadius: 3,
+              border: `1px solid ${alpha(theme.palette.error.main, 0.3)}`,
+              bgcolor: alpha(theme.palette.error.main, 0.04),
+              textAlign: "center",
+            }}
+          >
+            <ErrorOutlineRounded color="error" sx={{ fontSize: 40, mb: 1 }} />
+            <Typography variant="subtitle1" fontWeight="600" gutterBottom>
+              Couldn&apos;t load notifications
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {error?.message || "Something went wrong. Please try again."}
+            </Typography>
+            <LoadingButton
+              variant="outlined"
+              color="error"
+              startIcon={<ReplayRounded />}
+              onClick={refetch}
+              sx={{ borderRadius: 2, textTransform: "none" }}
+            >
+              Try again
+            </LoadingButton>
+          </Paper>
         </Box>
       </AnimatedContainer>
     );
@@ -180,22 +209,28 @@ const Notifications = () => {
         {/* Header */}
         <Stack
           direction={{ xs: "column", sm: "row" }}
-          justifyContent="space-between"
+          justifyContent="flex-end"
           alignItems={{ xs: "stretch", sm: "center" }}
           spacing={2}
           sx={{ mb: 3 }}
         >
-          <Box>
-            <Typography variant="h4" fontWeight={600}>
+          {/* <Box>
+            <Typography variant="h4" fontWeight={700}>
               Notifications
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Stay updated with your latest activities
             </Typography>
-          </Box>
+          </Box> */}
 
           <Stack direction="row" spacing={1}>
-            <Tooltip title="Mark all as read">
+            <Tooltip
+              title={
+                unreadCount === 0
+                  ? "Nothing to mark"
+                  : `Mark all ${unreadCount} as read`
+              }
+            >
               <span>
                 <IconButton
                   onClick={handleMarkAllRead}
@@ -203,7 +238,7 @@ const Notifications = () => {
                   color="primary"
                   sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1) }}
                 >
-                  <MarkChatReadIcon />
+                  <MarkChatReadRounded />
                 </IconButton>
               </span>
             </Tooltip>
@@ -217,25 +252,40 @@ const Notifications = () => {
                   color="error"
                   sx={{ bgcolor: alpha(theme.palette.error.main, 0.1) }}
                 >
-                  <DeleteSweepIcon />
+                  <DeleteSweepRounded />
                 </IconButton>
               </span>
             </Tooltip>
           </Stack>
         </Stack>
 
-        {/* Search & Tabs */}
-        <Card variant="outlined" sx={{ mb: 3, p: 2, borderRadius: 1.2 }}>
+        {/* Search & tabs */}
+        <Paper
+          elevation={0}
+          sx={{
+            mb: 3,
+            p: 2,
+            borderRadius: 3,
+            border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+          }}
+        >
           <Stack spacing={2}>
             <TextField
               fullWidth
-              placeholder="Search by title or message..."
+              placeholder="Search by title or message…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon color="action" />
+                    <SearchRounded color="action" />
+                  </InputAdornment>
+                ),
+                endAdornment: searchTerm && (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setSearchTerm("")}>
+                      <ClearRounded fontSize="small" />
+                    </IconButton>
                   </InputAdornment>
                 ),
               }}
@@ -247,36 +297,48 @@ const Notifications = () => {
               onChange={(_, newValue) => setTabValue(newValue)}
               variant="fullWidth"
               sx={{
-                "& .MuiTab-root": { textTransform: "none", fontWeight: 500 },
+                minHeight: 40,
+                "& .MuiTab-root": {
+                  textTransform: "none",
+                  fontWeight: 500,
+                  minHeight: 40,
+                },
               }}
             >
-              <Tab
-                label={
-                  <Badge
-                    badgeContent={notifications.length}
-                    color="primary"
-                    sx={{ "& .MuiBadge-badge": { right: -20 } }}
-                  >
-                    All
-                  </Badge>
-                }
-              />
-              <Tab
-                label={
-                  <Badge badgeContent={unreadCount} color="error">
-                    Unread
-                  </Badge>
-                }
-              />
-              <Tab label="Read" />
+              {TABS.map((tab, i) => (
+                <Tab
+                  key={tab.label}
+                  label={
+                    <Stack direction="row" spacing={0.75} alignItems="center">
+                      <span>{tab.label}</span>
+                      <Chip
+                        label={tabCounts[i]}
+                        size="small"
+                        color={
+                          i === 1 && tabCounts[i] > 0 ? "error" : "default"
+                        }
+                        sx={{ height: 20, fontSize: "0.7rem", "& .MuiChip-label": { px: 0.75 } }}
+                      />
+                    </Stack>
+                  }
+                />
+              ))}
             </Tabs>
           </Stack>
-        </Card>
+        </Paper>
 
-        {/* Notifications List */}
+        {/* Notifications list */}
         {filteredNotifications.length === 0 ? (
-          <Card sx={{ p: 6, textAlign: "center", borderRadius: 1.2 }}>
-            <NotificationsOffIcon
+          <Paper
+            elevation={0}
+            sx={{
+              p: 6,
+              textAlign: "center",
+              borderRadius: 3,
+              border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+            }}
+          >
+            <NotificationsOffRounded
               sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
             />
             <Typography variant="h6" color="text.secondary">
@@ -287,7 +349,7 @@ const Notifications = () => {
                 ? "Try adjusting your search or filter"
                 : "You're all caught up!"}
             </Typography>
-          </Card>
+          </Paper>
         ) : (
           <Stack spacing={2}>
             {filteredNotifications.map((notif) => (
@@ -297,7 +359,6 @@ const Notifications = () => {
         )}
       </Box>
 
-      {/* Loading overlays for mutations */}
       {(markReadMutation.isPending || deleteAllMutation.isPending) && (
         <GlobalSpinner />
       )}
@@ -305,37 +366,36 @@ const Notifications = () => {
   );
 };
 
-// --- Individual Notification Card Component ---
 const NotificationCard = ({ notification }) => {
   const theme = useTheme();
   const isUnread = notification.active === 1;
 
   return (
-    <Card
-      variant="outlined"
+    <Paper
+      elevation={0}
       sx={{
-        borderRadius: 1.2,
-        transition: "all 0.2s",
+        borderRadius: 3,
+        border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+        transition: theme.transitions.create(["box-shadow", "background-color"], {
+          duration: 200,
+        }),
         bgcolor: isUnread
           ? alpha(theme.palette.warning.light, 0.08)
           : "background.paper",
         borderLeft: isUnread
           ? `4px solid ${theme.palette.warning.main}`
-          : "none",
-        "&:hover": {
-          boxShadow: theme.shadows[2],
-          bgcolor: alpha(theme.palette.primary.light, 0.02),
-        },
+          : `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+        "&:hover": { boxShadow: theme.shadows[2] },
       }}
     >
-      <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+      <Box sx={{ p: 2 }}>
         <Stack
           direction="row"
           justifyContent="space-between"
           alignItems="flex-start"
           spacing={1}
         >
-          <Box sx={{ flex: 1 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
             <Stack
               direction="row"
               alignItems="center"
@@ -346,18 +406,25 @@ const NotificationCard = ({ notification }) => {
               <Typography variant="subtitle1" fontWeight={600}>
                 {notification.title}
               </Typography>
+              {notification.type && (
+                <Chip
+                  label={notification.type}
+                  size="small"
+                  variant="outlined"
+                  sx={{ height: 22, fontSize: "0.7rem" }}
+                />
+              )}
               {isUnread && (
                 <Chip
                   label="Unread"
                   size="small"
                   color="warning"
-                  icon={<UnreadIcon sx={{ fontSize: 16 }} />}
+                  icon={<RadioButtonUncheckedRounded sx={{ fontSize: 16 }} />}
                   sx={{ height: 24, fontSize: "0.7rem" }}
                 />
               )}
             </Stack>
 
-            {/* Message content */}
             {notification.type === "Email" ? (
               <Box
                 dangerouslySetInnerHTML={{
@@ -386,237 +453,425 @@ const NotificationCard = ({ notification }) => {
               {moment(notification.createdAt).fromNow()}
             </Typography>
           </Box>
+
           {isUnread && (
-            <Tooltip title="Mark as read">
-              <IconButton size="small" sx={{ mt: -0.5 }}>
-                <CheckCircleIcon fontSize="small" color="disabled" />
-              </IconButton>
+            <Tooltip title="Marking individual notifications as read isn't available yet">
+              <span>
+                <IconButton size="small" disabled sx={{ mt: -0.5 }}>
+                  <CheckCircleRounded fontSize="small" />
+                </IconButton>
+              </span>
             </Tooltip>
           )}
         </Stack>
-      </CardContent>
-    </Card>
+      </Box>
+    </Paper>
   );
 };
 
 export default Notifications;
 
-
-
-
-
-// import { useContext, Fragment } from "react";
-// import AnimatedContainer from "../../components/animations/AnimatedContainer";
+// import { useContext, useState, useMemo } from "react";
 // import {
-//   Divider,
+//   Box,
 //   Stack,
 //   Typography,
 //   Tooltip,
 //   IconButton,
-//   Box,
+//   TextField,
+//   InputAdornment,
+//   Tabs,
+//   Tab,
+//   Card,
+//   CardContent,
+//   Chip,
+//   Skeleton,
+//   Badge,
+//   alpha,
+//   useTheme,
 // } from "@mui/material";
+// import {
+//   Search as SearchIcon,
+//   MarkChatRead as MarkChatReadIcon,
+//   DeleteSweep as DeleteSweepIcon,
+//   NotificationsOff as NotificationsOffIcon,
+//   CheckCircle as CheckCircleIcon,
+//   RadioButtonUnchecked as UnreadIcon,
+// } from "@mui/icons-material";
 // import DOMPurify from "dompurify";
-// import { CustomContext } from "../../context/providers/CustomProvider";
-// import MarkChatReadIcon from "@mui/icons-material/MarkChatRead";
-// import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
-// import { NotificationsOffSharp } from "@mui/icons-material";
-// import _ from "lodash";
 // import moment from "moment";
 // import Swal from "sweetalert2";
-// import { AuthContext } from "../../context/providers/AuthProvider";
-// import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+// import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+// import { CustomContext, useCustomContext } from "../../context/providers/CustomProvider";
+// import { AuthContext, useAuth } from "../../context/providers/AuthProvider";
 // import {
-//   deleteNotifications,
 //   getAllNotifications,
-//   updateNotification,
+//   markAllNotificationsAsRead,
+//   deleteNotifications,
 // } from "../../api/notificationAPI";
+// import AnimatedContainer from "../../components/animations/AnimatedContainer";
 // import GlobalSpinner from "../../components/spinners/GlobalSpinner";
 // import { globalAlertType } from "../../components/alert/alertType";
 
 // const Notifications = () => {
-//   const { user } = useContext(AuthContext);
-//   const { customDispatch } = useContext(CustomContext);
+//   const theme = useTheme();
+//   const { user } = useAuth()
+//   const { customDispatch } = useCustomContext()
 //   const queryClient = useQueryClient();
 
-//   const notifications = useQuery({
+//   // --- UI state ---
+//   const [searchTerm, setSearchTerm] = useState("");
+//   const [tabValue, setTabValue] = useState(0); // 0: All, 1: Unread, 2: Read
+
+//   // --- Fetch notifications ---
+//   const {
+//     data: notifications = [],
+//     isLoading,
+//     isError,
+//     error,
+//   } = useQuery({
 //     queryKey: ["notifications"],
 //     queryFn: () => getAllNotifications(),
 //     enabled: !!user?.id,
-//     initial: queryClient?.getQueryData(["notifications"]),
+//     staleTime: 5 * 60 * 1000, // 5 minutes
 //   });
 
-//   // Custom hook to fetch broadcast notifications
-//   const notificationStatus = useQuery({
-//     // Define the query key as "notifications"
-//     queryKey: ["notifications-status"],
-//     // Define the query function as a function that calls getAllBroadcastMessages
-//     queryFn: () => updateNotification(),
-//     refetchOnWindowFocus: "always",
-//     enabled: false,
+//   // --- Mark all as read mutation ---
+//   const markReadMutation = useMutation({
+//     mutationFn: markAllNotificationsAsRead,
 //     onSuccess: () => {
-//       customDispatch(globalAlertType("success", "Notifications marked as read!"));
-//       queryClient.invalidateQueries(["notifications"]);
+//       customDispatch(
+//         globalAlertType("success", "All notifications marked as read"),
+//       );
+//       queryClient.invalidateQueries({ queryKey: ["notifications"] });
+//     },
+//     onError: (err) => {
+//       customDispatch(
+//         globalAlertType("error", err.message || "Failed to mark as read"),
+//       );
 //     },
 //   });
 
-//   const handleMarkAsRead = () => {
-//     Swal.fire({
-//       title: " Notifications",
-//       text: `Mark all as read?`,
-//       showCancelButton: true,
-//     }).then(({ isConfirmed }) => {
-//       if (isConfirmed) {
-//         notificationStatus.refetch();
-//       }
-//     });
-//   };
-
-//   const { mutateAsync, isLoading } = useMutation({
+//   // --- Delete all notifications mutation ---
+//   const deleteAllMutation = useMutation({
 //     mutationFn: deleteNotifications,
+//     onSuccess: () => {
+//       customDispatch(globalAlertType("success", "All notifications deleted"));
+//       queryClient.invalidateQueries({ queryKey: ["notifications"] });
+//     },
+//     onError: (err) => {
+//       customDispatch(
+//         globalAlertType(
+//           "error",
+//           err.message || "Failed to delete notifications",
+//         ),
+//       );
+//     },
 //   });
-//   const handleRemoveNotification = () => {
-//     Swal.fire({
-//       title: "Removing Notifications",
-//       text: `You are about to remove all notifications.Changes cannot be undone.`,
-//       showCancelButton: true,
-//     }).then(({ isConfirmed }) => {
-//       const all = _.map(notifications?.data, "_id");
 
-//       if (isConfirmed) {
-//         mutateAsync(
-//           { all },
-//           {
-//             onSettled: () => {
-//               queryClient.invalidateQueries(["notifications"]);
-//             },
-//             onSuccess: (data) => {
-//               customDispatch(globalAlertType("success", data));
-//               // localStorage.setItem("removed-notifications",JSON.stringify(all));
-//             },
-//             onError: (error) => {
-//               customDispatch(globalAlertType("error", error));
-//             },
-//           }
-//         );
-//       }
+//   // --- Derived data ---
+//   const unreadCount = notifications.filter((n) => n.active === 1).length;
+
+//   const filteredNotifications = useMemo(() => {
+//     let filtered = notifications;
+
+//     // Filter by tab
+//     if (tabValue === 1) filtered = filtered.filter((n) => n.active === 1);
+//     if (tabValue === 2) filtered = filtered.filter((n) => n.active === 0);
+
+//     // Filter by search term (title or message)
+//     if (searchTerm.trim()) {
+//       const term = searchTerm.toLowerCase();
+//       filtered = filtered.filter(
+//         (n) =>
+//           n.title?.toLowerCase().includes(term) ||
+//           n.message?.toLowerCase().includes(term),
+//       );
+//     }
+
+//     return filtered;
+//   }, [notifications, tabValue, searchTerm]);
+
+//   // --- Handlers ---
+//   const handleMarkAllRead = () => {
+//     if (unreadCount === 0) {
+//       customDispatch(globalAlertType("success", "No unread notifications"));
+//       return;
+//     }
+//     Swal.fire({
+//       title: "Mark all as read?",
+//       text: `You have ${unreadCount} unread notification(s).`,
+//       icon: "question",
+//       showCancelButton: true,
+//       confirmButtonColor: theme.palette.primary.main,
+//     }).then((result) => {
+//       if (result.isConfirmed) markReadMutation.mutate();
 //     });
 //   };
 
-//   const unReadNotifications = notifications?.data?.filter(
-//     (item) => item?.active === 1
-//   );
+//   const handleDeleteAll = () => {
+//     if (notifications.length === 0) return;
+//     Swal.fire({
+//       title: "Delete all notifications?",
+//       text: "This action cannot be undone.",
+//       icon: "warning",
+//       showCancelButton: true,
+//       confirmButtonColor: theme.palette.error.main,
+//       confirmButtonText: "Yes, delete all",
+//     }).then((result) => {
+//       if (result.isConfirmed) deleteAllMutation.mutate();
+//     });
+//   };
+
+//   // --- Loading skeleton ---
+//   if (isLoading) {
+//     return (
+//       <AnimatedContainer>
+//         <Box sx={{ p: 3 }}>
+//           <Skeleton variant="rectangular" height={56} sx={{ mb: 2 }} />
+//           <Skeleton variant="rectangular" height={400} />
+//         </Box>
+//       </AnimatedContainer>
+//     );
+//   }
+
+//   if (isError) {
+//     return (
+//       <AnimatedContainer>
+//         <Box sx={{ p: 3, textAlign: "center" }}>
+//           <Typography color="error">
+//             Failed to load notifications: {error?.message}
+//           </Typography>
+//         </Box>
+//       </AnimatedContainer>
+//     );
+//   }
 
 //   return (
 //     <AnimatedContainer>
-//       <Box
-//         sx={{
-//           display: "flex",
-//           justifyContent: "space-between",
-//           alignItems: "center",
-//           bgcolor: "#fff",
-//           p: 1,
-//         }}
-//       >
-//         {/* <Box>
-//         <Typography variant="h4">Notifications</Typography>
-//         <Typography paragraph variant="caption" color="secondary.main">
-//         View all your personalize notifications.
-//         </Typography>
-//       </Box> */}
-//         {unReadNotifications.length > 0 && (
-//           <Typography variant="h6">
-//             {unReadNotifications.length} Unread Notifications
-//           </Typography>
-//         )}
-//         <Stack flex={1} direction="row" justifyContent="flex-end" spacing={1} py={1}>
-//           <Tooltip title="Mark All Read">
-//             <span>
-//               <IconButton
-//                 color="primary"
-//                 disabled={
-//                   notifications?.data?.length === 0 ||
-//                   unReadNotifications?.length === 0
-//                 }
-//                 onClick={handleMarkAsRead}
-//               >
-//                 <MarkChatReadIcon />
-//               </IconButton>
-//             </span>
-//           </Tooltip>
-//           <Tooltip title="Delete All">
-//             <span>
-//               <IconButton
-//                 color="error"
-//                 disabled={notifications?.data?.length === 0}
-//                 onClick={() => handleRemoveNotification()}
-//               >
-//                 <DeleteSweepIcon />
-//               </IconButton>
-//             </span>
-//           </Tooltip>
-//         </Stack>
-//       </Box>
-//       <Stack  bgcolor='#fff' sx={{ maxHeight: "80svh", overflowY: "auto" }}>
-//         {notifications.isLoading && <Typography>Loading</Typography>}
+//       <Box sx={{ mx: "auto", p: { xs: 2, md: 3 } }}>
+//         {/* Header */}
+//         <Stack
+//           direction={{ xs: "column", sm: "row" }}
+//           justifyContent="space-between"
+//           alignItems={{ xs: "stretch", sm: "center" }}
+//           spacing={2}
+//           sx={{ mb: 3 }}
+//         >
+//           <Box>
+//             <Typography variant="h4" fontWeight={600}>
+//               Notifications
+//             </Typography>
+//             <Typography variant="body2" color="text.secondary">
+//               Stay updated with your latest activities
+//             </Typography>
+//           </Box>
 
-//         {notifications?.data?.length === 0 ? (
-//           <Stack
-//             justifyContent="center"
-//             alignItems="center"
-//             height={500}
-//             overflow="auto"
-//             bgcolor='#fff'
-//           >
-//             <NotificationsOffSharp />
-//             <Typography>No Notification available!</Typography>
-//           </Stack>
-//         ) : (
-//           notifications?.data?.map((notif) => {
-//             return (
-//               <Fragment key={notif?._id}>
-//                 <Stack
-//                   sx={{
-//                     cursor: "pointer",
-//                     "&:hover": {
-//                       backgroundColor: "whitesmoke",
-//                     },
-//                     p: 2,
-//                     bgcolor: notif?.active ? "#fabb7f30" : null,
-//                   }}
+//           <Stack direction="row" spacing={1}>
+//             <Tooltip title="Mark all as read">
+//               <span>
+//                 <IconButton
+//                   onClick={handleMarkAllRead}
+//                   disabled={unreadCount === 0 || markReadMutation.isPending}
+//                   color="primary"
+//                   sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1) }}
 //                 >
-//                   <Typography color="primary.main" p={1} fontWeight={700}>
-//                     {notif?.title}
-//                   </Typography>
-//                   {notif?.type === "Email" ? (
-//                     <div
-//                       dangerouslySetInnerHTML={{
-//                         __html: DOMPurify.sanitize(notif?.message),
-//                       }}
-//                       style={{ padding: "16px" }}
-//                     ></div>
-//                   ) : (
-//                     <Typography variant="body2" color="primary.main" p={1}>
-//                       {notif?.message}
-//                     </Typography>
-//                   )}
-//                   <Typography
-//                     color="secondary.main"
-//                     p={1}
-//                     fontSize={10}
-//                     textAlign="right"
+//                   <MarkChatReadIcon />
+//                 </IconButton>
+//               </span>
+//             </Tooltip>
+//             <Tooltip title="Delete all">
+//               <span>
+//                 <IconButton
+//                   onClick={handleDeleteAll}
+//                   disabled={
+//                     notifications.length === 0 || deleteAllMutation.isPending
+//                   }
+//                   color="error"
+//                   sx={{ bgcolor: alpha(theme.palette.error.main, 0.1) }}
+//                 >
+//                   <DeleteSweepIcon />
+//                 </IconButton>
+//               </span>
+//             </Tooltip>
+//           </Stack>
+//         </Stack>
+
+//         {/* Search & Tabs */}
+//         <Card variant="outlined" sx={{ mb: 3, p: 2, borderRadius: 1.2 }}>
+//           <Stack spacing={2}>
+//             <TextField
+//               fullWidth
+//               placeholder="Search by title or message..."
+//               value={searchTerm}
+//               onChange={(e) => setSearchTerm(e.target.value)}
+//               InputProps={{
+//                 startAdornment: (
+//                   <InputAdornment position="start">
+//                     <SearchIcon color="action" />
+//                   </InputAdornment>
+//                 ),
+//               }}
+//               variant="outlined"
+//               size="small"
+//             />
+//             <Tabs
+//               value={tabValue}
+//               onChange={(_, newValue) => setTabValue(newValue)}
+//               variant="fullWidth"
+//               sx={{
+//                 "& .MuiTab-root": { textTransform: "none", fontWeight: 500 },
+//               }}
+//             >
+//               <Tab
+//                 label={
+//                   <Badge
+//                     badgeContent={notifications.length}
+//                     color="primary"
+//                     sx={{ "& .MuiBadge-badge": { right: -20 } }}
 //                   >
-//                     {moment(notif?.createdAt).fromNow()}
-//                   </Typography>
-//                 </Stack>
-//                 <Divider flexItem />
-//               </Fragment>
-//             );
-//           })
+//                     All
+//                   </Badge>
+//                 }
+//               />
+//               <Tab
+//                 label={
+//                   <Badge badgeContent={unreadCount} color="error">
+//                     Unread
+//                   </Badge>
+//                 }
+//               />
+//               <Tab label="Read" />
+//             </Tabs>
+//           </Stack>
+//         </Card>
+
+//         {/* Notifications List */}
+//         {filteredNotifications.length === 0 ? (
+//           <Card sx={{ p: 6, textAlign: "center", borderRadius: 1.2 }}>
+//             <NotificationsOffIcon
+//               sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
+//             />
+//             <Typography variant="h6" color="text.secondary">
+//               No notifications found
+//             </Typography>
+//             <Typography variant="body2" color="text.secondary">
+//               {searchTerm
+//                 ? "Try adjusting your search or filter"
+//                 : "You're all caught up!"}
+//             </Typography>
+//           </Card>
+//         ) : (
+//           <Stack spacing={2}>
+//             {filteredNotifications.map((notif) => (
+//               <NotificationCard key={notif.id} notification={notif} />
+//             ))}
+//           </Stack>
 //         )}
-//       </Stack>
-//       {isLoading && <GlobalSpinner />}
+//       </Box>
+
+//       {/* Loading overlays for mutations */}
+//       {(markReadMutation.isPending || deleteAllMutation.isPending) && (
+//         <GlobalSpinner />
+//       )}
 //     </AnimatedContainer>
 //   );
 // };
 
+// // --- Individual Notification Card Component ---
+// const NotificationCard = ({ notification }) => {
+//   const theme = useTheme();
+//   const isUnread = notification.active === 1;
+
+//   return (
+//     <Card
+//       variant="outlined"
+//       sx={{
+//         borderRadius: 1.2,
+//         transition: "all 0.2s",
+//         bgcolor: isUnread
+//           ? alpha(theme.palette.warning.light, 0.08)
+//           : "background.paper",
+//         borderLeft: isUnread
+//           ? `4px solid ${theme.palette.warning.main}`
+//           : "none",
+//         "&:hover": {
+//           boxShadow: theme.shadows[2],
+//           bgcolor: alpha(theme.palette.primary.light, 0.02),
+//         },
+//       }}
+//     >
+//       <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+//         <Stack
+//           direction="row"
+//           justifyContent="space-between"
+//           alignItems="flex-start"
+//           spacing={1}
+//         >
+//           <Box sx={{ flex: 1 }}>
+//             <Stack
+//               direction="row"
+//               alignItems="center"
+//               spacing={1}
+//               flexWrap="wrap"
+//               sx={{ mb: 1 }}
+//             >
+//               <Typography variant="subtitle1" fontWeight={600}>
+//                 {notification.title}
+//               </Typography>
+//               {isUnread && (
+//                 <Chip
+//                   label="Unread"
+//                   size="small"
+//                   color="warning"
+//                   icon={<UnreadIcon sx={{ fontSize: 16 }} />}
+//                   sx={{ height: 24, fontSize: "0.7rem" }}
+//                 />
+//               )}
+//             </Stack>
+
+//             {/* Message content */}
+//             {notification.type === "Email" ? (
+//               <Box
+//                 dangerouslySetInnerHTML={{
+//                   __html: DOMPurify.sanitize(notification.body),
+//                 }}
+//                 sx={{
+//                   "& p, & div": { mb: 1, fontSize: "0.9rem" },
+//                   "& img": { maxWidth: "100%" },
+//                 }}
+//               />
+//             ) : (
+//               <Typography
+//                 variant="body2"
+//                 color="text.secondary"
+//                 sx={{ mb: 1.5 }}
+//               >
+//                 {notification.body}
+//               </Typography>
+//             )}
+
+//             <Typography
+//               variant="caption"
+//               color="text.disabled"
+//               sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+//             >
+//               {moment(notification.createdAt).fromNow()}
+//             </Typography>
+//           </Box>
+//           {isUnread && (
+//             <Tooltip title="Mark as read">
+//               <IconButton size="small" sx={{ mt: -0.5 }}>
+//                 <CheckCircleIcon fontSize="small" color="disabled" />
+//               </IconButton>
+//             </Tooltip>
+//           )}
+//         </Stack>
+//       </CardContent>
+//     </Card>
+//   );
+// };
+
 // export default Notifications;
+
+

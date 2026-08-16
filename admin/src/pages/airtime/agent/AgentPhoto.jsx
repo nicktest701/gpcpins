@@ -8,7 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getInitials } from "../../../config/validation";
 import { updateAgentProfile } from "../../../api/agentAPI";
 
-function AgentPhoto({ profile,email }) {
+function AgentPhoto({ profile, email }) {
   const queryClient = useQueryClient();
   const { id } = useParams();
   const [isLoading, setIsLoading] = useState(false);
@@ -36,10 +36,10 @@ function AgentPhoto({ profile,email }) {
           };
 
           updateAgentProfile(info)
-            .then((result) => {
-              customDispatch(globalAlertType("success", result));
-              queryClient.invalidateQueries(["agents"]);
-              queryClient.invalidateQueries(["agent", id]);
+            .then(() => {
+              customDispatch(globalAlertType("success", "Profile Updated!"));
+              queryClient.invalidateQueries({ queryKey: ["agents"] });
+              queryClient.invalidateQueries({ queryKey: ["agent", id] });
             })
             .catch((error) => {
               customDispatch(globalAlertType("error", error));

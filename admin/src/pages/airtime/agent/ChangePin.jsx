@@ -1,27 +1,24 @@
 import { useContext, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  TextField,
-  Stack,
-} from "@mui/material";
+import { Dialog, DialogContent, TextField, Stack } from "@mui/material";
 import DOMPurify from "dompurify";
 import { LoadingButton } from "@mui/lab";
 import { useParams, useSearchParams } from "react-router-dom";
 import CustomDialogTitle from "../../../components/dialogs/CustomDialogTitle";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { globalAlertType } from "../../../components/alert/alertType";
-import { CustomContext } from "../../../context/providers/CustomProvider";
-import { AuthContext } from "../../../context/providers/AuthProvider";
+import {
+  CustomContext,
+  useCustomContext,
+} from "../../../context/providers/CustomProvider";
+import { AuthContext, useAuth } from "../../../context/providers/AuthProvider";
 import { verifyPin } from "../../../config/validation";
 
 import Swal from "sweetalert2";
 import { updateWalletPin } from "@/api/transactionAPI";
 
-
-function ChangePin() {
-  const { user } = useContext(AuthContext);
-  const { customDispatch } = useContext(CustomContext);
+function ChangePin({ email }) {
+  const { user } = useAuth();
+  const { customDispatch } = useCustomContext();
   const queryClient = useQueryClient();
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -48,9 +45,12 @@ function ChangePin() {
     const data = {
       id: id,
       pin: sanitizedPin,
-      agentEmail: user?.email,
+      userEmail: email,
       isAdmin: true,
     };
+
+    // console.log(data)
+    // return
 
     Swal.fire({
       title: "Updating Wallet Pin",

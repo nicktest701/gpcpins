@@ -38,23 +38,23 @@ function AgentAccount() {
 </body>
       </div>`,
       showCancelButton: true,
-      confirmButtonColor: '#B72136'
+      confirmButtonColor: "#B72136",
     }).then(({ isConfirmed }) => {
       if (isConfirmed) {
         mutateAsync(
           { id },
           {
             onSettled: () => {
-              queryClient.invalidateQueries(["agents"]);
+              queryClient.invalidateQueries({ queryKey: ["agents"] });
             },
             onSuccess: (data) => {
               customDispatch(globalAlertType("success", data));
-              navigate("/airtime/agent");
+              navigate("/agents");
             },
             onError: (error) => {
               customDispatch(globalAlertType("error", error));
             },
-          }
+          },
         );
       }
     });

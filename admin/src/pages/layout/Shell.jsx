@@ -27,6 +27,7 @@ import VerifyEmployee from "../workers/VerifyEmployee";
 import EmployeePassword from "../workers/EmployeePassword";
 import ForgotPassword from "../ForgotPassword";
 import ForgotPasswordLink from "../ForgotPasswordLink";
+import EmployeeDashboard from "../dashboard/EmployeeDashboard";
 
 // Messages
 const MessageHome = lazy(() => import("../messages/MessageHome"));
@@ -195,11 +196,12 @@ function Shell() {
     };
   }, [customDispatch]);
 
+
   return (
     <>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={withSuspense(Overall,DashboardSkeleton)} />
+          <Route index element={withSuspense(user?.role==='1011'?Overall:EmployeeDashboard,DashboardSkeleton)} />
 
           {/* Vouchers & Tickets */}
           {can("Vouchers & Tickets") && (

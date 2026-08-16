@@ -47,8 +47,15 @@ const validateComplaint = (data) => {
 router.get(
   "/",
   verifyToken,
-  verifyAdmin,
+  // verifyAdmin,
   asyncHandler(async (req, res) => {
+
+
+    if (
+      ![process.env.ADMIN_ID, process.env.EMPLOYEE_ID].includes(req.user.role)
+    ) {
+      return res.status(404).json({ error: "Complaint not found" });
+    }
     const { permissions = [] } = req.user;
 
     // Define permission mapping to database service types
@@ -59,10 +66,12 @@ router.get(
       "Manage Vouchers & Tickets Complaints": "voucher",
     };
 
+
     // Extract database service types authorized by user's permissions
     const allowedServiceTypes = permissions
-      .map(p => permissionMapping[p])
+      .map((p) => permissionMapping[p])
       .filter(Boolean);
+  
 
     const { status, service_type, search, page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
@@ -135,6 +144,7 @@ router.get(
       query.limit(limit).offset(offset),
       totalQuery.first(),
     ]);
+  
 
     res.status(200).json({
       data,
@@ -147,7 +157,6 @@ router.get(
   }),
 );
 
-
 /**
  * GET /complaints/:id
  * Admin only – get single complaint details
@@ -155,8 +164,15 @@ router.get(
 router.get(
   "/:id",
   verifyToken,
-  verifyAdmin,
+  // verifyAdmin,
   asyncHandler(async (req, res) => {
+  if (
+      ![process.env.ADMIN_ID, process.env.EMPLOYEE_ID].includes(req.user.role)
+    ) {
+      return res.status(404).json({ error: "Complaint not found" });
+    }
+
+
     const { id } = req.params;
     const complaint = await knex("complaints")
       .select(
@@ -283,8 +299,14 @@ router.post(
 router.patch(
   "/:id",
   verifyToken,
-  verifyAdmin,
+  // verifyAdmin,
   asyncHandler(async (req, res) => {
+  if (
+      ![process.env.ADMIN_ID, process.env.EMPLOYEE_ID].includes(req.user.role)
+    ) {
+      return res.status(404).json({ error: "Complaint not found" });
+    }
+
     const { id } = req.params;
     const { status, resolution, assigned_to } = req.body;
     // console.log(req.body);

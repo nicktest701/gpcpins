@@ -67,13 +67,8 @@ router.get(
     // 3. Map the database results into your desired JSON structure
     const sortedPayments = transactions.map((transaction) => {
       // Safe JSON parsing helper
-      let parsedInfo = null;
-      try {
-        parsedInfo = transaction.info ? safeJSON(transaction.info) : null;
-      } catch (e) {
-        parsedInfo = transaction.info;
-      }
-
+      const parsedInfo = safeJSON(transaction.info);
+      const partner = safeJSON(transaction?.partner);
       return {
         id: transaction.id,
         paymentId: transaction.paymentId,
@@ -92,11 +87,14 @@ router.get(
         meterId: transaction.meterId,
         meter: {
           id: transaction.meterId,
-          number: transaction.number,
-          providerName: transaction.providerName,
-          name: transaction.name,
-          type: transaction.type,
-          district: transaction.district,
+          number: transaction?.number || partner?.billRequest?.accountNumber,
+          name: transaction?.name || partner?.paymentDetails?.accountName,
+          providerName:
+            transaction.providerName ||
+            partner?.paymentDetails?.serviceProviderName,
+          type: transaction?.type || partner?.billRequest?.accountCategory,
+          district:
+            transaction.district || partner?.paymentDetails?.serviceDistrictId,
           address: transaction.address,
           geoCode: transaction.geoCode,
           accountNumber: transaction.accountNumber,
@@ -299,9 +297,24 @@ router.get(
       return res.status(404).json({});
     }
 
+    const parsedInfo = safeJSON(transaction.info);
+    const partner = safeJSON(transaction?.partner);
+
     res.status(200).json({
       ...transaction,
-      info: safeJSON(transaction?.info),
+      info: parsedInfo,
+      number: transaction?.number || partner?.billRequest?.accountNumber,
+      name: transaction?.name || partner?.paymentDetails?.accountName,
+      providerName:
+        transaction.providerName ||
+        partner?.paymentDetails?.serviceProviderName,
+      type: transaction?.type || partner?.billRequest?.accountCategory,
+      district:
+        transaction.district || partner?.paymentDetails?.serviceDistrictId,
+      address: transaction.address,
+      geoCode: transaction.geoCode,
+      accountNumber: transaction.accountNumber,
+        paymentBy: partner?.paymentDetails?.paymentBy,
     });
   }),
 );

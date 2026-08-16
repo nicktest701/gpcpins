@@ -60,8 +60,6 @@ function AgentPassword() {
       text: "Are you sure you want to change the agent's password?",
       icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "var(--primary)",
-      cancelButtonColor: "var(--secondary)",
       confirmButtonText: "Yes, update",
     }).then((result) => {
       if (result.isConfirmed) {

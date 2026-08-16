@@ -90,7 +90,7 @@ router.post(
     if (!name) return res.status(400).json({ error: "Name is required" });
 
     const code =
-      category === "Admininstrator"
+      category === "Administrator"
         ? process.env.ADMIN_ID
         : category === "Employee"
           ? process.env.EMPLOYEE_ID

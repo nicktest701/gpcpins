@@ -1,25 +1,26 @@
+import { useEffect, useState } from "react";
 import {
   Container,
-  Typography,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
   Stack,
   TextField,
+  Typography,
+  Button,
+  Divider,
+  CircularProgress,
 } from "@mui/material";
-// import Transition from '../../components/Transition';
-import CustomFormControl from "../../../components/inputs/CustomFormControl";
-import CustomDialogTitle from "../../../components/dialogs/CustomDialogTitle";
-import { Formik } from "formik";
 import { LoadingButton } from "@mui/lab";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import moment from "moment";
 import { useSearchParams, useParams } from "react-router-dom";
+import moment from "moment";
+import Swal from "sweetalert2";
+
+import DialogContainer from "../../../components/dialogs/DialogContainer";
+import CustomDatePicker from "../../../components/inputs/CustomDatePicker";
+import CustomFormControl from "../../../components/inputs/CustomFormControl";
 import { useCustomContext } from "../../../context/providers/CustomProvider";
 import { globalAlertType } from "../../../components/alert/alertType";
-import CustomDatePicker from "../../../components/inputs/CustomDatePicker";
 import {
   agentBusinessValidationSchema,
   agentContactValidationSchema,
@@ -30,408 +31,415 @@ import { getAgent, putAgent } from "../../../api/agentAPI";
 
 const EditAgent = () => {
   const { id } = useParams();
-  const { customDispatch } =useCustomContext()
+  const { customDispatch } = useCustomContext();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [dob, setDob] = useState(moment());
 
-  const { data } = useQuery({
+  // Determine which section is being edited
+  const section = searchParams.get("personal")
+    ? "personal"
+    : searchParams.get("contact")
+    ? "contact"
+    : searchParams.get("business")
+    ? "business"
+    : null;
+
+  const open = Boolean(section);
+
+  // Fetch agent data
+  const { data: agent, isLoading: isLoadingData } = useQuery({
     queryKey: ["agent", id],
     queryFn: () => getAgent(id),
     enabled: !!id,
-    initialData: () => {
-      return queryClient
-        .getQueryData(["agents"])
-        .find((agent) => agent?.id === id);
+    initialData: () =>
+      queryClient.getQueryData(["agents"])?.find((a) => a.id === id),
+  });
+
+
+
+  // Prepare initial values based on section
+  const getDefaultValues = () => {
+    if (!agent) return {};
+    switch (section) {
+      case "personal":
+        return {
+          id: agent.id,
+          firstname: agent.firstname || "",
+          lastname: agent.lastname || "",
+          username: agent.username || "",
+          dob: agent.dob ? moment(agent.dob) : moment(),
+          nid: agent.nid || "",
+        };
+      case "contact":
+        return {
+          id: agent.id,
+          residence: agent.residence || "",
+          email: agent.email || "",
+          phonenumber: agent.phonenumber || "",
+        };
+      case "business":
+        return {
+          agent_id: agent.id,
+          business_id: agent.businessId || "",
+          business_name: agent.businessName || "",
+          business_location: agent.businessLocation || "",
+          business_description: agent.businessDescription || "",
+          business_email: agent.businessEmail || "",
+          business_phonenumber: agent.businessPhonenumber || "",
+        };
+      default:
+        return {};
+    }
+  };
+
+  // Get validation schema for the current section
+  const getValidationSchema = () => {
+    switch (section) {
+      case "personal":
+        return agentPersonalValidationSchema;
+      case "contact":
+        return agentContactValidationSchema;
+      case "business":
+        return agentBusinessValidationSchema;
+      default:
+        return agentValidationSchema;
+    }
+  };
+
+  // React Hook Form
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: yupResolver(getValidationSchema()),
+    defaultValues: getDefaultValues(),
+  });
+
+  // Reset form when agent data or section changes
+  useEffect(() => {
+    if (agent && section) {
+      const values = getDefaultValues();
+      reset(values);
+    }
+  }, [agent, section, reset]);
+
+  // Mutation
+  const { mutateAsync, isLoading } = useMutation({
+    mutationFn: putAgent,
+    onSuccess: (data) => {
+      customDispatch(globalAlertType("success", data));
+      queryClient.invalidateQueries(["agents"]);
+      queryClient.invalidateQueries(["agent", id]);
+      handleClose();
+    },
+    onError: (error) => {
+      customDispatch(globalAlertType("error", error));
     },
   });
 
-  const agentValues = {
-    firstname: "",
-    lastname: "",
-    username: "",
-    dob,
-    nid: "",
-    residence: "",
-    email: "",
-    phonenumber: "",
-    business_name: "",
-    business_location: "",
-    business_description: "",
-    business_email: "",
-    business_phonenumber: "",
-  };
+  const onSubmit = (values) => {
+    // For personal section, format dob
+    const payload = { ...values };
+    if (section === "personal" && values.dob) {
+ 
+      payload.dob = moment(values?.dob).format("YYYY-MM-DD");
+    }
 
-  const personalValues = {
-    id: data?.id,
-    firstname: data?.firstname,
-    lastname: data?.lastname,
-    username: data?.username,
-    dob: moment(data?.dob),
-    nid: data?.nid,
-  };
-  const contactValues = {
-    id: data?.id,
-    residence: data?.residence,
-    email: data?.email,
-    phonenumber: data?.phonenumber,
-  };
-  const businessValues = {
-    agent_id: data?.id,
-    business_id: data?.businessId,
-    business_name: data?.businessName,
-    business_location: data?.businessLocation,
-    business_description: data?.businessDescription,
-    business_email: data?.businessEmail,
-    business_phonenumber: data?.businessPhonenumber,
+    Swal.fire({
+      title: "Save Changes?",
+      text: "Are you sure you want to update this agent's information?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, save",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        mutateAsync(payload);
+      }
+    });
   };
 
   const handleClose = () => {
     setSearchParams((params) => {
       params.delete("personal");
-      params.delete("business");
       params.delete("contact");
+      params.delete("business");
       return params;
     });
   };
 
-  const { mutateAsync, isLoading } = useMutation({
-    mutationFn: putAgent,
-  });
-  const onSubmit = (values) => {
-
-    // return
-    // values.dob = values?.dob.format("YYYY-MM-DD");
-    const payload={
-      ...values,
-      dob:dob.format("YYYY-MM-DD")
+  // Get title and subtitle based on section
+  const getTitle = () => {
+    switch (section) {
+      case "personal":
+        return "Edit Personal Details";
+      case "contact":
+        return "Edit Contact Details";
+      case "business":
+        return "Edit Business Information";
+      default:
+        return "Edit Agent";
     }
-    mutateAsync(payload, {
-      onSettled: () => {
-        queryClient.invalidateQueries(["agents"]);
-        queryClient.invalidateQueries(["agent", id]);
-      },
-      onSuccess: (data) => {
-        customDispatch(globalAlertType("success", data));
-        handleClose();
-      },
-      onError: (error) => {
-        customDispatch(globalAlertType("error", error));
-      },
-    });
+  };
+  const getSubtitle = () => {
+    switch (section) {
+      case "personal":
+        return "Update the agent's personal information";
+      case "contact":
+        return "Update the agent's contact information";
+      case "business":
+        return "Update the agent's business details";
+      default:
+        return "";
+    }
   };
 
-  const initialValues = searchParams.get("personal")
-    ? personalValues
-    : searchParams?.get("contact")
-      ? contactValues
-      : searchParams?.get("business")
-        ? businessValues
-        : agentValues;
+  if (isLoadingData) {
+    return (
+      <DialogContainer open={open} onClose={handleClose} title="Loading..." loading>
+        <CircularProgress />
+      </DialogContainer>
+    );
+  }
 
-  const validationSchema = searchParams.get("personal")
-    ? agentPersonalValidationSchema
-    : searchParams?.get("contact")
-      ? agentContactValidationSchema
-      : searchParams?.get("business")
-        ? agentBusinessValidationSchema
-        : agentValidationSchema;
-
-  const open =
-    searchParams.get("personal") ||
-    searchParams.get("contact") ||
-    searchParams.get("business");
   return (
-    <Dialog
-      open={Boolean(open)}
+    <DialogContainer
+      open={open}
+      onClose={handleClose}
+      title={getTitle()}
+      subtitle={getSubtitle()}
+      onConfirm={handleSubmit(onSubmit)}
+      loading={isSubmitting || isLoading}
+      confirmText="Save Changes"
       maxWidth="md"
-      fullWidth
-      // fullScreen
-      // TransitionComponent={Transition}
     >
-      <CustomDialogTitle
-        title="Edit Agent"
-        subtitle="Make Changes to business"
-      />
-      <Formik
-        initialValues={initialValues}
-        validationSchema={validationSchema}
-        onSubmit={onSubmit}
-        enableReinitialize
-      >
-        {({
-          errors,
-          values,
-          touched,
-          handleChange,
-          handleSubmit,
-        }) => {
-        
-
-          return (
+      <form noValidate>
+        <Stack spacing={2}>
+          {section === "personal" && (
             <>
-              <DialogContent>
-                <Container>
-                  {searchParams.get("personal") && (
-                    <Stack spacing={2}>
-                      <Typography
-                        variant="caption"
-                        paragraph
-                        bgcolor="primary.main"
-                        color="secondary.main"
-                        textTransform="uppercase"
-                        p={1}
-                      >
-                        Personal Details
-                      </Typography>
-                      <CustomFormControl>
-                        <TextField
-                          // variant="filled"
-                          label="First Name"
-                          fullWidth
-                          size="small"
-                          required
-                          value={values.firstname}
-                          onChange={handleChange("firstname")}
-                          error={Boolean(touched.firstname && errors.firstname)}
-                          helperText={touched.firstname && errors.firstname}
-                        />
-
-                        <TextField
-                          // variant="filled"
-                          label="Last Name"
-                          size="small"
-                          fullWidth
-                          required
-                          value={values.lastname}
-                          onChange={handleChange("lastname")}
-                          error={Boolean(touched.lastname && errors.lastname)}
-                          helperText={touched.lastname && errors.lastname}
-                        />
-                      </CustomFormControl>
-                      <TextField
-                        // variant="filled"
-                        label="Username"
-                        size="small"
-                        fullWidth
-                        required
-                        value={values.username}
-                        onChange={handleChange("username")}
-                        error={Boolean(touched.username && errors.username)}
-                        helperText={touched.username && errors.username}
-                     disabled
-                      />
-                      <CustomFormControl>
-                        <CustomDatePicker
-                          format="Do MMMM,YYYY"
-                          label="Date Of Birth"
-                          value={values.dob}
-                          setValue={setDob}
-                          error={Boolean(touched.date && errors.date)}
-                          helperText={touched.date && errors.date}
-                          minDate={moment("1900-01-01")}
-                          disableFuture={true}
-                          size="small"
-                        />
-                        <TextField
-                          label="National ID / Voter's ID Number"
-                          size="small"
-                          required
-                          fullWidth
-                          value={values.nid}
-                          onChange={handleChange("nid")}
-                          error={Boolean(touched.nid && errors.nid)}
-                          // helperText={
-                          //   touched.nid && errors.nid ? (
-                          //     errors.nid
-                          //   ) : (
-                          //     <ul style={{ display: "flex", gap: "4rem" }}>
-                          //       <li>National ID</li>
-                          //       <li>Voter&apos;s ID</li>
-                          //     </ul>
-                          //   )
-                          // }
-                        />
-                      </CustomFormControl>
-                    </Stack>
+              <CustomFormControl>
+                <Controller
+                  name="firstname"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="First Name"
+                      fullWidth
+                      required
+                      error={!!errors.firstname}
+                      helperText={errors.firstname?.message}
+                    />
                   )}
-                  {searchParams.get("contact") && (
-                    <Stack spacing={2}>
-                      <Typography
-                        variant="body1"
-                        paragraph
-                        bgcolor="primary.main"
-                        color="secondary.main"
-                        p={2}
-                        mt={1}
-                      >
-                        Contact Details
-                      </Typography>
-
-                      <CustomFormControl>
-                        <TextField
-                          // variant="filled"
-                          type="tel"
-                          inputMode="tel"
-                          label="Telephone No."
-                          size="small"
-                          fullWidth
-                          required
-                          value={values.phonenumber}
-                          onChange={handleChange("phonenumber")}
-                          error={Boolean(
-                            touched.phonenumber && errors.phonenumber,
-                          )}
-                          helperText={touched.phonenumber && errors.phonenumber}
-                        />
-                        <TextField
-                          size="small"
-                          label="Email Address"
-                          type="email"
-                          inputMode="email"
-                          fullWidth
-                          required
-                          value={values.email}
-                          onChange={handleChange("email")}
-                          error={Boolean(touched.email && errors.email)}
-                          helperText={touched.email && errors.email}
-                          InputProps={{
-                            readOnly: true,
-                          }}
-                          disabled
-                        />
-                      </CustomFormControl>
-
-                      <TextField
-                        size="small"
-                        label="Residential Address"
-                        required
-                        fullWidth
-                        value={values.residence}
-                        onChange={handleChange("residence")}
-                        error={Boolean(touched.residence && errors.residence)}
-                        helperText={touched.residence && errors.residence}
-                        multiline
-                        rows={5}
-                        sx={{ bgcolor: "#fff" }}
-                      />
-                    </Stack>
+                />
+                <Controller
+                  name="lastname"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Last Name"
+                      fullWidth
+                      required
+                      error={!!errors.lastname}
+                      helperText={errors.lastname?.message}
+                    />
                   )}
-                  {searchParams.get("business") && (
-                    <Stack spacing={2}>
-                      <Typography
-                        variant="body1"
-                        paragraph
-                        bgcolor="primary.main"
-                        color="secondary.main"
-                        p={2}
-                        mt={4}
-                        fullWidth
-                      >
-                        Business Information
-                      </Typography>
-                      <TextField
-                        size="small"
-                        label="Business Name"
-                        required
-                        value={values.business_name}
-                        onChange={handleChange("business_name")}
-                        error={Boolean(
-                          touched.business_name && errors.business_name,
-                        )}
-                        helperText={
-                          touched.business_name && errors.business_name
-                        }
-                        fullWidth
-                      />
-                      <TextField
-                        size="small"
-                        required
-                        label="Location"
-                        value={values.business_location}
-                        onChange={handleChange("business_location")}
-                        error={Boolean(
-                          touched.business_location && errors.business_location,
-                        )}
-                        helperText={
-                          touched.business_location && errors.business_location
-                        }
-                        fullWidth
-                      />
+                />
+              </CustomFormControl>
 
-                      <TextField
-                        size="small"
-                        label="A short description about your business"
-                        fullWidth
-                        value={values.business_description}
-                        onChange={handleChange("business_description")}
-                        error={Boolean(
-                          touched.business_description &&
-                          errors.business_description,
-                        )}
-                        helperText={
-                          touched.business_description &&
-                          errors.business_description
-                        }
-                        multiline
-                        rows={5}
-                        sx={{ bgcolor: "#fff" }}
-                      />
-                      <CustomFormControl>
-                        <TextField
-                          label="Business Email Address"
-                          fullWidth
-                          size="small"
-                          value={values.business_email}
-                          onChange={handleChange("business_email")}
-                          error={Boolean(
-                            touched.business_email && errors.business_email,
-                          )}
-                          helperText={
-                            touched.business_email && errors.business_email
-                          }
-                        />
-                        <TextField
-                          type="tel"
-                          inputMode="tel"
-                          label="Business Telephone No."
-                          fullWidth
-                          size="small"
-                          value={values.business_phonenumber}
-                          onChange={handleChange("business_phonenumber")}
-                          error={Boolean(
-                            touched.business_phonenumber &&
-                            errors.business_phonenumber,
-                          )}
-                          helperText={
-                            touched.business_phonenumber &&
-                            errors.business_phonenumber
-                          }
-                        />
-                      </CustomFormControl>
-                    </Stack>
+              <Controller
+                name="username"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Username"
+                    fullWidth
+                    required
+                    disabled
+                    error={!!errors.username}
+                    helperText={errors.username?.message}
+                  />
+                )}
+              />
+
+              <CustomFormControl>
+                <Controller
+                  name="dob"
+                  control={control}
+                  render={({ field }) => (
+                    <CustomDatePicker
+                      label="Date of Birth"
+                      value={field.value}
+                      setValue={(val) => setValue("dob", val)}
+                      error={!!errors.dob}
+                      helperText={errors.dob?.message}
+                      minDate={moment("1900-01-01")}
+                      disableFuture
+                      format="Do MMMM, YYYY"
+                    />
                   )}
-                </Container>
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={handleClose}>Cancel</Button>
-                <LoadingButton
-                  loading={isLoading}
-                  variant="contained"
-                  sx={{
-                    paddingX: 4,
-                  }}
-                  onClick={handleSubmit}
-                >
-                  Save Changes
-                </LoadingButton>
-              </DialogActions>
+                />
+                <Controller
+                  name="nid"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="National ID / Voter's ID"
+                      fullWidth
+                      required
+                      error={!!errors.nid}
+                      helperText={errors.nid?.message}
+                    />
+                  )}
+                />
+              </CustomFormControl>
             </>
-          );
-        }}
-      </Formik>
-    </Dialog>
+          )}
+
+          {section === "contact" && (
+            <>
+              <CustomFormControl>
+                <Controller
+                  name="phonenumber"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Telephone No."
+                      fullWidth
+                      required
+                      type="tel"
+                      error={!!errors.phonenumber}
+                      helperText={errors.phonenumber?.message}
+                    />
+                  )}
+                />
+                <Controller
+                  name="email"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Email Address"
+                      fullWidth
+                      required
+                      type="email"
+                      disabled
+                      error={!!errors.email}
+                      helperText={errors.email?.message}
+                    />
+                  )}
+                />
+              </CustomFormControl>
+
+              <Controller
+                name="residence"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Residential Address"
+                    fullWidth
+                    required
+                    multiline
+                    rows={4}
+                    error={!!errors.residence}
+                    helperText={errors.residence?.message}
+                  />
+                )}
+              />
+            </>
+          )}
+
+          {section === "business" && (
+            <>
+              <Controller
+                name="business_name"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Business Name"
+                    fullWidth
+                    required
+                    error={!!errors.business_name}
+                    helperText={errors.business_name?.message}
+                  />
+                )}
+              />
+              <Controller
+                name="business_location"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Business Location"
+                    fullWidth
+                    required
+                    error={!!errors.business_location}
+                    helperText={errors.business_location?.message}
+                  />
+                )}
+              />
+              <Controller
+                name="business_description"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Business Description"
+                    fullWidth
+                    multiline
+                    rows={3}
+                    error={!!errors.business_description}
+                    helperText={errors.business_description?.message}
+                  />
+                )}
+              />
+              <CustomFormControl>
+                <Controller
+                  name="business_email"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Business Email"
+                      fullWidth
+                      type="email"
+                      error={!!errors.business_email}
+                      helperText={errors.business_email?.message}
+                    />
+                  )}
+                />
+                <Controller
+                  name="business_phonenumber"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Business Telephone"
+                      fullWidth
+                      type="tel"
+                      error={!!errors.business_phonenumber}
+                      helperText={errors.business_phonenumber?.message}
+                    />
+                  )}
+                />
+              </CustomFormControl>
+            </>
+          )}
+        </Stack>
+      </form>
+    </DialogContainer>
   );
 };
 
 export default EditAgent;
+

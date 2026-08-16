@@ -19,7 +19,7 @@ import { verifyPin } from "../../config/validation";
 import Swal from "sweetalert2";
 import { updateWalletPin } from "@/api/transactionAPI";
 
-function ChangePin() {
+function ChangePin({email}) {
   const { user } = useContext(AuthContext);
   const { customDispatch } = useContext(CustomContext);
   const queryClient = useQueryClient();
@@ -50,7 +50,7 @@ function ChangePin() {
     const data = {
       id: id,
       pin: sanitizedPin,
-      userEmail: user?.email,
+      userEmail:email|| user?.email,
       isAdmin: true,
     };
     // console.log(data);

@@ -2,7 +2,6 @@ import { useState, useContext } from "react";
 import {
   Box,
   Container,
-  IconButton,
   Tab,
   Button,
   ListItemText,
@@ -11,31 +10,32 @@ import {
   Skeleton,
   Paper,
 } from "@mui/material";
-import { ArrowBack, WalletOutlined } from "@mui/icons-material";
+import {  WalletOutlined } from "@mui/icons-material";
 import { TabContext, TabPanel, TabList } from "@mui/lab";
-import { Link } from "react-router-dom";
+
 import Swal from "sweetalert2";
 import { CircleRounded } from "@mui/icons-material";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import CustomTitle from "../../components/custom/CustomTitle";
-import { getInitials } from "../../config/validation";
-import { globalAlertType } from "../../components/alert/alertType";
-import { CustomContext } from "../../context/providers/CustomProvider";
+import CustomTitle from "@/components/custom/CustomTitle";
+import { getInitials } from "@/config/validation";
+import { globalAlertType } from "@/components/alert/alertType";
+import { CustomContext } from "@/context/providers/CustomProvider";
 import UserWallet from "./UserWallet";
 import UserSettings from "./UserSettings";
 import UserProfile from "./UserProfile";
-import { enableOrDisableAccount, getUser } from "../../api/userAPI";
+import { enableOrDisableAccount, getUser } from "@/api/userAPI";
 import EditUser from "./EditUser";
-import AnimatedContainer from "../../components/animations/AnimatedContainer";
+import AnimatedContainer from "@/components/animations/AnimatedContainer";
 import UserPhoto from "./UserPhoto";
-import { currencyFormatter } from "../../constants";
+import { currencyFormatter } from "@/constants";
 import ChangePin from "./ChangePin";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import {  useAuth } from "@/context/providers/AuthProvider";
 import UserTransaction from "./UserTransaction";
 
 function UserDetails() {
-  const { user } = useContext(AuthContext);
+  const { user } =useAuth()
+  const navigate=useNavigate()
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState("1");
 
@@ -49,7 +49,7 @@ function UserDetails() {
     enabled: !!id,
     initialData: queryClient
       .getQueryData(["users"])
-      ?.find((user) => user?._id === id),
+      ?.find((user) => user?.id === id),
   });
 
   const { mutateAsync: toggleEmployeeAccountMutateAsync } = useMutation({
@@ -93,11 +93,12 @@ function UserDetails() {
 
   return (
     <Container>
-      <Link to="/users">
-        <IconButton sx={{ my: 4 }}>
-          <ArrowBack />
-        </IconButton>
-      </Link>
+   <CustomTitle
+        title="User Details"
+        subtitle="View user profile, wallet overview, and account activity"
+        showBack
+            onBack={() => navigate("/employees")}
+      />
       {isLoading ? (
         <Skeleton width="100%" height={400} />
       ) : (
@@ -270,7 +271,7 @@ function UserDetails() {
         )}
       </TabContext>
       <EditUser />
-      <ChangePin />
+      <ChangePin email={data?.email} />
     </Container>
   );
 }

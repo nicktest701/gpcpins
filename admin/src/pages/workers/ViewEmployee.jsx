@@ -54,7 +54,7 @@ import UpdateEmployee from "./UpdateEmployee";
 
 const ViewEmployee = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth()
+  const { user } = useAuth();
   const { customDispatch } = useContext(CustomContext);
   const { id } = useParams();
   const navigate = useNavigate();
@@ -92,7 +92,6 @@ const ViewEmployee = () => {
       active: employee.active,
       status: employee.status,
       profile: employee.profile,
- 
     };
   }, [employee]);
 
@@ -181,7 +180,6 @@ const ViewEmployee = () => {
 
   // Manage roles
 
-
   // Profile photo upload with compression
   const handlePhotoUpload = useCallback(
     (e) => {
@@ -201,7 +199,9 @@ const ViewEmployee = () => {
           setIsPhotoUploading(true);
           updateAdminProfile({ id, profile: compressedFile })
             .then(() => {
-              customDispatch(globalAlertType("success", "Profile photo updated!"));
+              customDispatch(
+                globalAlertType("success", "Profile photo updated!"),
+              );
               queryClient.invalidateQueries(["employee", id]);
             })
             .catch((err) => {
@@ -217,7 +217,7 @@ const ViewEmployee = () => {
         },
       });
     },
-    [id, customDispatch, queryClient]
+    [id, customDispatch, queryClient],
   );
 
   // Loading state
@@ -226,7 +226,12 @@ const ViewEmployee = () => {
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Stack spacing={3}>
           <Skeleton variant="rectangular" height={56} />
-          <Skeleton variant="circular" width={100} height={100} sx={{ mx: "auto" }} />
+          <Skeleton
+            variant="circular"
+            width={100}
+            height={100}
+            sx={{ mx: "auto" }}
+          />
           <Skeleton variant="text" width="60%" sx={{ mx: "auto" }} />
           <Skeleton variant="rectangular" height={200} />
         </Stack>
@@ -238,9 +243,7 @@ const ViewEmployee = () => {
   if (isError || !employee) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="error">
-          {error?.message || "Employee not found"}
-        </Alert>
+        <Alert severity="error">{error?.message || "Employee not found"}</Alert>
         <Button variant="contained" onClick={() => navigate(-1)} sx={{ mt: 2 }}>
           Go Back
         </Button>
@@ -255,21 +258,23 @@ const ViewEmployee = () => {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* Header with back button */}
-      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
-        <IconButton onClick={() => navigate('/employees?YixHy=a34cdd3543&_pid=423423')}>
-          <ArrowBackRounded />
-        </IconButton>
-        <Typography variant="h5" component="h1" fontWeight="bold">
-          Employee Details
-        </Typography>
-      </Stack>
+      <CustomTitle
+        title="Employee Details"
+        subtitle="View employee profile, wallet overview, and account activity"
+        showBack
+        onBack={() => navigate("/employees")}
+      />
 
       {/* Pending activation alert */}
       {employee.status === "pending" && (
         <Alert
           severity="warning"
           action={
-            <Button variant="outlined" color="warning" onClick={handleUpdateEmployee}>
+            <Button
+              variant="outlined"
+              color="warning"
+              onClick={handleUpdateEmployee}
+            >
               Activate Now
             </Button>
           }
@@ -280,7 +285,10 @@ const ViewEmployee = () => {
       )}
 
       {/* Main Profile Card */}
-      <Paper elevation={2} sx={{ borderRadius: 1.2, overflow: "hidden", mb: 4 }}>
+      <Paper
+        elevation={2}
+        sx={{ borderRadius: 1.2, overflow: "hidden", mb: 4 }}
+      >
         <Box sx={{ bgcolor: "primary.main", height: 100 }} />
         <Box sx={{ display: "flex", justifyContent: "center", mt: -6 }}>
           {isPhotoUploading ? (
@@ -329,7 +337,13 @@ const ViewEmployee = () => {
         <Divider />
 
         {/* Action Buttons */}
-        <Stack direction="row" flexWrap="wrap" justifyContent="center" spacing={1} sx={{ p: 2 }}>
+        <Stack
+          direction="row"
+          flexWrap="wrap"
+          justifyContent="center"
+          spacing={1}
+          sx={{ p: 2 }}
+        >
           {hasEditPermission && (
             <LoadingButton
               variant="outlined"
@@ -351,7 +365,6 @@ const ViewEmployee = () => {
               Reset Password
             </LoadingButton>
           )}
-       
         </Stack>
       </Paper>
 
@@ -454,17 +467,24 @@ const ViewEmployee = () => {
         </CardContent>
       </Card>
 
-   
-
       {/* Danger Zone (Delete/Disable) */}
       {hasDeletePermission && (
-        <Card elevation={2} sx={{ borderRadius: 1.2, borderColor: "error.main", borderWidth: 1 }}>
+        <Card
+          elevation={2}
+          sx={{ borderRadius: 1.2, borderColor: "error.main", borderWidth: 1 }}
+        >
           <CardContent>
-            <Typography variant="h6" fontWeight="bold" color="error" gutterBottom>
+            <Typography
+              variant="h6"
+              fontWeight="bold"
+              color="error"
+              gutterBottom
+            >
               Danger Zone
             </Typography>
             <Typography variant="body2" color="text.secondary" paragraph>
-              Once you delete an account, all associated data will be permanently removed.
+              Once you delete an account, all associated data will be
+              permanently removed.
             </Typography>
             <Stack direction="row" spacing={2}>
               <Button

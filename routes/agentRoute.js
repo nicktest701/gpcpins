@@ -38,7 +38,10 @@ const {
   accountBalance,
 } = require("../config/sendMoney");
 const { MTN, VODAFONE, AIRTELTIGO } = require("../config/bundleList");
-const { getPhoneNumberInfo } = require("../config/PhoneCode");
+const {
+  getPhoneNumberInfo,
+  getInternationalMobileFormat,
+} = require("../config/PhoneCode");
 const verifyAdminORAgent = require("../middlewares/verifyAdminORAgent");
 const sendEMail = require("../config/sendEmail");
 const generateRandomNumber = require("../config/generateRandomCode");
@@ -288,6 +291,8 @@ router.get(
       .select("vw_user_business_view.*", "wallets.amount")
       .where("vw_user_business_view.user_id", id)
       .first();
+    // .select("*");
+
 
     if (_.isEmpty(agent)) return res.status(200).json({});
 
@@ -354,16 +359,36 @@ router.post(
         ...rest
       } = req.body;
 
-      const doesUserNameExists = await transaction("users")
-        .select("username", "email")
-        .where("email", rest?.email)
-        .orWhere("phonenumber", rest?.phonenumber)
-        .first();
+      // 1. Parallelize early validation and role lookup
+      const [existingEmail, existingUsername, existingPhoneNumber] =
+        await Promise.all([
+          knex("users").select("email").where("email", rest.email).first(),
+          knex("users")
+            .select("username")
+            .where("username", rest.username)
+            .first(),
+          knex("users")
+            .select("phonenumber")
+            .whereIn("phonenumber", [
+              rest.phonenumber,
+              getInternationalMobileFormat(rest.phonenumber),
+              getInternationalMobileFormat(rest.phonenumber, false),
+            ])
+            .first(),
+        ]);
 
-      if (!_.isEmpty(doesUserNameExists)) {
+      if (existingEmail) {
+        return res.status(400).json(`Email, '${rest.email}' is not available!`);
+      }
+      if (existingUsername) {
         return res
           .status(400)
-          .json("Phone Number / Email Address already exists!");
+          .json(`Username, '${rest.username}' is not available!`);
+      }
+      if (existingPhoneNumber) {
+        return res
+          .status(400)
+          .json(`Phone number, '${rest.phonenumber}' already exists!`);
       }
 
       const agent_id = generateId();
@@ -757,14 +782,20 @@ router.put(
     const { id: userId, role } = req.user;
     const { id, agent_id, ...rest } = req.body;
 
+    // console.log(req.body)
+
     if (agent_id) {
-      await knex("agent_businesses").where("id", rest.business_id).update({
-        name: rest?.business_name,
-        location: rest?.business_location,
-        description: rest?.business_description,
-        email: rest?.business_email,
-        phonenumber: rest?.business_phonenumber,
-      });
+      await knex("agent_businesses")
+        .where("id", rest.business_id)
+        .upsert({
+          id: rest?.business_id || generateId(),
+          user_id: agent_id,
+          name: rest?.business_name,
+          location: rest?.business_location,
+          description: rest?.business_description,
+          email: rest?.business_email,
+          phonenumber: rest?.business_phonenumber,
+        });
 
       return res.status(201).json("Changes Saved!");
     }
@@ -783,7 +814,7 @@ router.put(
         severity: "info",
       });
 
-       res.status(201).json("Changes Saved!");
+      res.status(201).json("Changes Saved!");
     }
 
     const agent = await knex("vw_user_business_view")
@@ -814,6 +845,11 @@ router.put(
       severity: "info",
     });
 
+  res.status(201).json({
+      user: agent,
+    });
+
+
     const message = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
     <h2 style="color: #333333;">Important: Profile Update Notification</h2>
@@ -828,16 +864,9 @@ router.put(
 </div>
     `;
 
-    // res.status(201).json({
-    //   user: agent,
-    // });
-
+  
     setImmediate(async () => {
-      await sendEMail(
-        agent?.email,
-        message,
-        "Profile Update Notification",
-      );
+      await sendEMail(agent?.email, message, "Profile Update Notification");
       const smsMessage = `Your profile information has been updated.For security purposes, we wanted to ensure that you are aware of these changes. If you did not make these adjustments yourself or if you believe your account may have been compromised, please take immediate action by contacting our support team.If you have made these changes intentionally, please disregard this message.`;
       await sendOTPSMS(smsMessage, agent?.phonenumber);
     });

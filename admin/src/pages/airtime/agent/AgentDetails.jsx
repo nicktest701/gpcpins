@@ -1,8 +1,7 @@
-import { useState, useContext } from "react";
+import { useState } from "react";
 import {
   Box,
   Container,
-  IconButton,
   Tab,
   Button,
   ListItemText,
@@ -10,9 +9,9 @@ import {
   Divider,
   Paper,
 } from "@mui/material";
-import { ArrowBack } from "@mui/icons-material";
+
 import { TabContext, TabPanel, TabList } from "@mui/lab";
-import { Link, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { WalletOutlined, CircleRounded } from "@mui/icons-material";
 import { useParams } from "react-router-dom";
@@ -26,7 +25,7 @@ import { getInitials } from "@/config/validation";
 import AgentSettings from "./AgentSettings";
 import EditAgent from "./EditAgent";
 import { globalAlertType } from "@/components/alert/alertType";
-import {useCustomContext } from "@/context/providers/CustomProvider";
+import { useCustomContext } from "@/context/providers/CustomProvider";
 import AgentPhoto from "./AgentPhoto";
 import { currencyFormatter } from "@/constants";
 import ChangePin from "./ChangePin";
@@ -36,6 +35,7 @@ import { safeJSON } from "@/config/helpers";
 
 function AgentDetails() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState("1");
   const { id } = useParams();
@@ -68,8 +68,8 @@ function AgentDetails() {
           { id, active: !data?.active },
           {
             onSettled: () => {
-              queryClient.invalidateQueries(["agents"]);
-              queryClient.invalidateQueries(["agent", id]);
+              queryClient.invalidateQueries({ queryKey: ["agents"] });
+              queryClient.invalidateQueries({ queryKey: ["agent", id] });
             },
             onSuccess: (data) => {
               customDispatch(globalAlertType("success", data));
@@ -77,7 +77,7 @@ function AgentDetails() {
             onError: (error) => {
               customDispatch(globalAlertType("error", error));
             },
-          }
+          },
         );
       }
     });
@@ -91,27 +91,25 @@ function AgentDetails() {
   };
 
   // Extract current modules from agent data
-  const currentModules = safeJSON(data?.modules ,[]);
-
-
-
-
+  const currentModules = safeJSON(data?.modules, []);
 
   return (
     <Container>
-      <Link to="/agents">
-        <IconButton sx={{ my: 4 }}>
-          <ArrowBack />
-        </IconButton>
-      </Link>
-         <Paper
+      <CustomTitle
+        title="Agent Details"
+        subtitle="View agent profile, wallet overview, and account activity"
+        showBack
+        onBack={() => navigate("/agents")}
+      />
+      <Paper
         elevation={2}
         sx={{
           borderRadius: 1.2,
           p: 3,
           bgcolor: "background.paper",
           transition: "box-shadow 0.2s",
-           pb: 5, mb: 5,
+          pb: 5,
+          mb: 5,
           "&:hover": { boxShadow: 4 },
         }}
       >
@@ -261,7 +259,7 @@ function AgentDetails() {
       </TabContext>
 
       <EditAgent />
-      <ChangePin />
+      <ChangePin email={data?.email} />
     </Container>
   );
 }

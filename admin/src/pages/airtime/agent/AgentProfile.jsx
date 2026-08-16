@@ -1,5 +1,5 @@
 // AgentProfile.jsx
-import { useContext } from "react";
+
 import {
   Paper,
   Stack,
@@ -8,7 +8,6 @@ import {
   IconButton,
   Tooltip,
   Divider,
-  useTheme,
   Grid,
 } from "@mui/material";
 import {
@@ -27,8 +26,7 @@ import {
 } from "@mui/icons-material";
 import { useSearchParams } from "react-router-dom";
 import moment from "moment";
-import { generateRandomCode } from "../../../config/generateRandomCode";
-import { AuthContext } from "../../../context/providers/AuthProvider";
+import {  useAuth } from "../../../context/providers/AuthProvider";
 
 // ─── Helper component for each detail row ──────────────────────────
 const DetailRow = ({ icon, label, value }) => (
@@ -118,15 +116,13 @@ const Section = ({ title, subtitle, icon, children, onEdit, canEdit }) => (
 
 // ─── Main Component ──────────────────────────────────────────────────
 function AgentProfile({ values }) {
-  const { user } = useContext(AuthContext);
+  const { user } =useAuth()
   const [searchParams, setSearchParams] = useSearchParams();
-  const theme = useTheme();
 
-  console.log(values)
 
   const handleOpenEdit = (section) => {
     setSearchParams((params) => {
-      params.set(section, generateRandomCode(50));
+      params.set(section, "true");
       return params;
     });
   };

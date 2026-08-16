@@ -37,7 +37,7 @@ const ViewAgents = () => {
 
   //VIEW Agent Details
   const handleViewAgent = (id) => {
-    navigate(`/agents/${id}?zAmY=${generateRandomCode(50)}`);
+    navigate(`/agents/${id}`);
   };
 
   const columns = [
