@@ -293,7 +293,6 @@ router.get(
       .first();
     // .select("*");
 
-
     if (_.isEmpty(agent)) return res.status(200).json({});
 
     res.status(200).json(agent);
@@ -735,9 +734,11 @@ router.post(
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: "Strict",
-      path: "/agents/auth/token",
+      secure: isProduction,
+      sameSite: isProduction ? "lax" : "none",
+      path: "/api/gabs/v1/agents/auth/token",
+      domain: isProduction ? ".gpcpins.com" : undefined,
+   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
     res.status(201).json({
@@ -796,8 +797,6 @@ router.put(
           email: rest?.business_email,
           phonenumber: rest?.business_phonenumber,
         });
-
-    
     }
 
     const updatedAgent = await knex("users").where("id", id).update(rest);
@@ -845,10 +844,9 @@ router.put(
       severity: "info",
     });
 
-  res.status(201).json({
+    res.status(201).json({
       user: agent,
     });
-
 
     const message = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -864,7 +862,6 @@ router.put(
 </div>
     `;
 
-  
     setImmediate(async () => {
       await sendEMail(agent?.email, message, "Profile Update Notification");
       const smsMessage = `Your profile information has been updated.For security purposes, we wanted to ensure that you are aware of these changes. If you did not make these adjustments yourself or if you believe your account may have been compromised, please take immediate action by contacting our support team.If you have made these changes intentionally, please disregard this message.`;

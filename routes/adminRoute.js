@@ -363,8 +363,9 @@ router.post(
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: isProduction ? "strict" : "lax",
+      sameSite: isProduction ? "lax" : "none",
       path: "/api/gabs/v1/admin/auth/token",
+      domain: isProduction ? ".gpcpins.com" : undefined,
       maxAge: expiresMs,
     });
 
@@ -401,8 +402,7 @@ router.post(
 
     res.clearCookie("refreshToken");
 
-     await removeUser(id);
-
+    await removeUser(id);
 
     await knex("activity_logs").insert({
       user_id: id,
@@ -410,7 +410,6 @@ router.post(
       severity: "info",
     });
 
- 
     req.authUser = null;
     req.user = null;
     delete req.user;
