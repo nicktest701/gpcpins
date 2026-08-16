@@ -797,7 +797,7 @@ router.put(
           phonenumber: rest?.business_phonenumber,
         });
 
-      return res.status(201).json("Changes Saved!");
+    
     }
 
     const updatedAgent = await knex("users").where("id", id).update(rest);

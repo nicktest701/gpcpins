@@ -10,7 +10,7 @@ async function sendBrassicaMoney(payload) {
       accountName,
       amount,
       transaction_Id,
-      debitNaration='Purchase Prepaid Unit'
+      debitNaration = "Purchase Prepaid Unit",
     } = payload;
 
     // console.log(payload)
@@ -37,7 +37,7 @@ async function sendBrassicaMoney(payload) {
       accountNumber,
       accountName,
       amount: ["233543772591", "0543772591"].includes(accountNumber)
-        ? '0.01'
+        ? "0.01"
         : amount,
       debitNaration,
       transactionId,
@@ -51,11 +51,25 @@ async function sendBrassicaMoney(payload) {
 
     return { success: true, data };
   } catch (err) {
-    console.log(err)
+    console.log(err);
     throw new Error(err);
+  }
+}
+
+async function getBrasiccaBalance() {
+  try {
+    logger.info("[GetBalance] Fetching available float balance.");
+
+    // Brassica requires POST with no body
+    const data = await brassicaPost("/GetAvailableBalance", {});
+
+    return data
+  } catch (err) {
+    next(err);
   }
 }
 
 module.exports = {
   sendBrassicaMoney,
+  getBrasiccaBalance,
 };

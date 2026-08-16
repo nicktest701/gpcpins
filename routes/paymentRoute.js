@@ -68,7 +68,10 @@ const { ticketQueue, voucherQueue } = require("../queues/queues");
 const { formatDate, formatTime } = require("../config/dateConfigs");
 const { brassicaPost } = require("../services/brassicaClient");
 const { getMeter, saveMeter } = require("../services/brassica/token.manager");
-const { sendBrassicaMoney } = require("./brassica/brasiccaMoney");
+const {
+  sendBrassicaMoney,
+  getBrasiccaBalance,
+} = require("./brassica/brasiccaMoney");
 
 // ===============================
 // 1. Configuration & Constants
@@ -445,20 +448,23 @@ router.get(
 //Check Balance Status
 router.get(
   "/balances",
-  // verifyToken,
-  // verifyAdmin,
+  verifyToken,
+  verifyAdmin,
   asyncHandler(async (req, res) => {
     try {
-      const [posResponse, preResponse, accResponse] = await Promise.all([
-        POS_Balance(),
-        PREPAID_Balance(),
-        accountBalance(),
-      ]);
+      const [posResponse, preResponse, accResponse, brassicaBalance] =
+        await Promise.allSettled([
+          POS_Balance(),
+          PREPAID_Balance(),
+          accountBalance(),
+          getBrasiccaBalance(),
+        ]);
 
       res.status(200).json({
         pos: posResponse?.amount || 0,
         pre: preResponse?.amount || 0,
         balance: accResponse?.balance || 0,
+        brassicaBalance: brassicaBalance?.accountBalance || 0,
       });
     } catch (error) {
       logger.error(error);
@@ -1681,7 +1687,6 @@ router.post(
         email: email,
         phonenumber: phonenumber,
         partner: JSON.stringify(partnerResponse.Data),
-      
       });
 
       // //if creating new transaction fails
@@ -2866,7 +2871,6 @@ async function markProcessed(trx, transaction) {
     }
   }
 
-
   if (transaction.type === "bulk") {
     await trx("notifications").insert({
       id: generateId(),
@@ -3023,7 +3027,6 @@ async function sendBundleLogic(transaction) {
 
 async function sendAirtimeLogic(transaction) {
   if (transaction.status === "completed") {
-
     if (transaction.type === "single") {
       const airtime = await knex("payments")
         .select("is_processed")
@@ -3045,8 +3048,7 @@ async function sendAirtimeLogic(transaction) {
     }
 
     if (transaction.type === "bulk") {
-// console.log('tranmx is',transaction)
-
+      // console.log('tranmx is',transaction)
 
       const recipients = JSON.parse(transaction?.recipient);
       const recipientList = recipients?.map((recipient) => {
