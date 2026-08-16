@@ -1,4 +1,7 @@
 :root {
+  
+  /* Tells the browser the site supports both modes */
+  color-scheme: light dark; 
   --secondary: #f78e2a;
   --primary: #031523;
   --accent: #0d1012;

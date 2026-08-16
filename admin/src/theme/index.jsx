@@ -7,6 +7,7 @@ import {
   ThemeProvider as MUIThemeProvider,
   alpha,
   lighten,
+  darken,
 } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 
@@ -29,6 +30,11 @@ export default function ThemeProvider({ children }) {
         mode: "light", // ready for dark mode extension
         ...palette,
       },
+      cssVariables: true, // Enables CSS variables generation
+      colorSchemes: {
+        light: true,
+        dark: true,
+      },
       shape: { borderRadius: 8 }, // slightly modernized
       typography,
       shadows: shadows(),
@@ -45,8 +51,9 @@ export default function ThemeProvider({ children }) {
     baseTheme = responsiveFontSizes(baseTheme);
 
     baseTheme.alpha = alpha; // ✅ PATCH
-    baseTheme.lighten  = lighten ; // ✅ PATCH
-
+    baseTheme.lighten = lighten; // ✅ PATCH
+    baseTheme.darken = darken;
+    baseTheme.lighten = lighten;
     return baseTheme;
   }, []);
 

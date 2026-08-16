@@ -108,7 +108,7 @@ const NewEmployee = ({ open, setOpen }) => {
   };
 
   // Role options (name + id) for Autocomplete
-  const roleOptions = roles.map((role) => role.name);
+  const roleOptions = roles?.map((role) => role?.name);
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
@@ -230,7 +230,7 @@ const NewEmployee = ({ open, setOpen }) => {
               control={control}
               render={({ field }) => (
                 <Autocomplete
-                  options={roleOptions}
+                  options={roleOptions||[]}
                   value={field.value || null}
                   onChange={(_, newValue) => field.onChange(newValue)}
                   renderInput={(params) => (

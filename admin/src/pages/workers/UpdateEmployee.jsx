@@ -72,7 +72,6 @@ const UpdateEmployee = () => {
       email: "",
       residence: "",
       phonenumber: "",
-
     },
   });
 
@@ -133,7 +132,7 @@ const UpdateEmployee = () => {
   };
 
   // Role options
-  const roleOptions = roles.map((role) => role.name);
+  const roleOptions = roles?.map((role) => role?.name);
 
   return (
     <Dialog
@@ -244,7 +243,7 @@ const UpdateEmployee = () => {
               control={control}
               render={({ field }) => (
                 <Autocomplete
-                  options={roleOptions}
+                  options={roleOptions || []}
                   value={field.value || null}
                   onChange={(_, newValue) => field.onChange(newValue)}
                   renderInput={(params) => (
@@ -261,8 +260,6 @@ const UpdateEmployee = () => {
               )}
             />
 
-       
-        
             <Typography
               variant="caption"
               color="secondary.main"
@@ -283,8 +280,8 @@ const UpdateEmployee = () => {
                     fullWidth
                     error={!!errors.email}
                     helperText={errors.email?.message}
-                   disabled
-                    />
+                    disabled
+                  />
                 )}
               />
 

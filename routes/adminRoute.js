@@ -10,6 +10,7 @@ const sendMail = require("../config/sendEmail");
 const {
   verifyToken,
   verifyRefreshToken,
+  removeUser,
 } = require("../middlewares/verifyToken");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const { isValidUUID2 } = require("../config/validation");
@@ -400,9 +401,8 @@ router.post(
 
     res.clearCookie("refreshToken");
 
-    await knex("user_tokens")
-      .where({ user_id: id })
-      .update({ is_revoked: true });
+     await removeUser(id);
+
 
     await knex("activity_logs").insert({
       user_id: id,
@@ -410,11 +410,7 @@ router.post(
       severity: "info",
     });
 
-    await redisClient.del(`user:${jti}`);
-
-    const cacheKey = `user:profile:${jti}`;
-    await redisClient.del(cacheKey);
-
+ 
     req.authUser = null;
     req.user = null;
     delete req.user;

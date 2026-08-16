@@ -7,7 +7,7 @@ const multer = require("multer");
 
 const sendMail = require("../config/sendEmail");
 const verifyAdmin = require("../middlewares/verifyAdmin");
-const { verifyToken } = require("../middlewares/verifyToken");
+const { verifyToken, removeUser } = require("../middlewares/verifyToken");
 const generateId = require("../config/generateId");
 //model
 
@@ -266,12 +266,16 @@ router.put(
       res.status(404).json("Error updating employee information.");
     }
 
+     await removeUser(id);
+
     //logs
     await knex("activity_logs").insert({
       user_id: userID,
       title: "Modified employee account details.",
       severity: "info",
     });
+//     await redisClient.get(`user:${jti}`);
+//  `user:profile:${jti}`;
 
     res.status(201).json("Changes saved successfully!!!");
   }),
@@ -293,6 +297,8 @@ router.put(
     if (updatedUser !== 1) {
       return res.status(400).json("Error updating user info");
     }
+
+     await removeUser(id);
 
     //logs
     await knex("activity_logs").insert({

@@ -1728,7 +1728,7 @@ export const USERS_WALLET = (type) => [
             textTransform: "uppercase",
             color:'#1897FF'
           }}
-          to={type === "users" ? `/users/details/${userId}` : `agents/${userId}`}
+          to={type === "users" ? `/users/details/${userId}` : `/agents/${userId}`}
         >
           {name}
         </Link>

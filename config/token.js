@@ -38,6 +38,7 @@ async function signMainToken(data, userData) {
 function signMainRefreshToken(data) {
   const token = jwt.sign(data, process.env.TOKEN_REFRESH, {
     expiresIn: getExpiryTimeByRole(data?.role).refreshTime,
+    jwtid: tid,
   });
   return token;
 }

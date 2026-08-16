@@ -9,7 +9,7 @@ import {
   Divider,
   Paper,
 } from "@mui/material";
-
+import _ from "lodash";
 import { TabContext, TabPanel, TabList } from "@mui/lab";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -49,6 +49,13 @@ function AgentDetails() {
     initialData: queryClient
       .getQueryData(["agents"])
       ?.find((agent) => agent?.id === id),
+    select: (data) => {
+      return !_.isEmpty(data)
+        ? data
+        : queryClient
+            .getQueryData(["agents"])
+            ?.find((agent) => agent?.id === id);
+    },
   });
 
   const { mutateAsync: toggleEmployeeAccountMutateAsync } = useMutation({

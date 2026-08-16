@@ -92,17 +92,13 @@ const verifyToken = (req, res, next) => {
       EX: getExpiryTimeByRoleMs(user?.role).accessTimeMs,
     });
 
-
-    console.log(newUser)
+    console.log(newUser);
 
     req.user = newUser;
     req.authUser = user;
     next();
   });
 };
-
-
-
 
 const verifyRefreshToken = async (req, res, next) => {
   const cookieToken = req.cookies.refreshToken;
@@ -279,7 +275,7 @@ const verifyOptionalToken = (req, res, next) => {
       role: user?.role,
       active: authUser?.active,
       createdAt: authUser?.created_at,
-      permissions: safeJSON(authUser?.permissions, "[]"),
+      permissions: safeJSON([]),
     };
 
     if (user?.role !== process.env.USER_ID) {
@@ -296,8 +292,68 @@ const verifyOptionalToken = (req, res, next) => {
   });
 };
 
+const removeUser = async (userId) => {
+  if (!userId) {
+    throw new Error("User ID is required.");
+  }
+
+  // Use a database transaction for data consistency
+  return await knex.transaction(async (trx) => {
+    // 1. Retrieve user token
+    const userToken = await trx("user_tokens")
+      .select("refresh_token")
+      .where("user_id", userId)
+      .first();
+
+  
+
+    if (userToken?.refresh_token) {
+      let jti;
+
+      // 2. Safely decode/verify JWT without blocking event loop or throwing unhandled errors
+      try {
+        const decoded = await new Promise((resolve, reject) => {
+          jwt.verify(
+            userToken.refresh_token,
+            process.env.TOKEN_REFRESH,
+            (err, token) => {
+              if (err) reject(err);
+              else resolve(token);
+            },
+          );
+        });
+        jti = decoded?.jti;
+      } catch (jwtError) {
+        // Handle expired/invalid JWT token gracefully
+        console.warn(
+          `Invalid or expired token for user ${userId}:`,
+          jwtError.message,
+        );
+      }
+
+      // 3. Pipeline Redis deletions in parallel to reduce network latency
+  
+      if (jti) {
+        const pipeline = redisClient.pipeline();
+        pipeline.del(`user:${jti}`);
+        pipeline.del(`user:profile:${jti}`);
+        await pipeline.exec();
+      }
+
+      // 4. Clean up user token record from DB
+      await trx("user_sessions")
+        .update("is_revoked", true)
+        .where("user_id", userId);
+      await trx("user_tokens").where("user_id", userId).del();
+    }
+
+
+  });
+};
+
 module.exports = {
   verifyRefreshToken,
   verifyToken,
   verifyOptionalToken,
+  removeUser
 };

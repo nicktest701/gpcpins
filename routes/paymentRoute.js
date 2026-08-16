@@ -70,7 +70,7 @@ const { brassicaPost } = require("../services/brassicaClient");
 const { getMeter, saveMeter } = require("../services/brassica/token.manager");
 const {
   sendBrassicaMoney,
-  getBrasiccaBalance,
+  getBrassicaBalance,
 } = require("./brassica/brasiccaMoney");
 
 // ===============================
@@ -457,7 +457,7 @@ router.get(
           POS_Balance(),
           PREPAID_Balance(),
           accountBalance(),
-          getBrasiccaBalance(),
+          getBrassicaBalance(),
         ]);
 
       res.status(200).json({

@@ -56,7 +56,7 @@ async function sendBrassicaMoney(payload) {
   }
 }
 
-async function getBrasiccaBalance() {
+async function getBrassicaBalance() {
   try {
     logger.info("[GetBalance] Fetching available float balance.");
 
@@ -71,5 +71,5 @@ async function getBrasiccaBalance() {
 
 module.exports = {
   sendBrassicaMoney,
-  getBrasiccaBalance,
+  getBrassicaBalance,
 };
