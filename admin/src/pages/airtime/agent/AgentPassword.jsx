@@ -46,7 +46,7 @@ function AgentPassword() {
   const { mutate, isLoading } = useMutation({
     mutationFn: putAgentPassword,
     onSuccess: (data) => {
-      customDispatch(globalAlertType("info", "Changes Saved"));
+      customDispatch(globalAlertType("success", "Changes Saved"));
       reset();
     },
     onError: (error) => {

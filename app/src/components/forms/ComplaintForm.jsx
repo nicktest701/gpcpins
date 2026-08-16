@@ -142,8 +142,8 @@ const ComplaintForm = () => {
 
   return (
     <>
-      <Container maxWidth="sm" sx={{ py: 2 }}>
-        <Paper elevation={3} sx={{ p: 2, borderRadius: 2 }}>
+      <Container maxWidth="sm" >
+        <Paper >
           <Typography variant="h5" fontWeight="bold" gutterBottom>
             Submit a Complaint
           </Typography>
@@ -163,6 +163,7 @@ const ComplaintForm = () => {
                     select
                     label="Service Type"
                     fullWidth
+                    size='small'
                     error={!!errors.serviceType}
                     helperText={errors.serviceType?.message}
                   >
@@ -183,6 +184,7 @@ const ComplaintForm = () => {
                     label="Transaction ID"
                     placeholder="e.g. TXN123456"
                     fullWidth
+                    size='small'
                     error={!!errors.transactionId}
                     helperText={errors.transactionId?.message}
                   />
@@ -199,6 +201,7 @@ const ComplaintForm = () => {
                       label="Meter Number"
                       placeholder="e.g. 1234567890"
                       fullWidth
+                      size='small'
                       error={!!errors.meterNo}
                       helperText={errors.meterNo?.message}
                     />
@@ -215,6 +218,7 @@ const ComplaintForm = () => {
                     select
                     label="Payment Mode"
                     fullWidth
+                    size='small'
                     error={!!errors.paymentMode}
                     helperText={errors.paymentMode?.message}
                   >
@@ -239,6 +243,7 @@ const ComplaintForm = () => {
                     helperText={errors.phonenumber?.message}
                     InputLabelProps={{ shrink: true }}
                     fullWidth
+                    size='small'
                     placeholder="024XXXXXXX"
                     InputProps={{
                       startAdornment: (
@@ -259,9 +264,10 @@ const ComplaintForm = () => {
                     {...field}
                     label="Comment / Description"
                     multiline
-                    rows={4}
+                    rows={2}
                     placeholder="Please describe your issue in detail..."
                     fullWidth
+                    size='small'
                     error={!!errors.comment}
                     helperText={errors.comment?.message}
                   />
@@ -274,6 +280,7 @@ const ComplaintForm = () => {
                 size="large"
                 loading={mutation.isPending || isSubmitting}
                 fullWidth
+                // size='small'
               >
                 Submit Complaint
               </LoadingButton>
@@ -288,6 +295,7 @@ const ComplaintForm = () => {
         onClose={handleCloseSuccessModal}
         maxWidth="xs"
         fullWidth
+        size='small'
         TransitionComponent={Fade}
         PaperProps={{
           sx: {

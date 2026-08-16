@@ -112,7 +112,7 @@ const EditAgent = () => {
         queryClient.invalidateQueries(["agent", id]);
       },
       onSuccess: (data) => {
-        customDispatch(globalAlertType("info", data));
+        customDispatch(globalAlertType("success", data));
         handleClose();
       },
       onError: (error) => {

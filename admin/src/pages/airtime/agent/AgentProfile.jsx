@@ -1,170 +1,263 @@
-import { Container, Stack, Box, Typography, IconButton } from "@mui/material";
-import CustomFormControl from "../../../components/inputs/CustomFormControl";
-import moment from "moment";
-import { useSearchParams } from "react-router-dom";
-import { EditRounded } from "@mui/icons-material";
-
-import { generateRandomCode } from "../../../config/generateRandomCode";
-import PersonalDetailsItem from "../../../components/custom/PersonalDetailsItem";
-import { AuthContext } from "../../../context/providers/AuthProvider";
+// AgentProfile.jsx
 import { useContext } from "react";
+import {
+  Paper,
+  Stack,
+  Box,
+  Typography,
+  IconButton,
+  Tooltip,
+  Divider,
+  useTheme,
+  Grid,
+} from "@mui/material";
+import {
+  EditRounded,
+  Person,
+  ContactPhone,
+  Business,
+  Badge,
+  Cake,
+  Phone,
+  Email,
+  Home,
+  Storefront,
+  LocationOn,
+  Description,
+} from "@mui/icons-material";
+import { useSearchParams } from "react-router-dom";
+import moment from "moment";
+import { generateRandomCode } from "../../../config/generateRandomCode";
+import { AuthContext } from "../../../context/providers/AuthProvider";
 
-const AgentProfile = ({ values }) => {
+// ─── Helper component for each detail row ──────────────────────────
+const DetailRow = ({ icon, label, value }) => (
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      gap: 1.5,
+      py: 0.75,
+      px: 1,
+      borderRadius: 1,
+      transition: "background-color 0.2s",
+      "&:hover": { bgcolor: "action.hover" },
+    }}
+  >
+    <Box sx={{ color: "primary.main", display: "flex", alignItems: "center" }}>
+      {icon}
+    </Box>
+    <Box>
+      <Typography variant="caption" color="text.secondary" display="block">
+        {label}
+      </Typography>
+      <Typography variant="body1" fontWeight="medium">
+        {value || "N/A"}
+      </Typography>
+    </Box>
+  </Box>
+);
+
+// ─── Section component ──────────────────────────────────────────────
+const Section = ({ title, subtitle, icon, children, onEdit, canEdit }) => (
+  <Paper
+    elevation={2}
+    sx={{
+      borderRadius: 1.2,
+      p: 3,
+      bgcolor: "background.paper",
+      transition: "box-shadow 0.2s",
+      "&:hover": { boxShadow: 4 },
+    }}
+  >
+    <Stack spacing={2}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              bgcolor: "primary.lighter",
+              borderRadius: "50%",
+              p: 1,
+            }}
+          >
+            {icon}
+          </Box>
+          <Box>
+            <Typography variant="h6" fontWeight="bold">
+              {title}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {subtitle}
+            </Typography>
+          </Box>
+        </Stack>
+        {canEdit && (
+          <Tooltip title="Edit section" arrow>
+            <IconButton onClick={onEdit} size="small" sx={{ color: "primary.main" }}>
+              <EditRounded fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Box>
+      <Divider />
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+        {children}
+      </Box>
+    </Stack>
+  </Paper>
+);
+
+// ─── Main Component ──────────────────────────────────────────────────
+function AgentProfile({ values }) {
   const { user } = useContext(AuthContext);
   const [searchParams, setSearchParams] = useSearchParams();
+  const theme = useTheme();
 
-  const handleOpenEdit = (value) => {
+  const handleOpenEdit = (section) => {
     setSearchParams((params) => {
-      params.set(value, generateRandomCode(50));
-
+      params.set(section, generateRandomCode(50));
       return params;
     });
   };
 
-// console.log(values)
+  const canEdit = user?.permissions?.includes("Edit agents");
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 4,
-      }}
-    >
-      <Container
-        sx={{
-          bgcolor: "#fff",
-          p: 2,
-        }}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
+    <Box sx={{ py: 2 }}>
+      <Stack spacing={3}>
+        {/* Personal Details */}
+        <Section
+          title="Personal Details"
+          subtitle="Manage agent personal information"
+          icon={<Person color="primary" />}
+          onEdit={() => handleOpenEdit("personal")}
+          canEdit={canEdit}
         >
-          <Typography variant="h4" paragraph p={1} mt={1}>
-            Personal Details
-          </Typography>
-          {user?.permissions?.includes("Edit agents") && (
-            <IconButton onClick={() => handleOpenEdit("personal")}>
-              <EditRounded />
-            </IconButton>
-          )}
-        </Box>
-        <Stack spacing={2}>
-          <CustomFormControl>
-            <PersonalDetailsItem label="First Name" value={values?.firstname} />
-            <PersonalDetailsItem label="Last Name" value={values?.lastname} />
-          </CustomFormControl>
-          <PersonalDetailsItem label="Username" value={values?.username} />
+          <Grid container spacing={1}>
+            <Grid item xs={12} sm={6}>
+              <DetailRow icon={<Badge fontSize="small" />} label="First Name" value={values?.firstname} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <DetailRow icon={<Badge fontSize="small" />} label="Last Name" value={values?.lastname} />
+            </Grid>
+            <Grid item xs={12}>
+              <DetailRow icon={<Person fontSize="small" />} label="Username" value={values?.username} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <DetailRow
+                icon={<Cake fontSize="small" />}
+                label="Date of Birth"
+                value={values?.dob ? moment(values.dob).format("Do MMMM, YYYY") : "N/A"}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <DetailRow
+                icon={<Phone fontSize="small" />}
+                label="Telephone"
+                value={values?.phonenumber}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <DetailRow
+                icon={<Badge fontSize="small" />}
+                label="National ID / Voter's ID"
+                value={values?.nid}
+              />
+            </Grid>
+          </Grid>
+        </Section>
 
-          <CustomFormControl>
-            <PersonalDetailsItem
-              label="Date Of Birth"
-              value={moment(values?.dob).format("Do MMMM,YYYY")}
-            />
-            <PersonalDetailsItem
-              label="Telephone No."
-              value={values?.phonenumber}
-            />
-          </CustomFormControl>
-          <PersonalDetailsItem
-            label="National ID / Voter's ID Number"
-            value={values?.nid}
-          />
-        </Stack>
-      </Container>
-      <Container
-        sx={{
-          bgcolor: "#fff",
-          p: 2,
-        }}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
+        {/* Contact Details */}
+        <Section
+          title="Contact Details"
+          subtitle="Agent contact information"
+          icon={<ContactPhone color="primary" />}
+          onEdit={() => handleOpenEdit("contact")}
+          canEdit={canEdit}
         >
-          <Typography variant="h4" paragraph p={1} mt={1}>
-            Contact Details
-          </Typography>
-          {user?.permissions?.includes("Edit agents") && (
-            <IconButton onClick={() => handleOpenEdit("contact")}>
-              <EditRounded />
-            </IconButton>
-          )}
-        </Box>
-        <Stack spacing={2}>
-          <CustomFormControl>
-            <PersonalDetailsItem
-              label="Telephone No."
-              value={values?.phonenumber}
-            />
+          <Grid container spacing={1}>
+            <Grid item xs={12} sm={6}>
+              <DetailRow
+                icon={<Phone fontSize="small" />}
+                label="Telephone"
+                value={values?.phonenumber}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <DetailRow
+                icon={<Email fontSize="small" />}
+                label="Email Address"
+                value={values?.email}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <DetailRow
+                icon={<Home fontSize="small" />}
+                label="Residential Address"
+                value={values?.residence}
+              />
+            </Grid>
+          </Grid>
+        </Section>
 
-            <PersonalDetailsItem label="Email Address" value={values?.email} />
-          </CustomFormControl>
-
-          <PersonalDetailsItem
-            label="Residential Address"
-            value={values?.residence}
-          />
-        </Stack>
-      </Container>
-      <Container
-        sx={{
-          bgcolor: "#fff",
-          p: 2,
-        }}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
+        {/* Business Information */}
+        <Section
+          title="Business Information"
+          subtitle="Agent business details"
+          icon={<Business color="primary" />}
+          onEdit={() => handleOpenEdit("business")}
+          canEdit={canEdit}
         >
-          <Typography variant="h4" paragraph p={1} mt={1}>
-            Business Information
-          </Typography>
-          {user?.permissions?.includes("Edit agents") && (
-            <IconButton onClick={() => handleOpenEdit("business")}>
-              <EditRounded />
-            </IconButton>
-          )}
-        </Box>
-        <Stack spacing={2}>
-          <PersonalDetailsItem
-            label="Business Name"
-            value={values?.businessName}
-          />
-          <PersonalDetailsItem
-            label="Location"
-            value={values?.businessLocation}
-          />
-          <PersonalDetailsItem
-            label="Description"
-            value={values?.businessDescription}
-          />
-
-          <CustomFormControl>
-            <PersonalDetailsItem
-              label="Telephone No."
-              value={values?.businessPhonenumber}
-            />
-
-            <PersonalDetailsItem
-              label="Email Address"
-              value={values?.businessEmail}
-            />
-          </CustomFormControl>
-        </Stack>
-      </Container>
+          <Grid container spacing={1}>
+            <Grid item xs={12} sm={6}>
+              <DetailRow
+                icon={<Storefront fontSize="small" />}
+                label="Business Name"
+                value={values?.businessName}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <DetailRow
+                icon={<LocationOn fontSize="small" />}
+                label="Location"
+                value={values?.businessLocation}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <DetailRow
+                icon={<Description fontSize="small" />}
+                label="Description"
+                value={values?.businessDescription}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <DetailRow
+                icon={<Phone fontSize="small" />}
+                label="Business Phone"
+                value={values?.businessPhonenumber}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <DetailRow
+                icon={<Email fontSize="small" />}
+                label="Business Email"
+                value={values?.businessEmail}
+              />
+            </Grid>
+          </Grid>
+        </Section>
+      </Stack>
     </Box>
   );
-};
+}
 
 export default AgentProfile;

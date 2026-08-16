@@ -186,7 +186,7 @@ const EditWAECCategory = () => {
   const editMutation = useMutation({
     mutationFn: editCategory,
     onSuccess: (data) => {
-      customDispatch(globalAlertType("info", data));
+      customDispatch(globalAlertType("success", data));
       handleClose();
       queryClient.invalidateQueries(["category"]);
     },
@@ -207,8 +207,6 @@ const EditWAECCategory = () => {
       text: "Are you sure you want to update this WAEC checker?",
       icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
       confirmButtonText: "Yes, save",
     }).then((result) => {
       if (result.isConfirmed) {
@@ -283,7 +281,7 @@ const EditWAECCategory = () => {
   PaperProps={{
     elevation: 8,
     sx: {
-      borderRadius: 3,
+      borderRadius: 1.2,
       maxHeight: "90vh",
       overflow: "hidden", // 1. Keeps the outer container bound to maxheight without a scrollbar
       bgcolor: "background.paper",
@@ -333,7 +331,7 @@ const EditWAECCategory = () => {
         },
         "&::-webkit-scrollbar-thumb": {
           background: (theme) => alpha(theme.palette.primary.main, 0.4),
-          borderRadius: 3,
+          borderRadius: 1.2,
           "&:hover": {
             background: (theme) => alpha(theme.palette.primary.main, 0.6),
           },
@@ -718,7 +716,7 @@ export default EditWAECCategory;
 //   const editMutation = useMutation({
 //     mutationFn: editCategory,
 //     onSuccess: (data) => {
-//       customDispatch(globalAlertType("info", data));
+//       customDispatch(globalAlertType("success", data));
 //       handleClose();
 //       queryClient.invalidateQueries(["category"]);
 //     },
@@ -806,7 +804,7 @@ export default EditWAECCategory;
 //        PaperProps={{
 //         elevation: 8,
 //         sx: {
-//           borderRadius: 4,
+//           borderRadius: 1.2,
 //           // overflow: "hidden",
 //           background:(theme)=> theme.palette.background.paper,
 //           backdropFilter: "blur(4px)",

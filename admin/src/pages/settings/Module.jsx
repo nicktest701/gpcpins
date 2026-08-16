@@ -73,7 +73,7 @@ function Module() {
               queryClient.invalidateQueries(["module-status"]);
             },
             onSuccess: (data) => {
-              customDispatch(globalAlertType("info", data));
+              customDispatch(globalAlertType("success", data));
             },
             onError: (errorFF) => {
               customDispatch(globalAlertType("error", errorFF));

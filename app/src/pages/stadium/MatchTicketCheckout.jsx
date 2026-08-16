@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import _ from "lodash";
 import { LoadingButton } from "@mui/lab";
 import Avatar from "@mui/material/Avatar";
@@ -8,7 +8,7 @@ import ListItem from "@mui/material/ListItem";
 import ListItemSecondaryAction from "@mui/material/ListItemSecondaryAction";
 import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
+
 import Typography from "@mui/material/Typography";
 import CloseIcon from "@mui/icons-material/Close";
 import {
@@ -47,6 +47,7 @@ import {
   Skeleton,
 } from "@mui/material";
 import { useSocket } from "../../context/providers/SocketProvider";
+import Swal from "sweetalert2";
 
 const MAX_PIN_ATTEMPTS = 3;
 
@@ -248,11 +249,37 @@ function MatchTicketCheckout() {
    |--------------------------------------------------------------------------
    */
 
-  const processPayment = (values) => {
+  const processPayment = async(values) => {
     setWalletError("");
 
     const payload = buildPayload(values);
-    paymentMutation.mutateAsync(payload);
+
+    // wrap with sweetalert confirmation
+     const result = await Swal.fire({
+      title: "Confirm Payment",
+      text: `Pay ${currencyFormatter(totalAmount)} for ticket(s)?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, pay",
+    });
+
+    if (!result.isConfirmed) return;
+
+    Swal.fire({
+      title: "Processing payment",
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    try {
+      await paymentMutation.mutateAsync(payload);
+    } catch (e) {
+      // error handling is done in mutation onError
+    } finally {
+      Swal.close();
+    }
+    // fallback: proceed directly
+
   };
 
   if (stadiumTicketTotal.length === 0 || totalQuantity === 0) {
@@ -477,7 +504,7 @@ function MatchTicketCheckout() {
         open={summaryOpen}
         onClose={handleCloseSummary}
         fullWidth
-        maxWidth="sm"
+        maxWidth="xs"
         PaperProps={{
           sx: {
             borderRadius: 3,

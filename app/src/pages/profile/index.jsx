@@ -1,12 +1,11 @@
 import { Container, Box } from "@mui/material";
-import { useContext } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 
-import { AuthContext } from "../../context/providers/AuthProvider";
+import { useAuth } from "../../context/providers/AuthProvider";
 import CustomTitle from "../../components/custom/CustomTitle";
 
 const Profile = () => {
-  const { user } = useContext(AuthContext);
+  const { user } =useAuth()
 
   if (!user?.id) {
     return <Navigate to="/" />;

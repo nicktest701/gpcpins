@@ -15,7 +15,7 @@ const ItemCard = ({ title, value, icon, color = "#0F172A" }) => {
       sx={{
         width: "100%",
         p: 2,
-        borderRadius: 2.5,
+        borderRadius: 1.2,
         borderColor: (theme) => alpha(theme.palette.text.primary, 0.08),
         bgcolor: "background.paper",
         transition: "transform .15s ease, box-shadow .15s ease",
@@ -32,7 +32,7 @@ const ItemCard = ({ title, value, icon, color = "#0F172A" }) => {
             height: 38,
             display: "grid",
             placeItems: "center",
-            borderRadius: 2,
+            borderRadius: 1.2,
             bgcolor: alpha(color, 0.12),
             color,
           }}

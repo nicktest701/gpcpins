@@ -68,7 +68,7 @@ function ChangePin() {
             queryClient.invalidateQueries(["user"]);
           },
           onSuccess: (data) => {
-            customDispatch(globalAlertType("info", data));
+            customDispatch(globalAlertType("success", data));
 
             handleClose();
             setPin("");

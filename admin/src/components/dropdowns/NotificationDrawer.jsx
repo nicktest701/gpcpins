@@ -69,7 +69,7 @@ const NotificationDrawer = ({ open, setOpen, notifications = [] }) => {
   const deleteAllMutation = useMutation({
     mutationFn: deleteNotifications,
     onSuccess: () => {
-      customDispatch(globalAlertType("info", "All notifications cleared"));
+      customDispatch(globalAlertType("success", "All notifications cleared"));
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
     onError: (err) => {
@@ -216,7 +216,7 @@ const NotificationItem = ({ notification, onClick }) => {
         transition: "background 0.2s",
         "&:hover": { bgcolor: alpha("#000", 0.04) },
         p: 1.5,
-        borderRadius: 2,
+        borderRadius: 1.2,
         mb: 1,
         bgcolor: isUnread ? alpha("#fabb7f", 0.2) : "transparent",
         borderLeft: isUnread ? "3px solid #fabb7f" : "none",

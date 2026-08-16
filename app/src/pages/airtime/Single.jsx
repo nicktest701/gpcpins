@@ -163,6 +163,7 @@ function Single() {
                   render={({ field }) => (
                     <TextField
                       {...field}
+                      size='small'
                       select
                       fullWidth
                       label="Top-Up Type"
@@ -183,7 +184,7 @@ function Single() {
                   render={({ field }) => (
                     <ServiceProvider
                       label="Network Provider"
-                      size="medium"
+                      size="small"
                       value={field.value}
                       setValue={field.onChange}
                       error={!!errors.provider}
@@ -199,6 +200,7 @@ function Single() {
                   render={({ field }) => (
                     <TextField
                       {...field}
+                      size='small'
                       fullWidth
                       type="tel"
                       label="Recipient Number"
@@ -223,6 +225,7 @@ function Single() {
                   render={({ field }) => (
                     <TextField
                       {...field}
+                      size='small'
                       fullWidth
                       type="tel"
                       label="Confirm Recipient Number"

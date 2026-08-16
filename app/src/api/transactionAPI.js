@@ -13,19 +13,7 @@ export const getTransactions = async (sort) => {
   }
 };
 
-//   try {
-//     const res = await api({
-//       method: 'GET',
-//       url: `/transaction`,
-//       timeout: 10000,
-//       timeoutErrorMessage: 'Error connecting to the server',
-//     });
 
-//     return res.data;
-//   } catch (error) {
-//     throw error.response.data;
-//   }
-// };
 export const findTransaction = async (id, mobileNo) => {
   try {
     const res = await api({
@@ -81,21 +69,7 @@ export const verifyTransaction = async (id, ticket) => {
   }
 };
 
-export const sendVoucherMail = async (id) => {
-  try {
-    const res = await api({
-      method: "POST",
-      url: `/transaction/send-mail`,
-      data: {
-        id,
-      },
-    });
 
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
 
 export const getTransactionByEmail = async (date) => {
   try {

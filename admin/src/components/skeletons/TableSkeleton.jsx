@@ -46,7 +46,7 @@ const TableSkeleton = React.memo(({
         component={Paper} 
         elevation={0} 
         sx={{ 
-          borderRadius: 3,
+          borderRadius: 1.2,
           border: `1px solid ${theme.palette.divider}`,
           overflow: "hidden"
         }}

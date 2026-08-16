@@ -247,7 +247,7 @@ const CustomizedMaterialTable = React.memo(
           mx: "auto",
           py: 2,
           overflowX: "auto",
-          borderRadius: 3,
+          borderRadius: 1.2,
           ...style,
         }}
         className="scroll-container"
@@ -281,7 +281,7 @@ const CustomizedMaterialTable = React.memo(
           // 1-indexed `page` down to MaterialTable's 0-indexed `page`.
           totalCount={totalCount}
           page={page != null ? Math.max(page - 1, 0) : undefined}
-         onChangePage={(newPage) => onPageChange?.(newPage + 1)}
+          onChangePage={(newPage) => onPageChange?.(newPage + 1)}
           // onChangeRowsPerPage={(newPageSize) =>
           //   onRowsPerPageChange?.(newPageSize)
           // }
@@ -290,6 +290,14 @@ const CustomizedMaterialTable = React.memo(
             onRowsPerPageChange?.(newPageSize)
           }
           onSearchChange={onSearchChange}
+          sx={{
+            "& .MuiTableContainer-root": {
+              scrollbarWidth: "none", // Firefox compatibility
+              "&::-webkit-scrollbar": {
+                display: "none", // Chrome, Safari, Edge compatibility
+              },
+            },
+          }}
         />
       </Box>
     );
@@ -299,3 +307,6 @@ const CustomizedMaterialTable = React.memo(
 CustomizedMaterialTable.displayName = "CustomizedMaterialTable";
 
 export default CustomizedMaterialTable;
+{
+  /* <div class="MuiBox-root css-s7pidn" style="overflow-y: auto;">…</div>scroll */
+}

@@ -943,7 +943,7 @@ router.delete(
     }
     //logs
     await knex("activity_logs").insert({
-      employee_id: id,
+      user_id: id,
       title: "Deleted a user account!",
       severity: "error",
     });

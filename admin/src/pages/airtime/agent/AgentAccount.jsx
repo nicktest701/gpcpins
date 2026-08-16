@@ -48,7 +48,7 @@ function AgentAccount() {
               queryClient.invalidateQueries(["agents"]);
             },
             onSuccess: (data) => {
-              customDispatch(globalAlertType("info", data));
+              customDispatch(globalAlertType("success", data));
               navigate("/airtime/agent");
             },
             onError: (error) => {

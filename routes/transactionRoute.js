@@ -1,7 +1,6 @@
 const router = require("express").Router();
 const asyncHandler = require("express-async-handler");
 const { randomBytes } = require("crypto");
-const bcrypt = require("bcryptjs");
 const _ = require("lodash");
 const moment = require("moment");
 const generateId = require("../config/generateId");
@@ -1644,12 +1643,14 @@ router.get(
 
       return {
         id: t.id,
+        externalTransactionId: t?.externalTransactionId,
         type: _.upperCase(`${voucherType} ${info?.domain || ""}`),
         voucherType,
         domain: _.capitalize(t.service),
         quantity: info?.quantity || info?.paymentDetails?.quantity || 0,
         amount: info?.amount || info?.paymentDetails?.totalAmount || 0,
         phonenumber: t.phonenumber,
+        mode: t.mode,
         email: t.email,
         downloadLink: info?.downloadLink || "",
         createdAt: t.createdAt,
@@ -1662,17 +1663,21 @@ router.get(
     // PREPAID
     const prepaid = prepaidRows.map((t) => {
       const info = safeJSON(t.info);
+      const partner = safeJSON(t.partner);
       const service = _.capitalize(t?.service);
+      // console.log(partner)
 
       return {
         id: t?.id,
+        externalTransactionId: t?.externalTransactionId,
         type: `${service} Units`,
         domain: service,
-        meter: t?.number,
+        meter: t?.number || partner?.billRequest?.accountNumber,
         amount: t?.amount,
         charges: t?.charges,
         topup: t?.topup,
         phonenumber: t?.phonenumber,
+        mode: t.mode,
         email: t?.email,
         downloadLink: info?.receiptUrl || "",
         createdAt: t?.createdAt,
@@ -1685,12 +1690,14 @@ router.get(
     // AIRTIME
     const airtime = airtimeRows.map((t) => ({
       id: t?.id,
+      externalTransactionId: t?.externalTransactionId,
       type: `${t?.domain}`,
       kind: `${t?.kind}`,
       domain: _.capitalize(t?.service),
       recipient: t?.recipient,
       amount: t?.amount,
       phonenumber: t?.phonenumber,
+      mode: t.mode,
       email: t?.email,
       createdAt: t?.createdAt,
       status: t?.status,
@@ -1700,11 +1707,13 @@ router.get(
     // BUNDLE
     const bundles = bundleRows.map((t) => ({
       id: t.id,
+      externalTransactionId: t?.externalTransactionId,
       type: `${t.domain}`,
       domain: _.capitalize(t.service),
       kind: `${t?.bundleName}`,
       volume: t.volume,
       recipient: t.recipient,
+      mode: t.mode,
       amount: t.amount,
       phonenumber: t.phonenumber,
       email: t.email,
@@ -1712,6 +1721,8 @@ router.get(
       status: t.status,
       isProcessed: Boolean(t?.isProcessed),
     }));
+
+    // console.log(prepaid);
 
     // ---------------- MERGE + SORT ----------------
     const result = _.orderBy(

@@ -59,7 +59,7 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
   //           queryClient.invalidateQueries(["category"]);
   //         },
   //         onSuccess: (data) => {
-  //           customDispatch(globalAlertType("info", data));
+  //           customDispatch(globalAlertType("success", data));
   //         },
   //         onError: (error) => {
   //           customDispatch(globalAlertType("error", error));
@@ -84,7 +84,7 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
             queryClient.invalidateQueries(["category"]);
           },
           onSuccess: (data) => {
-            customDispatch(globalAlertType("info", data));
+            customDispatch(globalAlertType("success", data));
           },
           onError: (error) => {
             customDispatch(globalAlertType("error", error));
@@ -140,7 +140,7 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
               queryClient.invalidateQueries(["category"]);
             },
             onSuccess: (data) => {
-              customDispatch(globalAlertType("info", data));
+              customDispatch(globalAlertType("success", data));
             },
             onError: (error) => {
               customDispatch(globalAlertType("error", error));
@@ -226,7 +226,7 @@ const ViewCategory = ({ categories, pageInfo, refetch }) => {
         marginInline: "auto",
         // borderRadius: 0,
         bgcolor: "#fff",
-        borderRadius: 3,
+        borderRadius: 1.2,
         // overflowX:'hidden'
       }}
     >

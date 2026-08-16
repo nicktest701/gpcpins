@@ -46,7 +46,7 @@ const FullPageSkeleton = React.memo(({
         sx={{
           mb: 4,
           gap: 2,
-          borderRadius: 3,
+          borderRadius: 1.2,
           border: `1px solid ${theme.palette.divider}`,
         }}
       >
@@ -92,7 +92,7 @@ const FullPageSkeleton = React.memo(({
           component={Paper} 
           elevation={0} 
           sx={{ 
-            borderRadius: 3,
+            borderRadius: 1.2,
             border: `1px solid ${theme.palette.divider}`,
             overflow: "hidden"
           }}

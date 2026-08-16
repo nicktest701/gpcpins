@@ -67,7 +67,7 @@ export default function EmployeeMenu({ rowData }) {
             // width: '20ch',
             background: 'linear-gradient(145deg, #e6e6e6, #ffffff)',
             boxShadow: '10px 10px 60px #d9d9d9,-20px -20px 60px #ffffff',
-            borderRadius: 2,
+            borderRadius: 1.2,
           },
         }}
       >

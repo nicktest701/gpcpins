@@ -16,7 +16,7 @@ function CustomCard({ title, subtitle, icon, action, children, width, dense = fa
       sx={{
         p: dense ? 2 : 3,
         width: "100%",
-        borderRadius: 3,
+        borderRadius: 1.2,
         borderColor: (theme) => alpha(theme.palette.text.primary, 0.08),
         boxShadow: "0 1px 2px rgba(16, 24, 40, 0.04)",
       }}
@@ -31,7 +31,7 @@ function CustomCard({ title, subtitle, icon, action, children, width, dense = fa
                 flexShrink: 0,
                 display: "grid",
                 placeItems: "center",
-                borderRadius: 2,
+                borderRadius: 1.2,
                 bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
                 color: "primary.main",
               }}

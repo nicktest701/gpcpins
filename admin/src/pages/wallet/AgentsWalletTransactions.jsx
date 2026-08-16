@@ -1,21 +1,21 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import LoadingButton from "@mui/lab/LoadingButton";
-import { IconButton, Box, ListItemText, Alert } from "@mui/material";
-import { ArrowBackRounded, NoteAlt, NoteRounded } from "@mui/icons-material";
-import { useAuth } from "../../context/providers/AuthProvider";
+import { Box, Alert, Container } from "@mui/material";
+import { NoteAlt, NoteRounded } from "@mui/icons-material";
+import { useAuth } from "@/context/providers/AuthProvider";
 import _ from "lodash";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { generateRandomCode } from "../../config/generateRandomCode";
-import CustomTitle from "../../components/custom/CustomTitle";
-import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
+
+import CustomTitle from "@/components/custom/CustomTitle";
+import CustomizedMaterialTable from "@/components/tables/CustomizedMaterialTable";
 import {
   geAllAgentWalletTransactions,
   generateWalletTransactionReport,
-} from "../../api/transactionAPI";
-import { currencyFormatter } from "../../constants";
-import { WALLET_TRANSACTIONS } from "../../mocks/columns";
+} from "@/api/transactionAPI";
+import { currencyFormatter } from "@/constants";
+import { WALLET_TRANSACTIONS } from "@/mocks/columns";
 import DateRangePicker from "@/components/pickers/DateRangePicker";
+import CustomTotal from "@/components/custom/CustomTotal";
 
 function AgentsWalletTransactions() {
   const { user } = useAuth();
@@ -43,17 +43,13 @@ function AgentsWalletTransactions() {
   };
   const result = isLoading || isError || isSuccess;
   return (
-    <div>
-      <Link to={`/wallets?WMnmli=${generateRandomCode(200)}`}>
-        <IconButton>
-          <ArrowBackRounded />
-        </IconButton>
-      </Link>
+    <Container>
       <>
         <CustomTitle
           icon={<NoteAlt sx={{ width: 50, height: 50 }} color="primary" />}
           title="Agent Wallet Transactions"
           subtitle="Manage all your wallet transactions made by agents "
+          showBack
         />
 
         {result && (
@@ -90,53 +86,47 @@ function AgentsWalletTransactions() {
           icon={<NoteAlt sx={{ width: 40, height: 40 }} color="primary" />}
           onRefresh={transactions.refetch}
           autocompleteComponent={
-            <Box
-              sx={{
-                width: "100%",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 2,
-                flexWrap: "wrap",
-              }}
-            >
-              <DateRangePicker
-                date={date}
-                setDate={setDate}
-                onReset={transactions.refetch}
-                placeholder="Pick a date range"
-                dateFormat="ll"
-                maxDate={new Date()}
-                minDate={new Date("2024-01-01")}
-              />
-              <LoadingButton
-                variant="contained"
-                endIcon={<NoteRounded />}
-                onClick={generateReport}
-                loading={isLoading}
-              >
-                {isLoading
-                  ? "Generating Report.Please Wait..."
-                  : " Generate Report"}
-              </LoadingButton>
-
-              <ListItemText
-                primary={currencyFormatter(
-                  _.sumBy(transactions.data, (item) => Number(item?.amount)),
-                )}
-                primaryTypographyProps={{
-                  fontSize: "1.5rem",
-                  fontWeight: "bold",
-                  // textAlign:'right'
-                }}
-                secondary="Total Amount"
-                secondaryTypographyProps={{ color: "secondary" }}
+            <>
+              <Box
                 sx={{
-                  flex: 1,
-                  textAlign: "right",
+                  width: "100%",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 2,
+                  flexWrap: "wrap",
+                  mb:3
                 }}
-              />
-            </Box>
+              >
+                    <CustomTotal
+                  title="Total Amount"
+                  total={currencyFormatter(
+                    _.sumBy(transactions.data, (item) => Number(item?.amount)),
+                  )}
+                />
+                <LoadingButton
+                  variant="contained"
+                  endIcon={<NoteRounded />}
+                  onClick={generateReport}
+                  loading={isLoading}
+                >
+                  {isLoading
+                    ? "Generating Report.Please Wait..."
+                    : " Generate Report"}
+                </LoadingButton>
+
+            
+                  </Box>
+                <DateRangePicker
+                  date={date}
+                  setDate={setDate}
+                  onReset={transactions.refetch}
+                  placeholder="Pick a date range"
+                  dateFormat="ll"
+                  maxDate={new Date()}
+                  minDate={new Date("2024-01-01")}
+                />
+            </>
           }
           options={{
             exportAllData: true,
@@ -146,7 +136,7 @@ function AgentsWalletTransactions() {
           }}
         />
       </>
-    </div>
+    </Container>
   );
 }
 

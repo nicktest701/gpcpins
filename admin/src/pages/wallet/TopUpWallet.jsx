@@ -71,7 +71,7 @@ function TopUpWallet() {
             queryClient.invalidateQueries("agent_wallets");
           },
           onSuccess: (data) => {
-            customDispatch(globalAlertType("info", data));
+            customDispatch(globalAlertType("success", data));
             setSearchParams((params) => {
               params.delete("rowID");
               params.delete("type");
@@ -126,7 +126,7 @@ function TopUpWallet() {
                   justifyContent: "center",
                   gap: 2,
                   // boxShadow: "20px 20px 60px #d9d9d9,-20px -20px 60px #ffffff",
-                  borderRadius: 2,
+                  borderRadius: 1.2,
                 }}
               >
                 <TextField

@@ -52,7 +52,7 @@ function AgentCommission() {
         queryClient.invalidateQueries(["agent-commission", id]);
       },
       onSuccess: (data) => {
-        customDispatch(globalAlertType("info", "Changes Saved!"));
+        customDispatch(globalAlertType("success", "Changes Saved!"));
       },
 
       onError: (error) => {

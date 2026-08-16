@@ -23,7 +23,7 @@ const DashboardSkeleton = () => {
       <Skeleton
         variant="rectangular"
         height={40}
-        sx={{ borderRadius: 2, mb: 3 }}
+        sx={{ borderRadius: 1.2, mb: 3 }}
       />
       {/* Account Balance Section */}
       <Card sx={{ mb: 3 }}>

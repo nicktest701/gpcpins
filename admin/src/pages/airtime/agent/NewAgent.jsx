@@ -61,7 +61,7 @@ const NewAgent = () => {
         queryClient.invalidateQueries(["agents"]);
       },
       onSuccess: (data) => {
-        customDispatch(globalAlertType("info", data));
+        customDispatch(globalAlertType("success", data));
         handleClose();
       },
       onError: (error) => {

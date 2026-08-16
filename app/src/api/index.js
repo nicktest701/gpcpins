@@ -2,13 +2,9 @@
 import {
   makePayment,
   getPayment,
-  getAllElectricityPaymentById,
-  getAllElectricityPaymentByUserId,
-  getAllElectricityPayment,
   makeElectricityPayment,
-  updateElectricityPayment,
 } from './paymentAPI';
-import { sendVoucherMail } from './transactionAPI';
+
 import {
   getAllVouchersCategory,
   getCategory,
@@ -21,7 +17,7 @@ import {
 import { getVoucherByVoucherType } from './voucherAPI';
 import { getBusByVoucherType } from './busAPI';
 import { getCinema } from './cinemaAPI';
-import { addBeceCard } from './cardApi';
+
 import {
   getAllMeters,
   getAllMetersById,
@@ -52,11 +48,6 @@ export default {
   makePayment,
   getPayment,
 
-  //bece
-  addBeceCard,
-  //transaction
-  sendVoucherMail,
-
   //electricity
   getAllMeters,
   getAllMetersById,
@@ -65,9 +56,7 @@ export default {
   putMeter,
   deleteMeter,
 
-  getAllElectricityPaymentById,
-  getAllElectricityPaymentByUserId,
-  getAllElectricityPayment,
+
   makeElectricityPayment,
-  updateElectricityPayment,
+
 };

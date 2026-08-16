@@ -107,7 +107,7 @@ export const usePaymentPolling = ({
 
     if (currentStatus === "success") {
       onSuccess?.(data);
-      console.log(data)
+      // console.log(data)
     } else if (currentStatus === "failed") {
       onFailure?.(data);
     } else if (

@@ -9,6 +9,7 @@ import {
   Avatar,
   Divider,
   Skeleton,
+  Paper,
 } from "@mui/material";
 import { ArrowBack, WalletOutlined } from "@mui/icons-material";
 import { TabContext, TabPanel, TabList } from "@mui/lab";
@@ -72,7 +73,7 @@ function UserDetails() {
               queryClient.invalidateQueries(["user", id]);
             },
             onSuccess: (data) => {
-              customDispatch(globalAlertType("info", data));
+              customDispatch(globalAlertType("success", data));
             },
             onError: (error) => {
               customDispatch(globalAlertType("error", error));
@@ -100,7 +101,20 @@ function UserDetails() {
       {isLoading ? (
         <Skeleton width="100%" height={400} />
       ) : (
-        <Container sx={{ pb: 5, mb: 5, bgcolor: "#fff" }}>
+       
+           <Paper
+        elevation={2}
+        sx={{
+          borderRadius: 1.2,
+          p: 3,
+          bgcolor: "background.paper",
+          transition: "box-shadow 0.2s",
+           pb: 5, mb: 5,
+          "&:hover": { boxShadow: 4 },
+        }}
+      >
+
+    
           <Box
             sx={{
               display: "flex",
@@ -210,7 +224,8 @@ function UserDetails() {
               {data?.active ? "Active" : "Disabled"}
             </Button>
           )}
-        </Container>
+            </Paper>
+    
       )}
 
       <TabContext value={tab}>

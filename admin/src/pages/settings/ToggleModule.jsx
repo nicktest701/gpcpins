@@ -51,7 +51,7 @@ function ToggleModule() {
             queryClient.invalidateQueries(["module-status"]);
           },
           onSuccess: (data) => {
-            customDispatch(globalAlertType("info", data));
+            customDispatch(globalAlertType("success", data));
             handleClose();
           },
           onError: (errorFF) => {

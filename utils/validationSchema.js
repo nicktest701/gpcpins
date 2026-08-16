@@ -130,7 +130,6 @@ const bulkAirtimeSchema = Joi.object({
   service: Joi.string()
     .valid(...serviceTypeEnum)
     .required(),
-  recipient: Joi.string().required(),
   amount: Joi.required(),
   phonenumber: Joi.required(),
   provider: Joi.required(),

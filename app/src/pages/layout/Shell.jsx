@@ -19,7 +19,6 @@ const VerifyTicket = lazy(() => import("../VerifyTicket"));
 import Home from "../home/Home";
 import Privacy from "../Privacy";
 import Terms from "../Terms";
-import Hosting from "../hosting";
 import Downloads from "../downloads";
 
 import EVoucher from "../evoucher/EVoucher";
@@ -54,7 +53,7 @@ const Meters = lazy(() => import("../electricity/individual/Meters"));
 const ViewMeter = lazy(() => import("../electricity/meters/ViewMeter"));
 const BuyPrepaid = lazy(() => import("../electricity/BuyPrepaid"));
 const PaymentSuccess = lazy(() => import("../payment/PaymentSuccess"));
-import Organisation from "../organisation";
+
 import LostVoucher from "../evoucher/LostVoucher";
 import { globalAlertType } from "../../components/alert/alertType";
 import AirtimeHome from "../airtime/AirtimeHome";
@@ -306,12 +305,7 @@ function Shell() {
 
           {/* Download */}
           <Route path="downloads" element={<Downloads />} />
-          {/* hosting */}
-          <Route path="hosting" element={<Hosting />} />
-
-          {/* hosting */}
-          <Route path="business" element={<Organisation />} />
-
+      
           <Route
             path="transactions"
             element={

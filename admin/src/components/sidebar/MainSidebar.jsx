@@ -232,7 +232,7 @@ function MainSidebar() {
           overflowY: "auto",
           overflowX: "hidden",
           "&::-webkit-scrollbar": { width: 4 },
-          "&::-webkit-scrollbar-thumb": { bgcolor: alpha("#fff", 0.15), borderRadius: 4 },
+          "&::-webkit-scrollbar-thumb": { bgcolor: alpha("#fff", 0.15), borderRadius: 1.2 },
         }}
       >
         {user?.id ? (
@@ -276,7 +276,7 @@ function MainSidebar() {
               my: 1,
               px: isCollapsed && !isMobile ? 1.25 : 1.5,
               py: 1,
-              borderRadius: 2.5,
+              borderRadius: 1.2,
               cursor: "pointer",
               justifyContent: isCollapsed && !isMobile ? "center" : "flex-start",
               color: alpha("#fff", 0.75),

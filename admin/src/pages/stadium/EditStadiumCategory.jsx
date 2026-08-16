@@ -189,7 +189,7 @@ const EditStadiumCategory = () => {
   const { mutateAsync, isLoading } = useMutation({
     mutationFn: editCategory,
     onSuccess: (data) => {
-      customDispatch(globalAlertType("info", data));
+      customDispatch(globalAlertType("success", data));
       handleClose();
       queryClient.invalidateQueries(["category"]);
       queryClient.invalidateQueries(["all-category"]);
@@ -218,8 +218,6 @@ const EditStadiumCategory = () => {
       text: "Are you sure you want to update this match ticket?",
       icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
       confirmButtonText: "Yes, save",
     }).then((result) => {
       if (result.isConfirmed) {

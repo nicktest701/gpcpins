@@ -152,45 +152,7 @@ export const downloadVouchers = async (id) => {
   }
 };
 
-export const getAllElectricityPayment = async (paymentInfo) => {
-  try {
-    const res = await api({
-      method: "GET",
-      url: `/payment/electricity`,
-      params: {
-        date: paymentInfo,
-      },
-    });
 
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
-export const getAllElectricityPaymentById = async (userId) => {
-  try {
-    const res = await api({
-      method: "GET",
-      url: `/payment/electricity/${userId}`,
-    });
-
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
-export const getAllElectricityPaymentByUserId = async (userId) => {
-  try {
-    const res = await api({
-      method: "GET",
-      url: `/payment/electricity/user/${userId}`,
-    });
-
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
 export const makeElectricityPayment = async (paymentInfo) => {
   try {
     const res = await api({
@@ -208,32 +170,7 @@ export const makeElectricityPayment = async (paymentInfo) => {
   }
 };
 
-export const updateElectricityPayment = async (paymentInfo) => {
-  try {
-    const res = await api({
-      method: "PUT",
-      url: `/payment/electricity`,
-      data: paymentInfo,
-    });
 
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
-
-export const deletePrepaidTransaction = async (id) => {
-  try {
-    const res = await api({
-      method: "DELETE",
-      url: `/payment/electricity/${id}`,
-    });
-
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
 
 export const downloadReceipts = async (id) => {
   try {
@@ -274,29 +211,4 @@ export const getBundleList = async (id) => {
     throw error.response.data;
   }
 };
-export const sendBundle = async (data) => {
-  try {
-    const res = await api({
-      method: "POST",
-      url: `/payment/top-up/bundle`,
-      data,
-    });
 
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
-export const sendAirtime = async (data) => {
-  try {
-    const res = await api({
-      method: "POST",
-      url: `/payment/top-up/airtime`,
-      data,
-    });
-
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};

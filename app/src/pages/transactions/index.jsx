@@ -4,42 +4,44 @@ import { Container, MenuItem, TextField, Box } from "@mui/material";
 import { NoteAlt } from "@mui/icons-material";
 import _ from "lodash";
 import CustomizedMaterialTable from "@/components/tables/CustomizedMaterialTable";
-import Swal from "sweetalert2";
+import TransactionDetailsDialog from "@/components/dialogs/TransactionDetailsDialog";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import {  useQuery } from "@tanstack/react-query";
 import {
   getTransactionByEmail,
-  removeAnyTransaction,
+
 } from "@/api/transactionAPI";
-// import CustomDateRangePicker from "@/components/pickers/CustomDateRangePicker";
+
 import {
   transactionsColumns,
   airtimeTransactionsColumns,
 } from "@/mocks/columns";
 import ActionMenu from "@/components/menu/ActionMenu";
-import { globalAlertType } from "@/components/alert/alertType";
 import CustomTotal from "@/components/custom/CustomTotal";
 import { currencyFormatter } from "@/constants";
-// import CustomRangePicker from "@/components/pickers/CustomRangePicker";
+
 
 // Add import at top
 import { useMediaQuery, useTheme } from "@mui/material";
 import TransactionList from "./TransactionList";
 import { useAuth } from "../../context/providers/AuthProvider";
-import { useCustomContext } from "../../context/providers/CustomProvider";
 import DateRangePicker from "../../components/pickers/DateRangePicker";
+import { Navigate } from "react-router-dom";
 
 const Transaction = () => {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
+
   // Inside Transaction component, after useState declarations:
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md")); // adjust breakpoint as needed
-  const { customDispatch } = useCustomContext();
+
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [type, setType] = useState("All");
   const [status, setStatus] = useState("all");
   const [airtimeType, setAirtimeType] = useState("single");
-  // const [openPicker, setOpenPicker] = useState(false);
+
   const [date, setDate] = useState([
     {
       startDate: new Date("2024-01-01"),
@@ -65,8 +67,6 @@ const Transaction = () => {
     let filteredTransaction = transactions?.data;
     if (type !== "All") {
       if (type === "Airtime") {
-
-
         filteredTransaction = transactions?.data?.filter(
           (item) => item.domain === type && item.kind === airtimeType,
         );
@@ -98,41 +98,45 @@ const Transaction = () => {
     document.body.removeChild(link);
   };
 
-  const { isPending, mutateAsync } = useMutation({
-    mutationFn: removeAnyTransaction,
-  });
+ 
 
-  const removeTransaction = (id) => {
-    Swal.fire({
-      title: "Removing",
-      text: "Do you want to remove transaction?",
-      showCancelButton: true,
-    }).then(({ isConfirmed }) => {
-      if (isConfirmed) {
-        mutateAsync([id], {
-          onSettled: () => {
-            queryClient.invalidateQueries({
-              queryKey: [
-                "prepaid-transaction-email",
-                user?.email,
-                user?.phonenumber,
-              ],
-            });
-          },
-          onSuccess: () => {
-            customDispatch(globalAlertType("info", "Transaction Removed!"));
-          },
-          onError: () => {
-            customDispatch(
-              globalAlertType(
-                "error",
-                "Failed to remove transaction! An error has occurred!",
-              ),
-            );
-          },
-        });
-      }
-    });
+  // const removeTransaction = (id) => {
+  //   Swal.fire({
+  //     title: "Removing",
+  //     text: "Do you want to remove transaction?",
+  //     showCancelButton: true,
+  //   }).then(({ isConfirmed }) => {
+  //     if (isConfirmed) {
+  //       mutateAsync([id], {
+  //         onSettled: () => {
+  //           queryClient.invalidateQueries({
+  //             queryKey: [
+  //               "prepaid-transaction-email",
+  //               user?.email,
+  //               user?.phonenumber,
+  //             ],
+  //           });
+  //         },
+  //         onSuccess: () => {
+  //           customDispatch(globalAlertType("info", "Transaction Removed!"));
+  //         },
+  //         onError: () => {
+  //           customDispatch(
+  //             globalAlertType(
+  //               "error",
+  //               "Failed to remove transaction! An error has occurred!",
+  //             ),
+  //           );
+  //         },
+  //       });
+  //     }
+  //   });
+  // };
+
+  // Add handleView function
+  const handleView = (transaction) => {
+    setSelectedTransaction(transaction);
+    setViewDialogOpen(true);
   };
 
   const modifiedColumns = [
@@ -146,6 +150,9 @@ const Transaction = () => {
       render: (data) => {
         return (
           <ActionMenu>
+            <MenuItem sx={{ fontSize: 13 }} onClick={() => handleView(data)}>
+              View
+            </MenuItem>
             {["Voucher", "Ticket", "Prepaid"].includes(data?.domain) &&
               data?.status === "completed" && (
                 <MenuItem
@@ -167,18 +174,21 @@ const Transaction = () => {
     },
   ];
 
+    if (!user?.id) return <Navigate to="/"  replace/>;
+
   return (
+    <>
     <Container sx={{ py: 2 }}>
       <CustomTitle
-        icon={<NoteAlt sx={{ width: 50, height: 50 }} color="primary" />}
+        // icon={<NoteAlt sx={{ width: 50, height: 50 }} color="primary" />}
         title="Transactions"
-        subtitle="Manage all your transactions made."
+        subtitle="View and manage all your transaction history."
       />
 
       {isMobile ? (
         <TransactionList
           data={sortedTransactions}
-          isLoading={transactions.isLoading || isPending}
+          isLoading={transactions.isLoading}
           onRefresh={transactions.refetch}
           total={currencyFormatter(
             _.sumBy(sortedTransactions, (item) => Number(item?.amount)),
@@ -193,7 +203,7 @@ const Transaction = () => {
         />
       ) : (
         <CustomizedMaterialTable
-          isLoading={transactions.isLoading || isPending}
+          isLoading={transactions.isLoading}
           title="Transactions"
           search={true}
           columns={modifiedColumns}
@@ -203,9 +213,9 @@ const Transaction = () => {
           icon={<NoteAlt sx={{ width: 40, height: 40 }} color="primary" />}
           onRefresh={transactions.refetch}
           options={{
-            selection: true,
+            selection: false,
           }}
-          onDeleteAll={removeTransaction}
+          // onDeleteAll={removeTransaction}
           autocompleteComponent={
             <Box
               sx={{
@@ -247,17 +257,16 @@ const Transaction = () => {
                 </TextField>
               )}
 
-                   <DateRangePicker
-                  date={date}
-                  setDate={setDate}
-                  onReset={transactions.refetch}
-                  placeholder="Pick a date range"
-                  dateFormat="ll"
-                  maxDate={new Date()}
-                  minDate={new Date("2024-01-01")}
-                />
+              <DateRangePicker
+                date={date}
+                setDate={setDate}
+                onReset={transactions.refetch}
+                placeholder="Pick a date range"
+                dateFormat="ll"
+                maxDate={new Date()}
+                minDate={new Date("2024-01-01")}
+              />
 
-       
               <TextField
                 select
                 label="Status"
@@ -283,8 +292,14 @@ const Transaction = () => {
           }
         />
       )}
-
     </Container>
+
+    <TransactionDetailsDialog
+  open={viewDialogOpen}
+  onClose={() => setViewDialogOpen(false)}
+  transaction={selectedTransaction}
+/>
+    </>
   );
 };
 

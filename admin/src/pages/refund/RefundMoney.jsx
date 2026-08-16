@@ -74,7 +74,7 @@ function RefundMoney() {
   const refundMutation = useMutation({
     mutationFn: refundTransaction,
     onSuccess: (data) => {
-      customDispatch(globalAlertType("info", data));
+      customDispatch(globalAlertType("success", data));
       // Reset form and state
       reset();
       setTransactionData(null);
@@ -146,7 +146,7 @@ function RefundMoney() {
         subtitle="Process customer refunds for vouchers, tickets, airtime, and more"
       />
 
-      <Paper elevation={3} sx={{ p: 3, borderRadius: 2, mb: 4 }}>
+      <Paper elevation={3} sx={{ p: 3, borderRadius: 1.2, mb: 4 }}>
         <form onSubmit={handleSubmit(onSearch)} noValidate>
           <Typography variant="body2" color="text.secondary" gutterBottom>
             Enter transaction type and ID to fetch details.
@@ -213,7 +213,7 @@ function RefundMoney() {
 
       {/* Transaction Details Card */}
       {transactionData && (
-        <Card elevation={2} sx={{ borderRadius: 2, mb: 4 }}>
+        <Card elevation={2} sx={{ borderRadius: 1.2, mb: 4 }}>
           <CardContent>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
               Transaction Details
@@ -281,7 +281,7 @@ function RefundMoney() {
 
       {/* Refund Section */}
       {transactionData && (
-        <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
+        <Paper elevation={2} sx={{ p: 3, borderRadius: 1.2 }}>
           <Typography variant="h6" fontWeight="bold" gutterBottom>
             Process Refund
           </Typography>
@@ -428,7 +428,7 @@ export default RefundMoney;
 //         // return;
 //         refundMutateAsync(payload, {
 //           onSuccess: (data) => {
-//             customDispatch(globalAlertType("info", data));
+//             customDispatch(globalAlertType("success", data));
 //           },
 //           onError: (error) => {
 //             customDispatch(globalAlertType("error", error));

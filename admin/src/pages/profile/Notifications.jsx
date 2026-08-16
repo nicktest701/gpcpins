@@ -29,8 +29,8 @@ import DOMPurify from "dompurify";
 import moment from "moment";
 import Swal from "sweetalert2";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import { CustomContext, useCustomContext } from "../../context/providers/CustomProvider";
+import { AuthContext, useAuth } from "../../context/providers/AuthProvider";
 import {
   getAllNotifications,
   markAllNotificationsAsRead,
@@ -42,8 +42,8 @@ import { globalAlertType } from "../../components/alert/alertType";
 
 const Notifications = () => {
   const theme = useTheme();
-  const { user } = useContext(AuthContext);
-  const { customDispatch } = useContext(CustomContext);
+  const { user } = useAuth()
+  const { customDispatch } = useCustomContext()
   const queryClient = useQueryClient();
 
   // --- UI state ---
@@ -83,7 +83,7 @@ const Notifications = () => {
   const deleteAllMutation = useMutation({
     mutationFn: deleteNotifications,
     onSuccess: () => {
-      customDispatch(globalAlertType("info", "All notifications deleted"));
+      customDispatch(globalAlertType("success", "All notifications deleted"));
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
     onError: (err) => {
@@ -122,7 +122,7 @@ const Notifications = () => {
   // --- Handlers ---
   const handleMarkAllRead = () => {
     if (unreadCount === 0) {
-      customDispatch(globalAlertType("info", "No unread notifications"));
+      customDispatch(globalAlertType("success", "No unread notifications"));
       return;
     }
     Swal.fire({
@@ -225,7 +225,7 @@ const Notifications = () => {
         </Stack>
 
         {/* Search & Tabs */}
-        <Card variant="outlined" sx={{ mb: 3, p: 2, borderRadius: 3 }}>
+        <Card variant="outlined" sx={{ mb: 3, p: 2, borderRadius: 1.2 }}>
           <Stack spacing={2}>
             <TextField
               fullWidth
@@ -275,7 +275,7 @@ const Notifications = () => {
 
         {/* Notifications List */}
         {filteredNotifications.length === 0 ? (
-          <Card sx={{ p: 6, textAlign: "center", borderRadius: 3 }}>
+          <Card sx={{ p: 6, textAlign: "center", borderRadius: 1.2 }}>
             <NotificationsOffIcon
               sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
             />
@@ -291,7 +291,7 @@ const Notifications = () => {
         ) : (
           <Stack spacing={2}>
             {filteredNotifications.map((notif) => (
-              <NotificationCard key={notif._id} notification={notif} />
+              <NotificationCard key={notif.id} notification={notif} />
             ))}
           </Stack>
         )}
@@ -314,7 +314,7 @@ const NotificationCard = ({ notification }) => {
     <Card
       variant="outlined"
       sx={{
-        borderRadius: 3,
+        borderRadius: 1.2,
         transition: "all 0.2s",
         bgcolor: isUnread
           ? alpha(theme.palette.warning.light, 0.08)
@@ -454,7 +454,7 @@ export default Notifications;
 //     refetchOnWindowFocus: "always",
 //     enabled: false,
 //     onSuccess: () => {
-//       customDispatch(globalAlertType("info", "Notifications marked as read!"));
+//       customDispatch(globalAlertType("success", "Notifications marked as read!"));
 //       queryClient.invalidateQueries(["notifications"]);
 //     },
 //   });
@@ -490,7 +490,7 @@ export default Notifications;
 //               queryClient.invalidateQueries(["notifications"]);
 //             },
 //             onSuccess: (data) => {
-//               customDispatch(globalAlertType("info", data));
+//               customDispatch(globalAlertType("success", data));
 //               // localStorage.setItem("removed-notifications",JSON.stringify(all));
 //             },
 //             onError: (error) => {

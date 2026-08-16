@@ -38,13 +38,13 @@ import { useCustomContext } from "../../context/providers/CustomProvider";
 
 import { makeAirtimeTransaction } from "../../api/paymentAPI";
 
-
 import { globalAlertType } from "../../components/alert/alertType";
 import Back from "../../components/Back";
 import VoucherPlaceHolderItem from "../../components/items/VoucherPlaceHolderItem";
 
 import { currencyFormatter } from "../../constants";
 import PaymentOption from "../../components/PaymentOption";
+import { getMobilePartner } from "../../constants/PhoneCode";
 
 function BulkAirtimeBuy() {
   const queryClient = useQueryClient();
@@ -68,7 +68,6 @@ function BulkAirtimeBuy() {
     [state?.recipientPayload],
   );
 
-
   useEffect(() => {
     if (!pricingList?.length) {
       navigate(
@@ -86,9 +85,8 @@ function BulkAirtimeBuy() {
 
   const walletBalance = user?.id
     ? Number(
-        queryClient.getQueryData(["wallet-balance", user?.id], {
-          exact: true,
-        }) || 0,
+        queryClient.getQueryData({ queryKey: ["wallet-balance", user?.id] }) ||
+          0,
       )
     : 0;
 
@@ -102,8 +100,8 @@ function BulkAirtimeBuy() {
       navigate("/confirm", {
         replace: true,
         state: {
-          id: data?.id,
-          categoryType: "airtime",
+          id: data?.transactionId,
+          categoryType: data?.categoryType,
           path: pathname,
           isWallet: paymentData?.paymentMethod === "wallet",
         },
@@ -139,8 +137,6 @@ function BulkAirtimeBuy() {
     },
   });
 
-
-
   const handleClosePreview = () => {
     if (paymentMutation.isPending) {
       return;
@@ -150,6 +146,9 @@ function BulkAirtimeBuy() {
   };
 
   const handleSubmitPayment = async (values) => {
+    // console.log(values)
+    // return
+
     const isWallet = values?.paymentMethod === "wallet";
 
     if (
@@ -166,19 +165,23 @@ function BulkAirtimeBuy() {
 
       return;
     }
-
+    const phoneNo = DOMPurify.sanitize(
+      values?.phonenumber || user?.phonenumber,
+    );
     const payload = {
       type: "Bulk",
       service: "airtime",
       amount: totalAmount,
       recipient: "",
-      phonenumber: DOMPurify.sanitize(values?.phonenumber || user?.phonenumber),
-      provider: values?.mobilePartner,
+      phonenumber: phoneNo,
+      provider: getMobilePartner(phoneNo),
       email: DOMPurify.sanitize(values?.email || user?.email || ""),
       isWallet,
       bulk: true,
       pricing: pricingList,
     };
+    // console.log(payload)
+    // return
 
     if (isWallet) {
       payload.token = values?.token;
@@ -210,8 +213,6 @@ function BulkAirtimeBuy() {
     }
 
     try {
- 
-
       paymentMutation.mutate(paymentData.payload);
     } catch (error) {
       customDispatch(globalAlertType("error", "Unable to complete request."));
@@ -351,7 +352,7 @@ function BulkAirtimeBuy() {
         open={previewOpen}
         onClose={handleClosePreview}
         fullWidth
-        maxWidth="sm"
+        maxWidth="xs"
         PaperProps={{
           sx: {
             borderRadius: 4,

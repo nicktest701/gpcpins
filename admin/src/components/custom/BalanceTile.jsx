@@ -11,7 +11,7 @@ function BalanceTile({ label, value, sublabel, icon, color = "#0F172A", isLow })
         flex: 1,
         minWidth: 220,
         p: 2.5,
-        borderRadius: 3,
+        borderRadius: 1.2,
         borderColor: (theme) =>
           isLow ? alpha(theme.palette.warning.main, 0.5) : alpha(theme.palette.text.primary, 0.08),
         bgcolor: (theme) => (isLow ? alpha(theme.palette.warning.main, 0.06) : "background.paper"),
@@ -24,7 +24,7 @@ function BalanceTile({ label, value, sublabel, icon, color = "#0F172A", isLow })
             height: 38,
             display: "grid",
             placeItems: "center",
-            borderRadius: 2,
+            borderRadius: 1.2,
             bgcolor: alpha(color, 0.12),
             color,
           }}

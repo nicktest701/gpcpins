@@ -1,6 +1,8 @@
 // const validatePayment = (req, res, next) => {
 //   const { error, value } = paymentSchema.validate(req.body);
 
+const { bulkAirtimeSchema } = require("../utils/validationSchema");
+
 //   if (error) {
 //     return res.status(400).json({
 //       success: false,
@@ -14,8 +16,13 @@
 // };
 
 const validatePayment = (schema, otherSchema) => (req, res, next) => {
+  // console.log(req.body);
   const selectedSchema = req.body?.service === "ticket" ? otherSchema : schema;
-  const { error, value } = selectedSchema.validate(req.body, {
+  const detailedSchema =
+    req.body?.service === "airtime" && req.body?.type === "Bulk"
+      ? bulkAirtimeSchema
+      : selectedSchema;
+  const { error, value } = detailedSchema.validate(req.body, {
     abortEarly: false,
     stripUnknown: true,
   });
@@ -58,5 +65,5 @@ const validate = (schema) => (req, res, next) => {
 
 module.exports = {
   validatePayment,
-  validate
+  validate,
 };

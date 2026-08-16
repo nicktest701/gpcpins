@@ -1,7 +1,7 @@
 import { Button, MenuItem } from "@mui/material";
 
-import CustomTitle from "../../components/custom/CustomTitle";
-import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
+import CustomTitle from "@/components/custom/CustomTitle";
+import CustomizedMaterialTable from "@/components/tables/CustomizedMaterialTable";
 import Swal from "sweetalert2";
 import _ from "lodash";
 import { AddRounded, Message, MessageOutlined } from "@mui/icons-material";
@@ -12,21 +12,21 @@ import {
   deleteBroadcastMessages,
   getAllBroadcastMessages,
   deleteSelectedBroadcastMessages,
-} from "../../api/broadcastMessageAPI";
-import PayLoading from "../../components/PayLoading";
-import { BROADCAST_MESSAGES_COLUMNS } from "../../mocks/columns";
-import ActionMenu from "../../components/menu/ActionMenu";
-import { CustomContext } from "../../context/providers/CustomProvider";
-import { globalAlertType } from "../../components/alert/alertType";
+} from "@/api/broadcastMessageAPI";
+import PayLoading from "@/components/PayLoading";
+import { BROADCAST_MESSAGES_COLUMNS } from "@/mocks/columns";
+import ActionMenu from "@/components/menu/ActionMenu";
+import { CustomContext, useCustomContext } from "@/context/providers/CustomProvider";
+import { globalAlertType } from "@/components/alert/alertType";
 import ViewMessage from "./ViewMessage";
 import { useSearchParams } from "react-router-dom";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import { AuthContext, useAuth } from "@/context/providers/AuthProvider";
 
 function MessageHome() {
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth()
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { customDispatch } = useContext(CustomContext);
+  const { customDispatch } = useCustomContext()
   const [openMessage, setOpenMessage] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState([]);
 
@@ -52,7 +52,7 @@ function MessageHome() {
             queryClient.invalidateQueries(["broadcast-messages"]);
           },
           onSuccess: (data) => {
-            customDispatch(globalAlertType("info", data));
+            customDispatch(globalAlertType("success", data));
           },
           onError: (error) => {
             customDispatch(globalAlertType("error", error));
@@ -92,14 +92,14 @@ function MessageHome() {
               queryClient.invalidateQueries(["broadcast-messages"]);
             },
             onSuccess: () => {
-              customDispatch(globalAlertType("info", "Messages removed!"));
+              customDispatch(globalAlertType("success", "Messages removed!"));
             },
             onError: () => {
               customDispatch(
-                globalAlertType("error", "Failed removing messages")
+                globalAlertType("error", "Failed removing messages"),
               );
             },
-          }
+          },
         );
       }
     });

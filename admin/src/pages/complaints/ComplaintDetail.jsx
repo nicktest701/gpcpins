@@ -155,7 +155,7 @@ const ComplaintDetail = () => {
       <Container maxWidth="lg" sx={{ py: 2 }}>
         <Stack spacing={3}>
           {/* Header Card */}
-          <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
+          <Paper elevation={2} sx={{ p: 3, borderRadius: 1.2 }}>
             <Stack
               direction="row"
               alignItems="center"
@@ -181,7 +181,7 @@ const ComplaintDetail = () => {
           </Paper>
 
           {/* Details Card */}
-          <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
+          <Paper elevation={2} sx={{ p: 3, borderRadius: 1.2 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
               Customer Information
             </Typography>
@@ -249,7 +249,7 @@ const ComplaintDetail = () => {
           </Paper>
 
           {/* Admin Actions Card */}
-          <Paper elevation={2} sx={{ p: 3, borderRadius: 2,  }}>
+          <Paper elevation={2} sx={{ p: 3, borderRadius: 1.2,  }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
               Admin Actions
             </Typography>

@@ -72,7 +72,7 @@ function ViewECGTransactionNotifications() {
               queryClient.invalidateQueries(["prepaid-notifications"]);
             },
             onSuccess: (data) => {
-              customDispatch(globalAlertType("info", data));
+              customDispatch(globalAlertType("success", data));
             },
             onError: (error) => {
               customDispatch(globalAlertType("error", error));

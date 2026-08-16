@@ -99,7 +99,7 @@ const AddUniversityCategory = () => {
   const { mutateAsync, isLoading } = useMutation({
     mutationFn: postCategory,
     onSuccess: (data) => {
-      customDispatch(globalAlertType("info", data));
+      customDispatch(globalAlertType("success", data));
       handleClose();
       reset();
       setLogoFile(null);
@@ -127,8 +127,6 @@ const AddUniversityCategory = () => {
       text: "Are you sure you want to create this new university category?",
       icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
       confirmButtonText: "Yes, add",
     }).then((result) => {
       if (result.isConfirmed) {
@@ -207,7 +205,7 @@ const AddUniversityCategory = () => {
       PaperProps={{
         elevation: 8,
         sx: {
-          borderRadius: 3,
+          borderRadius: 1.2,
           maxHeight: "90vh",
           overflow: "hidden",
           bgcolor: "background.paper",
@@ -247,7 +245,7 @@ const AddUniversityCategory = () => {
             },
             "&::-webkit-scrollbar-thumb": {
               background: (theme) => alpha(theme.palette.primary.main, 0.4),
-              borderRadius: 3,
+              borderRadius: 1.2,
               "&:hover": {
                 background: (theme) => alpha(theme.palette.primary.main, 0.6),
               },

@@ -19,8 +19,6 @@ import { useAuth } from "../../context/providers/AuthProvider";
 
 import { currencyFormatter } from "../../constants";
 import { WALLET_TOPUP_TRANSACTIONS } from "../../mocks/columns";
-// import CustomDateRangePicker from "../../components/pickers/CustomDateRangePicker";
-// import CustomRangePicker from "../../components/pickers/CustomRangePicker";
 import CustomTotal from "../../components/custom/CustomTotal";
 import ChangePin from "./ChangePin";
 import { getWalletBalance, getWalletTransaction } from "../../api/walletAPI";
@@ -80,9 +78,9 @@ function Wallet() {
         <CustomTitle
           title="Wallet"
           subtitle="View and Track all the amount deposited into your wallet."
-          icon={
-            <PaymentsRounded sx={{ width: 50, height: 50 }} color="primary" />
-          }
+          // icon={
+          //   <PaymentsRounded sx={{ width: 50, height: 50 }} color="primary" />
+          // }
         />
 
         <Paper

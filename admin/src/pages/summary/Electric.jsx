@@ -199,7 +199,7 @@ function Electric() {
                     data: summary?.data?.thisYear?.data ?? [],
                     backgroundColor: palette.info.main,
                     barThickness: 20,
-                    borderRadius: 2,
+                    borderRadius: 1.2,
                   },
                 ]}
               />

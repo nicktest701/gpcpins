@@ -121,7 +121,7 @@ function Updates() {
         mutateAsync(payload, {
           onSuccess: (data) => {
             customDispatch(
-              globalAlertType("info", "Profile updated successfully!"),
+              globalAlertType("success", "Profile updated successfully!"),
             );
             updateUser(data);
             queryClient.invalidateQueries({ queryKey: ["user"] });
@@ -170,7 +170,7 @@ function Updates() {
           elevation={0}
           sx={{
             p: { xs: 3, md: 4 },
-            borderRadius: 4,
+            borderRadius: 1.2,
             border: `1px solid ${alpha(theme.palette.divider, 0.4)}`,
             bgcolor: "background.paper",
           }}
@@ -214,7 +214,7 @@ function Updates() {
                     }}
                     sx={{
                       "& .MuiOutlinedInput-root": {
-                        borderRadius: 2,
+                        borderRadius: 1.2,
                       },
                     }}
                   />
@@ -228,7 +228,7 @@ function Updates() {
                   component={Link}
                   to="/profile"
                   disabled={isSubmitting || isLoading}
-                  sx={{ borderRadius: 2, textTransform: "none" }}
+                  sx={{ borderRadius: 1.2, textTransform: "none" }}
                 >
                   Cancel
                 </Button>
@@ -240,7 +240,7 @@ function Updates() {
                   disabled={!isValid || isSubmitting || isLoading}
                   startIcon={<Save />}
                   sx={{
-                    borderRadius: 2,
+                    borderRadius: 1.2,
                     textTransform: "none",
                     fontWeight: 600,
                     boxShadow: `0 8px 24px ${alpha(theme.palette.secondary.main, 0.25)}`,
@@ -350,7 +350,7 @@ export default Updates;
 //       if (isConfirmed) {
 //         mutateAsync(data, {
 //           onSuccess: (data) => {
-//             customDispatch(globalAlertType("info", "Profile Updated!"));
+//             customDispatch(globalAlertType("success", "Profile Updated!"));
 //             updateUser(parseJwt(data?.acessToken));
 //             queryClient.invalidateQueries(["user"]);
 //             navigate("/profile");

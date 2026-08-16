@@ -1,25 +1,24 @@
-import { useContext, useState } from "react";
-import { Link } from "react-router-dom";
+import { useState } from "react";
 import LoadingButton from "@mui/lab/LoadingButton";
-import { IconButton, Box, ListItemText, Alert } from "@mui/material";
-import { ArrowBackRounded, NoteAlt, NoteRounded } from "@mui/icons-material";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import { Box, Alert } from "@mui/material";
+import { NoteAlt, NoteRounded } from "@mui/icons-material";
+import { useAuth } from "@/context/providers/AuthProvider";
 import _ from "lodash";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { generateRandomCode } from "../../config/generateRandomCode";
-import CustomTitle from "../../components/custom/CustomTitle";
-import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
+
+import CustomTitle from "@/components/custom/CustomTitle";
+import CustomizedMaterialTable from "@/components/tables/CustomizedMaterialTable";
 import {
   geAllUserWalletTransaction,
   geAllUserWalletTransactionReport,
-} from "../../api/transactionAPI";
-import { currencyFormatter } from "../../constants";
-import { WALLET_TRANSACTIONS } from "../../mocks/columns";
+} from "@/api/transactionAPI";
+import { currencyFormatter } from "@/constants";
+import { WALLET_TRANSACTIONS } from "@/mocks/columns";
 import DateRangePicker from "@/components/pickers/DateRangePicker";
 import CustomTotal from "@/components/custom/CustomTotal";
 
 function UsersWalletTransactions() {
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
 
   const [date, setDate] = useState([
     {
@@ -46,16 +45,12 @@ function UsersWalletTransactions() {
   const result = isLoading || isError || isSuccess;
   return (
     <div>
-      <Link to={`/wallets?WMnmli=${generateRandomCode(200)}`}>
-        <IconButton>
-          <ArrowBackRounded />
-        </IconButton>
-      </Link>
       <>
         <CustomTitle
           icon={<NoteAlt sx={{ width: 50, height: 50 }} color="primary" />}
           title="User Wallet Transactions"
           subtitle="Manage all your wallet transactions made by users "
+          showBack
         />
 
         {result && (
@@ -99,14 +94,6 @@ function UsersWalletTransactions() {
           }}
           autocompleteComponent={
             <>
-              <CustomTotal
-              title="Total Amount"
-                total={currencyFormatter(
-                  _.sumBy(transactions.data, (item) => Number(item?.amount)),
-                )}
-              />
-
-            
               <Box
                 sx={{
                   width: "100%",
@@ -115,17 +102,16 @@ function UsersWalletTransactions() {
                   alignItems: "center",
                   gap: 2,
                   flexWrap: "wrap",
+                  mb:5
                 }}
               >
-                <DateRangePicker
-                  date={date}
-                  setDate={setDate}
-                  onReset={transactions.refetch}
-                  placeholder="Pick a date range"
-                  dateFormat="ll"
-                  maxDate={new Date()}
-                  minDate={new Date("2024-01-01")}
+                <CustomTotal
+                  title="Total Amount"
+                  total={currencyFormatter(
+                    _.sumBy(transactions.data, (item) => Number(item?.amount)),
+                  )}
                 />
+
                 <LoadingButton
                   variant="contained"
                   endIcon={<NoteRounded />}
@@ -137,6 +123,16 @@ function UsersWalletTransactions() {
                     : " Generate Report"}
                 </LoadingButton>
               </Box>
+
+              <DateRangePicker
+                date={date}
+                setDate={setDate}
+                onReset={transactions.refetch}
+                placeholder="Pick a date range"
+                dateFormat="ll"
+                maxDate={new Date()}
+                minDate={new Date("2024-01-01")}
+              />
             </>
           }
         />

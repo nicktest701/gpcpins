@@ -105,7 +105,7 @@ const UpdateEmployee = () => {
   const { mutateAsync, isLoading } = useMutation({
     mutationFn: updateEmployee,
     onSuccess: (data) => {
-      customDispatch(globalAlertType("info", data));
+      customDispatch(globalAlertType("success", data));
       queryClient.invalidateQueries(["employee", id]);
       queryClient.invalidateQueries(["employees"]);
       handleClose();

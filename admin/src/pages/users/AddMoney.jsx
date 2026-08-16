@@ -57,7 +57,7 @@ function AddMoney() {
             queryClient.invalidateQueries(["user", id]);
           },
           onSuccess: (data) => {
-            customDispatch(globalAlertType("info", data));
+            customDispatch(globalAlertType("success", data));
             handleClose();
           },
           onError: (error) => {

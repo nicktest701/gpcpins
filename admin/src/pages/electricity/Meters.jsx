@@ -64,7 +64,7 @@ function Meters() {
     mutationFn: deleteMeter,
     onSuccess: (data) => {
       customDispatch(
-        globalAlertType("info", data || "Meter removed successfully"),
+        globalAlertType("success", data || "Meter removed successfully"),
       );
       queryClient.invalidateQueries({ queryKey: ["meters"] });
     },
@@ -97,8 +97,6 @@ function Meters() {
       text: `Are you sure you want to remove meter ${selectedMeter.number}?`,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#6c757d",
       confirmButtonText: "Yes, delete",
     }).then((result) => {
       if (result.isConfirmed) {
@@ -130,7 +128,7 @@ function Meters() {
         <TableContainer
           component={Paper}
           elevation={2}
-          sx={{ borderRadius: 3 }}
+          sx={{ borderRadius: 1.2 }}
         >
           <Table>
             <TableHead
@@ -188,11 +186,11 @@ function Meters() {
             <AccessTimeIcon sx={{ width: 50, height: 50 }} color="primary" />
           }
         />
-        <Paper sx={{ p: 4, textAlign: "center", borderRadius: 3 }}>
+        <Paper sx={{ p: 4, textAlign: "center", borderRadius: 1.2 }}>
           <Alert
             severity="error"
             variant="outlined"
-            sx={{ borderRadius: 2 }}
+            sx={{ borderRadius: 1.2 }}
             action={
               <Button color="inherit" size="small" onClick={() => refetch()}>
                 Retry
@@ -271,7 +269,7 @@ function Meters() {
         PaperProps={{
           elevation: 3,
           sx: {
-            borderRadius: 2,
+            borderRadius: 1.2,
             minWidth: 160,
             "& .MuiMenuItem-root": {
               fontSize: "0.875rem",

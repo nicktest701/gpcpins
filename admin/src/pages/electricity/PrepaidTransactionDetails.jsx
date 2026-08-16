@@ -84,7 +84,7 @@ const PrepaidTransactionDetails = () => {
   if (isDataError || !transactionData) {
     return (
       <Box sx={{ p: 3, maxWidth: 600, mx: "auto" }}>
-        <Paper sx={{ p: 4, textAlign: "center", borderRadius: 3 }}>
+        <Paper sx={{ p: 4, textAlign: "center", borderRadius: 1.2 }}>
           <Alert severity="error" sx={{ mb: 2 }}>
             {dataError?.message || "Transaction not found."}
           </Alert>
@@ -117,7 +117,7 @@ const PrepaidTransactionDetails = () => {
           elevation={0}
           sx={{
             p:2,
-            borderRadius: 3,
+            borderRadius: 1.2,
             // border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
           }}
         >

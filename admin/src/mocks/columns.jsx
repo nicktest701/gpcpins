@@ -21,6 +21,7 @@ import { getInitials } from "../config/validation";
 import Active from "../components/Active";
 import { Link } from "react-router-dom";
 import { hidePin } from "../config/hideDetails";
+import { textTransform } from "@mui/system";
 
 export const ContactInfo = ({ email, phonenumber }) => {
   return (
@@ -222,52 +223,7 @@ export const checkerColumns = [
   },
 ];
 
-export const voucherCategoryColumns = [
-  {
-    title: "#",
-    field: "id",
-    hidden: true,
-  },
-  {
-    title: "Logo",
-    field: "logo",
-    render: ({ logo }) => {
-      return (
-        <img
-          src={logo || null}
-          width="100px"
-          height="100px"
-          style={{
-            maxWidth: "100%",
-            objectFit: "contain",
-            aspectRatio: "1/1",
-          }}
-        />
-      );
-    },
-  },
-  {
-    title: "Voucher",
-    field: "voucherType",
-  },
-  {
-    title: "Category",
-    field: "category",
-  },
-  {
-    title: "Price",
-    field: "price",
-    type: "currency",
-    currencySetting: {
-      currencyCode: "GHS",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    },
-    cellStyle: {
-      color: "green",
-    },
-  },
-];
+
 
 export const VOUCHER_COLUMNS = [
   {
@@ -470,6 +426,9 @@ export const universityCategoryColumns = [
   {
     title: "University ",
     field: "voucherType",
+    cellStyle:{
+      textTransform:'capitalize'
+    }
   },
   {
     title: "Form Type",
@@ -479,6 +438,59 @@ export const universityCategoryColumns = [
   {
     title: "Category",
     field: "category",
+       cellStyle:{
+      textTransform:'capitalize'
+    }
+  },
+  {
+    title: "Price",
+    field: "price",
+    type: "currency",
+    currencySetting: {
+      currencyCode: "GHS",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    },
+    cellStyle: {
+      color: "green",
+      fontWeight:'bold'
+    },
+  },
+];
+export const voucherCategoryColumns = [
+  {
+    title: "#",
+    field: "id",
+    hidden: true,
+  },
+  {
+    title: "Logo",
+    field: "logo",
+    render: ({ logo }) => {
+      return (
+            <img
+          src={logo || null}
+          width="48px"
+          height="48px"
+          style={{
+            maxWidth: "80%",
+            objectFit: "contain",
+            aspectRatio: "1/1",
+          }}
+          />
+      );
+    },
+  },
+  {
+    title: "Voucher",
+    field: "voucherType",
+  },
+  {
+    title: "Category",
+    field: "category",
+    cellStyle:{
+      textTransform:'capitalize'
+    }
   },
   {
     title: "Price",
@@ -515,7 +527,7 @@ export const busTicketColumns = [
           width="48px"
           height="48px"
           style={{
-            maxWidth: "80%",
+            maxWidth: "50%",
             objectFit: "contain",
             aspectRatio: "1/1",
           }}
@@ -532,13 +544,17 @@ export const busTicketColumns = [
     },
   },
   {
-    title: "No. of Seats",
+    title: "Seats",
     field: "noOfSeats",
     type: "numeric",
+    cellStyle:{
+      textTransform:'capitalize'
+    }
   },
   {
-    title: "Vehicle No.",
+    title: "Vec.No.",
     field: "vehicleNo",
+
   },
   {
     field: "date",
@@ -552,8 +568,8 @@ export const busTicketColumns = [
       <ListItemText
         primary={format(new Date(rowData.date), "EEEE, MMMM d, yyyy")}
         secondary={format(new Date(rowData.time), "h:mm a")}
-        primaryTypographyProps={{ color: "primary.main" }}
-        secondaryTypographyProps={{ color: "secondary.main" }}
+        primaryTypographyProps={{ fontSize:14 }}
+        secondaryTypographyProps={{ color: "text.secondary" ,fontSize:14}}
       />
     ),
   },
@@ -569,6 +585,7 @@ export const busTicketColumns = [
     },
     cellStyle: {
       color: "green",
+        fontWeight:'bold'
     },
 
     // customFilterAndSearch: (data, rowData) => {
@@ -611,6 +628,7 @@ export const cinemaTicketColumns = [
             sx={{ width: 48, height: 48 }}
           />
           <Typography
+          variant="body2"
             sx={{
               whiteSpace: "nowrap",
               fontWeight: "bold",
@@ -630,8 +648,8 @@ export const cinemaTicketColumns = [
       <ListItemText
         primary={rowData?.theatre}
         secondary={rowData?.location}
-        // primaryTypographyProps={{ color: "info.main" }}
-        secondaryTypographyProps={{ color: "secondary.main" }}
+        primaryTypographyProps={{ fontSize:14 }}
+        secondaryTypographyProps={{ color: "text.secondary" ,fontSize:14}}
       />
     ),
   },
@@ -646,8 +664,8 @@ export const cinemaTicketColumns = [
       <ListItemText
         primary={format(new Date(rowData.date), "EEEE, MMMM d, yyyy")}
         secondary={format(new Date(rowData.time), "h:mm a")}
-        primaryTypographyProps={{ color: "primary.main" }}
-        secondaryTypographyProps={{ color: "secondary.main" }}
+        primaryTypographyProps={{ fontSize:14 }}
+        secondaryTypographyProps={{ color: "text.secondary" ,fontSize:14}}
       />
     ),
   },
@@ -794,8 +812,8 @@ export const stadiumTicketColumns = [
       <ListItemText
         primary={format(new Date(rowData.date), "EEEE, MMMM d, yyyy")}
         secondary={format(new Date(rowData.time), "h:mm a")}
-        primaryTypographyProps={{ color: "primary.main" }}
-        secondaryTypographyProps={{ color: "secondary.main" }}
+        primaryTypographyProps={{ fontSize:14 }}
+        secondaryTypographyProps={{ color: "text.secondary" ,fontSize:14}}
       />
     ),
   },
@@ -1624,12 +1642,17 @@ export const bulkAirtimeTransactionsColumns = [
   {
     title: "ORDER ID",
     field: "orderId",
-    // hidden: true,
+    hidden: true,
   },
   {
     title: "Status",
     field: "status",
     render: ({ status }) => <StatusChip status={status} />,
+  },
+  {
+    title: "Processing Status",
+    field: "processingStatus",
+    render: ({ processingStatus }) => <StatusChip status={processingStatus} />,
   },
 
   {

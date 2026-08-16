@@ -19,14 +19,13 @@ import { CustomContext } from "../../context/providers/CustomProvider";
 import { AuthContext } from "../../context/providers/AuthProvider";
 import { verifyCode, verifyPin } from "../../config/validation";
 import {
-  updateWalletPin,
   verifyUserIdentity,
 } from "../../api/userAPI";
 import { generateRandomCode } from "../../config/generateRandomCode";
 import Swal from "sweetalert2";
 import moment from "moment";
 import CustomDatePicker from "../../../../admin/src/components/inputs/CustomDatePicker";
-import { getWalletResetToken } from "../../api/walletAPI";
+import { getWalletResetToken, updateWalletPin } from "../../api/walletAPI";
 
 function ChangePin() {
   const { user } = useContext(AuthContext);

@@ -36,7 +36,6 @@ import CustomizedMaterialTable from "../../../components/tables/CustomizedMateri
 import { currencyFormatter } from "../../../constants";
 import { AuthContext } from "../../../context/providers/AuthProvider";
 import { AGENT_TRANSACTIONS } from "../../../mocks/columns";
-import AddMoney from "./AddMoney";
 
 // Cached date calculation maps to completely eliminate object allocations in loops
 const getDateRange = (preset, customStart, customEnd) => {

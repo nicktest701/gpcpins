@@ -129,6 +129,19 @@ export const toggleAgentAccount = async (updatedAgent) => {
   }
 };
 
+export const updateAgentModules = async ({ id, modules }) => {
+  try {
+    const res = await api({
+      method: "PATCH",
+      url: `/agents/${id}/modules`,
+      data: { modules },
+    });
+    return res.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
 export const deleteAgent = async ({ id }) => {
   try {
     const res = await api({

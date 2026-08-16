@@ -189,7 +189,7 @@ function Bundle() {
                     data: summary?.data?.thisYear?.data ?? [],
                     backgroundColor: palette.error.main,
                     barThickness: 20,
-                    borderRadius: 2,
+                    borderRadius: 1.2,
                   },
                 ]}
               />

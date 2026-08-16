@@ -213,7 +213,7 @@ function Airtime() {
                         ? palette.success.main
                         : palette.error.main,
                     barThickness: 20,
-                    borderRadius: 2,
+                    borderRadius: 1.2,
                   },
                 ]}
               />

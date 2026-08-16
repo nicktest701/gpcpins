@@ -64,7 +64,7 @@ function ChangePin() {
             queryClient.invalidateQueries(["agent"]);
           },
           onSuccess: (data) => {
-            customDispatch(globalAlertType("info", data));
+            customDispatch(globalAlertType("success", data));
 
             handleClose();
             setPin("");

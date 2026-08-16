@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Alert, MenuItem, Stack, TextField, useTheme } from "@mui/material";
+import { Alert, Box, MenuItem, Stack, TextField, useTheme } from "@mui/material";
 import CustomizedMaterialTable from "@/components/tables/CustomizedMaterialTable";
 import { airtimeTransactionsByColumns } from "@/mocks/columns";
 import _ from "lodash";
@@ -88,18 +88,31 @@ function Report() {
       <Stack spacing={8}>
         <Stack
           direction={{ xs: "column", md: "row" }}
-          justifyContent="center"
+          justifyContent={{xs:'center',md:'space-between'}}
           alignItems={{ xs: "left", md: "center" }}
           spacing={2}
           mb={2}
         >
-          <TextField
+
+                <CustomTotal
+            title="Total"
+            total={currencyFormatter(
+              _.sumBy(sortedTransactions, (item) => Number(item?.amount)),
+            )}
+          />
+        <Box sx={{
+          display:'flex',
+          flexDirection:{xs:'column',md:'row'},
+          gap:2,
+
+        }}>
+            <TextField
             select
             label="Select Period"
             size="small"
             value={sortValue}
             onChange={(e) => setSortValue(e.target.value)}
-            sx={{ width: 200, my: 2 }}
+            sx={{width:{xs:'100%',md:200}, my: 2 }}
           >
             <MenuItem value="2024">2024</MenuItem>
             <MenuItem value="2025">2025</MenuItem>
@@ -111,19 +124,15 @@ function Report() {
             size="small"
             value={type}
             onChange={(e) => setType(e.target.value)}
-            sx={{ width: 200, my: 2 }}
+           sx={{width:{xs:'100%',md:200}, my: 2 }}
           >
             <MenuItem value="All">All</MenuItem>
             <MenuItem value="Airtime">Airtime Transfers</MenuItem>
             <MenuItem value="Bundle">Data Bundle </MenuItem>
           </TextField>
+        </Box>
 
-          <CustomTotal
-            title="Total"
-            total={currencyFormatter(
-              _.sumBy(sortedTransactions, (item) => Number(item?.amount)),
-            )}
-          />
+    
         </Stack>
 
         <CustomCard

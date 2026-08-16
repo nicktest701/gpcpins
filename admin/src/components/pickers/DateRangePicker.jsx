@@ -185,7 +185,7 @@ const DateRangePicker = ({
         slotProps={{
           paper: {
             sx: {
-              borderRadius: 3,
+              borderRadius: 1.2,
               boxShadow: theme.shadows[8],
               border: `1px solid ${alpha(theme.palette.divider, 0.4)}`,
               overflow: "hidden",

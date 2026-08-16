@@ -95,6 +95,7 @@ router.get(
         "role",
         "phonenumber",
         "profile",
+        "modules",
         "businessName",
         "businessLocation",
         "businessDescription",
@@ -119,6 +120,7 @@ router.get(
         role: agent?.role,
         phonenumber: agent?.phonenumber,
         profile: agent?.profile,
+        modules: safeJSON(agent?.modules),
         //business
         businessName: agent?.businessName,
         businessLocation: agent?.businessLocation,
@@ -752,8 +754,6 @@ router.put(
     const { id: userId, role } = req.user;
     const { id, agent_id, ...rest } = req.body;
 
-    console.log(req.body)
-
     if (agent_id) {
       await knex("agent_businesses").where("id", rest.business_id).update({
         name: rest?.business_name,
@@ -802,8 +802,6 @@ router.put(
       )
       .where("id", id)
       .first();
-
-    const accessToken = await signMainToken(agent, "180d");
 
     //logs
     await knex("activity_logs").insert({
@@ -963,6 +961,35 @@ router.put(
       .json(
         Boolean(active) === true ? "Account enabled!" : "Account disabled!",
       );
+  }),
+);
+
+//Enable or Disable Agent Account
+router.patch(
+  "/:id/modules",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { id: _id } = req.user;
+    const agentId = req.params.id;
+    const { modules } = req.body;
+
+    const updatedAgent = await knex("users")
+      .where("id", agentId)
+      .update({ modules: JSON.stringify(modules) });
+
+    if (updatedAgent !== 1) {
+      return res.status(400).json("Error updating agent info");
+    }
+
+    //logs
+    await knex("activity_logs").insert({
+      user_id: _id,
+      title: "updated agent account",
+      severity: "warning",
+    });
+
+    res.status(201).json("Changes Saved");
   }),
 );
 

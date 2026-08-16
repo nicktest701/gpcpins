@@ -168,7 +168,7 @@ const VerifyOTP = () => {
         email: state?.email,
         password: state?.password,
       });
-      customDispatch(globalAlertType("info", "Verification code sent!"));
+      customDispatch(globalAlertType("success", "Verification code sent!"));
       setSeconds(60);
     } catch (err) {
       setError("Failed to resend code. Please try again.");
@@ -200,7 +200,7 @@ const VerifyOTP = () => {
               width: 400,
               maxWidth: "100%",
               p: 4,
-              borderRadius: 3,
+              borderRadius: 1.2,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
@@ -246,10 +246,10 @@ const VerifyOTP = () => {
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   sx={{
-                    width: 52,
+                    width: {xs:48,md:56},
                     "& .MuiOutlinedInput-root": {
-                      borderRadius: 2,
-                      height: 60,
+                      borderRadius: 1.2,
+                      height: {xs:48,md:56},
                       "& input": {
                         textAlign: "center",
                         fontSize: "1.5rem",
@@ -307,7 +307,7 @@ const VerifyOTP = () => {
               loading={isSubmitting || isLoading}
               onClick={handleSubmit(onSubmit)}
               sx={{
-                borderRadius: 2,
+                borderRadius: 1.2,
                 textTransform: "none",
                 fontWeight: 600,
                 boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.25)}`,
@@ -443,7 +443,7 @@ export default VerifyOTP;
 //       { email: state?.email, password: state?.password },
 //       {
 //         onSuccess: () => {
-//           customDispatch(globalAlertType("info", "Verification code sent!"));
+//           customDispatch(globalAlertType("success", "Verification code sent!"));
 //           setSeconds(60);
 //         },
 

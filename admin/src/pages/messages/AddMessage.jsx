@@ -116,7 +116,7 @@ function AddMessage({ open, setOpen }) {
             title: "Success",
             text: "Message sent successfully",
           });
-          customDispatch(globalAlertType("info", data));
+          customDispatch(globalAlertType("success", data));
           handleClose();
         },
         onError: (error) => {

@@ -24,7 +24,6 @@ function UserAccount() {
       title: "Removing Account",
       text: "Do you want to delete account?",
       showCancelButton: true,
-      confirmButtonColor: "#B72136",
     }).then(({ isConfirmed }) => {
       if (isConfirmed) {
         mutateAsync(
@@ -34,7 +33,7 @@ function UserAccount() {
               queryClient.invalidateQueries(["users"]);
             },
             onSuccess: (data) => {
-              customDispatch(globalAlertType("info", data));
+              customDispatch(globalAlertType("success", data));
               navigate("/users");
             },
             onError: (error) => {

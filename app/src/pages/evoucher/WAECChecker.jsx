@@ -138,7 +138,7 @@ function WAECChecker() {
                     return (
                       <TextField
                         {...params}
-                        // size="small"
+                        size="small"
                         label="Voucher"
                         error={Boolean(
                           touched?.categoryType?.name &&
@@ -177,7 +177,7 @@ function WAECChecker() {
                     return (
                       <TextField
                         {...params}
-                          //  size="small"
+                           size="small"
                         label="Quantity"
                         error={Boolean(
                           touched?.pricingType?.type &&

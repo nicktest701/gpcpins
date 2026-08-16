@@ -22,13 +22,7 @@ function AgentWallet() {
     initialData: [],
   });
 
-  const openAddMoney = () => {
-    setSearchParams((params) => {
-      // params.set("data", JSON.stringify(data));
-      params.set("add-money", "true");
-      return params;
-    });
-  };
+
   return (
     <>
       <Container maxWidth='lg' sx={{ paddingY: 2, bgcolor: "#fff" }}>
@@ -61,7 +55,7 @@ function AgentWallet() {
                   Add Money to Wallet
                 </Button>
               )} */}
-              <ListItemText
+              {/* <ListItemText
                 sx={{ textAlign: { xs: "left", md: "right" } }}
                 primary={currencyFormatter(
                   _.sumBy(transactions?.data, (item) => Number(item?.amount))
@@ -72,7 +66,7 @@ function AgentWallet() {
                 }}
                 secondary="TOTAL"
                 secondaryTypographyProps={{ color: "secondary" }}
-              />
+              /> */}
             </Box>
           }
         />

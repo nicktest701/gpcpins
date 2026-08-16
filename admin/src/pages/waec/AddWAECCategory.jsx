@@ -80,7 +80,7 @@ const AddWAECCategory = () => {
   const { mutateAsync, isLoading } = useMutation({
     mutationFn: postCategory,
     onSuccess: (data) => {
-      customDispatch(globalAlertType("info", data));
+      customDispatch(globalAlertType("success", data));
       handleClose();
       reset();
       setPricingList([]);
@@ -174,8 +174,6 @@ const AddWAECCategory = () => {
       text: "Are you sure you want to create this new WAEC checker?",
       icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
       confirmButtonText: "Yes, add",
     }).then((result) => {
       if (result.isConfirmed) {
@@ -250,7 +248,7 @@ const AddWAECCategory = () => {
   PaperProps={{
     elevation: 8,
     sx: {
-      borderRadius: 3,
+      borderRadius: 1.2,
       maxHeight: "90vh",
       overflow: "hidden", // 1. Keeps the outer container bound to maxheight without a scrollbar
       bgcolor: "background.paper",
@@ -296,7 +294,7 @@ const AddWAECCategory = () => {
         },
         "&::-webkit-scrollbar-thumb": {
           background: (theme) => alpha(theme.palette.primary.main, 0.4),
-          borderRadius: 3,
+          borderRadius: 1.2,
           "&:hover": {
             background: (theme) => alpha(theme.palette.primary.main, 0.6),
           },

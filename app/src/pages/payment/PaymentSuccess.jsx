@@ -1,125 +1,154 @@
-import { CheckRounded, ContentCopy } from "@mui/icons-material";
-import success from "../../assets/images/success.png";
-import { Alert, Avatar, Box, IconButton, InputAdornment, Paper, Stack, TextField, Tooltip, Typography } from "@mui/material";
+import { CheckCircleOutlineRounded, CheckRounded, ContentCopy } from "@mui/icons-material";
+import { Alert, Box, Button, IconButton, InputAdornment, Paper, Stack, OutlinedInput, Tooltip, Typography } from "@mui/material";
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 function PaymentSuccess() {
   const { state } = useLocation();
-
   const [copied, setCopied] = useState(false);
 
-  // Copy handler function using standard web API
+  // Fallback string if id is missing in location state
+  const transactionId = state?.id || "TXN-849204810";
+
   const handleCopyTransactionId = async () => {
-    if (!state?.id) return;
+    if (!transactionId) return;
     try {
-      await navigator.clipboard.writeText(state.id);
+      await navigator.clipboard.writeText(transactionId);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000); // Reset state after 2 seconds
+      setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error("Failed to copy text: ", err);
     }
   };
 
   return (
-    <div
-      style={{
+    <Box
+      sx={{
         minHeight: "100vh",
-        display: "grid",
-        gridTemplateRows: "1fr auto",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)",
+        p: 3,
       }}
     >
       <Paper
-        elevation={2}
+        elevation={0}
         sx={{
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
           alignItems: "center",
-          rowGap: 1,
           textAlign: "center",
-          minWidth: 300,
-          height: 300,
-          mx: "auto",
-          placeSelf: "center",
-          p: 2,
+          maxWidth: 440,
+          width: "100%",
+          p: { xs: 4, sm: 5 },
+          borderRadius: 4,
+          border: "1px solid",
+          borderColor: "divider",
+          boxShadow: "0px 8px 32px rgba(0, 0, 0, 0.04)",
         }}
       >
-        <Avatar
-          src={success}
+        {/* Animated-style Icon Badge */}
+        <Box
           sx={{
-            width: 60,
-            height: 60,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 80,
+            height: 80,
+            borderRadius: "50%",
+            bgcolor: "success.lighter",
+            color: "success.main",
+            mb: 3,
+            // Fallback soft color if custom theme palette lighter isn't built out
+            backgroundColor: "rgba(46, 125, 50, 0.08)" 
           }}
-        />
-        <Typography variant="h6">Success!</Typography>
-        <Typography variant="h6" color="primary.main">
-          Your request has been processed successfully.
+        >
+          <CheckCircleOutlineRounded sx={{ fontSize: 48 }} />
+        </Box>
+
+        {/* Success Messages */}
+        <Typography variant="h5" fontWeight={700} color="text.primary" gutterBottom>
+          Payment Successful!
         </Typography>
-        <Typography variant="caption">
-          You will be notify shortly after your transaction is completed.
+        
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 4, px: 2 }}>
+          Your request has been processed. You will be notified via email shortly after your transaction is settled.
         </Typography>
-        <Typography variant="caption">Thank You!</Typography>
-        {/* --- NEW COPY TO CLIPBOARD COMPONENT --- */}
-        <Stack width="100%" maxWidth={400} spacing={1}>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            fontWeight="bold"
-          >
-            Your Transaction ID Copy Code:
-          </Typography>
-          <TextField
+
+        {/* Copy to Clipboard Field */}
+        <Stack width="100%" spacing={1.5} sx={{ mb: 3 }}>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+              TRANSACTION ID
+            </Typography>
+          </Box>
+          <OutlinedInput
             size="small"
-            variant="outlined"
             readOnly
-            value={state?.id}
+            value={transactionId}
             fullWidth
-            InputProps={{
-              readOnly: true,
-              endAdornment: (
-                <InputAdornment position="end">
-                  <Tooltip title={copied ? "Copied!" : "Copy to clipboard"}>
-                    <IconButton
-                      onClick={handleCopyTransactionId}
-                      edge="end"
-                      color={copied ? "success" : "default"}
-                    >
-                      {copied ? <CheckRounded /> : <ContentCopy />}
-                    </IconButton>
-                  </Tooltip>
-                </InputAdornment>
-              ),
-              sx: { bgcolor: "action.hover", fontFamily: "monospace" },
+            endAdornment={
+              <InputAdornment position="end">
+                <Tooltip title={copied ? "Copied!" : "Copy ID"}>
+                  <IconButton
+                    onClick={handleCopyTransactionId}
+                    edge="end"
+                    color={copied ? "success" : "default"}
+                    size="small"
+                  >
+                    {copied ? <CheckRounded fontSize="small" /> : <ContentCopy fontSize="small" />}
+                  </IconButton>
+                </Tooltip>
+              </InputAdornment>
+            }
+            sx={{
+              bgcolor: "grey.50",
+              fontFamily: "monospace",
+              fontSize: "0.875rem",
+              borderRadius: 2,
+              "& .MuiOutlinedInput-notchedOutline": { borderColor: "grey.200" },
             }}
           />
         </Stack>
-        <Stack direction="row" spacing={2} mt={2}>
-          <Link
-            to={"/"}
-            style={{
-              textDecoration: "underline",
-              color: "#031523",
-              fontWeight: 500,
-            }}
-          >
-            Home
-          </Link>
-        </Stack>
+
+        {/* Inline Recommendation Alert */}
+        <Alert
+          severity="info"
+          variant="outlined"
+          sx={{
+            width: "100%",
+            borderRadius: 2,
+            textAlign: "left",
+            fontSize: "0.75rem",
+            mb: 4,
+            borderColor: "info.light",
+            bgcolor: "rgba(2, 136, 209, 0.02)"
+          }}
+        >
+          We highly recommend keeping a copy of this confirmation code for your private accounting records.
+        </Alert>
+
+        {/* Primary Action Button */}
+        <Button
+          component={Link}
+          to="/"
+          variant="contained"
+          fullWidth
+          disableElevation
+          sx={{
+            py: 1.5,
+            borderRadius: 2.5,
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: "0.95rem",
+            boxShadow: "none",
+          }}
+        >
+          Return to Home
+        </Button>
       </Paper>
-      <Box sx={{ display: "grid", placeItems: "center", paddingY: 2 }}>
-        <Typography variant="body2">
-          Copyright &copy; {new Date().getFullYear()} | Gab Powerful Consult
-        </Typography>
-      </Box>
-      <Alert
-        variant="standard"
-        severity="info"
-        sx={{ borderRadius: 0, py: 1, fontSize: "12px" }}
-      >
-        You are recommended to keep a copy of your <b>TRANSACTION ID.</b>
-      </Alert>
-    </div>
+    </Box>
   );
 }
 

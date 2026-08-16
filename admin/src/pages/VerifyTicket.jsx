@@ -63,7 +63,7 @@ const VerifyTicket = () => {
           spacing={1}
           justifyContent='center'
           alignItems='center'
-          sx={{ border: '1px solid lightgray', p: 6, borderRadius: 2 }}
+          sx={{ border: '1px solid lightgray', p: 6, borderRadius: 1.2 }}
         >
           <img
             alt='movie album'

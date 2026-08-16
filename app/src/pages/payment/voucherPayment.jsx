@@ -27,7 +27,7 @@ import DOMPurify from "dompurify";
 import Swal from "sweetalert2";
 import { currencyFormatter } from "@/constants";
 import { makeMomoTransaction } from "@/api/paymentAPI";
-import { getWalletStatus, disableWallet } from "@/api/userAPI";
+import { getWalletStatus, disableWallet } from "@/api/walletAPI";
 import PaymentOption from "@/components/PaymentOption";
 import VoucherPlaceHolderItem from "@/components/items/VoucherPlaceHolderItem";
 import { useAuth } from "../../context/providers/AuthProvider";

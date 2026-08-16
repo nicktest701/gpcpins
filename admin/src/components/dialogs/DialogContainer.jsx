@@ -23,7 +23,7 @@ export const scrollbarStyles = {
   },
   "&::-webkit-scrollbar-thumb": {
     background: (theme) => alpha(theme.palette.primary.main, 0.4),
-    borderRadius: 3,
+    borderRadius: 1.2,
     "&:hover": {
       background: (theme) => alpha(theme.palette.primary.main, 0.6),
     },
@@ -60,7 +60,7 @@ const DialogContainer = ({
       PaperProps={{
         elevation: 8,
         sx: {
-          borderRadius: 3,
+          borderRadius: 1.2,
           maxHeight: "90vh",
           overflow: "hidden", // 1. Keeps the outer container bound to maxheight without a scrollbar
           bgcolor: "background.paper",
@@ -115,7 +115,7 @@ const DialogContainer = ({
         },
         "&::-webkit-scrollbar-thumb": {
           background: (theme) => alpha(theme.palette.primary.main, 0.4),
-          borderRadius: 3,
+          borderRadius: 1.2,
           "&:hover": {
             background: (theme) => alpha(theme.palette.primary.main, 0.6),
           },

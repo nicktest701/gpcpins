@@ -8,6 +8,7 @@ import {
   ListItemText,
   Avatar,
   Divider,
+  Paper,
 } from "@mui/material";
 import { ArrowBack } from "@mui/icons-material";
 import { TabContext, TabPanel, TabList } from "@mui/lab";
@@ -20,27 +21,26 @@ import CustomTitle from "../../../components/custom/CustomTitle";
 import AgentProfile from "./AgentProfile";
 import AgentWallet from "./AgentWallet";
 import AgentTransaction from "./AgentTransaction";
-import { getAgent, toggleAgentAccount } from "../../../api/agentAPI";
-import { getInitials } from "../../../config/validation";
+import { getAgent, toggleAgentAccount } from "@/api/agentAPI";
+import { getInitials } from "@/config/validation";
 import AgentSettings from "./AgentSettings";
 import EditAgent from "./EditAgent";
-import { globalAlertType } from "../../../components/alert/alertType";
-import {
-  CustomContext,
-  useCustomContext,
-} from "../../../context/providers/CustomProvider";
+import { globalAlertType } from "@/components/alert/alertType";
+import {useCustomContext } from "@/context/providers/CustomProvider";
 import AgentPhoto from "./AgentPhoto";
-import { currencyFormatter } from "../../../constants";
+import { currencyFormatter } from "@/constants";
 import ChangePin from "./ChangePin";
+import AgentModules from "./AgentModules"; // NEW
+import { useAuth } from "@/context/providers/AuthProvider";
+import { safeJSON } from "@/config/helpers";
 
 function AgentDetails() {
-  const { user } = useCustomContext();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState("1");
-  // const [hidePin, setHidePin] = useState(true);
   const { id } = useParams();
   const queryClient = useQueryClient();
-  const { customDispatch } = useContext(CustomContext);
+  const { customDispatch } = useCustomContext();
 
   const { data } = useQuery({
     queryKey: ["agent", id],
@@ -49,7 +49,6 @@ function AgentDetails() {
     initialData: queryClient
       .getQueryData(["agents"])
       ?.find((agent) => agent?.id === id),
-    //  staleTime: 15 * 60 * 1000, // 15 minutes
   });
 
   const { mutateAsync: toggleEmployeeAccountMutateAsync } = useMutation({
@@ -73,12 +72,12 @@ function AgentDetails() {
               queryClient.invalidateQueries(["agent", id]);
             },
             onSuccess: (data) => {
-              customDispatch(globalAlertType("info", data));
+              customDispatch(globalAlertType("success", data));
             },
             onError: (error) => {
               customDispatch(globalAlertType("error", error));
             },
-          },
+          }
         );
       }
     });
@@ -91,6 +90,13 @@ function AgentDetails() {
     });
   };
 
+  // Extract current modules from agent data
+  const currentModules = safeJSON(data?.modules ,[]);
+
+
+
+
+
   return (
     <Container>
       <Link to="/agents">
@@ -98,7 +104,17 @@ function AgentDetails() {
           <ArrowBack />
         </IconButton>
       </Link>
-      <Container sx={{ pb: 5, mb: 5, bgcolor: "#fff" }}>
+         <Paper
+        elevation={2}
+        sx={{
+          borderRadius: 1.2,
+          p: 3,
+          bgcolor: "background.paper",
+          transition: "box-shadow 0.2s",
+           pb: 5, mb: 5,
+          "&:hover": { boxShadow: 4 },
+        }}
+      >
         <Box
           sx={{
             display: "flex",
@@ -211,19 +227,22 @@ function AgentDetails() {
         >
           {data?.active ? "Active" : "Disabled"}
         </Button>
-      </Container>
+      </Paper>
+
       <TabContext value={tab}>
         <TabList
           onChange={(e, value) => setTab(value)}
-          // sx={{ bgcolor: "secondary.main" }}
+          sx={{ borderBottom: 1, borderColor: "divider" }}
         >
           <Tab label="Profile" value="1" />
           <Tab label="Wallet" value="2" />
           <Tab label="Transactions" value="3" />
-          {/* {user?.permissions?.includes("Edit agents") && ( */}
-            <Tab label="Settings" value="4" />
-          {/* )} */}
+          {user?.permissions?.includes("Edit agents") && (
+            <Tab label="Modules" value="4" />
+          )}
+          <Tab label="Settings" value="5" />
         </TabList>
+
         <TabPanel value="1" sx={{ px: 0 }}>
           <AgentProfile values={data} />
         </TabPanel>
@@ -234,9 +253,13 @@ function AgentDetails() {
           <AgentTransaction />
         </TabPanel>
         <TabPanel value="4" sx={{ px: 0 }}>
+          <AgentModules agentId={id} currentModules={currentModules} />
+        </TabPanel>
+        <TabPanel value="5" sx={{ px: 0 }}>
           <AgentSettings />
         </TabPanel>
       </TabContext>
+
       <EditAgent />
       <ChangePin />
     </Container>

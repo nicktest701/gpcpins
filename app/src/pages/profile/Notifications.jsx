@@ -41,6 +41,7 @@ import {
   getAllBroadcastMessages,
   removeNotification,
 } from "../../api/broadcastMessageAPI";
+import { Navigate } from "react-router-dom";
 
 // Category options for filtering
 const CATEGORY_OPTIONS = [
@@ -203,6 +204,10 @@ const Notifications = () => {
     setPageSize(Number(event.target.value));
     setPage(1);
   };
+
+  if(!user?.id) {
+    return <Navigate to='/' replace/>
+  }
 
   // ---- Loading State ----
   if (notificationsLoading) {

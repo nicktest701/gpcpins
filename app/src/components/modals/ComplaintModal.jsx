@@ -32,7 +32,7 @@ const ComplaintModal = ({ buttonVariant = 'fab', buttonText = 'Submit Complaint'
             color="primary"
             aria-label="complaint"
             onClick={handleOpen}
-            sx={{ position: 'fixed', bottom: 24, right: 24 }}
+            sx={{ position: 'fixed', bottom: "40%", left: 24 }}
           >
             <HelpOutline />
           </Fab>

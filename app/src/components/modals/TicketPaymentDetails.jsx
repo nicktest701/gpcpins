@@ -18,7 +18,7 @@ import VoucherPlaceHolderItem from "../items/VoucherPlaceHolderItem";
 import { globalAlertType } from "../alert/alertType";
 import CustomDialogTitle from "../dialogs/CustomDialogTitle";
 import { AuthContext } from "../../context/providers/AuthProvider";
-import { disableWallet, getWalletStatus } from "../../api/userAPI";
+import { disableWallet, getWalletStatus } from "../../api/walletAPI";
 import { verifyPin } from "../../config/validation";
 import { CircularProgress } from "@mui/material";
 

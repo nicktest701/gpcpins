@@ -63,7 +63,7 @@ function TransactionStatus() {
       PaperProps={{
         elevation: 8,
         sx: {
-          borderRadius: 4,
+          borderRadius: 1.2,
           overflow: "hidden",
           background: theme.palette.background.paper,
           boxShadow: `0 20px 60px ${alpha(theme.palette.common.black, 0.15)}`,
@@ -130,7 +130,7 @@ function TransactionStatus() {
             sx={{
               p: 3,
               textAlign: "center",
-              borderRadius: 3,
+              borderRadius: 1.2,
               border: `1px solid ${theme.palette.error.main}`,
             }}
           >
@@ -152,7 +152,7 @@ Retry            </Button>
             variant="outlined"
             sx={{
               p: 2.5,
-              borderRadius: 3,
+              borderRadius: 1.2,
               bgcolor: alpha(theme.palette.background.default, 0.6),
               borderColor: alpha(theme.palette.divider, 0.6),
             }}

@@ -111,7 +111,7 @@ function PlainTable({ isLoading, columns = [], data = [], options = {} }) {
         />
       )}
 
-      <TableContainer sx={{ maxHeight, borderRadius: 2 }}>
+      <TableContainer sx={{ maxHeight, borderRadius: 1.2 }}>
         <Table stickyHeader size="small">
           <TableHead>
             <TableRow>

@@ -48,7 +48,7 @@ function ProfilePhoto() {
       const newProfile = result?.profile || result;
       updateUser({ profile: newProfile });
       setPreview(newProfile);
-      customDispatch(globalAlertType("info", "Profile photo updated!"));
+      customDispatch(globalAlertType("success", "Profile photo updated!"));
       queryClient.invalidateQueries({ queryKey: ["user"] });
       setError("");
     },
@@ -132,7 +132,7 @@ function ProfilePhoto() {
         alignItems: "center",
         gap: 2,
         bgcolor: "background.paper",
-        borderRadius: 3,
+        borderRadius: 1.2,
         border: `1px solid ${alpha(theme.palette.divider, 0.4)}`,
         position: "relative",
       }}
@@ -144,7 +144,7 @@ function ProfilePhoto() {
             position: "absolute",
             inset: 0,
             bgcolor: alpha(theme.palette.common.black, 0.08),
-            borderRadius: 3,
+            borderRadius: 1.2,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -305,7 +305,7 @@ export default ProfilePhoto;
 
 //           updateAdminProfile(info)
 //             .then((result) => {
-//               customDispatch(globalAlertType("info", "Profile Updated!"));
+//               customDispatch(globalAlertType("success", "Profile Updated!"));
 //               updateUser({ profile: result });
 //             })
 //             .catch((error) => {

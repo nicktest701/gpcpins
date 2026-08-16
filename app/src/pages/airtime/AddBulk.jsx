@@ -20,7 +20,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { v4 as uuid } from "uuid";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import { useAuth } from "../../context/providers/AuthProvider";
 import ServiceProvider from "../../components/ServiceProvider";
 import {
   getInternationalMobileFormat,
@@ -58,7 +58,7 @@ const AddBulk = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { user } = useContext(AuthContext);
+  const { user } =useAuth()
   const [pricingList, setPricingList] = useState([]);
 
   // Load existing list from URL if present
@@ -80,7 +80,7 @@ const AddBulk = () => {
     watch,
     reset,
     setValue,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm({
     resolver: yupResolver(entrySchema),
     defaultValues: {
@@ -170,7 +170,7 @@ const AddBulk = () => {
           <Stack spacing={2}>
             {/* Network Provider */}
             <ServiceProvider
-              size="medium"
+              size="small"
               value={provider}
               setValue={(val) => setValue("provider", val)}
               error={!!errors.provider}
@@ -185,6 +185,7 @@ const AddBulk = () => {
                 <TextField
                   {...field}
                   fullWidth
+                  size="small"
                   type="tel"
                   label="Recipient Number"
                   placeholder="024XXXXXXX"
@@ -209,6 +210,7 @@ const AddBulk = () => {
                 <TextField
                   {...field}
                   fullWidth
+                  size="small"
                   type="tel"
                   label="Confirm Recipient Number"
                   placeholder="Re-enter phone number"
@@ -233,6 +235,7 @@ const AddBulk = () => {
                 <TextField
                   {...field}
                   fullWidth
+                  size="small"
                   type="number"
                   label="Amount (GHS)"
                   placeholder="0.00"
@@ -247,7 +250,8 @@ const AddBulk = () => {
               )}
             />
 
-            <Button type="submit" variant="contained" size="large" fullWidth>
+            <Button type="submit" variant="contained" size="large" fullWidth
+            >
               Add Entry
             </Button>
           </Stack>
@@ -307,6 +311,7 @@ const AddBulk = () => {
               endIcon={<ArrowForward />}
               onClick={handleProceed}
               fullWidth
+            
               sx={{ mt: 2 }}
             >
               Proceed to Checkout

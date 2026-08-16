@@ -37,6 +37,8 @@
     "framer-motion": "^10.12.12",
     "helmet": "^6.1.5",
     "js-cookie": "^3.0.5",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "leaflet": "^1.9.4",
     "material-table": "^2.0.3",
     "moment": "^2.29.4",

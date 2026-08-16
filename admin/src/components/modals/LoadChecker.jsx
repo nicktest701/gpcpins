@@ -200,7 +200,7 @@ const LoadChecker = ({ open, setOpen }) => {
             queryClient.invalidateQueries(["voucher"]);
           },
           onSuccess: (data) => {
-            customDispatch(globalAlertType("info", data));
+            customDispatch(globalAlertType("success", data));
             handleRemovePath();
             customDispatch({ type: "newCheckers", payload: [] });
             setOpen(false);

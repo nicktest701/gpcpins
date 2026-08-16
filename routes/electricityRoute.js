@@ -218,12 +218,16 @@ router.get(
           .first();
 
         if (payment?.user_id) {
+          const rechargeToken = responseDetails?.rechargeToken
+            .replace(/\s|-/g, "")
+            .match(/.{1,4}/g)
+            ?.join("-");
           await trx("notifications").insert({
             id: generateId(),
             user_id: payment?.user_id,
             type: "prepaid",
             title: "Prepaid Units",
-            body: `Payment made for prepaid meter: ${paymentPayload?.billRequest?.accountNumber} is completed. Recharge Token: ${responseDetails?.rechargeToken || "N/A"}.`,
+            body: `Payment made for prepaid meter: ${paymentPayload?.billRequest?.accountNumber} is completed. Recharge Token: ${rechargeToken || "N/A"}.`,
             link: responseDetails?.receiptUrl,
             info: JSON.stringify({ downloadLink: responseDetails?.receiptUrl }),
           });
@@ -366,12 +370,13 @@ router.get(
       .orderBy("createdAt", "desc");
 
     const modifiedTransactions = transactions.map((transaction) => {
+      const partner = safeJSON(transaction?.partner);
       return {
         id: transaction?.id,
         paymentId: transaction?.paymentId,
         active: transaction?.active,
         email: transaction?.email,
-        mobileNo: transaction?.mobileNo,
+        mobileNo: transaction?.phonenumber,
         year: transaction?.year,
         mode: transaction?.mode,
         charges: transaction?.charges,
@@ -385,12 +390,14 @@ router.get(
         info: JSON.parse(transaction?.info),
         meter: {
           id: transaction?.meterId,
-          number: transaction?.number,
-          name: transaction?.name,
-          type: transaction?.type,
-          district: transaction?.district,
+          number: transaction?.number || partner?.billRequest?.accountNumber,
+          name: transaction?.name || partner?.paymentDetails?.accountName,
+          type: transaction?.type || partner?.billRequest?.accountCategory,
+          district:
+            transaction?.district || partner?.paymentDetails?.serviceDistrictId,
           address: transaction?.address,
-          spn: transaction?.spn,
+          spn: transaction?.spn || partner?.paymentDetails?.serviceProviderName,
+          paymentBy: partner?.paymentDetails?.paymentBy,
         },
       };
     });
@@ -593,7 +600,12 @@ router.delete(
 
 async function sendElectricityMessage(transaction) {
   if (transaction.status === "completed") {
-    const message = `METER NO: ${transaction?.number} (${transaction?.name}) has successfully purchased PREPAID UNITS at an amount of ${currencyFormatter(transaction?.amount)}. Your Recharge Token is: ${transaction?.token}.Trans.ID: ${transaction?.transactionId}.`;
+    const rechargeToken = transaction?.token
+      ?.replace(/\s|-/g, "")
+      .match(/.{1,4}/g)
+      ?.join("-");
+    const message = `METER NO: ${transaction?.number} (${transaction?.name}) has successfully purchased ECG Prepaid Units at an amount of ${currencyFormatter(transaction?.amount)}. Your Recharge Token is: ${rechargeToken}.
+    REF:ID: ${transaction?.transactionId}.`;
 
     // Send Mail and SMS to the User
     if (transaction?.phonenumber) {

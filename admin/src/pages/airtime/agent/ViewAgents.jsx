@@ -1,5 +1,5 @@
 import CustomizedMaterialTable from "../../../components/tables/CustomizedMaterialTable";
-import { Button, MenuItem } from "@mui/material";
+import { Box, Button, MenuItem } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import transaction_empty from "../../../assets/images/empty/transaction.svg";
@@ -75,7 +75,18 @@ const ViewAgents = () => {
         data={agents.data}
         search={true}
         autocompleteComponent={
-          <>
+              <Box
+                sx={{
+                  width: "100%",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 2,
+                  flexWrap: "wrap",
+                  mb:3
+                }}
+              >
+                <CustomTotal title="Agents" total={agents.data?.length} />
             {user?.permissions?.includes("Add new agents") && (
               <Button
                 variant="contained"
@@ -85,8 +96,7 @@ const ViewAgents = () => {
                 New Agent
               </Button>
             )}
-            <CustomTotal title="Agents" total={agents.data?.length} />
-          </>
+          </Box>
         }
         actions={[]}
         onRefresh={agents.refetch}

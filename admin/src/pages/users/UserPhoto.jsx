@@ -37,7 +37,7 @@ function UserPhoto({ profile, email }) {
 
           updateUserProfile(info)
             .then((result) => {
-              customDispatch(globalAlertType("info", result));
+              customDispatch(globalAlertType("success", result));
               queryClient.invalidateQueries(["users"]);
               queryClient.invalidateQueries(["user", id]);
             })

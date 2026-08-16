@@ -24,7 +24,7 @@ function SidebarGroup({ title, icon: Icon, children, collapsed, defaultOpen = fa
         px: collapsed ? 1.25 : 1.5,
         py: 1,
         mx: 1,
-        borderRadius: 2.5,
+        borderRadius: 1.2,
         cursor: "pointer",
         justifyContent: collapsed ? "center" : "space-between",
         color: alpha("#fff", 0.75),
@@ -89,7 +89,7 @@ function SidebarGroup({ title, icon: Icon, children, collapsed, defaultOpen = fa
                     sx={{
                       px: 1.25,
                       py: 0.75,
-                      borderRadius: 2,
+                      borderRadius: 1.2,
                       color: isActive ? theme.palette.secondary.main : alpha("#fff", 0.7),
                       bgcolor: isActive ? alpha(theme.palette.secondary.main, 0.12) : "transparent",
                       "&:hover": { bgcolor: alpha("#fff", 0.06), color: "#fff" },

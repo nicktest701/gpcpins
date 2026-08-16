@@ -195,7 +195,7 @@ function Airtime() {
                     data: summary?.data?.thisYear?.data ?? [],
                     backgroundColor: palette.success.main,
                     barThickness: 20,
-                    borderRadius: 2,
+                    borderRadius: 1.2,
                   },
                 ]}
               />

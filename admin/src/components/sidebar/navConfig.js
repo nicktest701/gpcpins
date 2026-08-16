@@ -223,13 +223,14 @@ export const mainNav = [
     type: "group",
     title: "Users Account",
     icon: Group,
-    permission: ["Users", "Employees", "Agents"],
+    permission: ["Manage Roles & Permissions", "Employees","Users", "Agents"],
     children: [
       // Always visible — matches the source of truth in the previous desktop sidebar.
       {
         to: "roles",
         title: "Roles & Permissions",
         icon: ShieldOutlined,
+        permission: "Manage Roles & Permissions",
       },
 
       {

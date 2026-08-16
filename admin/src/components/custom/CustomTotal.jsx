@@ -3,9 +3,9 @@ import { Stack, Typography } from "@mui/material";
 function CustomTotal({ title, total }) {
   return (
     <Stack
-      direction={{ xs: "row", md: "column" }}
-      alignItems={{ xs: "center", md: "flex-end" }}
-      spacing={{ xs: 1, md: 0.5 }}
+      direction='column'
+      alignItems={{ xs: "center", md: "flex-start" }}
+      spacing={0.5}
       sx={{ textAlign: { xs: "center", md: "right" } ,mb:2}}
     >
       <Typography

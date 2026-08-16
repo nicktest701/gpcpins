@@ -97,7 +97,7 @@ const Password = () => {
   const { mutate, isLoading } = useMutation({
     mutationFn: resetAdminPassword,
     onSuccess: () => {
-      customDispatch(globalAlertType("info", "Password updated successfully"));
+      customDispatch(globalAlertType("success", "Password updated successfully"));
       reset();
     },
     onError: (error) => {
@@ -138,7 +138,7 @@ const Password = () => {
           sx={{
             width: "100%",
             p: { xs: 3, sm: 4 },
-            borderRadius: 3,
+            borderRadius: 1.2,
             border: `1px solid ${alpha(theme.palette.divider, 0.4)}`,
             bgcolor: "background.paper",
           }}
@@ -236,7 +236,7 @@ const Password = () => {
                             sx={{
                               flex: 1,
                               height: 4,
-                              borderRadius: 2,
+                              borderRadius: 1.2,
                               bgcolor: alpha(theme.palette.grey[400], 0.3),
                               overflow: "hidden",
                             }}
@@ -247,7 +247,7 @@ const Password = () => {
                                 height: "100%",
                                 bgcolor: strength.color,
                                 transition: "width 0.3s ease",
-                                borderRadius: 2,
+                                borderRadius: 1.2,
                               }}
                             />
                           </Box>
@@ -307,7 +307,7 @@ const Password = () => {
                 sx={{
                   bgcolor: alpha(theme.palette.primary.main, 0.04),
                   p: 2,
-                  borderRadius: 2,
+                  borderRadius: 1.2,
                   border: `1px solid ${alpha(theme.palette.divider, 0.4)}`,
                 }}
               >
@@ -343,7 +343,7 @@ const Password = () => {
                   color="inherit"
                   onClick={() => reset()}
                   disabled={isSubmitting || isLoading}
-                  sx={{ borderRadius: 2, textTransform: "none" }}
+                  sx={{ borderRadius: 1.2, textTransform: "none" }}
                 >
                   Reset
                 </Button>
@@ -354,7 +354,7 @@ const Password = () => {
                   loading={isSubmitting || isLoading}
                   disabled={!isValid || isSubmitting || isLoading}
                   sx={{
-                    borderRadius: 2,
+                    borderRadius: 1.2,
                     textTransform: "none",
                     fontWeight: 600,
                     boxShadow: `0 8px 24px ${alpha(theme.palette.secondary.main, 0.25)}`,

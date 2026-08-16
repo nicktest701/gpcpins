@@ -108,13 +108,13 @@ function CategoryDetails() {
         <CustomTitle title="Category Details" showBack />
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
-            <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 3 }} />
+            <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 1.2 }} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 3 }} />
+            <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 1.2 }} />
           </Grid>
           <Grid item xs={12}>
-            <Skeleton variant="rectangular" height={300} sx={{ borderRadius: 3 }} />
+            <Skeleton variant="rectangular" height={300} sx={{ borderRadius: 1.2 }} />
           </Grid>
         </Grid>
       </Container>
@@ -129,7 +129,7 @@ function CategoryDetails() {
           sx={{
             p: 4,
             textAlign: "center",
-            borderRadius: 3,
+            borderRadius: 1.2,
             border: `1px solid ${theme.palette.error.main}`,
           }}
         >
@@ -233,7 +233,7 @@ function CategoryDetails() {
               sx={{
                 p: 3,
                 height: "100%",
-                borderRadius: 3,
+                borderRadius: 1.2,
                 border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
                 background: `linear-gradient(135deg, ${alpha(categoryColor, 0.04)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
                 position: "relative",
@@ -322,7 +322,7 @@ function CategoryDetails() {
                   elevation={0}
                   sx={{
                     p: 3,
-                    borderRadius: 3,
+                    borderRadius: 1.2,
                     height: "100%",
                     border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
                   }}
@@ -341,7 +341,7 @@ function CategoryDetails() {
                         sx={{
                           px: 1,
                           py: 1.5,
-                          borderRadius: 2,
+                          borderRadius: 1.2,
                           transition: "background 0.2s",
                           "&:hover": {
                             bgcolor: alpha(theme.palette.primary.main, 0.04),
@@ -379,7 +379,7 @@ function CategoryDetails() {
                 elevation={0}
                 sx={{
                   p: 3,
-                  borderRadius: 3,
+                  borderRadius: 1.2,
                   border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
                 }}
               >
@@ -442,7 +442,7 @@ const StatsCard = ({ label, value, icon, color }) => (
     elevation={0}
     sx={{
       p: 2,
-      borderRadius: 3,
+      borderRadius: 1.2,
       border: `1px solid ${alpha(color, 0.2)}`,
       bgcolor: alpha(color, 0.04),
       transition: "all 0.2s ease",
@@ -481,7 +481,7 @@ const StatMiniCard = ({ label, value, color }) => (
     sx={{
       p: 2,
       textAlign: "center",
-      borderRadius: 2,
+      borderRadius: 1.2,
       border: `1px solid ${alpha(color, 0.15)}`,
       bgcolor: alpha(color, 0.04),
     }}

@@ -20,6 +20,7 @@ import {
 import ClientMenu from "../components/menu/ClientMenu";
 import _ from "lodash";
 import MainDropdown from "../components/dropdowns/MainDropdown";
+import { safeJSON } from "../config/helpers";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -231,64 +232,6 @@ export const SALES_TICKETS = [
   {
     title: "Bus Tickets",
     type: "bus",
-  },
-];
-
-export const ORGANIZATION_PRODUCTS = [
-  {
-    id: 1,
-    header: "Selling of Vouchers",
-    products: [
-      {
-        id: 1,
-        title: "WAEC &  PLACEMENT CHECKERS",
-        img: IMAGES.waec2,
-        content:
-          "Buy WAEC  and School Placement Checkers with ease and just a single click.",
-      },
-
-      {
-        id: 2,
-        title: "UNIVERSITY & POLYTECHNIC FORMS",
-        img: IMAGES.university2,
-        content:
-          "Buy your application form and ursue your academic dreams and opportunities.",
-      },
-      {
-        id: 3,
-        title: "SECURITY SERVICE FORMS",
-        img: IMAGES.security_service2,
-        content:
-          "Step in a rewarding career in security with our comprehensive application forms.",
-      },
-    ],
-  },
-  {
-    id: 2,
-    header: "Selling of Tickets",
-    products: [
-      {
-        id: 4,
-        title: "CINEMA TICKETS",
-        img: IMAGES.cinema_ticket,
-        content:
-          "Enjoy the latest GallyHood,Nollyhood,etc movies with our tickets.",
-      },
-
-      {
-        id: 5,
-        title: "BUS TICKETS",
-        img: IMAGES.bus_ticket,
-        content:
-          "Buy your bus tickets and embark on a comfortable and a convenient journey.",
-      },
-      {
-        id: 6,
-        title: "STADIUM TICKETS",
-        img: IMAGES.stadia_ticket,
-        content: `Elevate  your sporting experiences with our exclusive stadium tickets.`,
-      },
-    ],
   },
 ];
 
@@ -1026,28 +969,17 @@ export const EMPLOYEES_COLUMNS = [
 export const BROADCAST_MESSAGES_COLUMNS = [
   {
     title: "ID",
-    field: "_id",
+    field: "id",
     hidden: true,
   },
   {
     field: "createdAt",
     title: "Date of Issue",
-    render: (rowData) => {
-      const date = new Date(rowData?.createdAt).toDateString();
-      const time = new Date(rowData?.createdAt).toLocaleTimeString();
-      return (
-        <ListItemText
-          primary={date}
-          primaryTypographyProps={{
-            fontSize: 13,
-            color: "primary.main",
-          }}
-          secondary={time}
-          secondaryTypographyProps={{
-            fontSize: 11,
-          }}
-        />
-      );
+    render: (rowData) => <DateRenderer date={rowData?.createdAt} />,
+    searchable: true,
+    customFilterAndSearch: (data, rowData) => {
+      const date = moment(rowData.createdAt).format("Do MMM,YYYY");
+      return date.toLowerCase().lastIndexOf(data.toLowerCase()) > -1;
     },
   },
   {
@@ -1098,22 +1030,14 @@ export const recentTransactionColumns = [
     hidden: true,
   },
   {
-    title: "Date",
+    title: "CREATED ON",
     field: "date",
-    render: (rowData) => (
-      <ListItemText
-        primary={moment(new Date(rowData.createdAt)).format("Do MMM,YYYY")}
-        secondary={moment(new Date(rowData.createdAt)).format("h:mm a")}
-        primaryTypographyProps={{
-          fontSize: 12,
-          color: "primary.main",
-        }}
-        secondaryTypographyProps={{
-          fontSize: 12,
-          color: "error.main",
-        }}
-      />
-    ),
+    render: (rowData) => <DateRenderer date={rowData?.createdAt} />,
+    searchable: true,
+    customFilterAndSearch: (data, rowData) => {
+       const date = moment(rowData.createdAt).format("Do MMM,YYYY");
+      return date.toLowerCase().lastIndexOf(data.toLowerCase()) > -1;
+    },
   },
   {
     title: "Personal Info",
@@ -1182,12 +1106,22 @@ export const airtimeTransactionsColumns = (type) => [
   {
     title: "Date",
     field: "createdAt",
-    render: ({ createdAt }) => moment(createdAt).format("LLL"),
+    render: (rowData) => <DateRenderer date={rowData?.createdAt} />,
     searchable: true,
     customFilterAndSearch: (data, rowData) => {
-      const date = moment(rowData.createdAt).format("LLL");
+    const date = moment(rowData.createdAt).format("Do MMM,YYYY");
       return date.toLowerCase().lastIndexOf(data.toLowerCase()) > -1;
     },
+  },
+  {
+    title: "Trans. Id",
+    field: "id",
+    // hidden: true,
+  },
+  {
+    title: "Ext.Trans. Id",
+    field: "externalTransactionId",
+    // hidden: true,
   },
   {
     title: "Status",
@@ -1197,52 +1131,9 @@ export const airtimeTransactionsColumns = (type) => [
         rowData?.status?.toLowerCase().lastIndexOf(data.toLowerCase()) > -1
       );
     },
-    render: ({ status, isProcessed }) => {
-      const isPending =
-        (status === "completed" && !isProcessed) || status === "pending";
-      const isCompleted = status === "completed" && isProcessed;
-      const isRefunded = status === "refunded";
+    render: ({ status }) => <StatusChip status={status} />,
+  },
 
-      return (
-        <Button
-          size="small"
-          label={
-            isPending
-              ? "Pending"
-              : isCompleted
-                ? "Completed"
-                : isRefunded
-                  ? "Refunded"
-                  : "Failed"
-          }
-          sx={{
-            color: "#fff",
-            bgcolor: isCompleted
-              ? "success.darker"
-              : isRefunded
-                ? "secondary.main"
-                : isPending
-                  ? "warning.dark"
-                  : "error.dark",
-            borderRadius: 1,
-          }}
-        >
-          {isPending
-            ? "Pending"
-            : isCompleted
-              ? "Completed"
-              : isRefunded
-                ? "Refunded"
-                : "Failed"}
-        </Button>
-      );
-    },
-  },
-  {
-    title: "TRANSACTION Id",
-    field: "id",
-    // hidden: true,
-  },
   {
     title: "Domain",
     field: "domain",
@@ -1255,7 +1146,7 @@ export const airtimeTransactionsColumns = (type) => [
         row?.recipient
       ) : (
         <Stack>
-          {JSON.parse(row?.recipient).map((item) => (
+          {safeJSON(row?.recipient, []).map((item) => (
             <small key={item?.recipient}>
               {item?.recipient}{" "}
               <b style={{ color: "var(--secondary)" }}>
@@ -1271,14 +1162,18 @@ export const airtimeTransactionsColumns = (type) => [
     title: "Kind",
     field: "kind",
   },
+  // {
+  //   title: "Email",
+  //   field: "email",
+  // },
   {
-    title: "Email",
-    field: "email",
+    title: "Payment Mode",
+    field: "mode",
   },
-  {
-    title: "Telephone Number",
-    field: "phonenumber",
-  },
+  // {
+  //   title: "Telephone Number",
+  //   field: "phonenumber",
+  // },
   {
     title: "Amount",
     field: "amount",
@@ -1298,68 +1193,38 @@ export const transactionsColumns = (type) => [
   {
     title: "Date",
     field: "createdAt",
-    render: ({ createdAt }) => moment(createdAt).format("LLL"),
+    render: (rowData) => <DateRenderer date={rowData?.createdAt} />,
     searchable: true,
     customFilterAndSearch: (data, rowData) => {
-      const date = moment(rowData.createdAt).format("LLL");
+     const date = moment(rowData.createdAt).format("Do MMM,YYYY");
       return date.toLowerCase().lastIndexOf(data.toLowerCase()) > -1;
     },
   },
   {
-    title: "Status",
-    field: "status",
-    render: ({ status, }) => {
-      const isPending = status === "pending";
-      const isCompleted = status === "completed";
-      const isRefunded = status === "refunded";
-      // const isPending =
-      //   (status === "completed" && !isProcessed) || status === "pending";
-      // const isCompleted = status === "completed" && isProcessed;
-      // const isRefunded = status === "refunded";
-
-      return (
-        <Button
-          size="small"
-          label={
-            isPending
-              ? "Pending"
-              : isCompleted
-                ? "Completed"
-                : isRefunded
-                  ? "Refunded"
-                  : "Failed"
-          }
-          sx={{
-            color: "#fff",
-            bgcolor: isCompleted
-              ? "success.darker"
-              : isRefunded
-                ? "secondary.main"
-                : isPending
-                  ? "warning.dark"
-                  : "error.dark",
-            borderRadius: 1,
-          }}
-        >
-          {isPending
-            ? "Pending"
-            : isCompleted
-              ? "Completed"
-              : isRefunded
-                ? "Refunded"
-                : "Failed"}
-        </Button>
-      );
-    },
-  },
-  {
-    title: "TRANSACTION Id",
+    title: "Trans. Id",
     field: "id",
     // hidden: true,
   },
+    {
+    title: "Ext.Trans.Id",
+    field: "externalTransactionId",
+    // hidden: true,
+  },
   {
-    title: "Service",
-    field: "domain",
+    title: "Status",
+    field: "status",
+    render: ({ status }) => <StatusChip status={status} />,
+  },
+
+  // {
+  //   title: "Service",
+  //   field: "domain",
+  // },
+
+  {
+    title: "Meter",
+    field: "meter",
+    hidden: true,
   },
   {
     title: "Link",
@@ -1367,36 +1232,49 @@ export const transactionsColumns = (type) => [
     hidden: true,
   },
 
-  type === "Prepaid"
-    ? {
-        title: "Meter",
-        field: "meter",
-        render: (row) => row?.meter,
-      }
-    : type === "Bundle"
-      ? {
-          title: "Bundle Name",
-          field: "kind",
-        }
-      : {
-          title: "Voucher/Ticket",
-          field: "voucherType",
-          render: (row) => row?.voucherType,
-        },
+  // type === "Prepaid"
+  //   ? {
+  //       title: "Meter",
+  //       field: "meter",
+  //       render: (row) => row?.meter,
+  //     }
+  //   : type === "Bundle"
+  //     ? {
+  //         title: "Bundle Name",
+  //         field: "kind",
+  //       }
+  //     : {
+  //         title: "Voucher/Ticket",
+  //         field: "voucherType",
+  //         render: (row) => row?.voucherType,
+  //       },
   type === "Bundle"
-    ? { title: "Volume", field: "volume" }
+    ? {
+        title: "Volume",
+        field: "volume",
+        cellStyle: {
+          textTransform: "capitalize",
+        },
+      }
     : {
         title: "Type",
         field: "type",
+        cellStyle: {
+          textTransform: "capitalize",
+        },
       },
+  // {
+  //   title: "Email",
+  //   field: "email",
+  // },
   {
-    title: "Email",
-    field: "email",
+    title: "Payment Mode",
+    field: "mode",
   },
-  {
-    title: "Telephone Number",
-    field: "phonenumber",
-  },
+  // {
+  //   title: "Telephone Number",
+  //   field: "phonenumber",
+  // },
   {
     title: "Amount",
     field: "amount",
@@ -1459,41 +1337,20 @@ export const SERVICE_PROVIDER = [
 
 export const WALLET_TOPUP_TRANSACTIONS = [
   {
-    title: "DATE",
+    title: "CREATED ON",
     field: "createdAt",
     export: true,
-    render: (rowData) => (
-      <ListItemText
-        primary={moment(new Date(rowData.createdAt)).format("Do MMM,YYYY")}
-        secondary={moment(new Date(rowData.createdAt)).format("h:mm a")}
-        primaryTypographyProps={{
-          fontSize: 12,
-          color: "primary.main",
-        }}
-        secondaryTypographyProps={{
-          fontSize: 12,
-          color: "info.main",
-        }}
-      />
-    ),
+    render: (rowData) => <DateRenderer date={rowData?.createdAt} />,
+    searchable: true,
+    customFilterAndSearch: (data, rowData) => {
+      const date = moment(rowData.createdAt).format("Do MMM,YYYY");
+      return date.toLowerCase().lastIndexOf(data.toLowerCase()) > -1;
+    },
   },
   {
     title: "STATUS",
     field: "status",
-    render: ({ status }) => (
-      <Button
-        size="small"
-        label={status === "failed" ? "Failed" : "Completed"}
-        sx={{
-          color: "white",
-          bgcolor: status === "completed" ? "success.darker" : "error.darker",
-          borderRadius: 1,
-          p: 1,
-        }}
-      >
-        {status === "failed" ? "Failed" : "Completed"}
-      </Button>
-    ),
+    render: ({ status }) => <StatusChip status={status} />,
   },
   {
     title: "ID",
@@ -1560,144 +1417,33 @@ export const WALLET_TOPUP_TRANSACTIONS = [
   },
 ];
 
-// export const WALLET_TOPUP_TRANSACTIONS = [
-//   {
-//     field: "createdAt",
-//     headerName: "DATE",
-//     flex: 1.2,
-//     minWidth: 160,
+export const StatusChip = ({ status }) => (
+  <Chip
+    label={status}
+    size="small"
+    color={
+      status === "completed"
+        ? "success"
+        : status === "pending"
+          ? "warning"
+          : status === "failed"
+            ? "error"
+            : "secondary"
+    }
+    sx={{ color: "#fff", textTransform: "capitalize" }}
+  />
+);
 
-//     renderCell: (params) => {
-//       const date = params.row.createdAt;
-
-//       return (
-//         <ListItemText
-//           primary={moment(date).format("Do MMM, YYYY")}
-//           secondary={moment(date).format("h:mm a")}
-//           primaryTypographyProps={{
-//             fontSize: 12,
-//             color: "primary.main",
-//           }}
-//           secondaryTypographyProps={{
-//             fontSize: 12,
-//             color: "info.main",
-//           }}
-//         />
-//       );
-//     },
-
-//     // Export formatting
-//     valueFormatter: (params) => moment(params.value).format("YYYY-MM-DD HH:mm"),
-//   },
-
-//   {
-//     field: "status",
-//     headerName: "STATUS",
-//     minWidth: 130,
-
-//     renderCell: (params) => {
-//       const status = params.row.status;
-
-//       return (
-//         <Button
-//           size="small"
-//           sx={{
-//             color: "white",
-//             bgcolor: status === "completed" ? "success.darker" : "error.darker",
-//             borderRadius: 1,
-//             px: 1.5,
-//           }}
-//         >
-//           {status === "failed" ? "Failed" : "Completed"}
-//         </Button>
-//       );
-//     },
-
-//     valueFormatter: (params) =>
-//       params.value === "failed" ? "Failed" : "Completed",
-//   },
-
-//   {
-//     field: "id",
-//     headerName: "ID",
-//     minWidth: 180,
-//   },
-
-//   // {
-//   //   field: "comment",
-//   //   headerName: "COMMENT",
-//   //   hide: true,
-//   // },
-
-//   {
-//     field: "type",
-//     headerName: "TYPE",
-//     minWidth: 160,
-
-//     renderCell: (params) => {
-//       const { type, comment } = params.row;
-
-//       const isCredit = ["deposit", "refund"].includes(type);
-
-//       return (
-//         <Button
-//           startIcon={
-//             isCredit ? (
-//               <ArrowUpward color="success" />
-//             ) : (
-//               <ArrowDownward color="error" />
-//             )
-//           }
-//           sx={{ color: "secondary.main" }}
-//         >
-//           {comment}
-//         </Button>
-//       );
-//     },
-
-//     valueFormatter: (params) => params.row.comment,
-//   },
-
-//   {
-//     field: "amount",
-//     headerName: "AMOUNT",
-//     type: "number",
-//     minWidth: 140,
-
-//     renderCell: (params) => {
-//       const amount = params.value;
-
-//       return `GHS ${Number(amount).toFixed(2)}`;
-//     },
-
-//     valueFormatter: (params) => `GHS ${Number(params.value).toFixed(2)}`,
-//   },
-
-//   {
-//     field: "details",
-//     headerName: "DETAILS",
-//     minWidth: 200,
-//     sortable: false,
-//     filterable: false,
-
-//     renderCell: (params) => {
-//       const { wallet, type, amount } = params.row;
-//       const isDeposit = type === "deposit";
-
-//       return (
-//         <Box>
-//           <ListItemText
-//             primary={wallet}
-//             secondary={`${isDeposit ? "+" : "-"} ${amount}`}
-//             secondaryTypographyProps={{
-//               color: isDeposit ? "success.main" : "error.main",
-//               fontWeight: 700,
-//             }}
-//           />
-//         </Box>
-//       );
-//     },
-
-//     disableExport: true,
-//   },
-// ];
+export const DateRenderer = ({ date }) => (
+  <ListItemText
+    primary={moment(new Date(date)).format("Do MMM,YYYY")}
+    secondary={moment(new Date(date)).format("h:mm a")}
+    primaryTypographyProps={{
+      fontSize: 14,
+    }}
+    secondaryTypographyProps={{
+      fontSize: 14,
+      color: "text.secondary",
+    }}
+  />
+);

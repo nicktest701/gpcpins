@@ -92,7 +92,7 @@ function EmployeeRoles() {
             queryClient.invalidateQueries(["employee", id]);
           },
           onSuccess: (data) => {
-            customDispatch(globalAlertType("info", data));
+            customDispatch(globalAlertType("success", data));
           },
           onError: (error) => {
             customDispatch(globalAlertType("error", error));

@@ -18,10 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { NoteRounded } from "@mui/icons-material";
 import { currencyFormatter } from "@/constants";
 import TransactionStatus from "@/components/modals/TransactionStatus";
-import {
-
-  useCustomContext,
-} from "@/context/providers/CustomProvider";
+import { useCustomContext } from "@/context/providers/CustomProvider";
 
 import { globalAlertType } from "@/components/alert/alertType";
 import CustomTotal from "@/components/custom/CustomTotal";
@@ -86,7 +83,7 @@ function Transactions() {
 
     reportMutate.mutateAsync(data, {
       onSuccess: () => {
-        customDispatch(globalAlertType("info", "Done!"));
+        customDispatch(globalAlertType("success", "Done!"));
       },
       onError: () => {
         customDispatch(globalAlertType("error", "An error has occurred!"));
@@ -151,108 +148,22 @@ function Transactions() {
           showExportButton={true}
           onRefresh={transactions.refetch}
           autocompleteComponent={
-            <div
-              style={{
-                display: reportMutate.isLoading ? "none" : "block",
-                width: "100%",
-              }}
-            >
-              <Box
-                sx={{
-                  width: "100%",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  // border:'1px solid red'
-                }}
-              >
-                <Stack
-                  direction={{ xs: "column", md: "row" }}
-                  justifyContent="center"
-                  alignItems={{ xs: "left", md: "center" }}
-                  spacing={2}
-                  width="100%"
-                  py={2}
-                >
-                  {showRange ? (
-                    <DateRangePicker
-                      date={date}
-                      setDate={setDate}
-                      onReset={transactions.refetch}
-                      placeholder="Pick a date range"
-                      dateFormat="ll"
-                      maxDate={new Date()}
-                      minDate={new Date("2024-01-01")}
-                    />
-                  ) : (
-                    <TextField
-                      select
-                      label="Select Period"
-                      size="small"
-                      value={sortValue}
-                      onChange={(e) => setSortValue(e.target.value)}
-                      sx={{ width: 250, my: 2 }}
-                    >
-                      <MenuItem value="all">All</MenuItem>
-                      <MenuItem value="today">Today</MenuItem>
-                      <MenuItem value="yesterday">Yesterday</MenuItem>
-                      <MenuItem value="week">Last 7 Days</MenuItem>
-                      <MenuItem value="month">
-                        This Month {`(${moment().format("MMMM")})`}
-                      </MenuItem>
-                      <MenuItem value="lmonth">
-                        Last Month{" "}
-                        {`(${moment().subtract(1, "months").format("MMMM")})`}
-                      </MenuItem>
-                      <MenuItem value="year">
-                        This Year {`(${moment().format("YYYY")})`}
-                      </MenuItem>
-                      <MenuItem value="lyear">
-                        Last Year{" "}
-                        {`(${moment().subtract(1, "years").format("YYYY")})`}
-                      </MenuItem>
-                    </TextField>
+            <>
+              <Box  sx={{
+                    width: "100%",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    // border:'1px solid red'
+                  }} >
+                <CustomTotal
+                  title="Total"
+                  total={currencyFormatter(
+                    _.sumBy(sortedTransactions, (item) => Number(item?.amount)),
                   )}
-                  <TextField
-                    select
-                    label="Select Type"
-                    size="small"
-                    value={type}
-                    onChange={(e) => setType(e.target.value)}
-                    sx={{ width: 250, my: 2 }}
-                  >
-                    <MenuItem value="All">All</MenuItem>
-                    <MenuItem value="airtime">Airtime Transfer </MenuItem>
-                    <MenuItem value="bundle">Data Bundle </MenuItem>
-                  </TextField>
-
-                  <CustomTotal
-                    title="Total"
-                    total={currencyFormatter(
-                      _.sumBy(sortedTransactions, (item) =>
-                        Number(item?.amount),
-                      ),
-                    )}
-                  />
-                </Stack>
-              </Box>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "8px",
-                }}
-              >
-                <FormControlLabel
-                  label="Use Range"
-                  control={
-                    <Checkbox
-                      checked={showRange}
-                      onChange={() => setShowRange(!showRange)}
-                    />
-                  }
                 />
+
                 <LoadingButton
                   variant="contained"
                   endIcon={<NoteRounded />}
@@ -266,8 +177,103 @@ function Transactions() {
                     ? "Generating Report.Please Wait..."
                     : " Generate Report"}
                 </LoadingButton>
+              </Box>
+              <div
+                style={{
+                  display: reportMutate.isLoading ? "none" : "block",
+                  width: "100%",
+                }}
+              >
+                <Box
+                  sx={{
+                    width: "100%",
+                    display: "flex",
+                    justifyContent: "flex-start",
+                    // alignItems: "center",
+                    flexWrap: "wrap",
+                    // border:'1px solid red'
+                  }}
+                >
+                  <Stack
+                    direction={{ xs: "column", md: "row" }}
+                    // justifyContent="center"
+                    alignItems={{ xs: "left", md: "center" }}
+                    spacing={2}
+                    width="100%"
+                    py={2}
+                  >
+                    {showRange ? (
+                      <DateRangePicker
+                        date={date}
+                        setDate={setDate}
+                        onReset={transactions.refetch}
+                        placeholder="Pick a date range"
+                        dateFormat="ll"
+                        maxDate={new Date()}
+                        minDate={new Date("2024-01-01")}
+                      />
+                    ) : (
+                      <TextField
+                        select
+                        label="Select Period"
+                        size="small"
+                        value={sortValue}
+                        onChange={(e) => setSortValue(e.target.value)}
+                        sx={{ width: 250, my: 2 }}
+                      >
+                        <MenuItem value="all">All</MenuItem>
+                        <MenuItem value="today">Today</MenuItem>
+                        <MenuItem value="yesterday">Yesterday</MenuItem>
+                        <MenuItem value="week">Last 7 Days</MenuItem>
+                        <MenuItem value="month">
+                          This Month {`(${moment().format("MMMM")})`}
+                        </MenuItem>
+                        <MenuItem value="lmonth">
+                          Last Month{" "}
+                          {`(${moment().subtract(1, "months").format("MMMM")})`}
+                        </MenuItem>
+                        <MenuItem value="year">
+                          This Year {`(${moment().format("YYYY")})`}
+                        </MenuItem>
+                        <MenuItem value="lyear">
+                          Last Year{" "}
+                          {`(${moment().subtract(1, "years").format("YYYY")})`}
+                        </MenuItem>
+                      </TextField>
+                    )}
+                    <TextField
+                      select
+                      label="Select Type"
+                      size="small"
+                      value={type}
+                      onChange={(e) => setType(e.target.value)}
+                      sx={{ width: 250, my: 2 }}
+                    >
+                      <MenuItem value="All">All</MenuItem>
+                      <MenuItem value="airtime">Airtime Transfer </MenuItem>
+                      <MenuItem value="bundle">Data Bundle </MenuItem>
+                    </TextField>
+                  </Stack>
+                </Box>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    padding: "8px",
+                  }}
+                >
+                  <FormControlLabel
+                    label="Use Range"
+                    control={
+                      <Checkbox
+                        checked={showRange}
+                        onChange={() => setShowRange(!showRange)}
+                      />
+                    }
+                  />
+                </div>
               </div>
-            </div>
+            </>
           }
         />
       </>

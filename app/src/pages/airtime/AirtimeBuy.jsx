@@ -482,6 +482,7 @@ function AirtimeBuy() {
                 {type === "Bundle" ? (
                   <TextField
                     fullWidth
+                    size="small"
                     label="Bundle Price"
                     value={totalAmount}
                     InputProps={{
@@ -497,6 +498,7 @@ function AirtimeBuy() {
                 ) : (
                   <TextField
                     fullWidth
+                     size="small"
                     type="number"
                     label="Top-Up Amount"
                     placeholder="0.00"

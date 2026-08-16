@@ -26,6 +26,7 @@ import ActionMenu from "../../../components/menu/ActionMenu";
 import CustomDialogTitle from "../../../components/dialogs/CustomDialogTitle";
 import PaymentReceipt from "./PaymentReceipt";
 import PrepaidTransactionList from "./PrepaidTransactionList";
+import { DateRenderer, StatusChip } from "../../../mocks/columns";
 
 const PrepaidTransactions = ({ open, setOpen }) => {
   const { user } = useAuth();
@@ -97,9 +98,13 @@ const PrepaidTransactions = ({ open, setOpen }) => {
   // Desktop table columns
   const columns = [
     {
-      title: "Date",
-      field: "createdAt",
-      render: ({ createdAt }) => moment(createdAt).format("LLL"),
+      title: "CREATED ON",
+   render: (rowData) => <DateRenderer date={rowData?.createdAt} />,
+    searchable: true,
+    customFilterAndSearch: (data, rowData) => {
+      const date = moment(rowData.createdAt).format("Do MMM,YYYY");
+      return date.toLowerCase().lastIndexOf(data.toLowerCase()) > -1;
+    },
     },
     { title: "Token", field: "paymentId", hidden: true },
     { title: "OrderNo", field: "info.orderNo", hidden: true },
@@ -116,12 +121,14 @@ const PrepaidTransactions = ({ open, setOpen }) => {
     },
     {
       title: "RECHARGE TOKEN",
-      render: ({ paymentId, info }) => (
+      render: ({ info }) => (
         <Stack>
-          <Typography variant="body2" color="primary.main">
-            {info?.rechargeToken}
+            <Typography variant="body" fontWeight='bold'>
+            {info?.rechargeToken
+              ? info.rechargeToken.replace(/\s|-/g, "").match(/.{1,4}/g)?.join("-")
+              : ""}
           </Typography>
-          {/* <Typography variant="body2">{info?.rechargeToken}</Typography> */}
+  
         </Stack>
       ),
     },
@@ -142,39 +149,27 @@ const PrepaidTransactions = ({ open, setOpen }) => {
         </Stack>
       ),
     },
-    {
-      title: "Contact",
-      render: ({ email, mobileNo }) => (
-        <Stack>
-          <Typography variant="body2" color="info.main">
-            {email}
-          </Typography>
-          <Typography variant="body2">{mobileNo}</Typography>
-        </Stack>
-      ),
-    },
+    // {
+    //   title: "Contact",
+    //   render: ({ email, phonenumber }) => (
+    //     <Stack>
+    //       <Typography variant="body2" color="info.main">
+    //         {email}
+    //       </Typography>
+    //       <Typography variant="body2">{phonenumber}</Typography>
+    //     </Stack>
+    //   ),
+    // },
     {
       title: "Status",
-      render: ({ isProcessed }) => (
-        <Button
-          size="small"
-
-          sx={{
-            color: "#fff",
-            bgcolor: isProcessed ? "success.darker" : "warning.darker",
-            borderRadius:1.2
-          }}
-        >
-          {isProcessed ? "Completed" : "Pending"}
-        </Button>
-      ),
+        render: ({ status }) => <StatusChip status={status} />,
     },
     {
       title: "Action",
       render: (data) => (
         <ActionMenu>
           <MenuItem onClick={() => handleView(data)}>View</MenuItem>
-          {/* <MenuItem onClick={() => handleDelete(data.id)}>Remove</MenuItem> */}
+         
         </ActionMenu>
       ),
     },

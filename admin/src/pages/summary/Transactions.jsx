@@ -218,7 +218,7 @@ function Transactions() {
     reset: resetResend,
   } = useMutation({
     mutationFn: resendVoucherORReceipt,
-    onSuccess: () => customDispatch(globalAlertType("info", "Done!")),
+    onSuccess: () => customDispatch(globalAlertType("success", "Done!")),
     onError: () =>
       customDispatch(globalAlertType("error", "An error has occurred!")),
   });
@@ -253,7 +253,7 @@ function Transactions() {
   // Report generation
   const reportMutate = useMutation({
     mutationFn: getTransactionReport,
-    onSuccess: () => customDispatch(globalAlertType("info", "Done!")),
+    onSuccess: () => customDispatch(globalAlertType("success", "Done!")),
     onError: () =>
       customDispatch(globalAlertType("error", "An error has occurred!")),
   });
@@ -627,7 +627,7 @@ function Transactions() {
           elevation={0}
           sx={{
             p: 4,
-            borderRadius: 3,
+            borderRadius: 1.2,
             border: `1px solid ${alpha(theme.palette.error.main, 0.3)}`,
             bgcolor: alpha(theme.palette.error.main, 0.04),
             textAlign: "center",
@@ -649,7 +649,7 @@ function Transactions() {
             color="error"
             startIcon={<ReplayRounded />}
             onClick={transactions.refetch}
-            sx={{ borderRadius: 2, textTransform: "none" }}
+            sx={{ borderRadius: 1.2, textTransform: "none" }}
           >
             Try again
           </LoadingButton>

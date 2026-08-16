@@ -38,7 +38,7 @@ export default function Button(theme) {
         sizeLarge: {
           padding: '12px 28px',
           fontSize: '1rem',
-          borderRadius: 2,
+          borderRadius: 1.2,
         },
         // ----- Contained variants -----
         containedInherit: {

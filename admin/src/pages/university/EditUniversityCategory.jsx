@@ -122,7 +122,7 @@ const EditUniversityCategory = () => {
   const { mutateAsync, isLoading } = useMutation({
     mutationFn: editCategory,
     onSuccess: (data) => {
-      customDispatch(globalAlertType("info", data));
+      customDispatch(globalAlertType("success", data));
       handleClose();
       queryClient.invalidateQueries(["category"]);
     },
@@ -148,8 +148,6 @@ const EditUniversityCategory = () => {
       text: "Are you sure you want to update this university category?",
       icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
       confirmButtonText: "Yes, save",
     }).then((result) => {
       if (result.isConfirmed) {

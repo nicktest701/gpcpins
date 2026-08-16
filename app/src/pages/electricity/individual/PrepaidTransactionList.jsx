@@ -82,6 +82,9 @@ const PrepaidTransactionList = ({
     );
   }, [filteredData]);
 
+
+  console.log(filteredData)
+
   if (isLoading) {
     return (
       <Stack spacing={2}>
@@ -199,11 +202,18 @@ const PrepaidTransactionList = ({
               </Stack>
 
               {/* Token / OrderNo */}
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Token: {tx.paymentId}
+              <Typography variant="body2" color="text.primary" sx={{ mb: 1 }}>
+               Trans. ID: {tx?.id}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Order No: {tx.info?.orderNo}
+              <Typography variant="body2" color="text.primary" sx={{ mb: 1 }}>
+               Recharge Token:{" "}
+                {tx?.info?.rechargeToken
+              ? tx?.info?.rechargeToken.replace(/\s|-/g, "").match(/.{1,4}/g)?.join("-")
+              : ""}
+            
+              </Typography>
+             <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>Meter Name:</strong> {tx?.meter?.name}
               </Typography>
 
               {/* Meter Number */}

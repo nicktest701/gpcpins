@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import CustomizedMaterialTable from "../../components/tables/CustomizedMaterialTable";
-import { Button, Container, MenuItem } from "@mui/material";
+import { Box, Button, Container, MenuItem } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import transaction_empty from "../../assets/images/empty/transaction.svg";
@@ -13,10 +13,11 @@ import NewEmployee from "./NewEmployee";
 import CustomTitle from "../../components/custom/CustomTitle";
 import ActionMenu from "../../components/menu/ActionMenu";
 import CustomTotal from "../../components/custom/CustomTotal";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import { useAuth } from "@/context/providers/AuthProvider";
+
 
 const ViewEmployees = () => {
-  const { user } = useContext(AuthContext);
+  const { user } =useAuth()
   const navigate = useNavigate();
   const [openNewEmployee, setOpenNewEmployee] = useState(false);
 
@@ -73,7 +74,18 @@ const ViewEmployees = () => {
         data={employees.data}
         search={true}
         autocompleteComponent={
-          <>
+            <Box
+                sx={{
+                  width: "100%",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 2,
+                  flexWrap: "wrap",
+                  mb:3
+                }}
+                >
+                <CustomTotal title="EMPLOYEES" total={employees.data?.length} />
             {user?.permissions?.includes("Add new employees") && (
               <Button
                 variant="contained"
@@ -84,8 +96,7 @@ const ViewEmployees = () => {
               </Button>
             )}
 
-            <CustomTotal title="EMPLOYEES" total={employees.data?.length} />
-          </>
+          </Box>
         }
         actions={[]}
         onRefresh={employees.refetch}

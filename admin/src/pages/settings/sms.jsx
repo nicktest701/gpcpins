@@ -41,7 +41,7 @@ const SMSSettings = () => {
           queryClient.invalidateQueries(["sms-status"]);
         },
         onSuccess: (data) => {
-          customDispatch(globalAlertType("info", data));
+          customDispatch(globalAlertType("success", data));
         },
         onError: () => {
           customDispatch(

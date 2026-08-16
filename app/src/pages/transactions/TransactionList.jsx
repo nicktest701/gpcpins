@@ -425,10 +425,15 @@ const TransactionList = ({
                     {/* Details */}
                     <Stack spacing={1}>
                       <CheckOutItem
-                        title="Transaction ID"
+                        title="Trans. ID"
                         value={transaction.id}
                       />
-
+                       {transaction.meter && (
+                      <CheckOutItem
+                        title="Ext. Trans. ID"
+                        value={transaction.externalTransactionId}
+                      />
+ )}
                       <CheckOutItem
                         title="Date"
                         value={moment(transaction.createdAt).format(
@@ -504,6 +509,15 @@ const TransactionList = ({
 
                         <Typography variant="body2" fontWeight={500}>
                           {transaction.phonenumber || "N/A"}
+                        </Typography>
+                      </Stack>
+                      <Stack spacing={0.3}>
+                        <Typography variant="caption" color="text.secondary">
+                          Payment Mode
+                        </Typography>
+
+                        <Typography variant="body2" fontWeight={500}>
+                          {transaction.mode || "N/A"}
                         </Typography>
                       </Stack>
                     </Stack>

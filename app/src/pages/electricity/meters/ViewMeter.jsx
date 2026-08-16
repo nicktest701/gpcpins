@@ -28,7 +28,7 @@ import Swal from "sweetalert2";
 import DOMPurify from "dompurify";
 import { LoadingButton } from "@mui/lab";
 import { globalAlertType } from "@/components/alert/alertType";
-import { disableWallet } from "@/api/userAPI";
+import { disableWallet } from "@/api/walletAPI";
 import { makeElectricityPayment } from "@/api/paymentAPI";
 import { deleteMeter, getMeterById } from "@/api/meterAPI";
 import { currencyFormatter } from "@/constants";

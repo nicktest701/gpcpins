@@ -27,7 +27,7 @@ function SidebarLink({ to, title, icon: Icon, collapsed, onNavigate }) {
             px: collapsed ? 1.25 : 1.5,
             py: 1,
             mx: 1,
-            borderRadius: 2.5,
+            borderRadius: 1.2,
             justifyContent: collapsed ? "center" : "flex-start",
             color: isActive ? theme.palette.secondary.main : alpha("#fff", 0.75),
             bgcolor: isActive ? alpha(theme.palette.secondary.main, 0.14) : "transparent",

@@ -156,7 +156,7 @@ const AddStadiumCategory = () => {
   const { mutateAsync, isLoading } = useMutation({
     mutationFn: postCategory,
     onSuccess: (data) => {
-      customDispatch(globalAlertType("info", data));
+      customDispatch(globalAlertType("success", data));
       handleClose();
       reset();
       setStandsList([]);
@@ -188,8 +188,6 @@ const AddStadiumCategory = () => {
       text: "Are you sure you want to create this new match ticket?",
       icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
       confirmButtonText: "Yes, add",
     }).then((result) => {
       if (result.isConfirmed) {

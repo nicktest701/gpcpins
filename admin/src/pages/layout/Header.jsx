@@ -248,7 +248,7 @@ function Header() {
                     textDecoration: "none",
                     color: theme.palette.primary.main,
                     border: `1px solid ${theme.palette.primary.main}`,
-                    borderRadius: 20,
+                    borderRadius: 1.20,
                     padding: "6px 16px",
                     fontWeight: isActive ? 600 : 400,
                   })}

@@ -47,13 +47,14 @@ import AnimatedContainer from "@/components/animations/AnimatedContainer";
 import { getCategory } from "../../api/categoryAPI";
 import { getAvailbleBusSeats } from "../../api/voucherAPI";
 import { makeMomoTransaction } from "../../api/paymentAPI";
-import { AuthContext } from "../../context/providers/AuthProvider";
+import {  useAuth } from "../../context/providers/AuthProvider";
 import { CustomContext } from "../../context/providers/CustomProvider";
 import Back from "../../components/Back";
 import PaymentOption from "../../components/PaymentOption";
 import { globalAlertType } from "@/components/alert/alertType";
 import { useSocket } from "../../context/providers/SocketProvider";
 import VoucherPlaceHolderItem from "../../components/items/VoucherPlaceHolderItem";
+import Swal from "sweetalert2";
 
 const MAX_WALLET_ATTEMPTS = 3;
 
@@ -62,7 +63,7 @@ function BusTicketCheckout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const queryClient = useQueryClient();
-  const { user } = useContext(AuthContext);
+  const { user } =useAuth()
   const { customDispatch } = useContext(CustomContext);
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [walletAttemptsLeft, setWalletAttemptsLeft] =
@@ -279,7 +280,31 @@ function BusTicketCheckout() {
       }
     }
 
-    paymentMutation.mutateAsync(payload);
+      const result = await Swal.fire({
+      title: "Confirm Payment",
+      text: `Pay ${currencyFormatter(totalAmount)} for ticket(s)?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, pay",
+    });
+
+    if (!result.isConfirmed) return;
+
+    Swal.fire({
+      title: "Processing payment",
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    try {
+
+      await paymentMutation.mutateAsync(payload);
+      Swal.close();
+   } catch (e) {
+      // error handling is done in mutation onError
+    } finally {
+      Swal.close();
+    }
   };
 
   if (busLoading || seatsLoading) {
@@ -535,7 +560,7 @@ function BusTicketCheckout() {
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
         fullWidth
-        maxWidth="sm"
+        maxWidth="xs"
         PaperProps={{
           sx: {
             borderRadius: 3,

@@ -67,7 +67,7 @@ function AddMoney() {
   } = useMutation({
     mutationFn: topUpWallet,
     onSuccess: (data) => {
-      customDispatch(globalAlertType("info", data));
+      customDispatch(globalAlertType("success", data));
       // handleClose();
       // Invalidate relevant queries
       queryClient.invalidateQueries(["agent_wallet_transactions", id]);
@@ -179,7 +179,7 @@ function AddMoney() {
       maxWidth="sm"
       fullWidth
       PaperProps={{
-        sx: { borderRadius: 2 },
+        sx: { borderRadius: 1.2 },
       }}
     >
       <CustomDialogTitle
@@ -372,7 +372,7 @@ export default AddMoney;
 //             queryClient.invalidateQueries(["agent", id]);
 //           },
 //           onSuccess: (data) => {
-//             customDispatch(globalAlertType("info", data));
+//             customDispatch(globalAlertType("success", data));
 //             setSearchParams((params) => {
 //               params.delete("add-money");
 //               return params;

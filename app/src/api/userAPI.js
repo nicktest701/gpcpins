@@ -11,7 +11,8 @@ export const getUserToken = async () => {
       url: `/users/auth/token`,
     });
 
-    saveToken(res.data?.accessToken, res.data?.refreshToken);
+    saveToken(res.data?.accessToken);
+    saveAccessToken(res.data?.accessToken);
 
     return res.data;
   } catch (error) {
@@ -29,8 +30,6 @@ export const getUser = async () => {
         Authorization: token ? `Bearer ${token}` : "",
       },
     });
-
-    // saveUser(res.data?.accessToken);
 
     return res.data;
   } catch (error) {
@@ -152,6 +151,9 @@ export const createNewUser = async (userInfo) => {
     throw error.response.data;
   }
 };
+
+
+
 export const createNewAgent = async (agentInfo) => {
   try {
     const res = await api({
@@ -182,18 +184,7 @@ export const putUser = async (updatedUser) => {
   }
 };
 
-export const deleteUser = async (id) => {
-  try {
-    const res = await api({
-      method: "DELETE",
-      url: `/users/${id}`,
-    });
 
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
 
 export const getWalletTransaction = async ({ startDate, endDate }) => {
   try {
@@ -228,42 +219,6 @@ export const getPhoneNumberToken = async ({ token }) => {
   }
 };
 
-export const getWalletStatus = async () => {
-  try {
-    const res = await api({
-      method: "GET",
-      url: `/wallet/status`,
-    });
 
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
 
-export const disableWallet = async () => {
-  try {
-    const res = await api({
-      method: "PUT",
-      url: `/wallet/status`,
-    });
 
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};
-
-export const updateWalletPin = async (data) => {
-  try {
-    const res = await api({
-      method: "PUT",
-      url: `/users/wallet`,
-      data,
-    });
-
-    return res.data;
-  } catch (error) {
-    throw error.response.data;
-  }
-};

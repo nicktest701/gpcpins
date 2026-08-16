@@ -37,7 +37,7 @@ function AgentPhoto({ profile,email }) {
 
           updateAgentProfile(info)
             .then((result) => {
-              customDispatch(globalAlertType("info", result));
+              customDispatch(globalAlertType("success", result));
               queryClient.invalidateQueries(["agents"]);
               queryClient.invalidateQueries(["agent", id]);
             })

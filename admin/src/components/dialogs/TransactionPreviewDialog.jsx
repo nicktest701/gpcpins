@@ -159,7 +159,7 @@ const TransactionPreviewDialog = ({
       PaperProps={{
         elevation: 8,
         sx: {
-          borderRadius: 4,
+          borderRadius: 1.2,
           overflow: "hidden",
           background: theme.palette.background.paper,
           boxShadow: `0 20px 60px ${alpha(theme.palette.common.black, 0.15)}`,
@@ -220,7 +220,7 @@ const TransactionPreviewDialog = ({
           variant="outlined"
           sx={{
             p: 2.5,
-            borderRadius: 3,
+            borderRadius: 1.2,
             bgcolor: alpha(theme.palette.background.default, 0.6),
             borderColor: alpha(theme.palette.divider, 0.6),
             mt: 2,
@@ -298,7 +298,7 @@ const TransactionPreviewDialog = ({
           onClick={onClose}
           variant="outlined"
           color="inherit"
-          sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600 }}
+          sx={{ borderRadius: 1.2, textTransform: "none", fontWeight: 600 }}
         >
           Close
         </Button>
@@ -308,7 +308,7 @@ const TransactionPreviewDialog = ({
               variant="contained"
               color="primary"
               onClick={() => onResend && onResend({ id, service, phonenumber })}
-              sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600 }}
+              sx={{ borderRadius: 1.2, textTransform: "none", fontWeight: 600 }}
             >
               Resend
             </Button>
@@ -316,7 +316,7 @@ const TransactionPreviewDialog = ({
               variant="contained"
               color="secondary"
               onClick={() => onDownload && onDownload(id, downloadLink)}
-              sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600 }}
+              sx={{ borderRadius: 1.2, textTransform: "none", fontWeight: 600 }}
             >
               Download
             </Button>
@@ -327,7 +327,7 @@ const TransactionPreviewDialog = ({
             variant="contained"
             color="info"
             onClick={() => onCheckStatus && onCheckStatus(reference, service)}
-            sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600 }}
+            sx={{ borderRadius: 1.2, textTransform: "none", fontWeight: 600 }}
           >
             Check Status
           </Button>

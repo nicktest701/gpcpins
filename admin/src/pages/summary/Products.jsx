@@ -281,14 +281,14 @@ function Products() {
                 data: summary?.data?.thisYear?.voucher ?? [],
                 backgroundColor: palette.info.main,
                 barThickness: 20,
-                borderRadius: 2,
+                borderRadius: 1.2,
               },
               {
                 label: "Tickets",
                 data: summary?.data?.thisYear?.ticket ?? [],
                 backgroundColor: palette.secondary.main,
                 barThickness: 20,
-                borderRadius: 2,
+                borderRadius: 1.2,
               },
             ]}
           />

@@ -37,7 +37,7 @@ function CustomTitle({
         sx={{
           mb: 4,
           gap: 2,
-          borderRadius: 2,
+          borderRadius: 1.2,
         }}
       >
         {showBack && (
@@ -59,7 +59,7 @@ function CustomTitle({
         <Stack flexDirection='row' justifyContent='space-between' width='100%'>
           <Stack flex={1}>
             <Typography
-              color="secondary"
+              // color="secondary"
               textAlign="left"
               textTransform="uppercase"
               variant={titleVariant || "h4"}
@@ -67,7 +67,7 @@ function CustomTitle({
             >
               {title}
             </Typography>
-            <Typography variant="body2" textAlign="left">
+            <Typography variant="body2" color="text.secondary" textAlign="left">
               {subtitle}
             </Typography>
           </Stack>

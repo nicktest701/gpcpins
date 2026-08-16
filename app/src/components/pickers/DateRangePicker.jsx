@@ -110,10 +110,10 @@ const DateRangePicker = ({
         onClick={handleOpen}
         disabled={disabled}
         sx={{
-          width: { xs: "100%", sm: 260 },
+          width: { xs: "100%", sm: 280 },
           cursor: "pointer",
           "& .MuiInputBase-root": {
-            borderRadius: 2,
+            borderRadius: 1.2,
             bgcolor: "background.paper",
             transition: "all 0.2s",
             "&:hover": {

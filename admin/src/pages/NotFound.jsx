@@ -23,7 +23,7 @@ function NotFound() {
           elevation={0}
           sx={{
             p: { xs: 4, sm: 6 },
-            borderRadius: 4,
+            borderRadius: 1.2,
             textAlign: "center",
             width: "100%",
             border: `1px solid ${alpha(theme.palette.divider, 0.4)}`,
@@ -103,7 +103,7 @@ function NotFound() {
               color="secondary"
               startIcon={<Home />}
               sx={{
-                borderRadius: 2,
+                borderRadius: 1.2,
                 textTransform: "none",
                 fontWeight: 600,
                 boxShadow: `0 8px 24px ${alpha(theme.palette.secondary.main, 0.25)}`,
@@ -121,7 +121,7 @@ function NotFound() {
               variant="outlined"
               color="inherit"
               sx={{
-                borderRadius: 2,
+                borderRadius: 1.2,
                 textTransform: "none",
                 fontWeight: 600,
                 px: 4,

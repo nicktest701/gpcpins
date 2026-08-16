@@ -35,7 +35,7 @@ export default function HomeSpeedDial() {
     <SpeedDial
       ariaLabel='SpeedDial tooltip example'
       sx={{
-        display: { xs: 'flex', md: 'none' },
+        display: "flex",
         position: 'fixed',
         bottom: '12%',
         left: '2%',

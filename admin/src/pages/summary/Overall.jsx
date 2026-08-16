@@ -167,7 +167,7 @@ function Overall() {
               minWidth: { md: 320 },
               border: "1px solid",
               borderColor: (theme) => theme.palette.divider,
-              borderRadius: 2.5,
+              borderRadius: 1.2,
               pl: 1.5,
               pr: 0.5,
               py: 0.25,
@@ -189,7 +189,7 @@ function Overall() {
               disableElevation
               onClick={handleOnSearchClicked}
               disabled={searchValue === ""}
-              sx={{ borderRadius: 2, minWidth: 0, px: 1.5 }}
+              sx={{ borderRadius: 1.2, minWidth: 0, px: 1.5 }}
             >
               <SearchRounded fontSize="small" />
             </Button>
@@ -200,7 +200,7 @@ function Overall() {
               <IconButton
                 onClick={summary.refetch}
                 disabled={summary.isFetching}
-                sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2.5 }}
+                sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1.2 }}
               >
                 <RefreshRounded
                   fontSize="small"
@@ -223,7 +223,7 @@ function Overall() {
           icon={<WarningAmberRounded fontSize="small" />}
           onClose={() => setShowAlert(false)}
           sx={{
-            borderRadius: 2.5,
+            borderRadius: 1.2,
             bgcolor: (theme) => `${theme.palette.warning.main}0F`,
             "& .MuiAlert-message": { width: "100%" },
           }}
@@ -399,10 +399,10 @@ function Overall() {
           <BarChart
             labels={summary?.data?.transactionByMonth?.labels}
             datasets={[
-              { label: "Vouchers & Tickets", data: summary?.data?.transactionByMonth?.voucher?.data || [], backgroundColor: CATEGORY_COLORS.voucher, barThickness: 20, borderRadius: 4 },
-              { label: "Prepaid Units", data: summary?.data?.transactionByMonth?.ecg?.data || [], backgroundColor: CATEGORY_COLORS.ecg, barThickness: 20, borderRadius: 4 },
-              { label: "Airtime Transfers", data: summary?.data?.transactionByMonth?.airtime?.data || [], backgroundColor: CATEGORY_COLORS.airtime, barThickness: 20, borderRadius: 4 },
-              { label: "Data Bundle", data: summary?.data?.transactionByMonth?.bundle?.data || [], backgroundColor: CATEGORY_COLORS.bundle, barThickness: 20, borderRadius: 4 },
+              { label: "Vouchers & Tickets", data: summary?.data?.transactionByMonth?.voucher?.data || [], backgroundColor: CATEGORY_COLORS.voucher, barThickness: 20, borderRadius: 1.2 },
+              { label: "Prepaid Units", data: summary?.data?.transactionByMonth?.ecg?.data || [], backgroundColor: CATEGORY_COLORS.ecg, barThickness: 20, borderRadius: 1.2 },
+              { label: "Airtime Transfers", data: summary?.data?.transactionByMonth?.airtime?.data || [], backgroundColor: CATEGORY_COLORS.airtime, barThickness: 20, borderRadius: 1.2 },
+              { label: "Data Bundle", data: summary?.data?.transactionByMonth?.bundle?.data || [], backgroundColor: CATEGORY_COLORS.bundle, barThickness: 20, borderRadius: 1.2 },
             ]}
           />
         </CustomCard>

@@ -38,7 +38,7 @@ const Personal = () => {
         <Box
           sx={{
        
-            borderRadius: 2,
+            borderRadius: 1.2,
             px: 2,
             py: 6,
            

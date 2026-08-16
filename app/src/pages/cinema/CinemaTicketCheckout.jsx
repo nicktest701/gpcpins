@@ -38,6 +38,7 @@ import {
 } from "react-router-dom";
 
 import moment from "moment";
+import Swal from "sweetalert2";
 import _ from "lodash";
 import { currencyFormatter } from "@/constants";
 import { getCategory } from "@/api/categoryAPI";
@@ -250,11 +251,34 @@ function CinemaTicketCheckout() {
    |--------------------------------------------------------------------------
    */
 
-  const processPayment = (values) => {
+  const processPayment = async (values) => {
     setWalletError("");
 
     const payload = buildPayload(values);
-    paymentMutation.mutateAsync(payload);
+
+    const result = await Swal.fire({
+      title: "Confirm Payment",
+      text: `Pay ${currencyFormatter(totalAmount)} for ticket(s)?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, pay",
+    });
+
+    if (!result.isConfirmed) return;
+
+    Swal.fire({
+      title: "Processing payment",
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    try {
+      await paymentMutation.mutateAsync(payload);
+    } catch (e) {
+      // error handling is done in mutation onError
+    } finally {
+      Swal.close();
+    }
   };
 
   if (cinemaTicketTotal.length === 0 || totalQuantity === 0) {
@@ -467,7 +491,7 @@ function CinemaTicketCheckout() {
         open={summaryOpen}
         onClose={handleCloseSummary}
         fullWidth
-        maxWidth="sm"
+        maxWidth="xs"
         PaperProps={{
           sx: {
             borderRadius: 3,

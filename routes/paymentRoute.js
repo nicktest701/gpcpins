@@ -414,6 +414,8 @@ router.get(
 
     // 3. Clean up formatting and parse strings to objects cleanly in one pass
     const sortedPayments = transactions.map((transaction) => {
+      const isProcessed = Boolean(transaction.isProcessed);
+
       return {
         id: transaction.id,
         paymentId: transaction.paymentId,
@@ -425,7 +427,8 @@ router.get(
         active: transaction.active,
         createdAt: transaction.createdAt,
         updatedAt: transaction.updatedAt,
-        status: transaction.status,
+        status: transaction?.status,
+        processingStatus: isProcessed ? "completed" : "pending",
         issuerId: transaction.issuerId,
         issuer: transaction.issuerName || null,
         isProcessed: Boolean(transaction.isProcessed),
@@ -433,6 +436,7 @@ router.get(
         info: safeJSON(transaction.info),
       };
     });
+    // console.log(sortedPayments[0]);
 
     res.status(200).json(sortedPayments);
   }),
@@ -568,6 +572,7 @@ router.get(
       // ---------------- FETCH TRANSACTION + PAYMENT ----------------
 
       const transaction = await getTransaction(serviceType, id, trx);
+      // console.log(transaction)
 
       if (!transaction) {
         await trx.rollback();
@@ -635,7 +640,7 @@ router.get(
 
       triggerAsyncProcessing(transaction, selectedVouchers); // 🔥 non-blocking
 
-      console.log(formatResponse(transaction));
+      // console.log(formatResponse(transaction));
 
       return res.status(200).json(formatResponse(transaction));
     } catch (error) {
@@ -1676,6 +1681,7 @@ router.post(
         email: email,
         phonenumber: phonenumber,
         partner: JSON.stringify(partnerResponse.Data),
+      
       });
 
       // //if creating new transaction fails
@@ -2575,7 +2581,7 @@ router.put(
 
     setImmediate(async () => {
       await sendSMS(
-        `Your request to buy bulk airtime has been completed.Thank you for purchasing from us!Your transaction id is ${transaction[0]?.id}`,
+        `Your request to buy bulk package has been completed.Thank you for purchasing from us.Trans.ID: ${transaction?.id}`,
         transaction?.phonenumber,
       );
     });
@@ -2860,6 +2866,7 @@ async function markProcessed(trx, transaction) {
     }
   }
 
+
   if (transaction.type === "bulk") {
     await trx("notifications").insert({
       id: generateId(),
@@ -2867,7 +2874,7 @@ async function markProcessed(trx, transaction) {
       type: "airtime",
       title: "Bulk Airtime Transfer",
       body: `Your request to buy bulk ${transaction.service} has been received.Your transaction id is ${transaction?.id}.Thank you for your business with us!`,
-      link: "/notifications",
+      // link: "/notifications",
     });
   }
 }
@@ -2997,21 +3004,26 @@ async function sendBundleLogic(transaction) {
     .where("id", transaction.paymentId)
     .first();
   if (Boolean(bundle.is_processed) === true) {
-    const message = `You have successfully recharged ${transaction.recipient} with data bundle, "${transaction.bundleId}","${transaction.volume}", you were charged GHS ${transaction?.amount} .Transaction ID :${transaction?.id}`;
+    // const message = `You have successfully recharged ${transaction.recipient} with data bundle, ${transaction.bundleId},${transaction.volume}, you were charged GHS ${transaction?.amount} .Trans.ID-${transaction?.id}`;
+    const message = `Success! ${transaction.recipient} updated with package ${transaction.bundleId} (${transaction.volume}). Total cost: GHS ${transaction?.amount}. Ref: ${transaction?.id}`;
 
-    const emailPrompt = await sendEMail(
+    await sendEMail(
       transaction.email,
       mailTextShell(`<p>${message}</p>`),
       "DATA BUNDLE TRANSFER SUCCESSFUL",
     );
 
-    const SMSPrompt = await sendSMS(message, transaction?.phonenumber);
-    await Promise.all([SMSPrompt, emailPrompt]);
+    await sendSMS(
+      message,
+      getInternationalMobileFormat(transaction?.phonenumber, false),
+    );
+    // await Promise.all([SMSPrompt, emailPrompt]);
   }
 }
 
 async function sendAirtimeLogic(transaction) {
   if (transaction.status === "completed") {
+
     if (transaction.type === "single") {
       const airtime = await knex("payments")
         .select("is_processed")
@@ -3019,19 +3031,23 @@ async function sendAirtimeLogic(transaction) {
         .first();
 
       if (Boolean(airtime.is_processed) === true) {
-        const message = `Success! You have sent ${currencyFormatter(transaction.amount)} of airtime to ${transaction.recipient}. Fee charged: ${currencyFormatter(transaction.amount)}. Reference: ${transaction?.id}.`;
+        // const message = `Success! You have sent GHS ${transaction.amount} of airtime to ${transaction.recipient}. Fee charged: ${transaction.amount}. Trans. ID: ${transaction?.id}.`;
+        const message = `Success! Top-up of GHS ${transaction.amount} completed for ${transaction.recipient}. Cost: GHS ${transaction.amount}. Ref: ${transaction?.id}.`;
 
-        // const emailPrompt = await sendEMail(
-        //   transaction.email,
-        //   mailTextShell(`<p>${message}</p>`),
-        //   "AIRTIME TRANSFER SUCCESSFUL",
-        // );
+        await sendEMail(
+          transaction.email,
+          mailTextShell(`<p>${message}</p>`),
+          "AIRTIME TRANSFER SUCCESSFUL",
+        );
 
-        const SMSPrompt = await sendSMS(message, transaction?.phonenumber);
-        await Promise.all([SMSPrompt]);
+        await sendSMS(message, transaction?.phonenumber);
       }
     }
+
     if (transaction.type === "bulk") {
+// console.log('tranmx is',transaction)
+
+
       const recipients = JSON.parse(transaction?.recipient);
       const recipientList = recipients?.map((recipient) => {
         return `${recipient?.type}(${
@@ -3044,11 +3060,10 @@ async function sendAirtimeLogic(transaction) {
         type: "conjunction",
       });
       const formattedList = formatter.format(recipientList);
+      // const message= `Your request to buy bulk ${transaction.service} has been received.Your transaction id is ${transaction?.id}.Thank you for your business with us!`,
+      const bulkAirtimemessage = `Your request for bulk package is received. Ref: ${transaction?.id}. Thank you for choosing us.`;
 
-      await sendSMS(
-        `Your request to buy bulk ${transaction.service} has been received.Your transaction id is ${transaction?.id}.Thank you for your business with us!`,
-        transaction?.phonenumber,
-      );
+      await sendSMS(bulkAirtimemessage, transaction?.phonenumber);
 
       const message = `The number ${
         transaction?.phonenumber

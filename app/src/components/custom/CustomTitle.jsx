@@ -2,7 +2,7 @@ import { Box, Stack, Typography, useTheme, useMediaQuery } from "@mui/material";
 
 /**
  * CustomTitle Component
- * 
+ *
  * @param {string} title - Main title text
  * @param {string} subtitle - Optional subtitle text
  * @param {React.ReactNode} icon - Optional icon displayed before title
@@ -11,54 +11,70 @@ import { Box, Stack, Typography, useTheme, useMediaQuery } from "@mui/material";
  * @param {string} titleVariant - MUI typography variant for title (responsive fallback)
  * @param {string} subtitleVariant - MUI typography variant for subtitle
  */
-function CustomTitle({ 
-  title, 
-  subtitle, 
-  icon, 
-  align = "left", 
+function CustomTitle({
+  title,
+  subtitle,
+  icon,
+  align = "left",
   withDivider = false,
   titleVariant,
-  subtitleVariant = "body2"
+  subtitleVariant = "body2",
 }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  
+
   // Responsive title variant
   const titleVariantValue = titleVariant || (isMobile ? "h4" : "h2");
 
   return (
-    <Box sx={{ my: 3, textAlign: align }}>
+    <Box sx={{ my: 3,mb:5, textAlign: align }}>
       <Stack
         direction="row"
         alignItems="center"
         spacing={1}
-        justifyContent={align === "center" ? "center" : "flex-start"}
+        // justifyContent={align === "center" ? "center" : "flex-start"}
       >
         {icon && (
-          <Box sx={{ display: "flex", alignItems: "center", color: "primary.main" }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              color: "primary.main",
+            }}
+          >
             {icon}
           </Box>
         )}
-        <Typography
-          variant={titleVariantValue}
-          fontWeight="bold"
-          color="text.primary"
-          sx={{ letterSpacing: "-0.02em" }}
+
+        <Stack
+          direction="column"
+          alignItems="start"
+          spacing={1}
+          // justifyContent={align === "center" ? "center" : "flex-start"}
         >
-          {title}
-        </Typography>
+          <Typography
+            variant={titleVariantValue}
+            fontWeight="bold"
+            color="text.primary"
+            sx={{ letterSpacing: "-0.02em" }}
+          >
+            {title}
+          </Typography>
+
+          {subtitle && (
+            <Typography
+              variant={subtitleVariant}
+              color="text.secondary"
+              sx={{
+                mx: align === "center" ? "auto" : 0,
+              }}
+            >
+              {subtitle}
+            </Typography>
+          )}
+        </Stack>
       </Stack>
-      
-      {subtitle && (
-        <Typography
-          variant={subtitleVariant}
-          color="text.secondary"
-          sx={{ mt: 0.5, maxWidth: "80%", mx: align === "center" ? "auto" : 0 }}
-        >
-          {subtitle}
-        </Typography>
-      )}
-      
+
       {withDivider && (
         <Box
           sx={{

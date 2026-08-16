@@ -17,7 +17,8 @@ import CustomDialogTitle from "../dialogs/CustomDialogTitle";
 import { verifyCode } from "../../config/validation";
 import { getPhoneNumberToken, verifyUserIdentity } from "../../api/userAPI";
 import moment from "moment";
-import CustomDatePicker from "../../../../admin/src/components/inputs/CustomDatePicker";
+import CustomDatePicker from "../inputs/CustomDatePicker";
+
 
 function ResetPhoneNumber() {
   const navigate = useNavigate();

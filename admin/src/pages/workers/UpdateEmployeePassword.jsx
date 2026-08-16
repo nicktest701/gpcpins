@@ -58,7 +58,7 @@ const UpdateEmployeePassword = () => {
             options.setSubmitting(false);
           },
           onSuccess: (data) => {
-            customDispatch(globalAlertType("info", data));
+            customDispatch(globalAlertType("success", data));
             handleClose();
           },
           onError: (error) => {
