@@ -305,8 +305,6 @@ const removeUser = async (userId) => {
       .where("user_id", userId)
       .first();
 
-  
-
     if (userToken?.refresh_token) {
       let jti;
 
@@ -332,12 +330,12 @@ const removeUser = async (userId) => {
       }
 
       // 3. Pipeline Redis deletions in parallel to reduce network latency
-  
+
       if (jti) {
-        const pipeline = redisClient.pipeline();
-        pipeline.del(`user:${jti}`);
-        pipeline.del(`user:profile:${jti}`);
-        await pipeline.exec();
+        const multi = redisClient.multi();
+        multi.del(`user:${jti}`);
+        multi.del(`user:profile:${jti}`);
+        await multi.exec();
       }
 
       // 4. Clean up user token record from DB
@@ -346,8 +344,6 @@ const removeUser = async (userId) => {
         .where("user_id", userId);
       await trx("user_tokens").where("user_id", userId).del();
     }
-
-
   });
 };
 
@@ -355,5 +351,5 @@ module.exports = {
   verifyRefreshToken,
   verifyToken,
   verifyOptionalToken,
-  removeUser
+  removeUser,
 };

@@ -1014,14 +1014,14 @@ async function generateAuthSession({
   });
 
   // 6. Set HTTP-only cookie
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "lax" : "none",
-    path: "/api/gabs/v1/users/auth/token",
-    domain: isProduction ? ".gpcpins.com" : undefined,
-    maxAge: expiresMs,
-  });
+res.cookie("refreshToken", refreshToken, {
+  httpOnly: true,
+  secure: isProduction, // true in prod (required over HTTPS), false in dev (http)
+  sameSite: "lax",      // same-site in both dev and prod, no need for "none"
+  path: "/api/gabs/v1/users/auth/token",
+  domain: isProduction ? ".gpcpins.com" : undefined,
+  maxAge: expiresMs,
+});
 
   // 7. Send final client response
   return res.status(201).json({

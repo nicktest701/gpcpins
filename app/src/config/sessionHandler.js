@@ -1,26 +1,15 @@
 import cookie from "js-cookie";
 import _ from "lodash";
 
-const SAMPLE_ACCESS_EXPIRATION = new Date(
-  new Date().getTime() + 10 * 60 * 1000,
-);
-const ACCESS_EXPIRATION = new Date(
-  new Date().getTime() + 3 * 30 * 60 * 60 * 1000,
-);
-// const REFERESH_EXPIRATION = new Date(
-//   new Date().getTime() + 6 * 30 * 60 * 60 * 1000
-// );
-
-
-
-
+const ACCESS_TOKEN_EXPIRY_MINUTES = 15;
+const minutes = (m) => m / (24 * 60);
 
 export const saveUser = (user) => {
   if (user) {
     cookie.set("USSID", JSON.stringify(user), {
       secure: true,
       sameSite: "None",
-      expires: 365,
+      expires: minutes(ACCESS_TOKEN_EXPIRY_MINUTES),
     });
   }
 };
@@ -41,9 +30,10 @@ export const saveAccessToken = (accessToken) => {
   }
 
   cookie.set("USSID", JSON.stringify(accessToken), {
-    secure: true,
-    sameSite: "None",
-    expires: 365,
+    secure: window.location.protocol === "https:",
+    sameSite: "Lax",
+    path: "/",
+    expires: minutes(ACCESS_TOKEN_EXPIRY_MINUTES),
   });
 };
 
@@ -51,15 +41,11 @@ export const saveToken = (accessToken) => {
   if (_.isEmpty(accessToken)) {
     return;
   }
-  cookie.set("USSID", JSON.stringify(accessToken), {
-    secure: true,
-    sameSite: "None",
-    expires: 365,
-  });
+  saveAccessToken(accessToken);
 };
 
 export const deleteToken = () => {
-  cookie.remove("USSID");
+  cookie.remove("USSID",{path:'/'});
 };
 
 export function parseJwt(token) {
