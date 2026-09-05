@@ -61,7 +61,7 @@ const ComplaintModal = ({ buttonVariant = 'fab', buttonText = 'Submit Complaint'
             <Close />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers>
+        <DialogContent dividers sx={{p:1}}>
           <ComplaintForm onSuccess={handleSuccess} />
         </DialogContent>
       </Dialog>

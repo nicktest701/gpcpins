@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Container,
   Typography,
   TextField,
   Paper,
@@ -15,13 +14,11 @@ import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { IMAGES } from "../../constants";
 import AnimatedContainer from "../../components/animations/AnimatedContainer";
 import { prepaidMeterValidationSchema } from "../../config/validationSchema";
 import { getMeterByNumber } from "@/api/meterAPI"; // assuming this API exists
-import PageHero from "../../components/custom/PageHero";
 import MeterDetailsDialog from "./MeterDetailsDialog";
-import ComplaintModal from "../../components/modals/ComplaintModal";
+
 
 function Prepaid() {
   const navigate = useNavigate();
@@ -90,15 +87,15 @@ function Prepaid() {
   return (
     <>
       {/* Hero Banner */}
-      <PageHero
+      {/* <PageHero
         title="Prepaid Units"
         subtitle=" Buy electricity units for all online meters instantly."
         bgImage={IMAGES.ecg}
-      />
+      /> */}
 
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+
         <AnimatedContainer>
-          <Paper elevation={3} sx={{ p: { xs: 2, sm: 4 }, borderRadius: 2 }}>
+          <Paper>
             <Typography
               variant="h5"
               color="primary"
@@ -114,7 +111,7 @@ function Prepaid() {
 
             <Divider sx={{ my: 3 }} />
 
-            <Alert severity="warning" variant="outlined" sx={{ mb: 2 }}>
+            <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
               <AlertTitle sx={{ fontWeight: "bold" }}>Verification</AlertTitle>
               You can verify your meter using your <strong>Meter Number</strong>
               , <strong>STs Number</strong>, or <strong>SPN Number</strong>.
@@ -173,17 +170,7 @@ function Prepaid() {
                 </LoadingButton>
               </Stack>
             </form>
-            <Typography variant="body2" fontStyle="italic">
-              In case of delayed / missing recharge tokens,Please send a message
-              to our support lines ( <a href="tel:0800981981">0800981981</a> or{" "}
-              <a href="tel:+233593381045">+233 59 338 1045</a> ) with your
-              transaction ID, phone number, and issue details so our team can
-              attend to you quickly or you can fill out the complaint form
-            </Typography>
-            <ComplaintModal
-              buttonVariant="button"
-              buttonText="Complaint form"
-            />
+       
           </Paper>
         </AnimatedContainer>
         <MeterDetailsDialog
@@ -196,8 +183,7 @@ function Prepaid() {
           refetchMeter={refetchMeter}
           handleProceedToVerify={handleProceedToVerify}
         />
-        {/* Meter Details Modal */}
-      </Container>
+
     </>
   );
 }

@@ -225,10 +225,10 @@ function Sidebar() {
                   // icon={<SimCardOutlined />}
                 />
               </NavLinkItemCollapse>
-              <NavLinkItemCollapse icon={<Bolt />} title="Prepaid Units">
+              <NavLinkItemCollapse icon={<Bolt />} title="Prepaid & Postpaid">
                 <NavLinkItem
                   to="electricity"
-                  title="Buy Prepaid"
+                  title="Prepaid / Postpaid"
                   // icon={<LocalOffer />}
                 />
                 <NavLinkItem
@@ -382,7 +382,7 @@ function Sidebar() {
                 </NavLinkItemCollapse>
                 <NavLinkItem
                   to="electricity"
-                  title="Prepaid Units"
+                  title="Prepaid & Postpaid"
                   icon={<Bolt />}
                 />
 

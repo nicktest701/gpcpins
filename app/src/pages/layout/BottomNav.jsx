@@ -15,7 +15,7 @@ import { useAuth } from "../../context/providers/AuthProvider";
 const navItems = [
   { label: "Home", icon: Home, path: "/", matchPattern: "/" },
   { label: "Vouchers", icon: LocalOffer, path: "/evoucher", matchPattern: "/evoucher" },
-  { label: "Prepaid", icon: Bolt, path: "/electricity", matchPattern: "/electricity" },
+  { label: "Prepaid/Postpaid", icon: Bolt, path: "/electricity", matchPattern: "/electricity" },
   { label: "Airtime/Bundle", icon: ReceiptLong, path: "/airtime", matchPattern: "/airtime" },
 ];
 

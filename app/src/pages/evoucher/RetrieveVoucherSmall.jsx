@@ -53,9 +53,10 @@ const RetrieveVoucherSmall = ({ general }) => {
       maxWidth="xs"
       draggable
       color="success"
+      PaperProps={{ sx: { borderRadius: 4 } }}
     >
       <CustomDialogTitle title="Search for transaction" onClose={handleClose} />
-      <DialogContent>
+      <DialogContent dividers sx={{ p: 2, backgroundColor: "#f5f5f5" }}>
         <Box>
           <TextField
             placeholder="Transaction ID OR External Transaction ID"

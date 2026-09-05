@@ -85,7 +85,7 @@ const Navbar = () => {
       />
 
       <DropdownWrapper
-        label="Prepaid Units"
+        label="ECG Prepaid & Postpaid"
         to="electricity"
         dropdownComponent={PrepaidDropdown}
       />

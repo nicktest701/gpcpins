@@ -167,12 +167,12 @@ function Header() {
     customDispatch({ type: "openSearch", payload: true });
   };
 
-  const getLocation = () => {
-    const position = [6.70675631287526, -1.6189752122036272];
-    const destination = `${position[0]},${position[1]}`;
-    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
-    window.open(googleMapsUrl, "_blank");
-  };
+  // const getLocation = () => {
+  //   const position = [6.70675631287526, -1.6189752122036272];
+  //   const destination = `${position[0]},${position[1]}`;
+  //   const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+  //   window.open(googleMapsUrl, "_blank");
+  // };
 
   const dismissAnnouncement = () => {
     setShowAlert(false);

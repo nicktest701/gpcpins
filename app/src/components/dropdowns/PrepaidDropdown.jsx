@@ -28,7 +28,7 @@ const {palette} = useTheme();
   return (
     <DropdownBase>
       <NavLink to="/electricity/" style={dropdownItemStyles}>
-        Buy Prepaid
+         Prepaid / Postpaid
       </NavLink>
       {user?.id && (
         <NavLink to="/electricity/meters" style={dropdownItemStyles}>

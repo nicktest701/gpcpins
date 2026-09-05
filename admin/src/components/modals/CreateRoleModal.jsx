@@ -15,7 +15,6 @@ import {
   ListSubheader,
   InputAdornment,
   IconButton,
-  Badge,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
@@ -29,9 +28,9 @@ import { LoadingButton } from "@mui/lab";
 const CATEGORIES = [
   "Administrator",
   "Employee",
-  "Agent",
-  "Verifier",
-  "System User",
+  // "Agent",
+  // "Verifier",
+  // "System User",
 ];
 
 // 1. UPDATED SCHEMA: Flags the name as a reserved name if it matches any category
@@ -106,17 +105,17 @@ const CreateRoleModal = ({ open, onClose }) => {
   }, [filteredPermissions]);
 
   // 2. COUNTER LOGIC: Calculates how many selected items belong to each specific resource group
-  const groupSelectionCounts = useMemo(() => {
-    const counts = {};
-    allPermissions.forEach((p) => {
-      const resource = p.resource || "General";
-      if (!counts[resource]) counts[resource] = 0;
-      if (selectedPermissionIds.includes(p.id)) {
-        counts[resource] += 1;
-      }
-    });
-    return counts;
-  }, [allPermissions, selectedPermissionIds]);
+  // const groupSelectionCounts = useMemo(() => {
+  //   const counts = {};
+  //   allPermissions.forEach((p) => {
+  //     const resource = p.resource || "General";
+  //     if (!counts[resource]) counts[resource] = 0;
+  //     if (selectedPermissionIds.includes(p.id)) {
+  //       counts[resource] += 1;
+  //     }
+  //   });
+  //   return counts;
+  // }, [allPermissions, selectedPermissionIds]);
 
   const isAllFilteredSelected = useMemo(() => {
     if (filteredPermissions.length === 0) return false;

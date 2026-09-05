@@ -144,9 +144,9 @@ const ComplaintForm = () => {
     <>
       <Container maxWidth="sm" >
         <Paper >
-          <Typography variant="h5" fontWeight="bold" gutterBottom>
+          {/* <Typography variant="h5" fontWeight="bold" gutterBottom>
             Submit a Complaint
-          </Typography>
+          </Typography> */}
           <Typography variant="body2" color="text.secondary" paragraph>
             We take your concerns seriously. Please fill out the form below and
             we will get back to you.
@@ -167,7 +167,7 @@ const ComplaintForm = () => {
                     error={!!errors.serviceType}
                     helperText={errors.serviceType?.message}
                   >
-                    <MenuItem value="prepaid">Prepaid/Electricity</MenuItem>
+                    <MenuItem value="prepaid">Prepaid / Postpaid</MenuItem>
                     <MenuItem value="airtime">Airtime Transfer</MenuItem>
                     <MenuItem value="bundle">Data Bundle</MenuItem>
                     <MenuItem value="voucher">Vouchers / Tickets</MenuItem>

@@ -60,7 +60,7 @@ const DialogContainer = ({
       PaperProps={{
         elevation: 8,
         sx: {
-          borderRadius: 1.2,
+          borderRadius: 4,
           maxHeight: "90vh",
           overflow: "hidden", // 1. Keeps the outer container bound to maxheight without a scrollbar
           bgcolor: "background.paper",

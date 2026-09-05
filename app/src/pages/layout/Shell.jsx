@@ -48,7 +48,8 @@ const MatchTicketCheckout = lazy(
   () => import("../stadium/MatchTicketCheckout"),
 );
 
-const Prepaid = lazy(() => import("../electricity/Prepaid"));
+// const Prepaid = lazy(() => import("../electricity/Prepaid"));
+const EcgWrapper = lazy(() => import("../electricity/ecgWrapper"));
 const Meters = lazy(() => import("../electricity/individual/Meters"));
 const ViewMeter = lazy(() => import("../electricity/meters/ViewMeter"));
 const BuyPrepaid = lazy(() => import("../electricity/BuyPrepaid"));
@@ -117,7 +118,8 @@ function Shell() {
               index
               element={
                 <Suspense fallback={<PayLoading />}>
-                  <Prepaid />
+                  <EcgWrapper />
+                  {/* <Prepaid /> */}
                 </Suspense>
               }
             />
