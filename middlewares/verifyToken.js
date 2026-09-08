@@ -5,8 +5,8 @@ const { signMainRefreshToken, signMainToken } = require("../config/token");
 const { safeJSON } = require("../config/helpers");
 const { getExpiryTimeByRoleMs } = require("../utils/helper");
 
-const adminRoles = [process?.env.ADMIN_ID, process?.env.EMPLOYEE_ID];
 const isProduction = process.env.NODE_ENV === "production";
+const adminRoles = [process.env.ADMIN_ID, process.env.EMPLOYEE_ID];
 
 const getPermissions = async (roleId) => {
   const perms = await knex("role_permissions")
@@ -39,6 +39,8 @@ const verifyToken = (req, res, next) => {
     }
 
     const jti = user?.jti;
+    // console.log("Verifying token for user");
+    // console.log(user?.role, process.env.USER_ID);
 
     // Now you can check Redis for validity
     const tokenInRedis = await redisClient.get(`user:${jti}`);
@@ -92,8 +94,6 @@ const verifyToken = (req, res, next) => {
       EX: getExpiryTimeByRoleMs(user?.role).accessTimeMs,
     });
 
-    console.log(newUser);
-
     req.user = newUser;
     req.authUser = user;
     next();
@@ -101,8 +101,38 @@ const verifyToken = (req, res, next) => {
 };
 
 const verifyRefreshToken = async (req, res, next) => {
-  const cookieToken = req.cookies.refreshToken;
-  // console.log(cookieToken);
+  const origin = req.headers.origin || req.headers.referer || "";
+
+  let cookieToken = null;
+
+  // 2. Read the specific cookie dedicated to that subdomain
+  console.log(req.cookies)
+  if (
+    origin.includes("admin.gpcpins.com") 
+    // ||
+    // origin.includes("http://localhost:5003")
+  ) {
+    // If it's the admin panel, look ONLY for the admin cookie
+    cookieToken = req.cookies.SSIDR;
+    console.log("Admin origin detected, checking SSIDR cookie", cookieToken);
+  } else if (
+    origin.includes("://gpcpins.com") ||
+    origin.includes("gpcpins.com")
+  ) {
+    // If it's the main client website, look ONLY for the client/standard token
+    cookieToken = req.cookies.USSIDR;
+    console.log("Client origin detected, checking USSIDR cookie", cookieToken);
+  } else {
+    // Fallback for Development (localhost) or fallback check
+    cookieToken = req.cookies.SSIDR || req.cookies.USSIDR;
+  }
+
+  console.log(
+    "Extracted token from origin:",
+    origin,
+    "Token exists:",
+    !!cookieToken,
+  );
 
   if (!cookieToken) {
     return res.status(401).json("Unauthorized Access");
@@ -132,6 +162,8 @@ const verifyRefreshToken = async (req, res, next) => {
     if (Boolean(authUser?.is_enabled) === false) {
       return res.status(403).json("Session has expired.");
     }
+    console.log("Verifying Refresh token for user");
+    console.log(user?.role, process.env.USER_ID);
 
     const currentRole =
       user?.role === process.env.USER_ID ? process.env.USER_ID : user?.role;
@@ -184,24 +216,25 @@ const verifyRefreshToken = async (req, res, next) => {
       refresh_token: newRefreshToken,
       expiresAt: new Date(expires * 1000),
     });
+    console.log(
+      adminRoles.includes(user?.role)
+        ? "Admin role detected, setting admin cookie"
+        : "Standard user role detected, setting standard cookie",
+    );
 
-    const path =
-      user?.role === process.env.USER_ID
-        ? "user"
-        : adminRoles.includes(user?.role)
-          ? "admin"
-          : "verifier";
-
-    // console.log("Path is", path);
-    // console.log("Refresh Role is", user?.role);
-
-    res.cookie("refreshToken", newRefreshToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "strict" : "lax",
-      path: `/api/gabs/v1/${path}/auth/token`,
-      maxAge: expires,
-    });
+    res.cookie(
+      adminRoles.includes(user?.role) ? "SSIDR" : "USSIDR",
+      newRefreshToken,
+      {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: "lax",
+        path: "/api/gabs/v1/auth/token",
+        maxAge: expires,
+        name: adminRoles.includes(user?.role) ? "SSIDR" : "USSIDR",
+        signed: true,
+      },
+    );
 
     req.user = newUser;
     req.authUser = user;

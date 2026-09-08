@@ -116,6 +116,7 @@ function getKnexInstance() {
       })
       .catch((err) => {
         console.error('Failed to connect to database:', err.message);
+        console.error(err);
         // In production you might want to exit or retry
         if (isProduction) {
           process.exit(1);

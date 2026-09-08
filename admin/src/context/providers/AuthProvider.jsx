@@ -22,26 +22,39 @@ function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
+    let isMounted = true; // Prevents updating state if component unmounts
     setLoading(true);
 
     async function getAuthUser() {
-      await getAdmin()
-        .then((data) => {
+      try {
+        const data = await getAdmin();
+        if (isMounted) {
+      
           setUser(data.user);
           const token = getToken();
           setAccessToken(token);
-        })
-        .catch((e) => {
+        }
+      } catch (e) {
+        console.error("Error fetching user data:", e);
+        if (isMounted) {
           setUser(null);
           setAccessToken("");
-        })
-        .finally(() => {
+          // Redirect cleanly without reloading the entire window
+          // navigate("/auth/login?e=true");
+        }
+      } finally {
+        if (isMounted) {
           setLoading(false);
-        });
+        }
+      }
     }
 
     getAuthUser();
-  }, []);
+
+    return () => {
+      isMounted = false; // Cleanup
+    };
+  }, [navigate]); // navigate is stable, so this still only runs once
 
   const login = (data) => {
     setUser(data?.user);

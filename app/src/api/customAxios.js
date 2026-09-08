@@ -48,7 +48,7 @@ api.interceptors.response.use(
     } else {
       const originalRequest = error.config;
 
-      if ([403].includes(error?.response?.status) && !originalRequest._retry) {
+      if ([401].includes(error?.response?.status) && !originalRequest._retry) {
         originalRequest._retry = true;
 
         try {
@@ -57,7 +57,7 @@ api.interceptors.response.use(
           // Initiate token refresh
           const res = await axios({
             method: "GET",
-            url: `${BASE_URL}/users/auth/token`,
+            url: `${BASE_URL}/auth/token`,
             withCredentials: true,
           });
 

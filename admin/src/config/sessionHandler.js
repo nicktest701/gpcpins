@@ -4,26 +4,26 @@
 import cookie from "js-cookie";
 import _ from "lodash";
 
-const ACCESS_TOKEN_EXPIRY_MINUTES = 5;
+const ACCESS_TOKEN_EXPIRY_MINUTES = 2;
 const minutes = (m) => m / (24 * 60);
 
-export const getUser = () => {
-  const user = localStorage.getItem("_SSID_AdxbAb__");
+// export const getUser = () => {
+//   const user = localStorage.getItem("_SSID_AdxbAb__");
 
-  if (user === undefined || user === null || user === "undefined") {
-    return {
-      id: "",
-      profile: "",
-      name: "",
-      email: "",
-      phonenumber: "",
-      role: "",
-      active: true,
-    };
-  }
+//   if (user === undefined || user === null || user === "undefined") {
+//     return {
+//       id: "",
+//       profile: "",
+//       name: "",
+//       email: "",
+//       phonenumber: "",
+//       role: "",
+//       active: true,
+//     };
+//   }
 
-  return parseJwt(user);
-};
+//   return parseJwt(user);
+// };
 
 export const getToken = () => {
   const token = cookie.get("SSIDD");
@@ -50,7 +50,6 @@ export const saveAccessToken = (accessToken) => {
   cookie.set("SSIDD", JSON.stringify(accessToken), {
     secure: window.location.protocol === "https:",
     sameSite: "Lax",
-    path: "/",
     expires: minutes(ACCESS_TOKEN_EXPIRY_MINUTES),
     // secure: true,
     // sameSite: "None",
@@ -58,7 +57,7 @@ export const saveAccessToken = (accessToken) => {
 };
 
 export const deleteToken = () => {
-  cookie.remove("SSIDD",{path:'/'});
+  cookie.remove("SSIDD");
 };
 
 export function parseJwt(token) {

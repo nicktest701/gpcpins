@@ -1,4 +1,4 @@
-import { saveToken, getToken, saveAccessToken } from "../config/sessionHandler";
+import {  getToken, saveAccessToken } from "../config/sessionHandler";
 import api from "./customAxios";
 
 export const getAdmin = async () => {
@@ -36,7 +36,7 @@ export const logoutAdmin = async (data) => {
   try {
     const res = await api({
       method: "POST",
-      url: `/users/logout`,
+      url: `/admin/logout`,
       data,
     });
 

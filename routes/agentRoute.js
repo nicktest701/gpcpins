@@ -735,10 +735,10 @@ router.post(
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: isProduction ? "lax" : "none",
-      path: "/api/gabs/v1/agents/auth/token",
+      sameSite: "lax",
+      path: "/api/gabs/v1/auth/token",
       domain: isProduction ? ".gpcpins.com" : undefined,
-   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
     res.status(201).json({

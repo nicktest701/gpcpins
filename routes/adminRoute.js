@@ -360,13 +360,14 @@ router.post(
     });
     const isProduction = process.env.NODE_ENV === "production";
 
-    res.cookie("refreshToken", refreshToken, {
+    res.cookie("SSIDR", refreshToken, {
       httpOnly: true,
       secure: isProduction, // true in prod (required over HTTPS), false in dev (http)
       sameSite: "lax", // same-site in both dev and prod, no need for "none"
-      path: "/api/gabs/v1/admin/auth/token",
-      domain: isProduction ? ".gpcpins.com" : undefined,
+      path: "/api/gabs/v1/auth/token",
       maxAge: expiresMs,
+      name: "USSIDR",
+      signed: true,
     });
 
     // console.log(accessData);
@@ -400,7 +401,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const { sub: id, jti } = req.authUser;
 
-    res.clearCookie("refreshToken");
+    res.clearCookie("SSIDR");
 
     await removeUser(id);
 

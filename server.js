@@ -1,4 +1,5 @@
 require("dotenv").config({ path: ".env" });
+const asyncHandler = require("express-async-handler");
 const path = require("path");
 const compression = require("compression");
 const express = require("express");
@@ -38,7 +39,7 @@ const billerRoute = require("./routes/brassica/billers.js");
 const billerPaymentsRoute = require("./routes/brassica/payments.js");
 
 //
-const { verifyToken } = require("./middlewares/verifyToken");
+const { verifyToken, verifyRefreshToken } = require("./middlewares/verifyToken");
 const knex = require("./db/knex");
 const socketAuth = require("./middlewares/socketAuth");
 const { initSocketServer, getIO } = require("./config/socket");
@@ -81,6 +82,12 @@ const limiter = rateLimit({
   message: "Too many requests from this IP, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+const limit = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 20, // 5 requests per windowMs
+  message: "Too many requests!. please try again later.",
 });
 
 // Apply rate limiting to all requests
@@ -257,6 +264,19 @@ app.get("/api/gabs/v1/health", (req, res) => {
     uptime: process.uptime(),
   });
 });
+
+app.get(
+  "/api/gabs/v1/auth/token",
+  limit,
+  verifyRefreshToken,
+  asyncHandler(async (req, res) => {
+    const accessToken = req.accessToken;
+
+    res.status(200).json({
+      accessToken,
+    });
+  }),
+);
 
 // Serve frontend in production
 if (NODE_ENV === "production") {

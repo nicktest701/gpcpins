@@ -1,7 +1,8 @@
 import cookie from "js-cookie";
 import _ from "lodash";
 
-const ACCESS_TOKEN_EXPIRY_MINUTES = 15;
+// const ACCESS_TOKEN_EXPIRY_MINUTES = 3600;
+const ACCESS_TOKEN_EXPIRY_MINUTES = 2;
 const minutes = (m) => m / (24 * 60);
 
 export const saveUser = (user) => {
@@ -32,7 +33,6 @@ export const saveAccessToken = (accessToken) => {
   cookie.set("USSID", JSON.stringify(accessToken), {
     secure: window.location.protocol === "https:",
     sameSite: "Lax",
-    path: "/",
     expires: minutes(ACCESS_TOKEN_EXPIRY_MINUTES),
   });
 };
@@ -45,7 +45,7 @@ export const saveToken = (accessToken) => {
 };
 
 export const deleteToken = () => {
-  cookie.remove("USSID",{path:'/'});
+  cookie.remove("USSID");
 };
 
 export function parseJwt(token) {

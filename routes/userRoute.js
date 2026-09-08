@@ -563,15 +563,14 @@ router.post(
   "/logout",
   verifyToken,
   asyncHandler(async (req, res) => {
-    const { sub: id, jti, role } = req.authUser;
+    const { sub: id } = req.authUser;
 
-    await knex("users")
-      .where("id", id)
-      .update({
-        active: role === process.env.USER_ID ? 0 : 1,
-      });
+    await knex("users").where("id", id).update({
+      active: 0,
+    });
 
-    res.clearCookie("refreshToken");
+    res.clearCookie("USSIDR");
+    res.clearCookie("SSIDR");
 
     await removeUser(id);
 
@@ -1014,14 +1013,15 @@ async function generateAuthSession({
   });
 
   // 6. Set HTTP-only cookie
-res.cookie("refreshToken", refreshToken, {
-  httpOnly: true,
-  secure: isProduction, // true in prod (required over HTTPS), false in dev (http)
-  sameSite: "lax",      // same-site in both dev and prod, no need for "none"
-  path: "/api/gabs/v1/users/auth/token",
-  domain: isProduction ? ".gpcpins.com" : undefined,
-  maxAge: expiresMs,
-});
+  res.cookie("USSIDR", refreshToken, {
+    httpOnly: true,
+    secure: isProduction, // true in prod (required over HTTPS), false in dev (http)
+    sameSite: "lax", // same-site in both dev and prod, no need for "none"
+    path: "/api/gabs/v1/auth/token",
+    maxAge: expiresMs,
+    name: "USSIDR",
+    signed: true,
+  });
 
   // 7. Send final client response
   return res.status(201).json({
