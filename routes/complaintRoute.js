@@ -10,6 +10,7 @@ const { rateLimit } = require("express-rate-limit");
 const verifyAdmin = require("../middlewares/verifyAdmin");
 const { verifyToken } = require("../middlewares/verifyToken");
 const { getInternationalMobileFormat } = require("../config/PhoneCode");
+const { generateNextId } = require("../config/helpers/generated-ids");
 
 // ─── Rate limiter for public submission ──────────────────────────────
 const complaintLimiter = rateLimit({
@@ -20,20 +21,26 @@ const complaintLimiter = rateLimit({
 
 // ─── Validation helper ──────────────────────────────────────────────
 const validateComplaint = (data) => {
-  const { serviceType, transactionId, paymentMode, comment, meterNo } = data;
-  if (!serviceType || !transactionId || !paymentMode || !comment) {
+  const { serviceType, paymentMode, comment, meterNo } = data;
+  if (!serviceType || !comment) {
+    throw new Error("Missing required fields: serviceType, comment");
+  }
+  if (
+    !["prepaid", "postpaid", "bundle", "airtime", "voucher", "meter"].includes(
+      serviceType,
+    )
+  ) {
     throw new Error(
-      "Missing required fields: serviceType, transactionId, paymentMode, comment",
+      "serviceType must be one of: prepaid, postpaid, bundle, airtime, voucher, meter",
     );
   }
-  if (!["prepaid", "bundle", "airtime", "voucher"].includes(serviceType)) {
-    throw new Error("Invalid serviceType. Must be meter, airtime, or voucher");
+  if (["prepaid", "postpaid", "meter"].includes(serviceType) && !meterNo) {
+    throw new Error(
+      "meter_no is required when serviceType is prepaid, postpaid, or meter",
+    );
   }
-  if (serviceType === "prepaid" && !meterNo) {
-    throw new Error("meter_no is required when serviceType is meter");
-  }
-  if (!["wallet", "mobile_money"].includes(paymentMode)) {
-    throw new Error("paymentMode must be wallet or mobile_money");
+  if (!["wallet", "mobile_money", "other"].includes(paymentMode)) {
+    throw new Error("paymentMode must be wallet, mobile_money, or other");
   }
 };
 
@@ -47,10 +54,8 @@ const validateComplaint = (data) => {
 router.get(
   "/",
   verifyToken,
-  // verifyAdmin,
+  verifyAdmin,
   asyncHandler(async (req, res) => {
-
-
     if (
       ![process.env.ADMIN_ID, process.env.EMPLOYEE_ID].includes(req.user.role)
     ) {
@@ -64,14 +69,14 @@ router.get(
       "Manage Data Bundle Complaints": "bundle", // Kept your double space matching the array
       "Manage Prepaid Complaints": "prepaid",
       "Manage Vouchers & Tickets Complaints": "voucher",
+      "Manage Meter Complaints": "meter",
+      "Manage Wallet Complaints": "wallet",
     };
-
 
     // Extract database service types authorized by user's permissions
     const allowedServiceTypes = permissions
       .map((p) => permissionMapping[p])
       .filter(Boolean);
-  
 
     const { status, service_type, search, page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
@@ -79,6 +84,7 @@ router.get(
     let query = knex("complaints")
       .select(
         "id",
+        "incident_date",
         "service_type",
         "transaction_id",
         "meter_no",
@@ -144,7 +150,6 @@ router.get(
       query.limit(limit).offset(offset),
       totalQuery.first(),
     ]);
-  
 
     res.status(200).json({
       data,
@@ -164,19 +169,19 @@ router.get(
 router.get(
   "/:id",
   verifyToken,
-  // verifyAdmin,
+  verifyAdmin,
   asyncHandler(async (req, res) => {
-  if (
+    if (
       ![process.env.ADMIN_ID, process.env.EMPLOYEE_ID].includes(req.user.role)
     ) {
       return res.status(404).json({ error: "Complaint not found" });
     }
 
-
     const { id } = req.params;
     const complaint = await knex("complaints")
       .select(
         "id",
+        "incident_date",
         "service_type",
         "transaction_id",
         "meter_no",
@@ -215,6 +220,7 @@ router.get(
 router.post(
   "/",
   complaintLimiter,
+
   asyncHandler(async (req, res) => {
     const payload = req.body;
 
@@ -229,14 +235,22 @@ router.post(
     // We'll also store phonenumber if provided (optional)
     const { user_id = null, phonenumber = null, ...rest } = payload;
 
-    const complaintId = generateId();
+    const lastComplaint = await knex("complaints")
+      .select("id")
+      .orderBy("created_at", "desc")
+      .first();
+
+    const lastId = lastComplaint ? lastComplaint.id : "";
+    const complaintId = generateNextId(lastId) || generateId(12); // Fallback to random ID if needed
+
 
     await knex("complaints").insert({
       id: complaintId,
+      incident_date: new Date(rest.incidentDate) || knex.fn.now(),
       service_type: rest.serviceType,
-      transaction_id: rest.transactionId,
+      transaction_id: rest?.transactionId || null,
       meter_no: rest.meterNo || null,
-      payment_mode: rest.paymentMode,
+      payment_mode: rest.paymentMode || "other",
       comment: rest.comment,
       phonenumber: phonenumber || null,
       status: "pending",
@@ -244,29 +258,36 @@ router.post(
       updated_at: knex.fn.now(),
     });
 
-    // ─── Send SMS to user (if phonenumber exists) ──────────────────
-    if (phonenumber) {
-      try {
-        await sendSMS(
-          `Dear customer, we have received your complaint (ID: ${complaintId}). We will get back to you shortly.`,
-          getInternationalMobileFormat(phonenumber, false),
-        );
-      } catch (smsErr) {
-        // Log error but don't block response
-        console.error("SMS send error:", smsErr.message);
+    res.status(201).json({
+      id: complaintId,
+      message: "Complaint submitted successfully",
+    });
+
+    setImmediate(async () => {
+      // ─── Send SMS to user (if phonenumber exists) ──────────────────
+      if (phonenumber) {
+        try {
+          await sendSMS(
+            `Dear customer, we have received your complaint (ID: ${complaintId}). We will get back to you shortly.`,
+            getInternationalMobileFormat(phonenumber, false),
+          );
+        } catch (smsErr) {
+          // Log error but don't block response
+          console.error("SMS send error:", smsErr.message);
+        }
       }
-    }
 
-    // ─── Optionally send email to support/admin ──────────────────────
-    try {
-      const adminEmails = await knex("vw_users_with_roles")
-        .where("role_name", "Administrator")
-        .pluck("email");
+      // ─── Optionally send email to support/admin ──────────────────────
+      try {
+        const adminEmails = await knex("vw_users_with_roles")
+          .where("role_name", "Administrator")
+          .pluck("email");
 
-      if (adminEmails.length) {
-        const html = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px;">
+        if (adminEmails.length) {
+          const html = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px;">
           <h2>New Complaint Received</h2>
           <p><strong>Complaint ID:</strong> ${complaintId}</p>
+          <p><strong>Incident Date:</strong> ${new Date(rest.incidentDate).toLocaleDateString()}</p>
           <p><strong>Service Type:</strong> ${rest.serviceType}</p>
           <p><strong>Transaction ID:</strong> ${rest.transactionId}</p>
           <p><strong>Meter No:</strong> ${rest.meterNo || "N/A"}</p>
@@ -275,19 +296,15 @@ router.post(
           <p><strong>Phone:</strong> ${phonenumber || "N/A"}</p>
           <a href="${process.env.APP_URL}/complaints/${complaintId}">View Complaint</a>
         </div>`;
-        await sendEMail(
-          adminEmails.join(","),
-          mailTextShell(html),
-          "New Customer Complaint",
-        );
+          await sendEMail(
+            adminEmails.join(","),
+            mailTextShell(html),
+            "New Customer Complaint",
+          );
+        }
+      } catch (emailErr) {
+        console.error("Admin email error:", emailErr.message);
       }
-    } catch (emailErr) {
-      console.error("Admin email error:", emailErr.message);
-    }
-
-    res.status(201).json({
-      id: complaintId,
-      message: "Complaint submitted successfully",
     });
   }),
 );
@@ -299,9 +316,9 @@ router.post(
 router.patch(
   "/:id",
   verifyToken,
-  // verifyAdmin,
+  verifyAdmin,
   asyncHandler(async (req, res) => {
-  if (
+    if (
       ![process.env.ADMIN_ID, process.env.EMPLOYEE_ID].includes(req.user.role)
     ) {
       return res.status(404).json({ error: "Complaint not found" });

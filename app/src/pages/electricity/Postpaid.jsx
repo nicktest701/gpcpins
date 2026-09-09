@@ -119,7 +119,7 @@ function PostPaid() {
             Please check back later or contact support for assistance.
           </Typography> */}
 
-                <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
+                <Alert severity="info" sx={{ mb: 2 }}>
             <AlertTitle sx={{ fontWeight: "bold" }}>Service not available!</AlertTitle>
                   Services for postpaid electricity meters are currently unavailable.
             Please check back later or contact support for assistance.

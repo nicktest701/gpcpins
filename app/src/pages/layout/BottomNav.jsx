@@ -14,7 +14,7 @@ import { useAuth } from "../../context/providers/AuthProvider";
 // Navigation items configuration
 const navItems = [
   { label: "Home", icon: Home, path: "/", matchPattern: "/" },
-  { label: "Vouchers", icon: LocalOffer, path: "/evoucher", matchPattern: "/evoucher" },
+  { label: "Checkers/Tickets", icon: LocalOffer, path: "/evoucher", matchPattern: "/evoucher" },
   { label: "Prepaid/Postpaid", icon: Bolt, path: "/electricity", matchPattern: "/electricity" },
   { label: "Airtime/Bundle", icon: ReceiptLong, path: "/airtime", matchPattern: "/airtime" },
 ];
@@ -85,9 +85,10 @@ function BottomNav() {
             <BottomNavigationAction
               key={item.path}
               label={item.label}
-              icon={<IconComponent />}
+              icon={<IconComponent sx={{ fontSize: "1.15rem" }} />}
               onClick={() => handleNavigate(item.path)}
               sx={{
+                fontSize: "0.75rem",
                 color: isActive ? activeColor : inactiveColor,
                 "&.Mui-selected": {
                   color: activeColor,

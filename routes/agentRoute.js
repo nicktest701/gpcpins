@@ -813,7 +813,7 @@ router.put(
         severity: "info",
       });
 
-      res.status(201).json("Changes Saved!");
+      return res.status(201).json("Changes Saved!");
     }
 
     const agent = await knex("vw_user_business_view")

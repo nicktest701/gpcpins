@@ -97,7 +97,7 @@ function UserDetails() {
         title="User Details"
         subtitle="View user profile, wallet overview, and account activity"
         showBack
-            onBack={() => navigate("/employees")}
+            onBack={() => navigate("/users")}
       />
       {isLoading ? (
         <Skeleton width="100%" height={400} />

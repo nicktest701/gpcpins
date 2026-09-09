@@ -266,7 +266,7 @@ router.put(
       res.status(404).json("Error updating employee information.");
     }
 
-     await removeUser(id);
+    await removeUser(id);
 
     //logs
     await knex("activity_logs").insert({
@@ -274,8 +274,8 @@ router.put(
       title: "Modified employee account details.",
       severity: "info",
     });
-//     await redisClient.get(`user:${jti}`);
-//  `user:profile:${jti}`;
+    //     await redisClient.get(`user:${jti}`);
+    //  `user:profile:${jti}`;
 
     res.status(201).json("Changes saved successfully!!!");
   }),
@@ -298,7 +298,7 @@ router.put(
       return res.status(400).json("Error updating user info");
     }
 
-     await removeUser(id);
+    await removeUser(id);
 
     //logs
     await knex("activity_logs").insert({
@@ -322,8 +322,8 @@ router.put(
 //Reset Password
 router.put(
   "/reset",
-  // verifyToken,
-  // verifyAdmin,
+  verifyToken,
+  verifyAdmin,
   asyncHandler(async (req, res) => {
     const { email } = req.body;
 
@@ -382,6 +382,36 @@ router.put(
       console.log(error);
       return res.status(500).json("An error has occurred!");
     }
+  }),
+);
+
+//Reset Employee Password
+router.put(
+  "/password-reset",
+  verifyToken,
+  verifyAdmin,
+  asyncHandler(async (req, res) => {
+    const { id: userID } = req.user;
+    const { id, password } = req.body;
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const modifiedUser = await knex("users").where("id", id).update({
+      password: hashedPassword,
+    });
+
+    if (modifiedUser !== 1) {
+      return res.status(404).json("Error updating userinformation.");
+    }
+
+    //logs
+    await knex("activity_logs").insert({
+      user_id: userID,
+      title: "Updated account password!",
+      severity: "info",
+    });
+
+    res.status(201).json("Password reset successful!");
   }),
 );
 

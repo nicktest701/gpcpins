@@ -63,13 +63,34 @@ async function getBrassicaBalance() {
     // Brassica requires POST with no body
     const data = await brassicaPost("/GetAvailableBalance", {});
 
-    return data
+    return data;
   } catch (err) {
-    next(err);
+    throw new Error(err);
+  }
+}
+
+async function getBrassicaTransactionStatus(transactionId, transactionType) {
+  try {
+    logger.info(
+      `[GetTransactionStatus] Fetching status for  txId=${transactionId} type=${transactionType}`,
+    );
+
+    const data = await brassicaPost("/transStatusQuery", {
+      transactionType,
+     transactionId: "5365tet055520509"
+      // transactionId,
+    });
+    console.log(data);
+
+    return data;
+  } catch (err) {
+    console.log(err);
+    throw new Error(err?.raw?.message || "Error fetching transaction status");
   }
 }
 
 module.exports = {
   sendBrassicaMoney,
   getBrassicaBalance,
+  getBrassicaTransactionStatus,
 };

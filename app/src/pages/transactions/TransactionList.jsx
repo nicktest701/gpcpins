@@ -90,12 +90,13 @@ const TransactionList = ({
   // Helper to render bulk recipients
   const renderRecipient = (item) => {
     if (type === "Airtime" && airtimeType === "bulk" && item.recipient) {
+
       try {
         const recipients = JSON.parse(item.recipient);
         return (
-          <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+          <Stack spacing={0.5} sx={{ mt: 0.5 }} flexWrap="wrap">
             {recipients.map((rec) => (
-              <Typography key={rec.recipient} variant="caption" display="block">
+              <Typography key={rec.recipient} variant="caption">
                 {rec.recipient}{" "}
                 <strong style={{ color: "var(--secondary)" }}>
                   ({currencyFormatter(rec.price)})

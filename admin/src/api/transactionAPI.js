@@ -68,6 +68,7 @@ export const getTransactionStatus = async (clientReference, type) => {
       params: {
         clientReference,
         type,
+        transactionId: clientReference, // Added transactionId parameter
       },
     });
 

@@ -159,8 +159,8 @@ function Footer() {
             </Stack>
           </Box>
         </Container>
-        <Container sx={{ py: 1,pb:4 }}>
           <Divider flexItem />
+        <Container sx={{ py: 1,pb:4,display:'flex',alignItems:'center',justifyContent:'space-between',gap:1 }}>
           <Typography variant="body2" textAlign="center" paragraph pt={1}>
             Copyright &copy; {new Date().getFullYear()} | Gab Powerful Consult
           </Typography>

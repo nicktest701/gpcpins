@@ -32,7 +32,8 @@ import Google from "../components/jsx-icons/Google";
 import { useAuth } from "../context/providers/AuthProvider";
 import axios from "axios";
 import { useCustomContext } from "../context/providers/CustomProvider";
-import LoadingSpinner from "../components/spinners/LoadingSpinner";
+// import LoadingSpinner from "../components/spinners/LoadingSpinner";
+import GlobalSpinner from "../components/GlobalSpinner";
 
 function Login() {
   const [searchParams] = useSearchParams();
@@ -367,7 +368,7 @@ function Login() {
         </Paper>
       </Fade>
 
-      {googleIsLoading && <LoadingSpinner />}
+      {googleIsLoading && <GlobalSpinner />}
     </Container>
   );
 }

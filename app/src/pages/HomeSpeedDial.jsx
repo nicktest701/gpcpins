@@ -1,9 +1,10 @@
-import * as React from 'react';
-import SpeedDial from '@mui/material/SpeedDial';
-import SpeedDialAction from '@mui/material/SpeedDialAction';
-import { MessageRounded } from '@mui/icons-material';
-import Whatsapp from '../components/jsx-icons/Whatsapp';
-import PhoneCall from '../components/jsx-icons/PhoneCall';
+import * as React from "react";
+import SpeedDial from "@mui/material/SpeedDial";
+import SpeedDialAction from "@mui/material/SpeedDialAction";
+import Whatsapp from "../components/jsx-icons/Whatsapp";
+import PhoneCall from "../components/jsx-icons/PhoneCall";
+import ComplaintModal from "../components/modals/ComplaintModal";
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 
 export default function HomeSpeedDial() {
   const [open, setOpen] = React.useState(false);
@@ -14,18 +15,25 @@ export default function HomeSpeedDial() {
   const actions = [
     {
       icon: <Whatsapp width={24} height={24} />,
-      name: 'Whatsapp',
+      name: "Whatsapp",
       onClick: () => {
-        window.open('https://wa.me/message/2B4FJIHWGOVFN1');
+        window.open("https://wa.me/message/2B4FJIHWGOVFN1");
         handleClose();
       },
     },
 
     {
       icon: <PhoneCall width={24} height={24} />,
-      name: 'Phone Call',
+      name: "Phone Call",
       onClick: () => {
-        window.open('tel:+233244012766');
+        window.open("tel:+233244012766");
+        handleClose();
+      },
+    },
+    {
+      icon: <ComplaintModal buttonVariant="fab" buttonText="Complaint form" />,
+      name: "Help & Support",
+      onClick: () => {
         handleClose();
       },
     },
@@ -33,14 +41,14 @@ export default function HomeSpeedDial() {
 
   return (
     <SpeedDial
-      ariaLabel='SpeedDial tooltip example'
+      ariaLabel="SpeedDial tooltip example"
       sx={{
         display: "flex",
-        position: 'fixed',
-        bottom: '12%',
-        left: '2%',
+        position: "fixed",
+        bottom: "12%",
+        left: "2%",
       }}
-      icon={<MessageRounded />}
+      icon={<SupportAgentIcon />}
       onClose={handleClose}
       onOpen={handleOpen}
       open={open}
@@ -51,7 +59,7 @@ export default function HomeSpeedDial() {
           icon={action.icon}
           tooltipTitle={action.name}
           // tooltipOpen
-          tooltipPlacement='bottom'
+          tooltipPlacement="bottom"
           onClick={action.onClick}
         />
       ))}

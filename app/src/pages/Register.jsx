@@ -22,19 +22,19 @@ import { useGoogleLogin } from "@react-oauth/google";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { Formik } from "formik";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { IMAGES } from "../constants";
 import { createNewUser, loginGoogleUser } from "../api/userAPI";
 import { registerUserValidationSchema } from "../config/validationSchema";
 import Google from "../components/jsx-icons/Google";
-import { AuthContext } from "../context/providers/AuthProvider";
+import { useAuth } from "../context/providers/AuthProvider";
 import axios from "axios";
-import { CustomContext } from "../context/providers/CustomProvider";
-import LoadingSpinner from "../components/spinners/LoadingSpinner";
+import { useCustomContext } from "../context/providers/CustomProvider";
+import GlobalSpinner from "../components/GlobalSpinner";
 
 function Register() {
-  const { login } = useContext(AuthContext);
-  const { customDispatch } = useContext(CustomContext);
+  const { login } = useAuth();
+  const { customDispatch } = useCustomContext();
   const navigate = useNavigate();
   const { state } = useLocation();
   const [err, setErr] = useState("");
@@ -130,7 +130,7 @@ function Register() {
 
   return (
     <Container
-      maxWidth="xs"
+      maxWidth="sm"
       sx={{
         minHeight: "100vh",
         display: "flex",
@@ -140,15 +140,15 @@ function Register() {
         py: 4,
       }}
     >
-      <Fade in timeout={800}>
+      <Fade in timeout={400}>
         <Paper
           elevation={1}
           sx={{
             width: "100%",
             p: { xs: 3, sm: 4 },
             borderRadius: 4,
-            bgcolor: theme.palette.background.paper,
-            boxShadow: theme.shadows[4],
+            // bgcolor: theme.palette.background.paper,
+            // boxShadow: theme.shadows[4],
           }}
         >
           <Stack spacing={3} alignItems="center">
@@ -441,7 +441,7 @@ function Register() {
         </Paper>
       </Fade>
 
-      {googleIsPending && <LoadingSpinner />}
+      {googleIsPending && <GlobalSpinner />}
     </Container>
   );
 }

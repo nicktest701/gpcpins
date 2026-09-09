@@ -104,7 +104,7 @@ router.post(
       // 3. Commit early to release database locks
       await transx.commit();
 
-      console.log("done");
+   
       // 4. Respond instantly to the user
       res.status(201).json("Message processing started!");
     } catch (error) {

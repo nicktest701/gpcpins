@@ -3,13 +3,15 @@ import { NavLink } from "react-router-dom";
 import EvoucherDropdown from "./EvoucherDropdown";
 import PrepaidDropdown from "./PrepaidDropdown";
 import AirtimeDropdown from "./AirtimeDropdown";
+import ComplaintModal from "../modals/ComplaintModal";
 
 // Single wrapper component that uses CSS :hover to show/hide the dropdown
 const DropdownWrapper = ({ label, to, dropdownComponent: DropdownComponent }) => {
   const theme = useTheme();
 
   const linkStyle = ({ isActive }) => ({
-    color: isActive ? theme.palette.secondary.main : "#333",
+    color: isActive ? theme.palette.primary.main : "#333",
+      borderBottom: isActive ? `2px solid ${theme.palette.secondary.main}` : "none",
     fontWeight: isActive ? "700" : "normal",
     textDecoration: "none",
     fontSize: "1rem",
@@ -52,8 +54,9 @@ const DropdownWrapper = ({ label, to, dropdownComponent: DropdownComponent }) =>
 const Navbar = () => {
   const theme = useTheme();
   const homeLinkStyle = ({ isActive }) => ({
-    color: isActive ? theme.palette.secondary.main : "#333",
+    color: isActive ? theme.palette.primary.main : "#333",
     fontWeight: isActive ? "700" : "normal",
+    borderBottom: isActive ? `2px solid ${theme.palette.secondary.main}` : "none",
     textDecoration: "none",
     fontSize: "0.9rem",
     padding: "8px 12px",
@@ -64,7 +67,7 @@ const Navbar = () => {
   return (
     <Stack
       direction="row"
-      spacing={4}
+      spacing={1.2}
       sx={{
         flex:1,
         display: { xs: "none", lg: "flex" },
@@ -95,6 +98,9 @@ const Navbar = () => {
         to="airtime"
         dropdownComponent={AirtimeDropdown}
       />
+      <div className="nav-item">
+     <ComplaintModal buttonVariant="button" buttonText="HELP & SUPPORT" />
+      </div>
     </Stack>
   );
 };

@@ -7,6 +7,7 @@ import {
   Divider,
   Container,
   Grid,
+  // Unstable_Grid2 as Grid,
   Chip,
   Alert,
   Box,
@@ -185,11 +186,11 @@ function Distributor() {
         <Stack spacing={3}>
           {/* Personal information */}
           <Paper
-            elevation={0}
+            elevation={1}
             sx={{
               p: { xs: 2.5, sm: 3.5 },
               borderRadius: 3,
-              border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+              // border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
             }}
           >
             <SectionHeader
@@ -198,7 +199,7 @@ function Distributor() {
               description="Tell us who you are and how to reach you."
             />
 
-            <Stack >
+            <Stack columnGap={2} >
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
                   <Controller
@@ -236,7 +237,7 @@ function Distributor() {
                 </Grid>
               </Grid>
 
-              <Grid container spacing={2}>
+              <Grid container spacing={2} >
                 <Grid item xs={12} sm={6}>
                   <Controller
                     name="dob"
@@ -338,11 +339,11 @@ function Distributor() {
 
           {/* Business information */}
           <Paper
-            elevation={0}
+            elevation={2}
             sx={{
               p: { xs: 2.5, sm: 3.5 },
               borderRadius: 3,
-              border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+              // border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
             }}
           >
             <SectionHeader
@@ -352,7 +353,7 @@ function Distributor() {
             />
 
             <Stack >
-              <Grid container spacing={2}>
+              <Grid container spacing={2} mb={2}>
                 <Grid item xs={12} sm={6}>
                   <Controller
                     name="business_name"

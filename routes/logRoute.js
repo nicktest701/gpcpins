@@ -69,7 +69,7 @@ router.get(
     ]);
 
     if (!isAdmin) {
-      query.whereAnd({ userId: id, isActive: true });
+      query.where({ userId: id, isActive: true });
     }
 
     if (searchTerm) {

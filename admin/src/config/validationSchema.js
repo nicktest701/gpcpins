@@ -36,13 +36,17 @@ export const loginValidationSchema = () => {
 };
 
 export const passwordValidationSchema = object().shape({
-  password: string()
+  password:string()
     .required("Required*")
     .min(8, "Password must be at least 8 characters")
     .matches(/[A-Z]/, "Password must start with an uppercase letter")
     .matches(
       /[a-zA-Z].*\d|\d.*[a-zA-Z]/,
-      "Password must contain both numbers and alphabets",
+      "Password must contain both numbers and alphabets"
+    )
+    .matches(
+      /[!@#$%^&*()_+\-=[\]{}|;:'",.<>?/`~]/,
+      "Password must contain at least one special character (!@#$%^&* etc.)"
     ),
   confirmPassword: string()
     .trim()
@@ -101,11 +105,18 @@ export const addEmployeeValidationSchema = object().shape({
     .trim()
     .required("Required*")
     .matches(/^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/, "Invalid Phone number"),
-  password: string().trim().required("Required*").min(
-    8,
-
-    "Password should 8-30 characters long",
-  ),
+  password:string()
+    .required("Required*")
+    .min(8, "Password must be at least 8 characters")
+    .matches(/[A-Z]/, "Password must start with an uppercase letter")
+    .matches(
+      /[a-zA-Z].*\d|\d.*[a-zA-Z]/,
+      "Password must contain both numbers and alphabets"
+    )
+    .matches(
+      /[!@#$%^&*()_+\-=[\]{}|;:'",.<>?/`~]/,
+      "Password must contain at least one special character (!@#$%^&* etc.)"
+    ),
   confirmPassword: string()
     .trim()
     .required("Required*")
@@ -285,8 +296,7 @@ export const agentValidationSchema = object().shape({
     .optional(),
 });
 
-export const userValidationSchema = () => {
-  return object().shape({
+export const userValidationSchema =  object().shape({
     firstname: string().trim().required("Required*"),
     lastname: string().trim().required("Required*"),
     dob: date().optional(),
@@ -299,7 +309,7 @@ export const userValidationSchema = () => {
           if (!value) return true; // optional when empty
 
           const isVoterId = /^\d{10}$/.test(value); // adjust the digit length if needed
-          const isNationalId = /^GHA-\d{9}-\d$/.test(value);
+          const isNationalId = /^GHA-\d{9}-\d{1}$/.test(value);
 
           return isVoterId || isNationalId;
         },
@@ -310,7 +320,6 @@ export const userValidationSchema = () => {
       .required("Required*")
       .matches(/^(\+\d{1,3})?\(?\d{3}\)?\d{3}\d{4}$/, "Invalid Phone number"),
   });
-};
 
 export const processPrepaidValidationSchema = object().shape({
   receipt: string().required("A copy of the transaction receipt is required*"),

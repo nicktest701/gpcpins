@@ -11,8 +11,10 @@ import Shell from "./pages/layout/Shell";
 import { ErrorBoundary } from "react-error-boundary";
 import Error from "./pages/Error";
 import { HelmetProvider } from "react-helmet-async";
-import AuthProvider from "./context/providers/AuthProvider";
+import AuthProvider, { useAuth } from "./context/providers/AuthProvider";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 Chart.register(...registerables);
 Chart.register(ChartDataLabels);
@@ -20,6 +22,8 @@ Chart.register(ChartDataLabels);
 const CLIENT_ID = import.meta.env.VITE_CLIENT_ID;
 
 function App() {
+
+
   const queryClient = new QueryClient({
     defaultOptions: {
       mutations: {
@@ -32,6 +36,8 @@ function App() {
   });
 
   const { reset } = useQueryErrorResetBoundary();
+
+ 
 
   return (
     <HelmetProvider>

@@ -51,6 +51,7 @@ const {
 const { sendSMS } = require("../config/sms");
 const { safeJSON } = require("../config/helpers");
 const { parseDateRange } = require("../config/dateConfigs");
+const { getBrassicaTransactionStatus } = require("./brassica/brasiccaMoney");
 
 const limit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
@@ -1741,19 +1742,31 @@ router.get(
   verifyToken,
   verifyAdmin,
   asyncHandler(async (req, res) => {
-    const { clientReference, type } = req.query;
+    const { clientReference, type, transactionId } = req.query;
+    // console.log(req.query);
 
     if (!clientReference || !type) {
       return res.status(400).json("Invalid Reference ID");
     }
 
     try {
+      if (type === "prepaid" || type === "wallet") {
+        const response = await getBrassicaTransactionStatus(
+          transactionId,
+          "debit",
+        );
+        // console.log("res",response.data);
+        return res.status(200).json(response);
+      }
+
       const response = await moneyStatus(clientReference);
+    
       return res.status(200).json(response.data);
     } catch (error) {
+      // console.log(error);
       return res
-        .status(500)
-        .json("Could not check transaction status.Try again later");
+        .status(404)
+        .json(error || "Transaction not found. Please try again later.");
     }
   }),
 );

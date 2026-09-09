@@ -1,6 +1,9 @@
 // import { isMobileBrowser } from "../config/isMobileBrowser";
+import axios from "axios";
 import { getToken, saveAccessToken, saveToken } from "../config/sessionHandler";
 import api from "./customAxios";
+
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 //Get all User
 
@@ -23,9 +26,9 @@ export const getUserToken = async () => {
 export const getUser = async () => {
   const token = getToken();
   try {
-    const res = await api({
+    const res = await axios({
       method: "GET",
-      url: `/users/auth`,
+      url: `${BASE_URL}/users/auth`,
       headers: {
         Authorization: token ? `Bearer ${token}` : "",
       },

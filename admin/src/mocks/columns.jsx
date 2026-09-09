@@ -2711,3 +2711,19 @@ export const StatusChip = ({ status }) => (
     sx={{ color: "#fff", textTransform: "capitalize" }}
   />
 );
+
+  
+
+export const DateRenderer = ({ date }) => (
+  <ListItemText
+    primary={format(new Date(date), "EEEE, MMMM d, yyyy")}
+        secondary={format(new Date(date), "h:mm a")}
+    primaryTypographyProps={{
+      fontSize: 14,
+    }}
+    secondaryTypographyProps={{
+      fontSize: 14,
+      color: "text.secondary",
+    }}
+  />
+);

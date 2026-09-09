@@ -460,11 +460,12 @@ router.get(
           getBrassicaBalance(),
         ]);
 
+
       res.status(200).json({
-        pos: posResponse?.amount || 0,
-        pre: preResponse?.amount || 0,
-        balance: accResponse?.balance || 0,
-        brassicaBalance: brassicaBalance?.accountBalance || 0,
+        pos: posResponse?.value?.amount || 0,
+        pre: preResponse?.value?.amount || 0,
+        balance: accResponse?.value?.balance || 0,
+        brassicaBalance: brassicaBalance?.value?.accountBalance || 0,
       });
     } catch (error) {
       logger.error(error);

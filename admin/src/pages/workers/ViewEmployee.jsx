@@ -51,6 +51,7 @@ import {
 import { updateAdminProfile } from "../../api/adminAPI";
 import CustomTitle from "../../components/custom/CustomTitle";
 import UpdateEmployee from "./UpdateEmployee";
+import ResetPasswordModal from "./UpdateEmployeePassword";
 
 const ViewEmployee = () => {
   const queryClient = useQueryClient();
@@ -355,15 +356,7 @@ const ViewEmployee = () => {
             </LoadingButton>
           )}
           {hasEditPermission && (
-            <LoadingButton
-              variant="outlined"
-              startIcon={<LockReset />}
-              onClick={handlePasswordReset}
-              loading={resetMutation.isLoading}
-              size="small"
-            >
-              Reset Password
-            </LoadingButton>
+            <ResetPasswordModal employeeId={employee.id} isNew={false} />
           )}
         </Stack>
       </Paper>

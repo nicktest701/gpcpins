@@ -7,12 +7,14 @@ import {
   Button,
   Fab,
   Tooltip,
+  Box,
 } from '@mui/material';
-import { Close, HelpOutline } from '@mui/icons-material';
+import { Close } from '@mui/icons-material';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import ComplaintForm from '../forms/ComplaintForm';
 
 
-const ComplaintModal = ({ buttonVariant = 'fab', buttonText = 'Submit Complaint' }) => {
+const ComplaintModal = ({ buttonVariant = 'fab', buttonText = 'Submit Complaint',showLarge=false }) => {
   const [open, setOpen] = useState(false);
 
   const handleOpen = () => setOpen(true);
@@ -25,7 +27,32 @@ const ComplaintModal = ({ buttonVariant = 'fab', buttonText = 'Submit Complaint'
 
   return (
     <>
-      {/* Trigger Button */}
+    
+
+   {showLarge ? (
+       <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2,
+          my: 3,
+          cursor: 'pointer',
+        }}
+        onClick={handleOpen} 
+      >
+        <Box
+          component="img"
+          src="https://placehold.co/600x300?text=Submit+a+Complaint"
+          alt="Submit a complaint"
+          sx={{ width: '100%', maxWidth: 600, borderRadius: 2 }}
+        />
+        <Button variant="contained" size="large" onClick={handleOpen} endIcon={<SupportAgentIcon />}>
+             Fill Complaint Form
+        </Button>
+      </Box>
+   ):(<>
+     {/* Trigger Button */}
       {buttonVariant === 'fab' ? (
         <Tooltip title="Submit a Complaint">
           <Fab
@@ -34,7 +61,7 @@ const ComplaintModal = ({ buttonVariant = 'fab', buttonText = 'Submit Complaint'
             onClick={handleOpen}
             sx={{ position: 'fixed', bottom: "40%", left: 24 }}
           >
-            <HelpOutline />
+            <SupportAgentIcon />
           </Fab>
         </Tooltip>
       ) : (
@@ -42,10 +69,11 @@ const ComplaintModal = ({ buttonVariant = 'fab', buttonText = 'Submit Complaint'
           {
             textDecoration:'underline'
           }
-        }  startIcon={<HelpOutline />} onClick={handleOpen}>
+        }  endIcon={<SupportAgentIcon />} onClick={handleOpen}>
           {buttonText}
         </Button>
       )}
+   </>)}
 
       {/* Modal */}
       <Dialog

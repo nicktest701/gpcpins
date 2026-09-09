@@ -94,7 +94,7 @@ function Single() {
       sx={{
         minHeight: "100vh",
         py: 4,
-        bgcolor: (theme) => theme.palette.grey[50],
+        // bgcolor: (theme) => theme.palette.grey[50],
       }}
     >
       <Container maxWidth="sm">
@@ -112,7 +112,7 @@ function Single() {
             <Box
               sx={{
                 p: { xs: 3, sm: 4 },
-                bgcolor: "primary.main",
+                bgcolor: "primary.light",
                 color: "primary.contrastText",
               }}
             >
@@ -147,7 +147,7 @@ function Single() {
               onSubmit={handleSubmit(onSubmit)}
               noValidate
               sx={{
-                p: { xs: 3, sm: 4 },
+                p: 2,py:4
               }}
             >
               <Stack spacing={3}>

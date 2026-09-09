@@ -1,16 +1,30 @@
+import axios from "axios";
 import {  getToken, saveAccessToken } from "../config/sessionHandler";
 import api from "./customAxios";
 
+
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+
 export const getAdmin = async () => {
+
+
   const token = getToken();
   try {
-    const res = await api({
-      method: "GET",
-      url: `/admin/auth`,
+
+   const res = await axios({
+     url: `${BASE_URL}/admin/auth`,
+      withCredentials: true,
       headers: {
         Authorization: token ? `Bearer ${token}` : "",
       },
     });
+    // const res = await api({
+    //   method: "GET",
+    //   url: `/admin/auth`,
+    //   headers: {
+    //     Authorization: token ? `Bearer ${token}` : "",
+    //   },
+    // });
 
     return res.data;
   } catch (error) {

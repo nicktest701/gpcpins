@@ -1,15 +1,13 @@
-
-import { isMobileBrowser } from '../config/isMobileBrowser';
-import api from './customAxios';
+import { isMobileBrowser } from "../config/isMobileBrowser";
+import api from "./customAxios";
 
 export const getAllEmployees = async (search) => {
-  const isSearch = search || ""
+  const isSearch = search || "";
   try {
     const res = await api({
-      method: 'GET',
+      method: "GET",
       url: `/employees?search=${isSearch}`,
     });
-
 
     return res.data;
   } catch (error) {
@@ -20,7 +18,7 @@ export const getAllEmployees = async (search) => {
 export const getEmployeeByToken = async () => {
   try {
     const res = await api({
-      method: 'GET',
+      method: "GET",
       url: `/employees/token`,
       // headers: {
       //   Authorization: `Bearer ${Cookie.get('employee')}`,
@@ -36,7 +34,7 @@ export const getEmployeeByToken = async () => {
 export const getEmployee = async (id) => {
   try {
     const res = await api({
-      method: 'GET',
+      method: "GET",
       url: `/employees/${id}`,
     });
 
@@ -49,7 +47,7 @@ export const getEmployee = async (id) => {
 export const getEmployeeLogin = async (data) => {
   try {
     const res = await api({
-      method: 'POST',
+      method: "POST",
       url: `/employees/email`,
       data,
     });
@@ -62,24 +60,24 @@ export const getEmployeeLogin = async (data) => {
 
 export const addEmployee = async (employee) => {
   const formData = new FormData();
-  formData.append('profile', employee.profile);
-  formData.append('firstname', employee.firstname);
-  formData.append('lastname', employee.lastname);
-  formData.append('username', employee.username);
-  formData.append('email', employee.email);
-  formData.append('dob', employee.dob);
-  formData.append('residence', employee.residence);
-  formData.append('nid', employee.nid);
-  formData.append('phonenumber', employee.phonenumber);
-  formData.append('role', employee.role);
-  formData.append('password', employee.password);
+  formData.append("profile", employee.profile);
+  formData.append("firstname", employee.firstname);
+  formData.append("lastname", employee.lastname);
+  formData.append("username", employee.username);
+  formData.append("email", employee.email);
+  formData.append("dob", employee.dob);
+  formData.append("residence", employee.residence);
+  formData.append("nid", employee.nid);
+  formData.append("phonenumber", employee.phonenumber);
+  formData.append("role", employee.role);
+  formData.append("password", employee.password);
 
   try {
     const res = await api({
-      method: 'POST',
+      method: "POST",
       url: `/employees`,
       headers: {
-        'Content-Type': 'multipart/form-data',
+        "Content-Type": "multipart/form-data",
       },
       data: formData,
     });
@@ -93,8 +91,8 @@ export const addEmployee = async (employee) => {
 export const resetEmployeePassword = async (data) => {
   try {
     const res = await api({
-      method: 'PUT',
-      url: `/employees/reset`,
+      method: "PUT",
+      url: `/employees/password-reset`,
       data,
     });
 
@@ -106,7 +104,7 @@ export const resetEmployeePassword = async (data) => {
 export const updateEmployee = async (data) => {
   try {
     const res = await api({
-      method: 'PUT',
+      method: "PUT",
       url: `/employees`,
       data,
     });
@@ -120,14 +118,14 @@ export const updateEmployee = async (data) => {
 export const verifyEmployee = async (data) => {
   try {
     const res = await api({
-      method: 'PUT',
+      method: "PUT",
       url: `/employees/verify`,
       data,
     });
 
     if (isMobileBrowser()) {
-      localStorage.setItem('SSID_', res.data?.SSID_);
-      localStorage.setItem('SSID_X', res.data?.SSID_X);
+      localStorage.setItem("SSID_", res.data?.SSID_);
+      localStorage.setItem("SSID_X", res.data?.SSID_X);
     }
 
     return res.data;
@@ -139,7 +137,7 @@ export const verifyEmployee = async (data) => {
 export const toggleEmployeeAccount = async (data) => {
   try {
     const res = await api({
-      method: 'PUT',
+      method: "PUT",
       url: `/employees/status`,
       data,
     });
@@ -153,7 +151,7 @@ export const toggleEmployeeAccount = async (data) => {
 export const removeEmployee = async ({ id }) => {
   try {
     const res = await api({
-      method: 'DELETE',
+      method: "DELETE",
       url: `/employees/${id}`,
     });
 

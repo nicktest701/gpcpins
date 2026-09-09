@@ -15,7 +15,7 @@ export default function Button(theme) {
       },
       styleOverrides: {
         root: {
-          borderRadius: 1,
+          borderRadius: 1.2,
           boxShadow: 'none',
           whiteSpace: 'nowrap',
           // fontWeight: 600,

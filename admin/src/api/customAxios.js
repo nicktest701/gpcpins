@@ -34,10 +34,11 @@ api.interceptors.request.use(
 
 // --- Shared refresh lock so concurrent 401s only trigger one refresh call ---
 let refreshPromise = null;
+let isLoggingOut = false;
 
 function refreshAccessToken() {
   if (!refreshPromise) {
-    refreshPromise = axios({
+    refreshPromise = api({
       method: "GET",
       url: `${BASE_URL}/auth/token`,
       withCredentials: true,
@@ -57,6 +58,15 @@ function refreshAccessToken() {
   return refreshPromise;
 }
 
+function forceLogout(reason) {
+  if (isLoggingOut) return; // avoid duplicate redirects from parallel failing requests
+  isLoggingOut = true;
+  deleteToken();
+  // Optional: let the rest of the app know, e.g. to clear React state/context
+  window.dispatchEvent(new CustomEvent("auth:logout", { detail: { reason } }));
+  window.location.href = `/auth/login?e=true&reason=${encodeURIComponent(reason)}`;
+}
+
 // Response interceptor — handle expired token via refresh
 api.interceptors.response.use(
   (response) => response,
@@ -74,8 +84,7 @@ api.interceptors.response.use(
 
       // Avoid loops if the failing call was the refresh call itself
       if (originalRequest.url.includes("/auth/token")) {
-        deleteToken();
-        window.location.href = "/auth/login?e=true";
+        forceLogout("session_expired");
         return Promise.reject(error);
       }
 
@@ -84,8 +93,7 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
-        deleteToken();
-        // window.location.href = "/auth/login?e=true";
+        forceLogout("session_expired");
         return Promise.reject(refreshError);
       }
     }
@@ -95,3 +103,5 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+

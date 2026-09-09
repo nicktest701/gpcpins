@@ -10,7 +10,6 @@ import {
   Alert,
   Button,
   Paper,
-  Divider,
   Box,
   Chip,
   alpha,
@@ -26,7 +25,7 @@ import {
   AccountBalance as AccountIcon,
 } from "@mui/icons-material";
 import { LoadingButton } from "@mui/lab";
-import { useState } from "react";
+
 
 // ------------------------------------------------------------
 // Enhanced DetailRow with optional icon and subtle chip styling
@@ -105,7 +104,7 @@ const MeterDetailsDialog = ({
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="xs"
+      maxWidth="sm"
       fullWidth
       PaperProps={{
         elevation: 8,
@@ -302,7 +301,7 @@ const MeterDetailsDialog = ({
           onClick={onClose}
           variant="outlined"
           color="inherit"
-          sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600 }}
+          sx={{ borderRadius: 1.2, textTransform: "none", fontWeight: 600 }}
         >
           Cancel
         </Button>
@@ -312,7 +311,7 @@ const MeterDetailsDialog = ({
           disabled={!meter || meterError}
           loading={meterLoading}
           sx={{
-            borderRadius: 2,
+            borderRadius: 1.2,
             textTransform: "none",
             fontWeight: 700,
             px: 3,

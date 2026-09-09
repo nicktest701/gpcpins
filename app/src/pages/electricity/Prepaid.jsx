@@ -111,7 +111,7 @@ function Prepaid() {
 
             <Divider sx={{ my: 3 }} />
 
-            <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
+            <Alert severity="info"  sx={{ mb: 2 }}>
               <AlertTitle sx={{ fontWeight: "bold" }}>Verification</AlertTitle>
               You can verify your meter using your <strong>Meter Number</strong>
               , <strong>STs Number</strong>, or <strong>SPN Number</strong>.

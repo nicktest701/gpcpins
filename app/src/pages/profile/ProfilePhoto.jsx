@@ -67,14 +67,14 @@ function ProfilePhoto() {
 
   return (
     <Paper
-      elevation={3}
+      elevation={1}
       sx={{
         position: "relative",
         overflow: "hidden",
         borderRadius: 3,
         bgcolor: "background.paper",
         width: "100%",
-        maxWidth: 600,
+        // maxWidth: 600,
         mx: "auto",
       }}
     >
@@ -82,10 +82,11 @@ function ProfilePhoto() {
       <Box
         sx={{
           height: { xs: 100, sm: 140 },
-          backgroundImage: `url(${coverImage})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          borderBottom: "1px solid",
+          // backgroundImage: `url(${coverImage})`,
+          // backgroundSize: "cover",
+          // backgroundPosition: "center",
+          // borderBottom: "1px solid",
+          bgcolor: "secondary.main",
           borderColor: "divider",
         }}
       />

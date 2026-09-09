@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useState } from "react";
+import {  useEffect, useMemo, useState } from "react";
 import {
   Container,
   Paper,
@@ -6,6 +6,7 @@ import {
   TextField,
   Typography,
   Button,
+    Fade,
   IconButton,
   List,
   ListItem,
@@ -157,17 +158,54 @@ const AddBulk = () => {
 
   return (
     <Container maxWidth="sm" sx={{ py: 4 }}>
-      <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-        <Typography variant="h5" gutterBottom>
-          Add Bulk Airtime
-        </Typography>
-        <Typography variant="body2" color="text.secondary" paragraph>
-          Add one or more airtime top-ups. Each entry requires a network,
+        <Fade in timeout={400}>
+      <Paper
+          elevation={0}
+            sx={{
+              borderRadius: 4,
+              overflow: "hidden",
+              border: "1px solid",
+              borderColor: "divider",
+            }}
+      >
+             {/* Header */}
+            <Box
+              sx={{
+                p: { xs: 3, sm: 4 },
+                bgcolor: "primary.light",
+                color: "primary.contrastText",
+              }}
+            >
+              <Stack>
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                >
+                  <Typography variant="h5" fontWeight={700} pb={0}>
+                    Buy Bulk Airtime
+                  </Typography>
+
+                  {/* <Chip size="small" color="secondary" label={watchType} /> */}
+                </Stack>
+
+                <Typography
+                  variant="body2"
+                  sx={{
+                    opacity: 0.9,
+                  }}
+                >
+                     Add one or more airtime top-ups. Each entry requires a network,
           recipient number, and amount.
-        </Typography>
+                </Typography>
+              </Stack>
+            </Box>
+   
 
         <form onSubmit={handleSubmit(onAdd)} noValidate>
-          <Stack spacing={2}>
+          <Stack spacing={2}   sx={{
+                     p: 2,py:4
+              }}>
             {/* Network Provider */}
             <ServiceProvider
               size="small"
@@ -319,6 +357,7 @@ const AddBulk = () => {
           </Box>
         )}
       </Paper>
+          </Fade>
     </Container>
   );
 };

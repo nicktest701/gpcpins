@@ -19,6 +19,7 @@ import CustomTitle from "@/components/custom/CustomTitle";
 import { DataTable } from "@/components/tables/datatable";
 import { getComplaints } from "../../api/complaintAPI";
 import { useAuth } from "@/context/providers/AuthProvider";
+import { DateRenderer } from "@/mocks/columns";
 
 const statusColors = {
   pending: "warning",
@@ -53,6 +54,14 @@ const permissionToServiceMap = {
   "Manage Vouchers & Tickets Complaints": {
     value: "voucher",
     label: "Vouchers / Tickets",
+  },
+  "Manage Meter Complaints": {
+    value: "meter",
+    label: "Meter Issues",
+  },
+  "Manage Wallet Complaints": {
+    value: "wallet",
+    label: "Wallet Issues",
   },
 };
 
@@ -129,10 +138,18 @@ const AdminComplaints = () => {
       headerName: "ID",
       sortable: false,
       renderCell: (row) => (
-        <Typography variant="caption" fontWeight="medium">
-          #{row.id.slice(0, 8)}
-        </Typography>
+        <Tooltip title={row.id}>
+          <Typography variant="caption" fontWeight="medium">
+            #{row.id.slice(0, 8)}
+          </Typography>
+        </Tooltip>
       ),
+    },
+       {
+      field: "incident_date",
+      headerName: "Incident Date",
+      sortable: false,
+      renderCell: (row) => moment(row.incident_date).format("DD/MM/YYYY"),
     },
     {
       field: "service_type",
@@ -142,12 +159,16 @@ const AdminComplaints = () => {
         <Chip
           label={serviceLabels[row.service_type] || row.service_type}
           size="small"
-         
           variant="outlined"
         />
       ),
     },
-    { field: "transaction_id", headerName: "Transaction ID", sortable: false },
+    {
+      field: "transaction_id",
+      headerName: "Transaction ID",
+      sortable: false,
+      renderCell: (row) => row.transaction_id || "—",
+    },
     {
       field: "meter_no",
       headerName: "Meter No",
@@ -164,10 +185,16 @@ const AdminComplaints = () => {
       field: "payment_mode",
       headerName: "Payment Mode",
       sortable: false,
+      hidden:true,
       renderCell: (row) => (
         <Chip
-          label={row.payment_mode === "wallet" ? "Wallet" : "Mobile Money"}
-
+          label={
+            row.payment_mode === "wallet"
+              ? "Wallet"
+              : row.payment_mode === "mobile_money"
+                ? "Mobile Money"
+                  : "—"
+          }
           size="small"
           variant="outlined"
         />
@@ -181,16 +208,16 @@ const AdminComplaints = () => {
         <Chip
           label={statusLabels[row.status] || row.status}
           size="small"
-           sx={{ color: "#fff" }}
+          sx={{ color: "#fff" }}
           color={statusColors[row.status] || "default"}
         />
       ),
     },
     {
       field: "created_at",
-      headerName: "Date",
+      headerName: "Reported on",
       sortable: false,
-      renderCell: (row) => moment(row.created_at).format("DD/MM/YYYY"),
+      renderCell: (row) =><DateRenderer date={row?.created_at}/>
     },
     {
       field: "actions",

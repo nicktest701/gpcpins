@@ -1,5 +1,4 @@
 const nodemailer = require("nodemailer");
-const { Resend } = require("resend");
 
 // const resend = new Resend(process.env.MAIL_RESEND_API_KEY);
 
@@ -23,7 +22,7 @@ const sendEMail = async (email_address, message, subject) => {
   const mailOptions = {
     from: `GPC ${process.env.MAIL_CLIENT_USER}`,
     sender: process.env.MAIL_CLIENT_USER,
-    to: typeof email_address === "string" ? [email_address] : email_address,
+    bcc: typeof email_address === "string" ? [email_address] : email_address,
     subject: subject || "Gab Powerful Consult",
     text: "",
     html: message,

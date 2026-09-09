@@ -5,7 +5,6 @@ import { logoutUser } from "@/api/userAPI";
 import { deleteToken } from "@/config/sessionHandler";
 import GlobalSpinner from "@/components/GlobalSpinner";
 import { getUser } from "../../api/userAPI";
-import { getToken } from "../../config/sessionHandler";
 
 export const AuthContext = React.createContext();
 
@@ -23,25 +22,51 @@ function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
     setLoading(true);
 
     async function getAuthUser() {
-      await getUser()
-        .then((data) => {
+      try {
+        const data = await getUser();
+
+        // Defense-in-depth: never accept a non-admin identity in the admin app
+        if (data?.user?.role !== "1101") {
+          throw new Error(
+            "Unauthorized: User does not have required privileges.",
+          );
+        }
+
+        if (isMounted) {
           setUser(data.user);
-          const token = getToken();
-          setAccessToken(token);
-        })
-        .catch((e) => {
-          setUser(null);
+        }
+      } catch (e) {
+        // console.error("Error fetching user data:", e);
+        if (isMounted) {
+          deleteToken();
           setAccessToken("");
-        })
-        .finally(() => {
+          setUser(null);
+        }
+      } finally {
+        if (isMounted) {
           setLoading(false);
-        });
+        }
+      }
     }
 
     getAuthUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handler = (e) => {
+      setUser(null);
+      setAccessToken("");
+    };
+    window.addEventListener("auth:logout", handler);
+    return () => window.removeEventListener("auth:logout", handler);
   }, []);
 
   function login(data) {

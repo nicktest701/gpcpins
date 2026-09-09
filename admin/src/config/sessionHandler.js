@@ -1,5 +1,4 @@
-//Get all Users
-// const ACCESS_EXPIRATION = new Date(Date.now() + 3600000);
+
 
 import cookie from "js-cookie";
 import _ from "lodash";
@@ -7,23 +6,6 @@ import _ from "lodash";
 const ACCESS_TOKEN_EXPIRY_MINUTES = 2;
 const minutes = (m) => m / (24 * 60);
 
-// export const getUser = () => {
-//   const user = localStorage.getItem("_SSID_AdxbAb__");
-
-//   if (user === undefined || user === null || user === "undefined") {
-//     return {
-//       id: "",
-//       profile: "",
-//       name: "",
-//       email: "",
-//       phonenumber: "",
-//       role: "",
-//       active: true,
-//     };
-//   }
-
-//   return parseJwt(user);
-// };
 
 export const getToken = () => {
   const token = cookie.get("SSIDD");
@@ -48,6 +30,7 @@ export const saveAccessToken = (accessToken) => {
   }
 
   cookie.set("SSIDD", JSON.stringify(accessToken), {
+    path: "/",
     secure: window.location.protocol === "https:",
     sameSite: "Lax",
     expires: minutes(ACCESS_TOKEN_EXPIRY_MINUTES),
@@ -57,7 +40,7 @@ export const saveAccessToken = (accessToken) => {
 };
 
 export const deleteToken = () => {
-  cookie.remove("SSIDD");
+  cookie.remove("SSIDD", { path: "/" });
 };
 
 export function parseJwt(token) {
@@ -79,3 +62,19 @@ export function parseJwt(token) {
     return JSON.parse(jsonPayload);
   }
 }
+
+
+
+
+// config/sessionHandler.js
+// let accessToken = null;
+
+// export const saveAccessToken = (token) => {
+//   accessToken = token || null;
+// };
+
+// export const getToken = () => accessToken;
+
+// export const deleteToken = () => {
+//   accessToken = null;
+// };

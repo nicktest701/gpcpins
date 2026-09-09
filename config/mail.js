@@ -26,7 +26,7 @@ const sendMail = async (transaction_id, email_address) => {
   const mailOptions = {
     from: `GPC ${process.env.MAIL_CLIENT_USER}`,
     sender: process.env.MAIL_CLIENT_USER,
-    to: [email_address],
+    bcc: [email_address],
     subject: "Vouchers & Tickets",
     text: "Application Vouchers",
     html: "<h1>Thank you for your business!!!.</h1>",
@@ -60,7 +60,7 @@ const sendTicketMail = async (
   const mailOptions = {
     from: `GPC ${process.env.MAIL_CLIENT_USER}`,
     sender: process.env.MAIL_CLIENT_USER,
-    to: [email_address],
+    bcc: [email_address],
     subject: type || "Gab Powerful Consult",
     text: "Vouchers & Tickets",
     html: thankYouText(transaction_id),

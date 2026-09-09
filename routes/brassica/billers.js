@@ -147,7 +147,7 @@ router.post(
   [
     // body("transactionId").optional().isString().isLength({ max: 40 }),
     body("accountNumber")
-      .matches(/^\d{8,15}$/)
+      .matches(/^[a-zA-Z0-9-]{10,20}$/)
       .withMessage("accountNumber must be a valid ECG meter number."),
     // body("phoneNumber")
     //   .matches(/^\d{12,13}$/)
@@ -201,10 +201,22 @@ router.post(
       return res.status(200).json(meterDetails);
     } catch (err) {
       // next(err);
-      console.log(err);
+      // console.log("error", err?.raw);
+const errorMessage =
+        err?.raw?.message === "accountNumber must be a valid ECG meter number."
+          ? "ECG Meter not found. Please verify the meter number and try again.":
+          err?.raw?.message === "Polymorph: meter not found"
+          ? "ECG Meter not found. Please verify the meter number and try again."
+          :err?.raw?.message === "Meter Type is not supported"
+          ? "ECG Meter not supported. Please use a different meter number."
+          : err?.raw?.message || "Error fetching Meter details! Try again later";
+
+
       return res
         .status(500)
-        .json("Error fetching Meter details!.Try again later");
+        .json(
+          errorMessage
+        );
     }
   }),
 );

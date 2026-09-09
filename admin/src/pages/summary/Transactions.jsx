@@ -1,4 +1,3 @@
-
 import {
   Alert,
   MenuItem,
@@ -62,14 +61,67 @@ const TODAY = moment().toDate();
  * manually in the calendar simply falls through to "custom".
  * ------------------------------------------------------------------ */
 const PERIOD_PRESETS = [
-  { value: "all", label: "All time", getRange: () => ({ startDate: HISTORY_START, endDate: TODAY }) },
-  { value: "today", label: "Today", getRange: () => ({ startDate: moment().startOf("day").toDate(), endDate: moment().endOf("day").toDate() }) },
-  { value: "yesterday", label: "Yesterday", getRange: () => ({ startDate: moment().subtract(1, "day").startOf("day").toDate(), endDate: moment().subtract(1, "day").endOf("day").toDate() }) },
-  { value: "week", label: "Last 7 days", getRange: () => ({ startDate: moment().subtract(6, "days").startOf("day").toDate(), endDate: moment().endOf("day").toDate() }) },
-  { value: "month", label: "This month", getRange: () => ({ startDate: moment().startOf("month").toDate(), endDate: moment().endOf("day").toDate() }) },
-  { value: "lmonth", label: "Last month", getRange: () => ({ startDate: moment().subtract(1, "month").startOf("month").toDate(), endDate: moment().subtract(1, "month").endOf("month").toDate() }) },
-  { value: "year", label: "This year", getRange: () => ({ startDate: moment().startOf("year").toDate(), endDate: moment().endOf("day").toDate() }) },
-  { value: "lyear", label: "Last year", getRange: () => ({ startDate: moment().subtract(1, "year").startOf("year").toDate(), endDate: moment().subtract(1, "year").endOf("year").toDate() }) },
+  {
+    value: "all",
+    label: "All time",
+    getRange: () => ({ startDate: HISTORY_START, endDate: TODAY }),
+  },
+  {
+    value: "today",
+    label: "Today",
+    getRange: () => ({
+      startDate: moment().startOf("day").toDate(),
+      endDate: moment().endOf("day").toDate(),
+    }),
+  },
+  {
+    value: "yesterday",
+    label: "Yesterday",
+    getRange: () => ({
+      startDate: moment().subtract(1, "day").startOf("day").toDate(),
+      endDate: moment().subtract(1, "day").endOf("day").toDate(),
+    }),
+  },
+  {
+    value: "week",
+    label: "Last 7 days",
+    getRange: () => ({
+      startDate: moment().subtract(6, "days").startOf("day").toDate(),
+      endDate: moment().endOf("day").toDate(),
+    }),
+  },
+  {
+    value: "month",
+    label: "This month",
+    getRange: () => ({
+      startDate: moment().startOf("month").toDate(),
+      endDate: moment().endOf("day").toDate(),
+    }),
+  },
+  {
+    value: "lmonth",
+    label: "Last month",
+    getRange: () => ({
+      startDate: moment().subtract(1, "month").startOf("month").toDate(),
+      endDate: moment().subtract(1, "month").endOf("month").toDate(),
+    }),
+  },
+  {
+    value: "year",
+    label: "This year",
+    getRange: () => ({
+      startDate: moment().startOf("year").toDate(),
+      endDate: moment().endOf("day").toDate(),
+    }),
+  },
+  {
+    value: "lyear",
+    label: "Last year",
+    getRange: () => ({
+      startDate: moment().subtract(1, "year").startOf("year").toDate(),
+      endDate: moment().subtract(1, "year").endOf("year").toDate(),
+    }),
+  },
   { value: "custom", label: "Custom range", getRange: null },
 ];
 
@@ -93,10 +145,25 @@ const STATUS_OPTIONS = [
 // Drives both the status filter dropdown and the summary cards, so
 // the two stay visually and semantically in sync.
 const STATUS_CARD_CONFIG = [
-  { value: "completed", label: "Completed", color: "success", Icon: CheckCircleRounded },
-  { value: "pending", label: "Pending", color: "warning", Icon: PendingRounded },
+  {
+    value: "completed",
+    label: "Completed",
+    color: "success",
+    Icon: CheckCircleRounded,
+  },
+  {
+    value: "pending",
+    label: "Pending",
+    color: "warning",
+    Icon: PendingRounded,
+  },
   { value: "failed", label: "Failed", color: "error", Icon: CancelRounded },
-  { value: "refunded", label: "Refunded", color: "info", Icon: AssignmentReturnRounded },
+  {
+    value: "refunded",
+    label: "Refunded",
+    color: "info",
+    Icon: AssignmentReturnRounded,
+  },
 ];
 
 function Transactions() {
@@ -303,14 +370,16 @@ function Transactions() {
           >
             View
           </MenuItem>
-          {data?.mode === "Mobile Money" && (
+          {/* {data?.mode === "Mobile Money" && ( */}
             <MenuItem
               sx={{ fontSize: 13 }}
-              onClick={() => handleCheckStatus(data?.reference, data?.service)}
+              onClick={() =>
+                handleCheckStatus(data?.reference || data?.id, data?.service)
+              }
             >
               Check Status
             </MenuItem>
-          )}
+          {/* )} */}
           {["voucher", "ticket"].includes(data?.service) &&
             data?.status === "completed" && (
               <>
@@ -357,7 +426,9 @@ function Transactions() {
           </Alert>
         )}
         {reportMutate.isLoading && (
-          <Alert severity="info">Generating report. This can take a moment…</Alert>
+          <Alert severity="info">
+            Generating report. This can take a moment…
+          </Alert>
         )}
         {reportMutate.isError && (
           <Alert severity="error" onClose={reportMutate.reset}>
@@ -429,13 +500,18 @@ function Transactions() {
       <Grid container spacing={2} sx={{ mb: 3 }}>
         {STATUS_CARD_CONFIG.map(({ value, label, color, Icon }) => {
           const isActive = status === value;
-          const { count, total } = statusSummary[value] || { count: 0, total: 0 };
+          const { count, total } = statusSummary[value] || {
+            count: 0,
+            total: 0,
+          };
 
           return (
             <Grid item xs={12} sm={6} md={3} key={value}>
               <Paper
                 elevation={0}
-                onClick={() => !transactions.isLoading && handleStatusCardClick(value)}
+                onClick={() =>
+                  !transactions.isLoading && handleStatusCardClick(value)
+                }
                 sx={{
                   p: 2,
                   borderRadius: 1.2,
@@ -448,14 +524,19 @@ function Transactions() {
                   bgcolor: isActive
                     ? alpha(theme.palette[color].main, 0.06)
                     : "#fff",
-                  transition: theme.transitions.create(["border-color", "background-color"]),
+                  transition: theme.transitions.create([
+                    "border-color",
+                    "background-color",
+                  ]),
                   "&:hover": transactions.isLoading
                     ? undefined
                     : { borderColor: theme.palette[color].main },
                 }}
               >
                 <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                  <Icon sx={{ color: theme.palette[color].main, fontSize: 28 }} />
+                  <Icon
+                    sx={{ color: theme.palette[color].main, fontSize: 28 }}
+                  />
                   <Stack spacing={0.25} sx={{ minWidth: 0 }}>
                     <Typography variant="body2" color="text.secondary">
                       {label}
@@ -467,10 +548,14 @@ function Transactions() {
                       </>
                     ) : (
                       <>
-                        <Typography variant="h6" fontWeight="700" lineHeight={1.2}>
+                        <Typography
+                          variant="h6"
+                          fontWeight="700"
+                          lineHeight={1.2}
+                        >
                           {count}
                         </Typography>
-                        <Typography variant="body1"  noWrap>
+                        <Typography variant="body1" noWrap>
                           {currencyFormatter(total)}
                         </Typography>
                       </>
@@ -633,10 +718,7 @@ function Transactions() {
             textAlign: "center",
           }}
         >
-          <ErrorOutlineRounded
-            color="error"
-            sx={{ fontSize: 40, mb: 1 }}
-          />
+          <ErrorOutlineRounded color="error" sx={{ fontSize: 40, mb: 1 }} />
           <Typography variant="subtitle1" fontWeight="600" gutterBottom>
             Couldn&apos;t load transactions
           </Typography>

@@ -80,7 +80,7 @@ export default function EcgWrapper() {
             transaction ID, phone number, and issue details so our team can
             attend to you quickly or you can fill out the complaint form
           </Typography>
-          <ComplaintModal buttonVariant="button" buttonText="Complaint form" />
+          <ComplaintModal buttonVariant="button" buttonText="Complaint form"  showLarge={true}/>
         </Paper>
       </Container>
     </Box>
